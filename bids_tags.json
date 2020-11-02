@@ -1,0 +1,15 @@
+{
+    "subject": "sub",
+    "session": "ses",
+    "task": "task",
+    "acquisition": "acq",
+    "ceagent": "ce",
+    "reconstruction": "rec",
+    "direction": "dir",
+    "run": "run",
+    "proc": "proc",
+    "modality": "mod",
+    "echo": "echo",
+    "recording": "recording",
+    "space": "space"
+}
