@@ -1,0 +1,88 @@
+[tool.poetry]
+name = "bids_path"
+version = "0.0.0"
+description = "BIDS integration into snakemake workflows"
+readme = "README.md"
+repository = "https://github.com/snakebids/bids_path"
+documentation = "https://snakebids.readthedocs.io/"
+authors = [
+    "Ali Khan <alik@robarts.ca>",
+    "Peter Van Dyken <pvandyk2@uwo.ca>",
+    "Tristan Kuehn <tkuehn@uwo.ca>",
+    "Jason Kai <tkai@uwo.ca>",
+]
+license = "MIT"
+packages = [
+    { include = "bids_path" }
+]
+
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+dirty = true
+style = "pep440"
+bump = true
+
+[tool.poetry-dynamic-versioning.substitution]
+files = [
+    'bids_path/__init__.py'
+]
+patterns = [
+    "(^__version__\\s*(?::.*?)?=\\s*['\"])[^'\"]*(['\"])"
+]
+
+[tool.poetry.dependencies]
+python = ">=3.8,<3.12"
+typing-extensions = ">=3.10.0"
+more-itertools = ">=8,<10"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.1.0"
+pytest = "^7.0.0"
+isort = "^5.10.1"
+poethepoet = "^0.20.0"
+pre-commit = "^3.0.0"
+mkinit = "^1.0.0"
+hypothesis = "^6.34.1"
+pytest-benchmark = "^4.0.0"
+pyfakefs = "^5.1.0"
+pyparsing = "^3.0.9"
+# Version 1.1.312-1.1.315 have a false positive handling some nested function
+# calls
+pyright = ">=1.1.316"
+ruff = "^0.0.274"
+
+[tool.poetry.scripts]
+snakebids = "snakebids.admin:main"
+
+[build-system]
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
+build-backend = "poetry_dynamic_versioning.backend"
+
+[tool.poe.tasks]
+setup = "pre-commit install"
+quality = { shell = "isort bids_path && black bids_path && ruff bids_path && pyright" }
+fix = { shell = "isort bids_path && black bids_path && ruff --fix bids_path"}
+test = """
+pytest --doctest-modules --ignore=docs --benchmark-disable
+"""
+mkinit = "mkinit --recursive --nomods --black -i bids_path"
+benchmark = "pytest --benchmark-only --benchmark-autosave"
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+
+<<<<<<< HEAD
+=======
+[tool.pyright]
+include = ["bids_path"]
+exclude = ["typings"]
+typeCheckingMode = "strict"
+reportPrivateUsage = false
+reportImportCycles = false
+
+>>>>>>> 7f0e731 (Remove all snakemake related items)
+[tool.ruff]
+select = ["E", "F", "PL", "RUF"]

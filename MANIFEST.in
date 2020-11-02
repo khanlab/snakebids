@@ -1,0 +1,2 @@
+include snakebids/*.json
+recursive-include snakebids/project_template *.json *.rst *.py .gitignore Makefile *.txt Snakefile *.yml *.{{cookiecutter._py}}
