@@ -1,0 +1,3 @@
+pybids==0.12.0
+snakemake==5.27.3
+PyYAML==5.3.1
