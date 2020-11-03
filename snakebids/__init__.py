@@ -299,3 +299,13 @@ def get_wildcard_constraints(config):
     return  { entity: bids_constraints for imgtype in config['input_lists'].keys() for entity in config['input_lists'][imgtype].keys() }
 
 
+def write_derivative_json(snakemake, **kwargs):
+    with open(snakemake.input.json,'r') as f:
+      sidecar = json.load(f)
+
+    sidecar.update({'Sources': [snakemake.input], 'Parameters': {key:val for (key,val) in snakemake.params.items()}, **kwargs })
+
+    with open(snakemake.output.json, 'w') as outfile:
+        json.dump(sidecar, outfile,indent=4)
+
+
