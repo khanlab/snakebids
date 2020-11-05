@@ -1,9 +1,11 @@
 from bids import BIDSLayout
+import bids
 import os
 import json
 import re
 import yaml
 
+bids.config.set_option('extension_initial_dot', True)
 
 def bids(root=None, datatype=None, prefix=None, suffix=None, subject=None, session=None,include_subject_dir=True,include_session_dir=True,**entities):
     """Helper function for generating bids paths for snakemake workflows
