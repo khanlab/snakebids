@@ -97,6 +97,16 @@ class SnakeBidsApp:
         #add optional search terms
         if args.participant_label is not None:
             search_terms['subject'] = args.participant_label
+
+        #exclude subjects:
+        if args.exclude_participant_label is not None:
+            if isinstance(args.exclude_participant_label, list): # if multiple subjects to exclude, combine with with subj1|subj2|...
+                exclude_string = '|'.join(args.exclude_participant_label) 
+            else:
+                exclude_string = args.exclude_participant_label #if not, then string is the label itself
+            search_terms['regex_search'] = True
+            search_terms['subject'] = f'^((?!({exclude_string})).)*$' #regex to exclude subjects
+
         #if args.session is not None:
         #    search_terms['session'] = args.session
 
