@@ -1,0 +1,32 @@
+#---- snakebids boilerplate
+
+import snakebids
+from snakebids import bids
+
+configfile: 'config/snakebids.yml'
+
+#writes inputs_config.yml and updates config dict
+snakebids.generate_inputs_config(config)
+
+#this adds constraints to the bids naming
+wildcard_constraints:  **snakebids.get_wildcard_constraints(config)
+
+#----
+
+
+rule all:
+    input: 
+        brain = expand(bids(root='results',datatype='anat',desc='brain',suffix='T1w.nii.gz',**config['subj_wildcards']),
+                 zip,**config['input_zip_lists']['T1w']),
+
+
+#run bet on all T1w images
+rule bet:
+    input:
+        t1w = config['input_path']['T1w']
+    output:
+        brain = bids(root='results',datatype='anat',desc='brain',suffix='T1w.nii.gz',**config['input_wildcards']['T1w'])
+    params:
+        frac = config['bet_frac']
+    container: config['singularity']['fsl']
+    shell: 'bet {input} {output}'
