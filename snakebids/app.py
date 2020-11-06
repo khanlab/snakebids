@@ -67,15 +67,10 @@ class SnakeBidsApp:
 
     def parse_args(self):
 
-         #get path of this file
-#        snakemake_dir = os.path.dirname(os.path.realpath(__file__))
-
         #replace with proper name of pipeline here
         parser = argparse.ArgumentParser(description='snakebids-app')
 
         #load up workflow config file
-#        snakebids_config = os.path.join(snakemake_dir,'config','snakebids.yml')
-        
         with open(self.snakebids_config, 'r') as infile:
             self.config = yaml.load(infile, Loader=yaml.FullLoader)
 
@@ -92,39 +87,7 @@ class SnakeBidsApp:
         self.config.update(args.__dict__)
         self.config.update({'snakemake_args': snakemake_args})
 
-        search_terms = dict()
-
-        #add optional search terms
-        if args.participant_label is not None:
-            search_terms['subject'] = args.participant_label
-
-        #exclude subjects:
-        if args.exclude_participant_label is not None:
-            if isinstance(args.exclude_participant_label, list): # if multiple subjects to exclude, combine with with subj1|subj2|...
-                exclude_string = '|'.join(args.exclude_participant_label) 
-            else:
-                exclude_string = args.exclude_participant_label #if not, then string is the label itself
-            search_terms['regex_search'] = True
-            search_terms['subject'] = f'^((?!({exclude_string})).)*$' #regex to exclude subjects
-
-        #if args.session is not None:
-        #    search_terms['session'] = args.session
-
-        # still  need to come up with ways to specify modality-specific search terms from command-line (other than --config ...)
-        """
-        if args.acq is not None:
-            search_terms['acquisition'] = args.acq
-        if args.run is not None:
-            search_terms['run'] = args.run
-        """
-
-        #override bids_dir, output_dir, search_terms in snakebids config
-        self.config['search_terms'] = search_terms
-        self.config['bids_dir'] = os.path.realpath(args.bids_dir)
-        self.config['output_dir'] = os.path.realpath(args.output_dir)
-
-
-
+        
 
     def write_updated_config(self):
         #create an updated snakebids config file
@@ -155,7 +118,6 @@ class SnakeBidsApp:
         snakemake_cmd_list = ['snakemake',
                                 f'--snakefile {self.snakefile}',
                                 f"--directory {self.config['output_dir']}",
-                                f'--configfile {self.updated_config} ',
                                 f'--configfile {self.updated_config} ',
                                 *self.config['snakemake_args'],
                                 *self.config['targets_by_analysis_level'][analysis_level]]
