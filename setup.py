@@ -5,13 +5,13 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="snakebids", 
-    version="0.0.1",
+    version="0.1.0",
     author="Ali Khan",
     author_email="alik@robarts.ca",
     description="BIDS integration into snakemake workflows",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/khanlab/snakebids",
+    url="https://github.com/akhanf/snakebids",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
