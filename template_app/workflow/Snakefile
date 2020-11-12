@@ -16,16 +16,16 @@ wildcard_constraints:  **snakebids.get_wildcard_constraints(config)
 
 rule all:
     input: 
-        brain = expand(bids(root='results',datatype='anat',desc='brain',suffix='T1w.nii.gz',**config['subj_wildcards']),
-                 zip,**config['input_zip_lists']['T1w']),
+        brain = expand(bids(root='results',datatype='anat',desc='brain',suffix='T1w.nii.gz',**config['input_wildcards']['t1w']),
+                 zip,**config['input_zip_lists']['t1w']),
 
 
 #run bet on all T1w images
 rule bet:
     input:
-        t1w = config['input_path']['T1w']
+        t1w = config['input_path']['t1w']
     output:
-        brain = bids(root='results',datatype='anat',desc='brain',suffix='T1w.nii.gz',**config['input_wildcards']['T1w'])
+        brain = bids(root='results',datatype='anat',desc='brain',suffix='T1w.nii.gz',**config['input_wildcards']['t1w'])
     params:
         frac = config['bet_frac']
     container: config['singularity']['fsl']

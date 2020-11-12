@@ -4,7 +4,7 @@ output_dir: '/path/to/output_dir'
 #enable printing debug statements during parsing -- disable if generating dag visualization
 debug: False
 
-derivatives: True #will search in bids/derivatives if True; can also be path(s) to derivatives datasets
+derivatives: False #will search in bids/derivatives if True; can also be path(s) to derivatives datasets
 
 #list of analysis levels in the bids app 
 analysis_levels: &analysis_levels
@@ -36,14 +36,13 @@ pybids_inputs:
       - run
       - dir
 
-  t1w_preproc:
+  t1w:
     filters:
       suffix: 'T1w'
       extension: '.nii.gz'
-      scope: 'derivatives' #raw, derivatives (or can be pipeline name too!)
+      scope: 'raw' #raw, derivatives (or can be pipeline name too!)
       datatype: 'anat'
       invalid_filters: 'allow'
-      desc: 'preproc'
       space: null
     wildcards:
       - subject
