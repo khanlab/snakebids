@@ -321,6 +321,11 @@ def generate_inputs_config(config):
     else:
         inputs_config_dict['subj_wildcards'] = { 'subject': '{subject}', 'session': '{session}' }
 
+    #set snakemake_dir to '.' if not defined
+    if not 'snakemake_dir' in config.keys():
+        config['snakemake_dir'] = '.'
+
+
     #write updated config file
     inputs_config = os.path.join('config','inputs_config.yml')
     os.makedirs(os.path.dirname(inputs_config),exist_ok=True)
