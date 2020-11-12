@@ -12,6 +12,19 @@ import json
 
 bids.config.set_option('extension_initial_dot', True)
 
+# create a keyvalue class for accepting key=value pairs in argparse
+class keyvalue(argparse.Action): 
+    # Constructor calling 
+    def __call__( self , parser, namespace, 
+                 values, option_string = None): 
+        setattr(namespace, self.dest, dict()) 
+          
+        for value in values: 
+            # split it into key and value 
+            key, value = value.split('=') 
+            # assign into dictionary 
+            getattr(namespace, self.dest)[key] = value 
+
 def run(command, env={}):
     merged_env = os.environ
     merged_env.update(env)
@@ -65,6 +78,9 @@ class SnakeBidsApp:
         self.write_updated_config()
 
 
+
+      
+
     def parse_args(self):
 
         #replace with proper name of pipeline here
@@ -78,21 +94,40 @@ class SnakeBidsApp:
         for name, parse_args in self.config['parse_args'].items():
             parser.add_argument(name, **parse_args)
 
-        #add something to add key-val , e.g. pybids_inputs -> T2w -> filters
-        #   --filter-{name}-{key} = {value}
-        #  pybids_inputs[name][key] = value
+        #general parser for --filter_{input_type} {key1}={value1} {key2}={value2}...
+        #create filter parsers, one for each input_type
 
-        # --search-T2w-acquisition = SPACE
-
+        for input_type in self.config['pybids_inputs'].keys():
+            argname=f'--filter_{input_type}'
+            arginstance=f'filter_{input_type}'.upper() #for help description
+            arglist_default = [ f'{key}={value}'  for (key,value) in self.config['pybids_inputs'][input_type]['filters'].items() ]
+            arglist_default_string = ' '.join(arglist_default)
+ 
+            parser.add_argument(argname,nargs='+',action=keyvalue,
+                                help=f'Filters (PyBIDS) for {input_type}, where {arginstance} is '
+                                       f'key=value pair(s) (default: {arglist_default_string})')
+ 
 
         all_args = parser.parse_known_args()
 
         args = all_args[0]
         snakemake_args = all_args[1]
 
+        
+
+
         #add arguments to config
         self.config.update(args.__dict__)
         self.config.update({'snakemake_args': snakemake_args})
+
+        #argparse adds filter_{input_type} to the config
+        # we want to update the pybids_inputs dict with this, then remove the filter_{input_type} dict
+        for input_type in self.config['pybids_inputs'].keys():
+            arg_filter_dict = self.config[f'filter_{input_type}']
+            if arg_filter_dict is not None:
+                self.config['pybids_inputs'][input_type]['filters'].update(arg_filter_dict)
+            del self.config[f'filter_{input_type}']  
+    
 
         #replace paths with realpaths
         self.config['bids_dir'] = os.path.realpath(self.config['bids_dir'])
