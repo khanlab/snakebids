@@ -78,6 +78,13 @@ class SnakeBidsApp:
         for name, parse_args in self.config['parse_args'].items():
             parser.add_argument(name, **parse_args)
 
+        #add something to add key-val , e.g. pybids_inputs -> T2w -> filters
+        #   --filter-{name}-{key} = {value}
+        #  pybids_inputs[name][key] = value
+
+        # --search-T2w-acquisition = SPACE
+
+
         all_args = parser.parse_known_args()
 
         args = all_args[0]
@@ -87,7 +94,10 @@ class SnakeBidsApp:
         self.config.update(args.__dict__)
         self.config.update({'snakemake_args': snakemake_args})
 
-        
+        #replace paths with realpaths
+        self.config['bids_dir'] = os.path.realpath(self.config['bids_dir'])
+        self.config['output_dir'] = os.path.realpath(self.config['output_dir'])
+       
 
     def write_updated_config(self):
         #create an updated snakebids config file

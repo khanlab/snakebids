@@ -278,9 +278,9 @@ def generate_inputs_config(config):
     if not 'search_terms' in config.keys():
         config['search_terms'] = dict()
 
-    if 'participant_label' in config.keys() and 'exclude_participant_label' in config.keys():
-        print('ERROR: cannot define both participant_label and exclude_participant_label at the same time')
-        return None
+#    if 'participant_label' in config.keys() and 'exclude_participant_label' in config.keys():
+#        print('ERROR: cannot define both participant_label and exclude_participant_label at the same time')
+#        return None
 
     #add participant_label or exclude_participant_label to search terms (if defined)
     # we make the subject key in search_terms a list so we can have both participant_label and exclude_participant_label defined 
@@ -303,11 +303,6 @@ def generate_inputs_config(config):
         config['search_terms']['regex_search'] = True
         config['search_terms']['subject'].append(f'^((?!({exclude_string})).)*$') #regex to exclude subjects
        
-
-    #replace paths with realpaths
-    config['bids_dir'] = os.path.realpath(config['bids_dir'])
-    config['output_dir'] = os.path.realpath(config['output_dir'])
-
 
     #generate inputs based on config
     layout = BIDSLayout(config['bids_dir'],derivatives=config['derivatives'],validate=False,index_metadata=False)
