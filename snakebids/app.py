@@ -42,39 +42,65 @@ def run(command, env={}):
 
 
 
+SNAKEFILE_CHOICES = [
+    "Snakefile",
+    "snakefile",
+    "workflow/Snakefile",
+    "workflow/snakefile",
+]
+
+CONFIGFILE_CHOICES = [
+    "config/snakebids.yml",
+    "snakebids.yml"
+]
 
 
 class SnakeBidsApp:
 
-    def __init__(self, snakebids_config=None, snakefile=None):
-    
-        if snakebids_config == None:
-            #try to locate config file relative to this file 
-            this_dir = os.path.dirname(os.path.realpath(__file__))
-            print(f'this dir is {this_dir}')
-            self.snakebids_config = os.path.join(this_dir,'config','snakebids.yml')
-        else:
-            self.snakebids_config = snakebids_config
+    def __init__(self, snakemake_dir):
 
-        #make sure it exists
-        if not os.path.exists(self.snakebids_config):
-            raise FileNotFoundError('snakebids_config file not found must be defined or placed in config/snakebids.yml')
+        #input argument is the dir where snakemake would be run
+        # we use this to locate the config file, and snakefile adding them to generated_config
+        # and also add the snakemake_dir to the generated_config, so the workflow can use it to 
+        # source files from it (e.g. atlases etc..)
+ 
+        #look for snakebids.yml in the snakemake_dir, quit if not found
+        self.snakebids_config = None
+        for p in CONFIGFILE_CHOICES:
+            if os.path.exists(os.path.join(snakemake_dir,p)):
+                self.snakebids_config = os.path.join(snakemake_dir,p)
+                break
+        if self.snakebids_config == None:
+            print(
+            "Error: no  snakebids.yml config file found, tried {}.".format(
+                    ", ".join(SNAKEFILE_CHOICES), file=sys.stderr
+                )
+            )
+            sys.exit(1)
 
 
-        if snakefile == None:
-            #try to locate config file relative to this file
-            this_dir = os.path.dirname(os.path.realpath(__file__))
+        #look for snakefile in the snakemake_dir, quit if not found
+        self.snakefile = None
+        for p in SNAKEFILE_CHOICES:
+            if os.path.exists(os.path.join(snakemake_dir,p)):
+                self.snakefile = os.path.join(snakemake_dir,p)
+                break
+        if self.snakefile == None:
+            print(
+            "Error: no Snakefile found, tried {}.".format(
+                    ", ".join(SNAKEFILE_CHOICES), file=sys.stderr
+                )
+            )
+            sys.exit(1)
 
-            #could replace this with code that looks in specific locations (e.g. from snakemake)
-            self.snakefile = os.path.join(this_dir,'workflow','Snakefile')
-        else:
-            self.snakefile = snakefile
 
-        #make sure snakefile exists
-        if not os.path.exists(self.snakefile):
-            raise FileNotFoundError('Snakefile not found must be defined or placed in workflow/Snakefile')
+
 
         self.parse_args()
+
+        #add path to snakefile to the config -- so workflows can grab files relative to the snakefile folder  
+        self.config['snakemake_dir'] = snakemake_dir
+
         self.write_updated_config()
 
 

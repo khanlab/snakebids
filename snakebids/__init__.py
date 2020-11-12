@@ -278,30 +278,33 @@ def generate_inputs_config(config):
     if not 'search_terms' in config.keys():
         config['search_terms'] = dict()
 
-#    if 'participant_label' in config.keys() and 'exclude_participant_label' in config.keys():
-#        print('ERROR: cannot define both participant_label and exclude_participant_label at the same time')
-#        return None
+    if 'participant_label'  and 'exclude_participant_label' in config.keys():
+        if not config['participant_label'] == None and not config['exclude_participant_label'] == None:
+            print('ERROR: cannot define both participant_label and exclude_participant_label at the same time')
+            return None
 
     #add participant_label or exclude_participant_label to search terms (if defined)
     # we make the subject key in search_terms a list so we can have both participant_label and exclude_participant_label defined 
     if 'participant_label' in config.keys():
-        if not 'subject' in config['search_terms'].keys():
-            config['search_terms']['subject'] = []
-        if isinstance(config['participant_label'], list): 
-            config['search_terms']['subject'] = config['search_terms']['subject'] + config['participant_label']
-        else:
-            config['search_terms']['subject'].append(config['participant_label'])
+        if not config['participant_label'] == None:
+            if not 'subject' in config['search_terms'].keys():
+                config['search_terms']['subject'] = []
+            if isinstance(config['participant_label'], list): 
+                config['search_terms']['subject'] = config['search_terms']['subject'] + config['participant_label']
+            else:
+                config['search_terms']['subject'].append(config['participant_label'])
 
     if 'exclude_participant_label' in config.keys():
-        if not 'subject' in config['search_terms'].keys():
-            config['search_terms']['subject'] = []
-        if isinstance(config['exclude_participant_label'], list): # if multiple subjects to exclude, combine with with subj1|subj2|...
-            exclude_string = '|'.join(config['exclude_participant_label']) 
-            
-        else:
-            exclude_string = config['exclude_participant_label'] #if not, then string is the label itself
-        config['search_terms']['regex_search'] = True
-        config['search_terms']['subject'].append(f'^((?!({exclude_string})).)*$') #regex to exclude subjects
+        if not config['exclude_participant_label'] == None:
+            if not 'subject' in config['search_terms'].keys():
+                config['search_terms']['subject'] = []
+            if isinstance(config['exclude_participant_label'], list): # if multiple subjects to exclude, combine with with subj1|subj2|...
+                exclude_string = '|'.join(config['exclude_participant_label']) 
+                
+            else:
+                exclude_string = config['exclude_participant_label'] #if not, then string is the label itself
+            config['search_terms']['regex_search'] = True
+            config['search_terms']['subject'].append(f'^((?!({exclude_string})).)*$') #regex to exclude subjects
        
 
     #generate inputs based on config
