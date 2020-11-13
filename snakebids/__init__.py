@@ -1,4 +1,4 @@
-from bids import BIDSLayout
+from bids import BIDSLayout, BIDSLayoutIndexer
 import bids
 import os
 import json
@@ -308,7 +308,13 @@ def generate_inputs_config(config):
        
 
     #generate inputs based on config
-    layout = BIDSLayout(config['bids_dir'],derivatives=config['derivatives'],validate=False,index_metadata=False)
+    layout = BIDSLayout(
+        config['bids_dir'],
+        derivatives=config['derivatives'],
+        validate=False,
+        indexer=BIDSLayoutIndexer(validate=False,
+                index_metadata=False)
+    )
 
     #this will populate input_path, input_lists, input_zip_lists, and input_wildcards 
     inputs_config_dict = get_input_config_from_bids(config=config, bids_layout=layout, inputs_dict=config['pybids_inputs'], **config['search_terms'])
