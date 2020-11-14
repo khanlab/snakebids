@@ -249,10 +249,9 @@ def get_input_config_from_bids(config, bids_layout, inputs_dict, **filters ):
 
         #now, check to see if unique
         if len(paths) > 1:
-            print(f'ERROR: more than one snakemake filename for {input_name}:')
-            print(f'  Either add new bids entities to {input_name} -> wildcards, or filters to narrow the search')
+            print(f'WARNING: more than one snakemake filename for {input_name}, taking the first')
+            print(f'  To correct this, use the --filter_{input_name} option to narrow the search')
             print(paths)
-            return None
     
         in_path = list(paths)[0]
 
