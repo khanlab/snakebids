@@ -183,7 +183,7 @@ def read_bids_tags(bids_json=None):
         bids_tags = json.load(infile)
     return bids_tags
 
-def get_input_config_from_bids(config, bids_layout, inputs_dict, **filters ):
+def get_input_config_from_bids(config, bids_layout, inputs_dict, limit_to=None, **filters ):
     """ returns: dict with input_path and input_wildcards"""
 
     bids_tags = read_bids_tags()
@@ -191,10 +191,14 @@ def get_input_config_from_bids(config, bids_layout, inputs_dict, **filters ):
     config.update( dict({'input_path': {}, 'input_zip_lists': {}, 'input_lists': {}, 'input_wildcards': {}}))
 
 
+    if limit_to == None:
+        inputs_to_iterate = inputs_dict.keys()
+    else:
+        inputs_to_iterate = limit_to
 
     
 
-    for input_name in inputs_dict.keys():
+    for input_name in inputs_to_iterate:
 
         if config['debug']==True: print(f'grabbing pybids inputs for {input_name}..')
 
@@ -269,7 +273,7 @@ def get_input_config_from_bids(config, bids_layout, inputs_dict, **filters ):
     return config
 
 
-def generate_inputs_config(config):
+def generate_inputs_config(config,limit_to=None):
     """ returns: updated config dict; function will also write the inputs_config.yml to standard output path """
     
 
@@ -316,7 +320,11 @@ def generate_inputs_config(config):
     )
 
     #this will populate input_path, input_lists, input_zip_lists, and input_wildcards 
-    inputs_config_dict = get_input_config_from_bids(config=config, bids_layout=layout, inputs_dict=config['pybids_inputs'], **config['search_terms'])
+    inputs_config_dict = get_input_config_from_bids(config=config,
+                                                bids_layout=layout,
+                                                inputs_dict=config['pybids_inputs'],
+                                                limit_to = limit_to,
+                                                **config['search_terms'])
 
     #populate subjects, sessions and subj_wildcards in the config
     inputs_config_dict['subjects'] = layout.get_subjects(**config['search_terms'])
