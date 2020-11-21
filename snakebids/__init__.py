@@ -4,6 +4,7 @@ import os
 import json
 import re
 import yaml
+import shutil
 
 bids.config.set_option('extension_initial_dot', True)
 
@@ -273,6 +274,7 @@ def get_input_config_from_bids(config, bids_layout, inputs_dict, limit_to=None, 
     return config
 
 
+
 def generate_inputs_config(config,limit_to=None):
     """ returns: updated config dict; function will also write the inputs_config.yml to standard output path """
     
@@ -348,6 +350,14 @@ def generate_inputs_config(config,limit_to=None):
 
     #add to config dict before returning
     config.update(inputs_config_dict)
+
+
+    #copy pipeline_description.json to results/dataset_description.json
+    pipeline_description = os.path.join(config['snakemake_dir'],'pipeline_description.json')
+    dataset_description = os.path.join('results','dataset_description.json')
+    if os.path.exists(pipeline_description):
+        os.mkdir(os.path.dirname(dataset_description))
+        shutil.copyfile(pipeline_description,dataset_description)
 
     return config
 

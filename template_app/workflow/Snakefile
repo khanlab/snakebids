@@ -6,7 +6,7 @@ from snakebids import bids
 configfile: 'config/snakebids.yml'
 
 #writes inputs_config.yml and updates config dict
-snakebids.generate_inputs_config(config)
+config = snakebids.generate_inputs_config(config)
 
 #this adds constraints to the bids naming
 wildcard_constraints:  **snakebids.get_wildcard_constraints(config)

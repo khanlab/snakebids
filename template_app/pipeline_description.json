@@ -1,0 +1,12 @@
+{
+    "Name": "appname - Short description of pipeline here",
+    "BIDSVersion": "1.4.0",
+    "DatasetType": "derivative",
+    "GeneratedBy": [
+        {
+            "Name": "appname",
+            "Version": "0.1.0",
+            "CodeURL": "http://github.com/org/name"
+        }
+    ]
+}
