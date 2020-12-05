@@ -312,6 +312,7 @@ def generate_inputs_config(config,limit_to=None):
             config['search_terms']['subject'].append(f'^((?!({exclude_string})).)*$') #regex to exclude subjects
        
 
+
     #generate inputs based on config
     layout = BIDSLayout(
         config['bids_dir'],
@@ -356,7 +357,10 @@ def generate_inputs_config(config,limit_to=None):
     pipeline_description = os.path.join(config['snakemake_dir'],'pipeline_description.json')
     dataset_description = os.path.join('results','dataset_description.json')
     if os.path.exists(pipeline_description):
-        os.mkdir(os.path.dirname(dataset_description))
+        try:
+            os.mkdir(os.path.dirname(dataset_description))
+        except FileExistsError:
+            pass
         shutil.copyfile(pipeline_description,dataset_description)
 
     return config

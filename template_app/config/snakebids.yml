@@ -88,6 +88,11 @@ parse_args:
           participants can be specified with a space separated list.
     nargs: '+'
 
+  --derivatives:
+    help: 'Path(s) to a derivatives dataset, for folder(s) that contains multiple derivatives datasets (default: %(default)s) '
+    default: False
+    nargs: '+'
+
  # custom command-line parameters can then be added, these will get added to the config
  # below is an example to override config['bet_frac']
   --bet_frac:
