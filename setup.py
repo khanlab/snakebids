@@ -20,9 +20,9 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     install_requires=[
-        "pybids",
-        "snakemake",
-        "PyYAML",
+        "pybids==0.12.3",
+        "snakemake>=5.28.0",
+        "PyYAML>=5.3.1",
     ],
     python_requires='>=3.7'
 )
