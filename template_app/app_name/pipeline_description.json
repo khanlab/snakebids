@@ -4,9 +4,12 @@
     "DatasetType": "derivative",
     "GeneratedBy": [
         {
-            "Name": "appname",
+            "Name": "app_name",
             "Version": "0.1.0",
-            "CodeURL": "http://github.com/org/name"
+            "CodeURL": "http://github.com/org/name",
+            "Author": "Author name here",
+            "AuthorEmail": "Author email"
+ 
         }
     ]
 }
