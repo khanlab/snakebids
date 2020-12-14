@@ -1,34 +1,32 @@
-.. template app documentation master file, created by
+.. hippunfold documentation master file, created by
    sphinx-quickstart on Thu Jul 30 10:15:34 2020.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Template snakebids BIDS App
-====================================================
+.. include:: ../README.rst
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
-Summary
--------
 
-Description goes here
+.. toctree::
+   :caption: Getting started
+   :name: getting_started
+   :hidden:
+   :maxdepth: 1
 
-Installation
-------------
+   getting_started/installation
 
-Standard install instructions can go here
+.. toctree::
+  :caption: Usage 
+  :name: usage
+  :hidden:
+  :maxdepth: 1
 
-
-Usage
------
-
-.. argparse::
-   :filename: ../run.py
-   :func: get_parser
-   :prog: template_app
-
+  usage/app_cli
+  usage/snakemake_cli
 
 
+ 
 

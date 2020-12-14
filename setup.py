@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="snakebids", 
-    version="0.1.4",
+    version="0.2.0",
     author="Ali Khan",
     author_email="alik@robarts.ca",
     description="BIDS integration into snakemake workflows",
@@ -20,7 +20,7 @@ setuptools.setup(
     ],
     install_requires=[
         "pybids==0.12.3",
-        "snakemake==5.28.0",
+        "snakemake=>5.28.0",
         "PyYAML==5.3.1",
     ],
     python_requires='>=3.7'

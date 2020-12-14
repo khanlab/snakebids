@@ -19,9 +19,9 @@ import sphinx_rtd_theme
 # -- Project information -----------------------------------------------------
 
 
-project = 'hippocampal_autotop_bids'
-copyright = '2020, Jordan DeKraker and Ali R. Khan'
-author = 'Jordan DeKraker and Ali R. Khan'
+project = 'app_name'
+copyright = '2020, Authors here'
+author = 'Authors here'
 
 
 # -- General configuration ---------------------------------------------------
