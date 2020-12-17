@@ -1,4 +1,4 @@
-.. hippunfold documentation master file, created by
+.. app_name documentation master file, created by
    sphinx-quickstart on Thu Jul 30 10:15:34 2020.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.

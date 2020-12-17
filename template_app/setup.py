@@ -30,7 +30,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     entry_points={'console_scripts': [
-        'hippunfold=hippunfold.run:main'
+        'app_name=app_name.run:main'
     ]},
     install_requires=[
         "snakebids>=0.2.0",
