@@ -156,9 +156,36 @@ def bids(root=None, datatype=None, prefix=None, suffix=None, subject=None, sessi
     
     return filename
 
+
+def get_filtered_ziplist_index(zip_list, wildcards, subj_wildcards):
+    """ Use this function when you have wildcards for a single scan instance, 
+        and want to know the index of that scan, amongst that subject's scan
+        instances. 
+
+    Example:
+    >>> snakebids.get_filtered_ziplist_index({'dir': ['AP','PA','AP','PA', 'AP','PA','AP','PA'] ,'acq': ['98','98','98','98','99','99','99','99'], 'subject': ['01','01','02','02','01','01','02','02' ] }, {'dir': 'PA', 'acq': '99', 'subject': '01'}, { 'subject': '{subject}' })
+    3
+
+    """
+    #get the subject/(session) dict:
+    subj_dict = { key:wildcards[key]  for key in subj_wildcards.keys()}
+
+    #now filter the list based on subj_wildcards
+    zip_list_filtered = filter_list(zip_list,subj_dict)
+
+    #get the index of the wildcard from this filtered list
+    indices = filter_list(zip_list_filtered,wildcards, return_indices_only=True)
+    if len(indices) == 1:
+        return indices[0]
+    else:
+        return indices
+
+      
+
+
 # this function is used when you are expanding over some subset of the wildcards
 #  i.e. if your output file doesn't contain all the wildcards in input_wildcards
-def filter_list(zip_list, wildcards):
+def filter_list(zip_list, wildcards, return_indices_only=False):
     size_list = len(next(iter(zip_list)))
     keep_indices = set()
     for key,val in wildcards.items():
@@ -171,7 +198,10 @@ def filter_list(zip_list, wildcards):
         else:
             keep_indices = keep_indices.intersection(indices)
     #now we have the indices, so filter the lists
-    return {key: [ zip_list[key][i] for i in keep_indices  ] for key,val in zip_list.items()}
+    if return_indices_only:
+        return list(keep_indices)
+    else:
+        return {key: [ zip_list[key][i] for i in keep_indices  ] for key,val in zip_list.items()}
 
 
 
