@@ -35,5 +35,12 @@
   bids_app/overview
 
 
- 
+.. toctree::
+  :caption: Reference
+  :hidden:
+  :maxdepth: 1
+
+  api
+
+
 

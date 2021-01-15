@@ -11,71 +11,84 @@ bids.config.set_option('extension_initial_dot', True)
 def bids(root=None, datatype=None, prefix=None, suffix=None, subject=None, session=None,include_subject_dir=True,include_session_dir=True,**entities):
     """Helper function for generating bids paths for snakemake workflows
 
-    File path is of the form:
+    File path is of the form::
+        [root]/[sub-{subject}]/[ses-{session]/[prefix]_[sub-{subject}]_[ses-{session}]_[{key}-{val}_ ... ]_[suffix]
 
-    [root]/[sub-{subject}]/[ses-{session]/[prefix]_[sub-{subject}]_[ses-{session}]_[{key}-{val}_ ... ]_[suffix]
+    Parameters
+    ----------    
+    root : str, default=None
+        root folder to include in the path (e.g. 'results')
+    datatype : str, default=None
+        folder to include after sub-/ses- (e.g. anat, dwi )
+    prefix : str, default=None
+        string to prepend to the file name (typically not defined, unless you want tpl-{tpl}, or a datatype)
+    suffix : str, default=None
+        bids suffix including extension (e.g. 'T1w.nii.gz')
+    subject : str, default=None
+        subject to use, for folder and filename
+    session : str, default=None
+        session to use, for folder and filename
+    include_subject_dir : bool, default=True
+        whether to include the sub-{subject} folder if subject defined (default: True)
+    include_session_dir : bool, default=True
+        whether to include the ses-{session} folder if session defined (default: True)
+    **entities : dict, optional
+        dictionary of bids entities (e.g. space=T1w for space-T1w)
 
-    root -- root folder to include in the path (e.g. 'results'))
-    datatype -- folder to include after sub-/ses- (e.g. anat, dwi )
-    prefix -- string to prepend to the file name (typically not defined, unless you want tpl-{tpl}, or a datatype)
-    suffix -- bids suffix including extension (e.g. 'T1w.nii.gz')
-    subject -- subject to use, for folder and filename
-    session -- session to use, for folder and filename
-    include_subject_dir -- whether to include the sub-{subject} folder if subject defined (default: True)
-    include_session_dir -- whether to include the ses-{session} folder if session defined (default: True)
-    **entities -- dictionary of bids entities (e.g. space=T1w for space-T1w)
+    Returns
+    -------
+    str
+        bids-like file path
 
-    Returns: bids-like file path
+    Examples
+    --------
 
-    Example:
-
-        Below is a rule using bids naming for input and output:
+    Below is a rule using bids naming for input and output::
 
         rule proc_img:
             input: 'sub-{subject}_T1w.nii.gz'
             output: 'sub-{subject}_space-snsx32_desc-preproc_T1w.nii.gz'
 
-        With bids() you can instead use:
+    With bids() you can instead use::
 
          rule proc_img:
             input: bids(subject='{subject}',suffix='T1w.nii.gz')
             output: bids(subject='{subject}',space='snsx32',desc='preproc',suffix='T1w.nii.gz')
 
-        Note that here we are not actually using "functions as inputs" in snakemake, which would require
-        a function definition with wildcards as the argument, and restrict to input/params, but bids()
-        is being used simply to return a string.
+    Note that here we are not actually using "functions as inputs" in snakemake, which would require
+    a function definition with wildcards as the argument, and restrict to input/params, but bids()
+    is being used simply to return a string.
 
-        Also note that space, desc and suffix are NOT wildcards here, only {subject} is.
-        This makes it easy to combine wildcards and non-wildcards with bids-like naming.
+    Also note that space, desc and suffix are NOT wildcards here, only {subject} is.
+    This makes it easy to combine wildcards and non-wildcards with bids-like naming.
 
-        However, you can still use bids() in a lambda function, this is especially useful if your wildcards
-        are named the same as bids entities (e.g. {subject}, {session}, {task} etc..):
- 
+    However, you can still use bids() in a lambda function, this is especially useful if your wildcards
+    are named the same as bids entities (e.g. {subject}, {session}, {task} etc..)::
+
         rule proc_img:
             input: lambda wildcards: bids(**wildcards,suffix='T1w.nii.gz')
             output: bids(subject='{subject}',space='snsx32',desc='preproc',suffix='T1w.nii.gz')
 
-        Or another example where you may have many bids-like wildcards used in your workflow:
-        
+    Or another example where you may have many bids-like wildcards used in your workflow::
+    
         rule denoise_func:
             input: lambda wildcards: bids(**wildcards, suffix='bold.nii.gz')
             output: bids(subject='{subject}',session='{session}',task='{task}',acq='{acq}',desc='denoise',suffix='bold.nii.gz')
 
-        In this example, all the wildcards will be determined from the output and passed on to bids() for inputs.
-        The output filename will have a 'desc-denoise' flag added to it.
+    In this example, all the wildcards will be determined from the output and passed on to bids() for inputs.
+    The output filename will have a 'desc-denoise' flag added to it.
 
+    Also note that even if you supply entities in a different order, the
+    entities will be ordered based on the OrderedDict defined here.
+    If you entities not known are provided, they will be just be placed
+    at the end (before the suffix), the the order provided.
 
-        Also note that even if you supply entities in a different order, the
-        entities will be ordered based on the OrderedDict defined here.
-        If you entities not known are provided, they will be just be placed
-        at the end (before the suffix), the the order provided.
+    Notes
+    -----
+    
+    * For maximum flexibility all arguments are optional (if none are specified, will return empty string)
 
-        Note: For maximum flexibility all arguments are optional (if none are specified, will return empty string)
-
-    -- some code adapted from mne-bids
-      https://mne.tools/mne-bids/stable/_modules/mne_bids/utils.html
-
-
+    * Some code adapted from mne-bids, specifically https://mne.tools/mne-bids/stable/_modules/mne_bids/utils.html
     """
 
     from collections import OrderedDict
@@ -157,13 +170,77 @@ def bids(root=None, datatype=None, prefix=None, suffix=None, subject=None, sessi
     return filename
 
 
+def filter_list(zip_list, wildcards, return_indices_only=False):
+    """ This function is used when you are expanding over some subset of the wildcards
+    i.e. if your output file doesn't contain all the wildcards in input_wildcards
+
+    Parameters
+    ----------
+    zip_list : dict
+        generated zip lists dict from config file to filter
+
+    wildcards : dict
+        wildcard values to filter the zip lists 
+    
+    return_indices_only : bool, default=False
+        return the indices of the matching wildcards
+
+    Returns
+    -------
+    dict
+        zip list with non-matching elements removed
+
+    Examples
+    --------
+    >>> 
+
+
+    """
+    size_list = len(next(iter(zip_list)))
+    keep_indices = set()
+    for key,val in wildcards.items():
+        #get indices where wildcard exists
+        if not key in zip_list.keys():
+            continue
+        indices = set([i for i,v in enumerate(zip_list[key]) if v == val])
+        if len(keep_indices) == 0:
+            keep_indices = indices
+        else:
+            keep_indices = keep_indices.intersection(indices)
+    #now we have the indices, so filter the lists
+    if return_indices_only:
+        return list(keep_indices)
+    else:
+        return {key: [ zip_list[key][i] for i in keep_indices  ] for key,val in zip_list.items()}
+
+
+
+
 def get_filtered_ziplist_index(zip_list, wildcards, subj_wildcards):
     """ Use this function when you have wildcards for a single scan instance, 
         and want to know the index of that scan, amongst that subject's scan
         instances. 
 
-    Example:
-    >>> snakebids.get_filtered_ziplist_index({'dir': ['AP','PA','AP','PA', 'AP','PA','AP','PA'] ,'acq': ['98','98','98','98','99','99','99','99'], 'subject': ['01','01','02','02','01','01','02','02' ] }, {'dir': 'PA', 'acq': '99', 'subject': '01'}, { 'subject': '{subject}' })
+        TO DO: this function is a bit confusing to use..
+
+    Parameters
+    ----------
+    zip_list : dict
+        lists for scans in a dataset, zipped to get each instance
+    wildcards: dict
+        wildcards for the single instance for querying it's index
+    subj_wildcards: dict
+        keys of this dictionary are used to pick out the subject/(session) from the wildcards
+
+    Examples
+    --------
+
+    >>> snakebids.get_filtered_ziplist_index(
+    ...         {'dir': ['AP','PA','AP','PA', 'AP','PA','AP','PA'],
+    ...             'acq': ['98','98','98','98','99','99','99','99'],
+    ...             'subject': ['01','01','02','02','01','01','02','02' ]},
+    ...         {'dir': 'PA', 'acq': '99', 'subject': '01'},
+    ...         {'subject': '{subject}' })
     3
 
     """
@@ -181,27 +258,6 @@ def get_filtered_ziplist_index(zip_list, wildcards, subj_wildcards):
         return indices
 
       
-
-
-# this function is used when you are expanding over some subset of the wildcards
-#  i.e. if your output file doesn't contain all the wildcards in input_wildcards
-def filter_list(zip_list, wildcards, return_indices_only=False):
-    size_list = len(next(iter(zip_list)))
-    keep_indices = set()
-    for key,val in wildcards.items():
-        #get indices where wildcard exists
-        if not key in zip_list.keys():
-            continue
-        indices = set([i for i,v in enumerate(zip_list[key]) if v == val])
-        if len(keep_indices) == 0:
-            keep_indices = indices
-        else:
-            keep_indices = keep_indices.intersection(indices)
-    #now we have the indices, so filter the lists
-    if return_indices_only:
-        return list(keep_indices)
-    else:
-        return {key: [ zip_list[key][i] for i in keep_indices  ] for key,val in zip_list.items()}
 
 
 
