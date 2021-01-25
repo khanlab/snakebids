@@ -192,6 +192,7 @@ def filter_list(zip_list, wildcards, return_indices_only=False):
 
     Examples
     --------
+
     >>> 
 
 
@@ -260,20 +261,57 @@ def get_filtered_ziplist_index(zip_list, wildcards, subj_wildcards):
       
 
 
+def __read_bids_tags(bids_json=None):
+    """ Read the bids tags we are aware of from a JSON file. This is used specifically for compatibility with
+    pybids, since some tag keys are different from how they appear in the file name, e.g. ``subject`` for ``sub``, and ``acquisition`` for ``acq``.
 
-# use pybids to get the paths to input images, then create a input path and wildcards for each suffix type
+    Parameters
+    ----------
+    bids_json : str, optional
+        Path to JSON file to use, if not specified will use ``bids_tags.json`` in the snakebids module.
 
-def read_bids_tags(bids_json=None):
+    Returns
+    -------
+    dict:
+        Dictionary of bids tags
+"""
     if bids_json == None:
         bids_json = os.path.join(os.path.dirname(os.path.realpath(__file__)),'bids_tags.json')
     with open(bids_json, 'r') as infile:
         bids_tags = json.load(infile)
     return bids_tags
 
-def get_input_config_from_bids(config, bids_layout, inputs_dict, limit_to=None, **filters ):
-    """ returns: dict with input_path and input_wildcards"""
 
-    bids_tags = read_bids_tags()
+def get_input_config_from_bids(config, bids_layout, inputs_dict, limit_to=None, **filters ):
+    """ Updates a config dict (i.e. snakemake config file) with lists and zip lists using pybids
+
+    Parameters
+    ----------
+    config : dict
+        Dictionary from snakemake config file that will be updated by this function
+
+    bids_layout : BIDSLayout
+        Layout from pybids for accessing the BIDS dataset to grab paths
+
+    inputs_dict : dict
+        Dictionary indexed by modality name, specifying the filters and wildcards for each pybids input.
+        In a snakebids app, this is from ``config['pybids_inputs']``.
+
+    limit_to : list, optional
+        List of inputs to skip, this used by snakebids to exclude modalities based on cmd-line args
+
+    filters : dict, optional
+        Pybids filters to apply globally to all inputs.
+        In a snakebids app, this is from ``config['search_terms']``.
+
+    Returns
+    -------
+    dict:
+        Config dictionary with ``input_path``, ``input_zip_lists``, ``input_lists``, and ``input_wildcards`` added.
+
+    """
+
+    bids_tags = __read_bids_tags()
 
     config.update( dict({'input_path': {}, 'input_zip_lists': {}, 'input_lists': {}, 'input_wildcards': {}}))
 
@@ -359,11 +397,245 @@ def get_input_config_from_bids(config, bids_layout, inputs_dict, limit_to=None, 
 
     return config
 
-
-
-def generate_inputs_config(config,limit_to=None):
-    """ returns: updated config dict; function will also write the inputs_config.yml to standard output path """
+def generate_inputs( bids_dir, pybids_inputs, 
+                        derivatives=False, search_terms={}, limit_to=None,  participant_label=None, exclude_participant_label=None):
+    """ Dynamically generate snakemake inputs using pybids
     
+    Parameters
+    ----------
+    bids_dir : str
+        Path to bids directory
+
+    pybids_inputs : dict 
+        Configuration for bids inputs, with keys as the names (`str`)
+
+        Nested `dicts` with the following required keys:
+
+        ``"filters"``
+            Contains keyword arguments that will be passed to pybids ``get()`` (`dict`)
+
+        ``"wildcards"``
+            List of bids tags to include as wildcards in snakemake (`list of str`)
+
+            At minumum this should usually include ``['subject','session']``, plus any other wildcards that you may want to make use of in your snakemake workflow, or want to retain in the output paths. Any wildcards in this list that are not in the filename will just be ignored. 
+
+    Returns
+    -------
+    dict of dicts:
+        
+        ``"input_path"``
+            Nested `dict` with keys as image names (`str`), and values as absolute paths with snakemake wildcard formatting (`str`)
+
+        ``"input_wildcards"``
+            
+        ``"input_lists"``
+
+        ``"input_zip_lists"``
+
+        ``"subjects"``
+        
+        ``"sessions"`` 
+        
+        ``"subj_wildcards"``
+    """
+   
+
+    search_terms = dict()
+
+    if not participant_label == None and not exclude_participant_label == None:
+        print('ERROR: cannot define both participant_label and exclude_participant_label at the same time')
+        return None
+
+    #add participant_label or exclude_participant_label to search terms (if defined)
+    # we make the subject key in search_terms a list so we can have both participant_label and exclude_participant_label defined 
+    if not participant_label == None:
+        if not 'subject' in search_terms.keys():
+            search_terms['subject'] = []
+        if isinstance(participant_label, list): 
+            search_terms['subject'] = search_terms['subject'] + participant_label
+        else:
+            search_terms['subject'].append(participant_label)
+
+    if not exclude_participant_label == None:
+        if not 'subject' in search_terms.keys():
+            search_terms['subject'] = []
+        if isinstance(exclude_participant_label, list): # if multiple subjects to exclude, combine with with subj1|subj2|...
+            exclude_string = '|'.join(exclude_participant_label) 
+        else:
+            exclude_string = exclude_participant_label #if not, then string is the label itself
+        search_terms['regex_search'] = True
+        search_terms['subject'].append(f'^((?!({exclude_string})).)*$') #regex to exclude subjects
+   
+
+
+    #generate inputs based on config
+    layout = BIDSLayout(
+        bids_dir,
+        derivatives=derivatives,
+        validate=False,
+        indexer=BIDSLayoutIndexer(validate=False,
+                index_metadata=False)
+    )
+
+    #this will populate input_path, input_lists, input_zip_lists, and input_wildcards 
+    inputs_config_dict = __get_lists_from_bids(bids_layout=layout,
+                                                pybids_inputs=pybids_inputs,
+                                                limit_to = limit_to,
+                                                **search_terms)
+
+    #populate subjects, sessions and subj_wildcards in the config
+    inputs_config_dict['subjects'] = layout.get_subjects(**search_terms)
+    inputs_config_dict['sessions'] = layout.get_sessions(**search_terms)
+    if len(inputs_config_dict['sessions'])  == 0:
+        inputs_config_dict['subj_wildcards'] = { 'subject': '{subject}'}
+    else:
+        inputs_config_dict['subj_wildcards'] = { 'subject': '{subject}', 'session': '{session}' }
+
+    return inputs_config_dict
+
+
+
+#   snakebids app related: 
+
+#    #set snakemake_dir to '.' if not defined
+#    if not 'snakemake_dir' in config.keys():
+#        config['snakemake_dir'] = '.'
+
+
+#    #write updated config file
+#    inputs_config = os.path.join('config','inputs_config.yml')
+#    os.makedirs(os.path.dirname(inputs_config),exist_ok=True)
+
+#    with open(inputs_config, 'w') as outfile:
+#        yaml.dump(inputs_config_dict, outfile, default_flow_style=False)
+
+#    #add to config dict before returning
+#    config.update(inputs_config_dict)
+
+def __get_lists_from_bids(bids_layout, pybids_inputs, limit_to=None, **filters ):
+    """ Grabs files using pybids and creates snakemake-friendly lists
+
+    Parameters
+    ----------
+    bids_layout : BIDSLayout
+        Layout from pybids for accessing the BIDS dataset to grab paths
+
+    pybids_inputs : dict
+        Dictionary indexed by modality name, specifying the filters and wildcards for each pybids input.
+
+    limit_to : list, optional
+        List of inputs to skip, this used by snakebids to exclude modalities based on cmd-line args
+
+    filters : dict, optional
+        Pybids filters to apply globally to all inputs.
+
+    Returns
+    -------
+    dict:
+        Config dictionary with ``input_path``, ``input_zip_lists``, ``input_lists``, and ``input_wildcards``
+
+    """
+
+    bids_tags = __read_bids_tags()
+
+    out_dict = dict({'input_path': {}, 'input_zip_lists': {}, 'input_lists': {}, 'input_wildcards': {}})
+
+
+    if limit_to == None:
+        inputs_to_iterate = pybids_inputs.keys()
+    else:
+        inputs_to_iterate = limit_to
+
+    
+    for input_name in inputs_to_iterate:
+
+        imgs, = [bids_layout.get(**pybids_inputs[input_name]['filters'], **filters)]
+        if len(imgs) == 0:
+            print(f'WARNING: no images found for {input_name}')
+            continue
+        
+        paths = set()
+        zip_lists = {}
+        input_lists = {}
+        wildcards = {}
+        for img in imgs:
+            path = img.path
+            for wildcard_name in pybids_inputs[input_name]['wildcards']:
+
+                if wildcard_name in bids_tags:
+                    tag = bids_tags[wildcard_name]
+                else:
+                    tag = wildcard_name  #if it's not in the bids_tags dictionary, then just use the name itself as the tag
+
+                #this changes e.g. sub-001 to sub-{subject} in the path (so snakemake can use the wildcards)
+                if wildcard_name in img.get_entities():
+                    
+                    ##HACK FIX FOR acq vs acquisition etc  -- should eventually update the bids() function to also use bids_tags.json, where e.g. acquisition -> acq is defined.. -- then, can use wildcard_name instead of out_name.. 
+                    if wildcard_name not in ['subject', 'session']:
+                        out_name = tag
+                    else:
+                        out_name = wildcard_name
+ 
+                    if out_name not in zip_lists:
+                        zip_lists[out_name] = []
+                        input_lists[out_name] = set()
+                        wildcards[out_name] = {}
+
+                    pattern = '{tag}-([a-zA-Z0-9]+)'.format(tag=tag)
+                    replace = '{tag}-{{{replace}}}'.format(tag=tag,replace=out_name)
+                    match = re.search(pattern,path)
+                    replaced = re.sub(pattern,  replace , path)
+                    #update the path with the {wildcards} -- uses the value from the string (not from the pybids entities), since that has issues with integer formatting (e.g. for run=01)
+                    path = replaced
+                    zip_lists[out_name].append(match[1])
+                    input_lists[out_name].add(match[1])
+                    wildcards[out_name] = f'{{{out_name}}}'
+                
+            paths.add(path)
+        
+
+        #now, check to see if unique
+        if len(paths) > 1:
+            print(f'WARNING: more than one snakemake filename for {input_name}, taking the first')
+            print(f'  To correct this, use the --filter_{input_name} option to narrow the search')
+            print(paths)
+    
+        in_path = list(paths)[0]
+
+        #convert sets to lists
+        for key,val in input_lists.items():
+            input_lists[key] = list(val)
+            
+            
+        out_dict['input_path'][input_name] = in_path
+        out_dict['input_zip_lists'][input_name] = zip_lists
+        out_dict['input_lists'][input_name] = input_lists
+        out_dict['input_wildcards'][input_name] = wildcards
+
+
+    return out_dict
+
+
+
+
+
+#to be eventually superseded by generate_inputs -
+def generate_inputs_config(config,limit_to=None):
+    """Generate and write the inputs_config.yml that contains dynamically generated inputs from pybids
+
+    Parameters
+    ----------
+    config : dict
+        Configuration dictionary for the workflow, is from the `snakebids.yml`
+
+    limit_to : list, optional
+        List of inputs to skip, this used by snakebids to exclude modalities based on cmd-line args
+        
+    Returns
+    -------
+    dict:
+        Updated config dict with the inputs added to it
+    """ 
 
 
     if not 'search_terms' in config.keys():
@@ -451,14 +723,49 @@ def generate_inputs_config(config,limit_to=None):
 
     return config
 
-def get_wildcard_constraints(config):
+def get_wildcard_constraints_noconfig(input_lists):
+    """ Return a wildcard_constraints dict for snakemake to use, containing all the wildcards that are in the dynamically grabbed inputs
 
-    """ returns: dict containing the wildcard constraints for all the wildcards defined, using [a-zA-Z0-9]+ for all wildcards """
+    Parameters
+    ----------
+    config : dict
+        Config dict to get the image types, is retrieved from ``config['input_lists']``
+        
+    Returns
+    -------
+        Dict containing wildcard constraints for all wildcards in the inputs, with typical bids naming constraints, ie letters and numbers ``[a-zA-Z0-9]+``.
+    """
+    bids_constraints = '[a-zA-Z0-9]+'
+    return  { entity: bids_constraints for imgtype in input_lists.keys() for entity in input_lists[imgtype].keys() }
+
+
+
+def get_wildcard_constraints(config):
+    """ Return a wildcard_constraints dict for snakemake to use, containing all the wildcards that are in the dynamically grabbed inputs
+
+    Parameters
+    ----------
+    config : dict
+        Config dict to get the image types, is retrieved from ``config['input_lists']``
+        
+    Returns
+    -------
+        Dict containing wildcard constraints for all wildcards in the inputs, with typical bids naming constraints, ie letters and numbers ``[a-zA-Z0-9]+``.
+    """
     bids_constraints = '[a-zA-Z0-9]+'
     return  { entity: bids_constraints for imgtype in config['input_lists'].keys() for entity in config['input_lists'][imgtype].keys() }
 
 
 def write_derivative_json(snakemake, **kwargs):
+    """ Snakemake function to read a json file, and write to a new one, adding BIDS derivatives fields for Sources and Parameters.
+
+    Parameters
+    ----------
+    snakemake : struct Snakemake
+        structure passed to snakemake python scripts, containing input, output, params, config ...
+        This function requires input.json and output.json to be defined, as it will read and write json files
+    """
+
     with open(snakemake.input.json,'r') as f:
       sidecar = json.load(f)
 
