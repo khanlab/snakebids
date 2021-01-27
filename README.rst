@@ -16,6 +16,6 @@ This package allows you to build BIDS Apps using Snakemake. It offers:
 * Configurable argument parsing specified using the Snakemake workflow config
 * Execution either as command-line BIDS apps or via snakemake executable
 
-See the example template BIDS app in the ``template_app`` subfolder for an example of usage.
+To create an app, use the cookiecutter here: http://github.com/akhanf/snakebids-app
 
 Documentation under construction.
