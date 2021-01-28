@@ -26,6 +26,17 @@ class keyvalue(argparse.Action):
             getattr(namespace, self.dest)[key] = value 
 
 def run(command, env={}):
+    """ Helper function for running a system command while merging stderr/stdout to stdout
+
+    Parameters
+    ----------
+    command : list of str
+        command to run
+
+    env : dict, optional
+        environment variable to set before running the command
+    """
+
     merged_env = os.environ
     merged_env.update(env)
     process = subprocess.Popen(command, stdout=subprocess.PIPE,
@@ -56,6 +67,9 @@ CONFIGFILE_CHOICES = [
 
 
 class SnakeBidsApp:
+    """ Class for a snakebids app
+    to do: add docs
+    """
 
     def __init__(self, snakemake_dir, skip_parse_args=False):
 
