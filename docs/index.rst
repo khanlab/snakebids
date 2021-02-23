@@ -33,7 +33,7 @@
   :maxdepth: 1
 
   bids_app/overview
-
+  bids_app/config
 
 .. toctree::
   :caption: Reference
