@@ -37,6 +37,14 @@
   bids_app/workflow
 
 .. toctree::
+  :caption: Running a snakebids app
+  :name: running_snakebids
+  :hidden:
+  :maxdepth: 1
+
+  running_snakebids/overview
+
+.. toctree::
   :caption: Reference
   :hidden:
   :maxdepth: 1
