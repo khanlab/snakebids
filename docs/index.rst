@@ -34,6 +34,7 @@
 
   bids_app/overview
   bids_app/config
+  bids_app/workflow
 
 .. toctree::
   :caption: Reference
