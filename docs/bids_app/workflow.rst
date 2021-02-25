@@ -17,7 +17,7 @@ To get access to these additions, the base Snakefile for a snakebids workflow sh
     wildcard_constraints:  **snakebids.get_wildcard_constraints(config)
 
 Snakebids workflow features
-===========================
+---------------------------
 
 The ``bids()`` function generates a properly-formatted BIDS filename with the specified entities, as documented in more detail elsewhere in this documentation.
 

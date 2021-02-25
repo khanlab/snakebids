@@ -1,5 +1,5 @@
-Running snakebids apps
-======================
+Overview
+========
 
 Once you've specified a snakebids app with a config file and one or more workflow files, you're ready to invoke your snakebids app with the standard BIDS app CLI.
 

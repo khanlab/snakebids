@@ -6,7 +6,7 @@
 .. include:: ../README.rst
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: Contents:
 
 
@@ -14,42 +14,42 @@
    :caption: General
    :name: general
    :hidden:
-   :maxdepth: 1
+   :maxdepth: 2
 
    general/why_snakebids
 
 .. toctree::
-  :caption: Using the bids function 
-  :name: bids_function
-  :hidden:
-  :maxdepth: 1
+   :caption: Using the bids function 
+   :name: bids_function
+   :hidden:
+   :maxdepth: 2
 
-  bids_function/overview
-
-.. toctree::
-  :caption: Creating a bids app
-  :name: bids_app
-  :hidden:
-  :maxdepth: 1
-
-  bids_app/overview
-  bids_app/config
-  bids_app/workflow
+   bids_function/overview
 
 .. toctree::
-  :caption: Running a snakebids app
-  :name: running_snakebids
-  :hidden:
-  :maxdepth: 1
+   :caption: Creating a bids app
+   :name: bids_app
+   :hidden:
+   :maxdepth: 2
 
-  running_snakebids/overview
+   bids_app/overview
+   bids_app/config
+   bids_app/workflow
 
 .. toctree::
-  :caption: Reference
-  :hidden:
-  :maxdepth: 1
+   :caption: Running a snakebids app
+   :name: running_snakebids
+   :hidden:
+   :maxdepth: 2
 
-  api
+   running_snakebids/overview
+
+.. toctree::
+   :caption: Reference
+   :hidden:
+   :maxdepth: 2
+
+   api
 
 
 
