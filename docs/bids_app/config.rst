@@ -20,7 +20,7 @@ In the following (YAML-formatted) example, the ``bold`` input type is specified.
         - session
         - acquisition
         - task
-        - runq
+        - run
 
 analysis_levels: A list of analysis levels in the BIDS app. Typically, this will include participant and/or group. Note that the default (YAML) configuration file expects this mapping to be identified with the anchor ``analysis_levels`` to be aliased by ``parse_args``.
 
