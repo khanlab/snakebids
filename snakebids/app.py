@@ -135,23 +135,34 @@ class SnakeBidsApp:
         #replace with proper name of pipeline here
         parser = argparse.ArgumentParser(description='snakebids-app')
 
+
+
+
         #update the parser with config options
         for name, parse_args in self.config['parse_args'].items():
             parser.add_argument(name, **parse_args)
 
         #general parser for --filter_{input_type} {key1}={value1} {key2}={value2}...
         #create filter parsers, one for each input_type
+        filter_opts = parser.add_argument_group('PyBIDS filters','Filters to customize PyBIDS get() as key=value pairs')
 
         for input_type in self.config['pybids_inputs'].keys():
             argname=f'--filter_{input_type}'
-            arginstance=f'filter_{input_type}'.upper() #for help description
             arglist_default = [ f'{key}={value}'  for (key,value) in self.config['pybids_inputs'][input_type]['filters'].items() ]
             arglist_default_string = ' '.join(arglist_default)
  
-            parser.add_argument(argname,nargs='+',action=keyvalue,
-                                help=f'Filters (PyBIDS) for {input_type}, where {arginstance} is '
-                                       f'key=value pair(s) (default: {arglist_default_string})')
- 
+            filter_opts.add_argument(argname,nargs='+',action=keyvalue,
+                                help=f'(default: {arglist_default_string})')
+
+
+        override_opts = parser.add_argument_group('Override BIDS','Options for overriding BIDS by specifying absolute paths that include wildcards')
+
+        #create path override parser
+        for input_type in self.config['pybids_inputs'].keys():
+            argname=f'--path_{input_type}'
+            override_opts.add_argument(argname,default=None)
+
+
         return parser
 
 
@@ -176,6 +187,13 @@ class SnakeBidsApp:
                 self.config['pybids_inputs'][input_type]['filters'].update(arg_filter_dict)
             del self.config[f'filter_{input_type}']  
     
+        #add custom input paths to config['pybids_inputs'][input_type]['custom_path']
+        for input_type in self.config['pybids_inputs'].keys():
+            custom_path = self.config[f'path_{input_type}']
+            if custom_path is not None:
+                self.config['pybids_inputs'][input_type]['custom_path'] = custom_path
+            del self.config[f'path_{input_type}']  
+        
 
         #replace paths with realpaths
         self.config['bids_dir'] = os.path.realpath(self.config['bids_dir'])
