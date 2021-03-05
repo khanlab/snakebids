@@ -66,14 +66,12 @@ def glob_wildcards(pattern, files=None, followlinks=False):
         dirname = "."
 
     names = [match.group("name") for match in _wildcard_regex.finditer(pattern)]
-    print(f'names: {names}')
 
     #remove duplicates:
     names = list(set(names))
 
     Wildcards = collections.namedtuple("Wildcards", names)
 
-    print(f'Wildcards: {Wildcards}')
     wildcards = Wildcards(*[list() for name in names])
 
     pattern = re.compile(regex(pattern))

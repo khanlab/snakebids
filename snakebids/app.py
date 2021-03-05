@@ -13,17 +13,17 @@ import json
 bids.config.set_option('extension_initial_dot', True)
 
 # create a keyvalue class for accepting key=value pairs in argparse
-class keyvalue(argparse.Action): 
-    # Constructor calling 
-    def __call__( self , parser, namespace, 
-                 values, option_string = None): 
-        setattr(namespace, self.dest, dict()) 
-          
-        for value in values: 
-            # split it into key and value 
-            key, value = value.split('=') 
-            # assign into dictionary 
-            getattr(namespace, self.dest)[key] = value 
+class keyvalue(argparse.Action):
+    # Constructor calling
+    def __call__( self , parser, namespace,
+                 values, option_string = None):
+        setattr(namespace, self.dest, dict())
+
+        for value in values:
+            # split it into key and value
+            key, value = value.split('=')
+            # assign into dictionary
+            getattr(namespace, self.dest)[key] = value
 
 def run(command, env={}):
     """ Helper function for running a system command while merging stderr/stdout to stdout
@@ -75,9 +75,9 @@ class SnakeBidsApp:
 
         #input argument is the dir where snakemake would be run
         # we use this to locate the config file, and snakefile adding them to generated_config
-        # and also add the snakemake_dir to the generated_config, so the workflow can use it to 
+        # and also add the snakemake_dir to the generated_config, so the workflow can use it to
         # source files from it (e.g. atlases etc..)
- 
+
         #look for snakebids.yml in the snakemake_dir, quit if not found
         self.snakebids_config = None
         for p in CONFIGFILE_CHOICES:
@@ -111,7 +111,7 @@ class SnakeBidsApp:
 
         self.__load_config()
 
-        #add path to snakefile to the config -- so workflows can grab files relative to the snakefile folder  
+        #add path to snakefile to the config -- so workflows can grab files relative to the snakefile folder
         self.config['snakemake_dir'] = snakemake_dir
 
         self.parser = self.__create_parser()
@@ -130,7 +130,7 @@ class SnakeBidsApp:
 
 
 
-    def __create_parser(self):      
+    def __create_parser(self):
 
         #replace with proper name of pipeline here
         parser = argparse.ArgumentParser(description='snakebids-app')
@@ -150,7 +150,7 @@ class SnakeBidsApp:
             argname=f'--filter_{input_type}'
             arglist_default = [ f'{key}={value}'  for (key,value) in self.config['pybids_inputs'][input_type]['filters'].items() ]
             arglist_default_string = ' '.join(arglist_default)
- 
+
             filter_opts.add_argument(argname,nargs='+',action=keyvalue,
                                 help=f'(default: {arglist_default_string})')
 
@@ -185,20 +185,20 @@ class SnakeBidsApp:
             arg_filter_dict = self.config[f'filter_{input_type}']
             if arg_filter_dict is not None:
                 self.config['pybids_inputs'][input_type]['filters'].update(arg_filter_dict)
-            del self.config[f'filter_{input_type}']  
-    
+            del self.config[f'filter_{input_type}']
+
         #add custom input paths to config['pybids_inputs'][input_type]['custom_path']
         for input_type in self.config['pybids_inputs'].keys():
             custom_path = self.config[f'path_{input_type}']
             if custom_path is not None:
-                self.config['pybids_inputs'][input_type]['custom_path'] = custom_path
-            del self.config[f'path_{input_type}']  
-        
+                self.config['pybids_inputs'][input_type]['custom_path'] = os.path.realpath(custom_path)
+            del self.config[f'path_{input_type}']
+
 
         #replace paths with realpaths
         self.config['bids_dir'] = os.path.realpath(self.config['bids_dir'])
         self.config['output_dir'] = os.path.realpath(self.config['output_dir'])
-       
+
 
 
     def __write_updated_config(self):
@@ -216,16 +216,16 @@ class SnakeBidsApp:
     # run snakemake with that config
     #workflow snakefile will read snakebids config, create inputs_config, read that in
     def run_snakemake(self):
-        
+
         #write updated config
         self.__write_updated_config()
 
         # running the chosen participant level
 
         analysis_level = self.config['analysis_level']
-        #runs snakemake, using the workflow config and inputs config to override 
-        
-        
+        #runs snakemake, using the workflow config and inputs config to override
+
+
 #            if self.config['use_snakemake_api']:
 #                snakemake(self.snakefile,configfiles=[self.updated_config], workdir=config['output_dir'], dryrun=True, debug_dag=True)
 #            else:
@@ -240,4 +240,4 @@ class SnakeBidsApp:
         snakemake_cmd = ' '.join(snakemake_cmd_list)
         run(snakemake_cmd)
 
-   
+

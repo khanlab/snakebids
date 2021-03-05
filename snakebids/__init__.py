@@ -466,11 +466,11 @@ def __get_lists_from_bids(bids_layout, pybids_inputs, limit_to=None, **filters )
             # get input_wildcards by parsing path for {} entries (using a set to get unique only)
             # get input_zip_lists by using glob_wildcards (but need to modify to deal with multiple wildcards
 
-
-
             input_path = pybids_inputs[input_name]['custom_path']
             wildcards = glob_wildcards(input_path)
             wildcard_names = list(wildcards._fields)
+            if len(wildcard_names) == 0:
+                print(f'WARNING: no wildcards defined in {input_path}')
             input_wildcards = {}
             input_zip_lists = {}
             input_lists = {}
@@ -478,6 +478,8 @@ def __get_lists_from_bids(bids_layout, pybids_inputs, limit_to=None, **filters )
                 input_zip_lists[wildcard] = wildcards[i]
                 input_lists[wildcard] = list(set(wildcards[i]))
                 input_wildcards[wildcard] = f'{{{wildcard}}}'
+                if len(wildcards[i]) == 0:
+                    print(f'ERROR: No matching files for {input_path}')
 
             out_dict['input_path'][input_name] = input_path
             out_dict['input_zip_lists'][input_name] = input_zip_lists
