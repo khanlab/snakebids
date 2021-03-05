@@ -1,4 +1,4 @@
-from .. import generate_inputs_config
+from .. import generate_inputs
 
 def test_t1w():
     #create config
@@ -6,8 +6,9 @@ def test_t1w():
     derivatives = False
     debug = False
     pybids_inputs = { 't1': {'filters': {'suffix': 'T1w'}, 'wildcards': ['acquisition','subject','session','run']}} 
-    config = { 'bids_dir': bids_dir, 'derivatives': derivatives, 'debug': debug, 'pybids_inputs': pybids_inputs }
-    generate_inputs_config(config)
+    config = generate_inputs(pybids_inputs=pybids_inputs,
+                    bids_dir=bids_dir,
+                    derivatives=derivatives)
     assert config['input_lists'] ==  {'t1': {'acq': ['mprage'], 'subject': ['001']}}
     assert config['input_zip_lists'] == {'t1': {'acq': ['mprage'], 'subject': ['001']}}
     assert config['input_wildcards'] == {'t1': {'acq': '{acq}', 'subject': '{subject}'}}
