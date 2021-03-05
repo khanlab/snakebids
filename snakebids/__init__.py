@@ -81,8 +81,8 @@ def bids(root=None, datatype=None, prefix=None, suffix=None, subject=None, sessi
 
     Also note that even if you supply entities in a different order, the
     entities will be ordered based on the OrderedDict defined here.
-    If you entities not known are provided, they will be just be placed
-    at the end (before the suffix), the the order provided.
+    If entities not known are provided, they will be just be placed
+    at the end (before the suffix), in the order you provide them in.
 
     Notes
     -----
@@ -220,8 +220,39 @@ def filter_list(zip_list, wildcards, return_indices_only=False):
     Examples
     --------
 
-    >>>
+    >>> import snakebids
+    
+    Filtering to get all subject='01' scans:
+    >>> snakebids.filter_list(
+    ...   {'dir': ['AP','PA','AP','PA', 'AP','PA','AP','PA'],
+    ...     'acq': ['98','98','98','98','99','99','99','99'],
+    ...     'subject': ['01','01','02','02','01','01','02','02' ]},
+    ...   {'subject': '01'})
+    {'dir': ['AP', 'PA', 'AP', 'PA'], 'acq': ['98', '98', '99', '99'], 'subject': ['01', '01', '01', '01']}
 
+    Filtering to get all acq='98' scans:
+    >>> snakebids.filter_list(
+    ...   {'dir': ['AP','PA','AP','PA', 'AP','PA','AP','PA'],
+    ...     'acq': ['98','98','98','98','99','99','99','99'],
+    ...     'subject': ['01','01','02','02','01','01','02','02' ]},
+    ...   {'acq': '98'})
+    {'dir': ['AP', 'PA', 'AP', 'PA'], 'acq': ['98', '98', '98', '98'], 'subject': ['01', '01', '02', '02']}
+   
+    Filtering to get all dir=='AP' scans:
+    >>> snakebids.filter_list(
+    ...   {'dir': ['AP','PA','AP','PA', 'AP','PA','AP','PA'],
+    ...     'acq': ['98','98','98','98','99','99','99','99'],
+    ...     'subject': ['01','01','02','02','01','01','02','02' ]},
+    ...   {'dir': 'AP'})
+    {'dir': ['AP', 'AP', 'AP', 'AP'], 'acq': ['98', '98', '99', '99'], 'subject': ['01', '02', '01', '02']}
+
+    Filtering to get all subject='03' scans (ie no matches):
+    >>> snakebids.filter_list(
+    ...   {'dir': ['AP','PA','AP','PA', 'AP','PA','AP','PA'],
+    ...     'acq': ['98','98','98','98','99','99','99','99'],
+    ...     'subject': ['01','01','02','02','01','01','02','02' ]},
+    ...   {'subject': '03'})
+    {'dir': [], 'acq': [], 'subject': []}
 
     """
     size_list = len(next(iter(zip_list)))
@@ -249,8 +280,6 @@ def get_filtered_ziplist_index(zip_list, wildcards, subj_wildcards):
         and want to know the index of that scan, amongst that subject's scan
         instances.
 
-        TO DO: this function is a bit confusing to use..
-
     Parameters
     ----------
     zip_list : dict
@@ -262,6 +291,54 @@ def get_filtered_ziplist_index(zip_list, wildcards, subj_wildcards):
 
     Examples
     --------
+
+    >>> import snakebids
+
+    In this example, we have a dataset where with scans from two subjects, 
+    where each subject has dir-AP and dir-PA scans, along with acq-98 and acq-99:
+
+    sub-01_acq-98_dir-AP_dwi.nii.gz
+    sub-01_acq-98_dir-PA_dwi.nii.gz
+    sub-01_acq-99_dir-AP_dwi.nii.gz
+    sub-01_acq-99_dir-PA_dwi.nii.gz
+    sub-02_acq-98_dir-AP_dwi.nii.gz
+    sub-02_acq-98_dir-PA_dwi.nii.gz
+    sub-02_acq-99_dir-AP_dwi.nii.gz
+    sub-02_acq-99_dir-PA_dwi.nii.gz
+
+    The zip_list produced by generate_inputs() is the set of entities that
+    when zipped together, e.g. with expand(path,zip,**zip_list), produces
+    the entity combinations that refer to each scan:
+
+      { 'dir': ['AP','PA','AP','PA', 'AP','PA','AP','PA'],
+        'acq': ['98','98','98','98','99','99','99','99'],
+        'subject': ['01','01','02','02','01','01','02','02']}
+
+    
+    The filter_list() function produces a subset of the entity combinations
+    as a filtered zip list. This is used e.g. to get all the scans for a single
+    subject.
+
+
+    This get_filtered_ziplist_index() function performs filter_list() twice:
+     1. using the subj_wildcards (e.g.: 'subject': '{subject}') to get a
+        subject/session-specific zip_list
+     2. to return the indices from that list of the matching wildcards
+
+
+    In this example, if the wildcards parameter was:
+      {'dir': 'PA', 'acq': '99', 'subject': '01'}
+     
+    Then the first (subject/session-specific) filtered list provides this zip list:
+      { 'dir': ['AP','PA','AP','PA'],
+        'acq': ['98','98','99','99'],
+        'subject': ['01','01','01','01']}
+
+    which has 4 combinations, and thus are indexed from 0 to 3.  
+
+    The returned value would then be the index (or indices) that matches the wildcards. 
+    In this case, since the wildcards were {'dir': 'PA', 'acq': '99', 'subject':'01'},
+    the return index is 3.
 
     >>> snakebids.get_filtered_ziplist_index(
     ...         {'dir': ['AP','PA','AP','PA', 'AP','PA','AP','PA'],
@@ -310,7 +387,7 @@ def __read_bids_tags(bids_json=None):
 
 def generate_inputs( bids_dir, pybids_inputs,
                         derivatives=False, search_terms={}, limit_to=None,  participant_label=None, exclude_participant_label=None):
-    """ Dynamically generate snakemake inputs using pybids
+    """ Dynamically generate snakemake inputs using pybids_inputs dict, and pybids to parse the bids dataset.
 
     Parameters
     ----------
