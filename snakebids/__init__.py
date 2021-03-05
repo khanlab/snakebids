@@ -171,6 +171,32 @@ def bids(root=None, datatype=None, prefix=None, suffix=None, subject=None, sessi
     return filename
 
 
+def print_boilerplate():
+    """ Function to print out boilerplate to add to Snakefile. (not used anywhere yet)"""
+
+    print('''
+#---- begin snakebids boilerplate ----------------------------------------------
+
+import snakebids
+from snakebids import bids
+
+configfile: 'config/snakebids.yml'
+
+#writes inputs_config.yml and updates config dict
+config.update(snakebids.generate_inputs(bids_dir=config['bids_dir'],
+                            pybids_inputs=config['pybids_inputs'],
+                            derivatives=config['derivatives'],
+                            participant_label=config['participant_label'],
+                            exclude_participant_label=config['exclude_participant_label']))
+
+
+#this adds constraints to the bids naming
+wildcard_constraints:  **snakebids.get_wildcard_constraints(config['pybids_inputs'])
+
+#---- end snakebids boilerplate ------------------------------------------------
+''')
+
+
 def filter_list(zip_list, wildcards, return_indices_only=False):
     """ This function is used when you are expanding over some subset of the wildcards
     i.e. if your output file doesn't contain all the wildcards in input_wildcards
@@ -529,7 +555,7 @@ def __get_lists_from_bids(bids_layout, pybids_inputs, limit_to=None, **filters )
 
 
 
-def get_wildcard_constraints_noconfig(image_types):
+def get_wildcard_constraints(image_types):
     """ Return a wildcard_constraints dict for snakemake to use, containing all the wildcards that are in the dynamically grabbed inputs
 
     Parameters
