@@ -6,7 +6,7 @@ import yaml
 from bids import BIDSLayout
 import bids
 from glob import glob
-from snakemake import snakemake
+from snakemake import snakemake, get_argument_parser
 import argparse
 import json
 
@@ -114,6 +114,7 @@ class SnakeBidsApp:
         #add path to snakefile to the config -- so workflows can grab files relative to the snakefile folder
         self.config['snakemake_dir'] = snakemake_dir
 
+        self.parser_include_snakemake = self.__create_parser(include_snakemake=True)
         self.parser = self.__create_parser()
 
         if not skip_parse_args:
@@ -130,21 +131,31 @@ class SnakeBidsApp:
 
 
 
-    def __create_parser(self):
+    def __create_parser(self,include_snakemake=False):
+        """Create a parser with snakemake parser as parent solely for displaying help and checking conflicts,
+            but then for actual parsing use snakebids parser to parse known args, then pass remaining to snakemake
+        """
 
-        #replace with proper name of pipeline here
-        parser = argparse.ArgumentParser(description='snakebids-app')
+        if include_snakemake==True:
 
+            #get snakemake parser
+            smk_parser = get_argument_parser()
 
+            #create parser
+            parser = argparse.ArgumentParser(description='Snakebids helps build BIDS Apps with Snakemake',add_help=False,parents=[smk_parser])
+        else:
+            parser = argparse.ArgumentParser(description='Snakebids helps build BIDS Apps with Snakemake')
 
+        #create parser group for app options
+        app_group = parser.add_argument_group('SNAKEBIDS','Options for snakebids app')
 
         #update the parser with config options
         for name, parse_args in self.config['parse_args'].items():
-            parser.add_argument(name, **parse_args)
+            app_group.add_argument(name, **parse_args)
 
         #general parser for --filter_{input_type} {key1}={value1} {key2}={value2}...
         #create filter parsers, one for each input_type
-        filter_opts = parser.add_argument_group('PyBIDS filters','Filters to customize PyBIDS get() as key=value pairs')
+        filter_opts = parser.add_argument_group('BIDS FILTERS','Filters to customize PyBIDS get() as key=value pairs')
 
         for input_type in self.config['pybids_inputs'].keys():
             argname=f'--filter_{input_type}'
@@ -155,25 +166,29 @@ class SnakeBidsApp:
                                 help=f'(default: {arglist_default_string})')
 
 
-        override_opts = parser.add_argument_group('Override BIDS','Options for overriding BIDS by specifying absolute paths that include wildcards')
+        override_opts = parser.add_argument_group('PATH OVERRIDE','Options for overriding BIDS by specifying absolute paths that include wildcards, e.g.: /path/to/my_data/{subject}/t1.nii.gz')
 
         #create path override parser
         for input_type in self.config['pybids_inputs'].keys():
             argname=f'--path_{input_type}'
             override_opts.add_argument(argname,default=None)
 
-
         return parser
 
 
     def __parse_args(self):
 
+        #use combined parser first - to show snakebids+snakemake opts    
+        self.parser_include_snakemake.parse_args()
 
+        #then use snakebids parser to actually parse the arguments
         all_args = self.parser.parse_known_args()
 
         args = all_args[0]
         snakemake_args = all_args[1]
 
+        if args.help_snakemake == True:
+            print(parser_include_snakemake.print_help())
 
         #add arguments to config
         self.config.update(args.__dict__)
