@@ -455,15 +455,18 @@ def generate_inputs( bids_dir, pybids_inputs,
         search_terms['subject'].append(f'^((?!({exclude_string})).)*$') #regex to exclude subjects
 
 
-
-    #generate inputs based on config
-    layout = BIDSLayout(
-        bids_dir,
-        derivatives=derivatives,
-        validate=False,
-        indexer=BIDSLayoutIndexer(validate=False,
-                index_metadata=False)
-    )
+    if os.path.exists(bids_dir):
+        #generate inputs based on config
+        layout = BIDSLayout(
+            bids_dir,
+            derivatives=derivatives,
+            validate=False,
+            indexer=BIDSLayoutIndexer(validate=False,
+                    index_metadata=False)
+        )
+    else:
+        print('WARNING: bids_dir does not exist, skipping PyBIDS and using custom file paths only')
+        layout=None
 
     #this will populate input_path, input_lists, input_zip_lists, and input_wildcards
     inputs_config_dict = __get_lists_from_bids(bids_layout=layout,
@@ -471,9 +474,28 @@ def generate_inputs( bids_dir, pybids_inputs,
                                                 limit_to = limit_to,
                                                 **search_terms)
 
-    #populate subjects, sessions and subj_wildcards in the config
-    inputs_config_dict['subjects'] = layout.get_subjects(**search_terms)
-    inputs_config_dict['sessions'] = layout.get_sessions(**search_terms)
+    if layout == None:
+
+        #if no layout, then use subjects/sessions from --path vars
+        subjects = list()
+        sessions = list()
+        for input_type in inputs_config_dict['input_lists'].keys():
+            subjects.append( set(inputs_config_dict['input_lists'][input_type]['subject'] ))
+            if 'session' in inputs_config_dict['input_lists'][input_type].keys():
+                sessions.append(set(inputs_config_dict['input_lists'][input_type]['session']))
+            else:
+                sessions.append(set([]))
+        
+        #take set intersection of all input types
+        inputs_config_dict['subjects'] = list(set.intersection( *subjects) )
+        inputs_config_dict['sessions'] = list(set.intersection( *sessions) )
+
+    else:
+        #populate subjects, sessions and subj_wildcards in the config
+        inputs_config_dict['subjects'] = layout.get_subjects(**search_terms)
+        inputs_config_dict['sessions'] = layout.get_sessions(**search_terms)
+
+
     if len(inputs_config_dict['sessions'])  == 0:
         inputs_config_dict['subj_wildcards'] = { 'subject': '{subject}'}
     else:
@@ -528,7 +550,6 @@ def __get_lists_from_bids(bids_layout, pybids_inputs, limit_to=None, **filters )
 
     out_dict = dict({'input_path': {}, 'input_zip_lists': {}, 'input_lists': {}, 'input_wildcards': {}})
 
-
     if limit_to == None:
         inputs_to_iterate = pybids_inputs.keys()
     else:
@@ -536,7 +557,6 @@ def __get_lists_from_bids(bids_layout, pybids_inputs, limit_to=None, **filters )
 
 
     for input_name in inputs_to_iterate:
-
         if 'custom_path' in pybids_inputs[input_name].keys():
             #a custom path was specified for this input, skip pybids:
 
