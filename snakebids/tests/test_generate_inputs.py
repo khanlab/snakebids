@@ -9,10 +9,11 @@ def test_t1w():
     config = generate_inputs(pybids_inputs=pybids_inputs,
                     bids_dir=bids_dir,
                     derivatives=derivatives)
-    assert config['input_lists'] ==  {'t1': {'acq': ['mprage'], 'subject': ['001']}}
-    assert config['input_zip_lists'] == {'t1': {'acq': ['mprage'], 'subject': ['001']}}
+    # Order of the subjects is not deterministic
+    assert config['input_lists'] in  [{'t1': {'acq': ['mprage'], 'subject': ['001', '002']}}, {'t1': {'acq': ['mprage'], 'subject': ['002', '001']}}]
+    assert config['input_zip_lists'] == {'t1': {'acq': ['mprage', 'mprage'], 'subject': ['001', '002']}}
     assert config['input_wildcards'] == {'t1': {'acq': '{acq}', 'subject': '{subject}'}}
-    assert config['subjects'] == ['001']
+    assert config['subjects'] == ['001', '002']
     assert config['sessions'] == []
     assert config['subj_wildcards'] == {'subject': '{subject}'}
 
