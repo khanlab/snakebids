@@ -30,16 +30,26 @@ def test_glob_wildcards():
         collections.namedtuple("Wildcards", ["subject", "acq"])(
             ["001", "002"],
             ["mprage", "mprage"]
-        ), collections.namedtuple("Wildcards", ["acq", "subject"])(
+        ),
+        collections.namedtuple("Wildcards", ["subject", "acq"])(
+            ["002", "001"],
+            ["mprage", "mprage"]
+        ),
+        collections.namedtuple("Wildcards", ["acq", "subject"])(
             ["mprage", "mprage"],
             ["001", "002"]
+        ),
+        collections.namedtuple("Wildcards", ["acq", "subject"])(
+            ["mprage", "mprage"],
+            ["002", "001"]
         )
     ]
     both_wildcards_one_file = [
         collections.namedtuple("Wildcards", ["subject", "acq"])(
             ["001"],
             ["mprage"]
-        ), collections.namedtuple("Wildcards", ["acq", "subject"])(
+        ),
+        collections.namedtuple("Wildcards", ["acq", "subject"])(
             ["mprage"],
             ["001"]
         )
