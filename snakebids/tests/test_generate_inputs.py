@@ -85,10 +85,11 @@ def test_t1w():
             {'acq': ['mprage'], 'subject': ['002', '001']}
         ]
         assert config["input_lists"]["t2"] == {"subject": ["002"]}
-        assert config['input_zip_lists'] == {
-            't1': {'acq': ['mprage', 'mprage'], 'subject': ['001', '002']},
-            't2': {"subject": ["002"]}
-        }
+        assert config['input_zip_lists']["t1"] in [
+            {'acq': ['mprage', 'mprage'], 'subject': ['001', '002']},
+            {'acq': ['mprage', 'mprage'], 'subject': ['002', '001']}
+        ]
+        assert config["input_zip_lists"]["t2"] == {"subject": ["002"]}
         assert config['input_wildcards'] == {
             't1': {'acq': '{acq}', 'subject': '{subject}'},
             "t2": {"subject": "{subject}"}
@@ -135,13 +136,17 @@ def test_get_lists_from_bids():
             "t1": wildcard_path_t1,
             "t2": wildcard_path_t2
         }
-        assert config["input_zip_lists"] == {
-            't1': {
+        assert config["input_zip_lists"]["t1"] in [
+            {
                 'acq': ['mprage', 'mprage'],
                 'subject': ['001', '002']
             },
-            "t2": {"subject": ["002"]}
-        }
+            {
+                'acq': ['mprage', 'mprage'],
+                'subject': ['002', '001']
+            }
+        ]
+        assert config["input_zip_lists"]["t2"] == {"subject": ["002"]}
         # The order of multiple wildcard values is not deterministic
         assert config['input_lists'] in [
             {
