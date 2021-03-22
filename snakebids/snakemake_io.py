@@ -51,9 +51,25 @@ _wildcard_regex = re.compile(
 )
 
 def glob_wildcards(pattern, files=None, followlinks=False):
-    """
-    Glob the values of the wildcards by matching the given pattern to the filesystem.
-    Returns a named tuple with a list of values for each wildcard.
+    """Glob the values of wildcards by matching a pattern to the filesystem.
+
+    Parameters
+    ----------
+    pattern : str
+        Path including wildcards to glob on the filesystem.
+    files : list of str, optional
+        Files from which to glob wildcards. If None (default), the directory
+        corresponding to the first wildcard in the pattern is walked, and
+        wildcards are globbed from all files.
+    followlinks : bool, optional
+        Whether to follow links when globbing wildcards. Default: False.
+
+    Returns
+    -------
+    namedtuple
+        "Wildcards" named tuple where each field name is the name of a
+        wildcard and the value of each field is a list of values for the
+        corresponding wildcard.
     """
     pattern = os.path.normpath(pattern)
     first_wildcard = re.search("{[^{]", pattern)
