@@ -112,12 +112,16 @@ def glob_wildcards(pattern, files=None, followlinks=False):
 def update_wildcard_constraints(
     pattern, wildcard_constraints, global_wildcard_constraints
 ):
-    """Update wildcard constraints
+    """Update wildcard constraints.
 
-    Args:
-      pattern (str): pattern on which to update constraints
-      wildcard_constraints (dict): dictionary of wildcard:constraint key-value pairs
-      global_wildcard_constraints (dict): dictionary of wildcard:constraint key-value pairs
+    Parameters
+    ----------
+    pattern : str
+        Pattern on which to update constraints.
+    wildcard_constraints : dict
+        Dictionary of wildcard:constraint key-value pairs.
+    global_wildcard_constraints : dict
+        Dictionary of wildcard:constraint key-value pairs.
     """
 
     def replace_constraint(match):
