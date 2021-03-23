@@ -235,11 +235,7 @@ def filter_list(zip_list, wildcards, return_indices_only=False):
         ...     },
         ...     {'subject': '01'}
         ... )
-        {
-            'dir': ['AP', 'PA', 'AP', 'PA'],
-            'acq': ['98', '98', '99', '99'],
-            'subject': ['01', '01', '01', '01']
-        }
+        {'dir': ['AP', 'PA', 'AP', 'PA'], 'acq': ['98', '98', '99', '99'], 'subject': ['01', '01', '01', '01']}
 
     Filtering to get all ``acq='98'`` scans::
 
@@ -251,11 +247,7 @@ def filter_list(zip_list, wildcards, return_indices_only=False):
         ...     },
         ...     {'acq': '98'}
         ... )
-        {
-            'dir': ['AP', 'PA', 'AP', 'PA'],
-            'acq': ['98', '98', '98', '98'],
-            'subject': ['01', '01', '02', '02']
-        }
+        {'dir': ['AP', 'PA', 'AP', 'PA'], 'acq': ['98', '98', '98', '98'], 'subject': ['01', '01', '02', '02']}
 
     Filtering to get all ``dir=='AP'`` scans::
 
@@ -267,11 +259,7 @@ def filter_list(zip_list, wildcards, return_indices_only=False):
         ...     },
         ...     {'dir': 'AP'}
         ... )
-        {
-            'dir': ['AP', 'AP', 'AP', 'AP'],
-            'acq': ['98', '98', '99', '99'],
-            'subject': ['01', '02', '01', '02']
-        }
+        {'dir': ['AP', 'AP', 'AP', 'AP'], 'acq': ['98', '98', '99', '99'], 'subject': ['01', '02', '01', '02']}
 
     Filtering to get all ``subject='03'`` scans (i.e. no matches)::
 
