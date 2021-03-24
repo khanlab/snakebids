@@ -1,17 +1,19 @@
+""" Minor modification to allow glob_wildcards() to have multiple occurence of
+same wildcard """
+
 import os
 import re
 import collections
-from itertools import  chain
-
-""" Minor modification to allow glob_wildcards() to have multiple occurence of same wildcard """
+from itertools import chain
 
 
 def regex(filepattern):
-    f = []
+    """Build Snakebids regex based on the given file pattern."""
+    regex_list = []
     last = 0
     wildcards = set()
     for match in _wildcard_regex.finditer(filepattern):
-        f.append(re.escape(filepattern[last : match.start()]))
+        regex_list.append(re.escape(filepattern[last:match.start()]))
         wildcard = match.group("name")
         if wildcard in wildcards:
             if match.group("constraint"):
@@ -19,19 +21,24 @@ def regex(filepattern):
                     "Constraint regex must be defined only in the first "
                     "occurence of the wildcard in a string."
                 )
-            f.append("(?P={})".format(wildcard))
+            regex_list.append("(?P={})".format(wildcard))
         else:
             wildcards.add(wildcard)
-            f.append(
+            regex_list.append(
                 "(?P<{}>{})".format(
                     wildcard,
-                    match.group("constraint") if match.group("constraint") else ".+",
+                    (
+                        match.group("constraint")
+                        if match.group("constraint")
+                        else ".+"
+                    ),
                 )
             )
         last = match.end()
-    f.append(re.escape(filepattern[last:]))
-    f.append("$")  # ensure that the match spans the whole file
-    return "".join(f)
+    regex_list.append(re.escape(filepattern[last:]))
+    regex_list.append("$")  # ensure that the match spans the whole file
+    return "".join(regex_list)
+
 
 _wildcard_regex = re.compile(
     r"""
@@ -41,7 +48,7 @@ _wildcard_regex = re.compile(
             \s*(?P<name>\w+)                    # wildcard name
             (\s*,\s*
                 (?P<constraint>                 # an optional constraint
-                    ([^{}]+ | \{\d+(,\d+)?\})*  # allow curly braces to nest one level
+                    ([^{}]+ | \{\d+(,\d+)?\})*  # allow curly braces to nest
                 )                               # ...  as in '{w,a{3,5}}'
             )?\s*
         ))\1
@@ -49,6 +56,7 @@ _wildcard_regex = re.compile(
     """,
     re.VERBOSE,
 )
+
 
 def glob_wildcards(pattern, files=None, followlinks=False):
     """Glob the values of wildcards by matching a pattern to the filesystem.
@@ -81,11 +89,14 @@ def glob_wildcards(pattern, files=None, followlinks=False):
     if not dirname:
         dirname = "."
 
-    names = [match.group("name") for match in _wildcard_regex.finditer(pattern)]
+    names = [
+        match.group("name") for match in _wildcard_regex.finditer(pattern)
+    ]
 
-    #remove duplicates:
+    # remove duplicates:
     names = list(set(names))
 
+    # pylint: disable-msg=invalid-name
     Wildcards = collections.namedtuple("Wildcards", names)
 
     wildcards = Wildcards(*[list() for name in names])
@@ -137,19 +148,11 @@ def update_wildcard_constraints(
         if constraint is not None:
             return match.group(0)
         # Only update if a new constraint has actually been set
-        elif newconstraint is not None:
+        if newconstraint is not None:
             return "{{{},{}}}".format(name, newconstraint)
-        else:
-            return match.group(0)
+        return match.group(0)
 
     examined_names = set()
     updated = _wildcard_regex.sub(replace_constraint, pattern)
 
-    # inherit flags
-    if isinstance(pattern, AnnotatedString):
-        updated = AnnotatedString(updated)
-        updated.flags = dict(pattern.flags)
     return updated
-
-
-
