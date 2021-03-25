@@ -17,6 +17,7 @@ logger = logging.Logger(__name__)
 
 class ConfigError(Exception):
     """Exception raised for errors with the Snakebids config."""
+
     def __init__(self, msg):
         self.msg = msg
         Exception.__init__()
@@ -122,6 +123,8 @@ class SnakeBidsApp:
             )
 
         self.__load_config()
+        if "debug" in self.config and self.config["debug"]:
+            logging.basicConfig(level=logging.DEBUG)
 
         # add path to snakefile to the config -- so workflows can grab files
         # relative to the snakefile folder

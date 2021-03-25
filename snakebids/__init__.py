@@ -725,6 +725,7 @@ def __get_lists_from_bids(
         limit_to = pybids_inputs.keys()
 
     for input_name in limit_to:
+        logger.debug("Grabbing inputs for %s...", input_name)
         input_path = ""
         input_wildcards = {}
         input_zip_lists = {}
@@ -751,6 +752,11 @@ def __get_lists_from_bids(
                 for wildcard_name in pybids_inputs[input_name]["wildcards"]:
                     if wildcard_name not in img.get_entities():
                         continue
+                    logger.debug(
+                        "Wildcard %s found entities for %s",
+                        wildcard_name,
+                        img.path,
+                    )
                     (
                         input_path,
                         input_list,
@@ -776,7 +782,7 @@ def __get_lists_from_bids(
                     "narrow the search. Found filenames: %s",
                     input_name,
                     input_name,
-                    paths
+                    paths,
                 )
 
             input_path = list(paths)[0]
