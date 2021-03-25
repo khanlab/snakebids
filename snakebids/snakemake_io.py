@@ -13,7 +13,7 @@ def regex(filepattern):
     last = 0
     wildcards = set()
     for match in _wildcard_regex.finditer(filepattern):
-        regex_list.append(re.escape(filepattern[last:match.start()]))
+        regex_list.append(re.escape(filepattern[last : match.start()]))
         wildcard = match.group("name")
         if wildcard in wildcards:
             if match.group("constraint"):
