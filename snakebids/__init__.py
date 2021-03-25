@@ -479,7 +479,7 @@ def __read_bids_tags(bids_json=None):
     return bids_tags
 
 
-def __parse_search_terms(
+def __generate_search_terms(
     participant_label=None, exclude_participant_label=None
 ):
     search_terms = {}
@@ -559,7 +559,7 @@ def generate_inputs(
         * ``"subj_wildcards"``
     """
 
-    search_terms = __parse_search_terms(
+    search_terms = __generate_search_terms(
         participant_label, exclude_participant_label
     )
     # This should really just be an exception
@@ -627,7 +627,10 @@ def generate_inputs(
     return inputs_config_dict
 
 
-def __process_wildcards(input_path):
+def __process_path_override(input_path):
+    """Glob wildcards from a path override and arrange into a zip list of
+    matches, list of matches, and Snakemake wildcard for each wildcard.
+    """
     wildcards = glob_wildcards(input_path)
     wildcard_names = list(wildcards._fields)
 
@@ -649,6 +652,9 @@ def __process_wildcards(input_path):
 
 
 def __process_layout_wildcard(path, wildcard_name):
+    """Convert an absolute BIDS path to the same path with the given tag
+    replaced by a wildcard.
+    """
     bids_tags = __read_bids_tags()
     tag = (
         bids_tags[wildcard_name]
@@ -737,7 +743,7 @@ def __get_lists_from_bids(
                 input_zip_lists,
                 input_lists,
                 input_wildcards,
-            ) = __process_wildcards(input_path)
+            ) = __process_path_override(input_path)
         else:
             paths = set()
             for img in bids_layout.get(
