@@ -730,14 +730,14 @@ def __get_lists_from_bids(
                             zip_lists[out_name] = []
                             input_lists[out_name] = set()
                             wildcards[out_name] = {}
-    
-                        if wildcard_name == 'suffix':
-                            #capture suffix
-                            matching_pattern = ".*_([a-zA-Z0-9]+).*$" 
-                            #capture before and after suffix
-                            replace_pattern = "(.*_)[a-zA-Z0-9]+(.*)$" 
-                            #replace with before, {suffix}, after
-                            replace = "\\1{{{replace}}}\\2".format( 
+
+                        if wildcard_name == "suffix":
+                            # capture suffix
+                            matching_pattern = ".*_([a-zA-Z0-9]+).*$"
+                            # capture before and after suffix
+                            replace_pattern = "(.*_)[a-zA-Z0-9]+(.*)$"
+                            # replace with before, {suffix}, after
+                            replace = "\\1{{{replace}}}\\2".format(
                                 replace=out_name
                             )
                             match = re.search(matching_pattern, path)
@@ -748,7 +748,7 @@ def __get_lists_from_bids(
                             replace = "{tag}-{{{replace}}}".format(
                                 tag=tag, replace=out_name
                             )
-                        
+
                             match = re.search(pattern, path)
                             replaced = re.sub(pattern, replace, path)
 

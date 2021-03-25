@@ -205,9 +205,7 @@ class SnakeBidsApp:
             argname = f"--wildcards_{input_type}"
             arglist_default = [
                 f"{wc}"
-                for wc in self.config["pybids_inputs"][input_type][
-                    "wildcards"
-                ]
+                for wc in self.config["pybids_inputs"][input_type]["wildcards"]
             ]
             arglist_default_string = " ".join(arglist_default)
 
@@ -216,7 +214,6 @@ class SnakeBidsApp:
                 nargs="+",
                 help=f"(default: {arglist_default_string})",
             )
-
 
         override_opts = parser.add_argument_group(
             "PATH OVERRIDE",
@@ -259,16 +256,15 @@ class SnakeBidsApp:
                 )
             del self.config[f"filter_{input_type}"]
 
-        
         # add cmdline defined wildcards from the list:
         # wildcards_{input_type}
         for input_type in self.config["pybids_inputs"].keys():
             wildcards_list = self.config[f"wildcards_{input_type}"]
             if wildcards_list is not None:
-                self.config["pybids_inputs"][input_type]["wildcards"] += wildcards_list 
+                self.config["pybids_inputs"][input_type][
+                    "wildcards"
+                ] += wildcards_list
             del self.config[f"wildcards_{input_type}"]
-
-
 
         # add custom input paths to
         # config['pybids_inputs'][input_type]['custom_path']
