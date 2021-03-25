@@ -1,6 +1,7 @@
 import os
 
 from bids import BIDSLayout
+import pytest
 
 from .. import generate_inputs, __get_lists_from_bids
 
@@ -17,14 +18,18 @@ def test_t1w():
     }
 
     # Can't define particpant_label and exclude_participant_label
-    config = generate_inputs(
-        pybids_inputs=pybids_inputs,
-        bids_dir=real_bids_dir,
-        derivatives=derivatives,
-        participant_label="001",
-        exclude_participant_label="002",
-    )
-    assert config is None
+    with pytest.raises(ValueError) as v_error:
+        config = generate_inputs(
+            pybids_inputs=pybids_inputs,
+            bids_dir=real_bids_dir,
+            derivatives=derivatives,
+            participant_label="001",
+            exclude_participant_label="002",
+        )
+        assert v_error.msg == (
+            "Cannot define both participant_label and "
+            "exclude_participant_label at the same time"
+        )
 
     # Simplest case -- one input type, using pybids
     config = generate_inputs(

@@ -5,6 +5,7 @@ from os.path import join
 from collections import OrderedDict
 import json
 import re
+import logging
 
 from bids import BIDSLayout, BIDSLayoutIndexer
 import bids as pybids
@@ -12,6 +13,7 @@ import bids as pybids
 from snakebids.snakemake_io import glob_wildcards
 
 pybids.config.set_option("extension_initial_dot", True)
+logger = logging.getLogger(__name__)
 
 
 # pylint: disable=too-many-arguments
@@ -485,11 +487,10 @@ def __generate_search_terms(
     search_terms = {}
 
     if participant_label is not None and exclude_participant_label is not None:
-        print(
-            "ERROR: cannot define both participant_label and "
+        raise ValueError(
+            "Cannot define both participant_label and "
             "exclude_participant_label at the same time"
         )
-        return None
 
     # add participant_label or exclude_participant_label to search terms (if
     # defined)
@@ -562,9 +563,6 @@ def generate_inputs(
     search_terms = __generate_search_terms(
         participant_label, exclude_participant_label
     )
-    # This should really just be an exception
-    if search_terms is None:
-        return None
 
     if os.path.exists(bids_dir):
         # generate inputs based on config
@@ -575,8 +573,8 @@ def generate_inputs(
             indexer=BIDSLayoutIndexer(validate=False, index_metadata=False),
         )
     else:
-        print(
-            "WARNING: bids_dir does not exist, skipping PyBIDS and using "
+        logger.info(
+            "bids_dir does not exist, skipping PyBIDS and using "
             "custom file paths only"
         )
         layout = None
@@ -635,7 +633,7 @@ def __process_path_override(input_path):
     wildcard_names = list(wildcards._fields)
 
     if len(wildcard_names) == 0:
-        print(f"WARNING: no wildcards defined in {input_path}")
+        logger.warning("No wildcards defined in %s", input_path)
 
     input_wildcards = {}
     input_zip_lists = {}
@@ -646,7 +644,7 @@ def __process_path_override(input_path):
         input_lists[wildcard] = list(set(wildcards[i]))
         input_wildcards[wildcard] = f"{{{wildcard}}}"
         if len(wildcards[i]) == 0:
-            print(f"ERROR: No matching files for {input_path}")
+            logger.error("No matching files for %s", input_path)
 
     return input_zip_lists, input_lists, input_wildcards
 
@@ -769,18 +767,17 @@ def __get_lists_from_bids(
 
             # now, check to see if unique
             if len(paths) == 0:
-                print(f"WARNING: no images found for {input_name}")
+                logger.warning("No images found for %s", input_name)
                 continue
             if len(paths) > 1:
-                print(
-                    "WARNING: more than one snakemake filename for "
-                    f"{input_name}, taking the first"
+                logger.warning(
+                    "More than one snakemake filename for %s, taking the "
+                    "first. To correct this, use the --filter_%s option to "
+                    "narrow the search. Found filenames: %s",
+                    input_name,
+                    input_name,
+                    paths
                 )
-                print(
-                    f"  To correct this, use the --filter_{input_name} "
-                    "option to narrow the search"
-                )
-                print(paths)
 
             input_path = list(paths)[0]
 
