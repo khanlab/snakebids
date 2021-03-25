@@ -682,20 +682,19 @@ def __process_layout_wildcard(path, wildcard_name):
         # replace with before, {suffix}, after
         replace = "\\1{{{replace}}}\\2".format(replace=out_name)
         match = re.search(matching_pattern, path)
-        replaced = re.sub(replace_pattern, replace, path)
+        path = re.sub(replace_pattern, replace, path)
 
     else:
         pattern = "{tag}-([a-zA-Z0-9]+)".format(tag=tag)
         replace = "{tag}-{{{replace}}}".format(tag=tag, replace=out_name)
 
         match = re.search(pattern, path)
-        replaced = re.sub(pattern, replace, path)
+        path = re.sub(pattern, replace, path)
 
     # update the path with the {wildcards} -- uses the
     # value from the string (not from the pybids
     # entities), since that has issues with integer
     # formatting (e.g. for run=01)
-    path = re.sub(pattern, replace, path)
 
     return path, match[1], out_name
 
