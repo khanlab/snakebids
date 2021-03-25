@@ -720,6 +720,7 @@ def __get_lists_from_bids(
                         # bids_tags.json, where e.g. acquisition -> acq is
                         # defined.. -- then, can use wildcard_name instead
                         # of out_name..
+
                         if wildcard_name not in ["subject", "session"]:
                             out_name = tag
                         else:
@@ -729,18 +730,34 @@ def __get_lists_from_bids(
                             zip_lists[out_name] = []
                             input_lists[out_name] = set()
                             wildcards[out_name] = {}
+    
+                        if wildcard_name == 'suffix':
+                            #capture suffix
+                            matching_pattern = ".*_([a-zA-Z0-9]+).*$" 
+                            #capture before and after suffix
+                            replace_pattern = "(.*_)[a-zA-Z0-9]+(.*)$" 
+                            #replace with before, {suffix}, after
+                            replace = "\\1{{{replace}}}\\2".format( 
+                                replace=out_name
+                            )
+                            match = re.search(matching_pattern, path)
+                            replaced = re.sub(replace_pattern, replace, path)
 
-                        pattern = "{tag}-([a-zA-Z0-9]+)".format(tag=tag)
-                        replace = "{tag}-{{{replace}}}".format(
-                            tag=tag, replace=out_name
-                        )
-                        match = re.search(pattern, path)
-                        replaced = re.sub(pattern, replace, path)
+                        else:
+                            pattern = "{tag}-([a-zA-Z0-9]+)".format(tag=tag)
+                            replace = "{tag}-{{{replace}}}".format(
+                                tag=tag, replace=out_name
+                            )
+                        
+                            match = re.search(pattern, path)
+                            replaced = re.sub(pattern, replace, path)
+
                         # update the path with the {wildcards} -- uses the
                         # value from the string (not from the pybids
                         # entities), since that has issues with integer
                         # formatting (e.g. for run=01)
                         path = replaced
+
                         zip_lists[out_name].append(match[1])
                         input_lists[out_name].add(match[1])
                         wildcards[out_name] = f"{{{out_name}}}"
