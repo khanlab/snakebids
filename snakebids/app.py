@@ -219,9 +219,6 @@ class SnakeBidsApp:
         args = all_args[0]
         snakemake_args = all_args[1]
 
-        if args.help_snakemake:
-            print(self.parser_include_snakemake.print_help())
-
         # add arguments to config
         self.config.update(args.__dict__)
         self.config.update({"snakemake_args": snakemake_args})
