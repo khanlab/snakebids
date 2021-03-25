@@ -7,14 +7,14 @@ import json
 import re
 
 from bids import BIDSLayout, BIDSLayoutIndexer
-import bids
+import bids as pybids
 
 from snakebids.snakemake_io import glob_wildcards
 
-bids.config.set_option("extension_initial_dot", True)
+pybids.config.set_option("extension_initial_dot", True)
 
 
-# pylint: disable=function-redefined, too-many-arguments
+# pylint: disable=too-many-arguments
 def bids(
     root=None,
     datatype=None,
@@ -479,6 +479,41 @@ def __read_bids_tags(bids_json=None):
     return bids_tags
 
 
+def __generate_search_terms(
+    participant_label=None, exclude_participant_label=None
+):
+    search_terms = {}
+
+    if participant_label is not None and exclude_participant_label is not None:
+        print(
+            "ERROR: cannot define both participant_label and "
+            "exclude_participant_label at the same time"
+        )
+        return None
+
+    # add participant_label or exclude_participant_label to search terms (if
+    # defined)
+    # we make the subject key in search_terms a list so we can have both
+    # participant_label and exclude_participant_label defined
+    if participant_label is not None:
+        if isinstance(participant_label, list):
+            search_terms["subject"] = participant_label
+        else:
+            search_terms["subject"] = [participant_label]
+
+    if exclude_participant_label is not None:
+        # if multiple subjects to exclude, combine with with subj1|subj2|...
+        if isinstance(exclude_participant_label, list):
+            exclude_string = "|".join(exclude_participant_label)
+        # if not, then string is the label itself
+        else:
+            exclude_string = exclude_participant_label
+        search_terms["regex_search"] = True
+        # regex to exclude subjects
+        search_terms["subject"] = [f"^((?!({exclude_string})).)*$"]
+    return search_terms
+
+
 def generate_inputs(
     bids_dir,
     pybids_inputs,
@@ -524,35 +559,12 @@ def generate_inputs(
         * ``"subj_wildcards"``
     """
 
-    search_terms = dict()
-
-    if participant_label is not None and exclude_participant_label is not None:
-        print(
-            "ERROR: cannot define both participant_label and "
-            "exclude_participant_label at the same time"
-        )
+    search_terms = __generate_search_terms(
+        participant_label, exclude_participant_label
+    )
+    # This should really just be an exception
+    if search_terms is None:
         return None
-
-    # add participant_label or exclude_participant_label to search terms (if
-    # defined)
-    # we make the subject key in search_terms a list so we can have both
-    # participant_label and exclude_participant_label defined
-    if participant_label is not None:
-        if isinstance(participant_label, list):
-            search_terms["subject"] = participant_label
-        else:
-            search_terms["subject"] = [participant_label]
-
-    if exclude_participant_label is not None:
-        # if multiple subjects to exclude, combine with with subj1|subj2|...
-        if isinstance(exclude_participant_label, list):
-            exclude_string = "|".join(exclude_participant_label)
-        # if not, then string is the label itself
-        else:
-            exclude_string = exclude_participant_label
-        search_terms["regex_search"] = True
-        # regex to exclude subjects
-        search_terms["subject"] = [f"^((?!({exclude_string})).)*$"]
 
     if os.path.exists(bids_dir):
         # generate inputs based on config
@@ -615,6 +627,65 @@ def generate_inputs(
     return inputs_config_dict
 
 
+def __process_path_override(input_path):
+    """Glob wildcards from a path override and arrange into a zip list of
+    matches, list of matches, and Snakemake wildcard for each wildcard.
+    """
+    wildcards = glob_wildcards(input_path)
+    wildcard_names = list(wildcards._fields)
+
+    if len(wildcard_names) == 0:
+        print(f"WARNING: no wildcards defined in {input_path}")
+
+    input_wildcards = {}
+    input_zip_lists = {}
+    input_lists = {}
+
+    for i, wildcard in enumerate(wildcard_names):
+        input_zip_lists[wildcard] = wildcards[i]
+        input_lists[wildcard] = list(set(wildcards[i]))
+        input_wildcards[wildcard] = f"{{{wildcard}}}"
+        if len(wildcards[i]) == 0:
+            print(f"ERROR: No matching files for {input_path}")
+
+    return input_zip_lists, input_lists, input_wildcards
+
+
+def __process_layout_wildcard(path, wildcard_name):
+    """Convert an absolute BIDS path to the same path with the given tag
+    replaced by a wildcard.
+    """
+    bids_tags = __read_bids_tags()
+    tag = (
+        bids_tags[wildcard_name]
+        if wildcard_name in bids_tags
+        else wildcard_name
+    )
+
+    # this changes e.g. sub-001 to sub-{subject} in the path
+    # (so snakemake can use the wildcards)
+    # HACK FIX FOR acq vs acquisition etc -- should
+    # eventually update the bids() function to also use
+    # bids_tags.json, where e.g. acquisition -> acq is
+    # defined.. -- then, can use wildcard_name instead
+    # of out_name..
+    if wildcard_name not in ["subject", "session"]:
+        out_name = tag
+    else:
+        out_name = wildcard_name
+
+    pattern = "{tag}-([a-zA-Z0-9]+)".format(tag=tag)
+    replace = "{tag}-{{{replace}}}".format(tag=tag, replace=out_name)
+    match = re.search(pattern, path)
+    # update the path with the {wildcards} -- uses the
+    # value from the string (not from the pybids
+    # entities), since that has issues with integer
+    # formatting (e.g. for run=01)
+    path = re.sub(pattern, replace, path)
+
+    return path, match[1], out_name
+
+
 def __get_lists_from_bids(
     bids_layout, pybids_inputs, limit_to=None, **filters
 ):
@@ -643,8 +714,6 @@ def __get_lists_from_bids(
         ``input_lists``, and ``input_wildcards``
     """
 
-    bids_tags = __read_bids_tags()
-
     out_dict = dict(
         {
             "input_path": {},
@@ -655,11 +724,13 @@ def __get_lists_from_bids(
     )
 
     if limit_to is None:
-        inputs_to_iterate = pybids_inputs.keys()
-    else:
-        inputs_to_iterate = limit_to
+        limit_to = pybids_inputs.keys()
 
-    for input_name in inputs_to_iterate:
+    for input_name in limit_to:
+        input_path = ""
+        input_wildcards = {}
+        input_zip_lists = {}
+        input_lists = {}
         if "custom_path" in pybids_inputs[input_name].keys():
             # a custom path was specified for this input, skip pybids:
             # get input_wildcards by parsing path for {} entries (using a set
@@ -668,86 +739,38 @@ def __get_lists_from_bids(
             # to deal with multiple wildcards
 
             input_path = pybids_inputs[input_name]["custom_path"]
-            wildcards = glob_wildcards(input_path)
-            wildcard_names = list(wildcards._fields)
-            if len(wildcard_names) == 0:
-                print(f"WARNING: no wildcards defined in {input_path}")
-            input_wildcards = {}
-            input_zip_lists = {}
-            input_lists = {}
-            for i, wildcard in enumerate(wildcard_names):
-                input_zip_lists[wildcard] = wildcards[i]
-                input_lists[wildcard] = list(set(wildcards[i]))
-                input_wildcards[wildcard] = f"{{{wildcard}}}"
-                if len(wildcards[i]) == 0:
-                    print(f"ERROR: No matching files for {input_path}")
-
-            out_dict["input_path"][input_name] = input_path
-            out_dict["input_zip_lists"][input_name] = input_zip_lists
-            out_dict["input_lists"][input_name] = input_lists
-            out_dict["input_wildcards"][input_name] = input_wildcards
-
+            (
+                input_zip_lists,
+                input_lists,
+                input_wildcards,
+            ) = __process_path_override(input_path)
         else:
-            (imgs,) = [
-                bids_layout.get(
-                    **pybids_inputs[input_name]["filters"], **filters
-                )
-            ]
-            if len(imgs) == 0:
-                print(f"WARNING: no images found for {input_name}")
-                continue
-
             paths = set()
-            zip_lists = {}
-            input_lists = {}
-            wildcards = {}
-            for img in imgs:
-                path = img.path
+            for img in bids_layout.get(
+                **pybids_inputs[input_name]["filters"], **filters
+            ):
+                input_path = img.path
                 for wildcard_name in pybids_inputs[input_name]["wildcards"]:
-
-                    if wildcard_name in bids_tags:
-                        tag = bids_tags[wildcard_name]
-                    # if it's not in the bids_tags dictionary, then just use
-                    # the name itself as the tag
-                    else:
-                        tag = wildcard_name
-
-                    # this changes e.g. sub-001 to sub-{subject} in the path
-                    # (so snakemake can use the wildcards)
-                    if wildcard_name in img.get_entities():
-                        # HACK FIX FOR acq vs acquisition etc -- should
-                        # eventually update the bids() function to also use
-                        # bids_tags.json, where e.g. acquisition -> acq is
-                        # defined.. -- then, can use wildcard_name instead
-                        # of out_name..
-                        if wildcard_name not in ["subject", "session"]:
-                            out_name = tag
-                        else:
-                            out_name = wildcard_name
-
-                        if out_name not in zip_lists:
-                            zip_lists[out_name] = []
-                            input_lists[out_name] = set()
-                            wildcards[out_name] = {}
-
-                        pattern = "{tag}-([a-zA-Z0-9]+)".format(tag=tag)
-                        replace = "{tag}-{{{replace}}}".format(
-                            tag=tag, replace=out_name
-                        )
-                        match = re.search(pattern, path)
-                        replaced = re.sub(pattern, replace, path)
-                        # update the path with the {wildcards} -- uses the
-                        # value from the string (not from the pybids
-                        # entities), since that has issues with integer
-                        # formatting (e.g. for run=01)
-                        path = replaced
-                        zip_lists[out_name].append(match[1])
-                        input_lists[out_name].add(match[1])
-                        wildcards[out_name] = f"{{{out_name}}}"
-
-                paths.add(path)
+                    if wildcard_name not in img.get_entities():
+                        continue
+                    (
+                        input_path,
+                        input_list,
+                        out_name,
+                    ) = __process_layout_wildcard(input_path, wildcard_name)
+                    if out_name not in input_zip_lists:
+                        input_zip_lists[out_name] = []
+                        input_lists[out_name] = set()
+                        input_wildcards[out_name] = {}
+                    input_zip_lists[out_name].append(input_list)
+                    input_lists[out_name].add(input_list)
+                    input_wildcards[out_name] = f"{{{out_name}}}"
+                paths.add(input_path)
 
             # now, check to see if unique
+            if len(paths) == 0:
+                print(f"WARNING: no images found for {input_name}")
+                continue
             if len(paths) > 1:
                 print(
                     "WARNING: more than one snakemake filename for "
@@ -759,16 +782,15 @@ def __get_lists_from_bids(
                 )
                 print(paths)
 
-            in_path = list(paths)[0]
+            input_path = list(paths)[0]
 
             # convert sets to lists
-            for key, val in input_lists.items():
-                input_lists[key] = list(val)
+            input_lists = {key: list(val) for key, val in input_lists.items()}
 
-            out_dict["input_path"][input_name] = in_path
-            out_dict["input_zip_lists"][input_name] = zip_lists
-            out_dict["input_lists"][input_name] = input_lists
-            out_dict["input_wildcards"][input_name] = wildcards
+        out_dict["input_path"][input_name] = input_path
+        out_dict["input_zip_lists"][input_name] = input_zip_lists
+        out_dict["input_lists"][input_name] = input_lists
+        out_dict["input_wildcards"][input_name] = input_wildcards
 
     return out_dict
 
