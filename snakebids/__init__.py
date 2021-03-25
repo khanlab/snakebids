@@ -7,14 +7,14 @@ import json
 import re
 
 from bids import BIDSLayout, BIDSLayoutIndexer
-import bids
+import bids as pybids
 
 from snakebids.snakemake_io import glob_wildcards
 
-bids.config.set_option('extension_initial_dot', True)
+pybids.config.set_option("extension_initial_dot", True)
 
 
-# pylint: disable=function-redefined, too-many-arguments
+# pylint: disable=too-many-arguments
 def bids(
     root=None,
     datatype=None,
@@ -24,7 +24,7 @@ def bids(
     session=None,
     include_subject_dir=True,
     include_session_dir=True,
-    **entities
+    **entities,
 ):
     """Helper function for generating bids paths for snakemake workflows.
 
@@ -139,23 +139,27 @@ def bids(
 
     # replace underscores in keys (needed to that users can use reserved
     # keywords by appending a _)
-    entities = {k.replace('_', ''): v for k, v in entities.items()}
+    entities = {k.replace("_", ""): v for k, v in entities.items()}
 
     # strict ordering of bids entities is specified here:
-    order = OrderedDict([('task', None),
-                         ('acq', None),
-                         ('ce', None),
-                         ('rec', None),
-                         ('dir', None),
-                         ('run', None),
-                         ('mod', None),
-                         ('echo', None),
-                         ('hemi', None),
-                         ('space', None),
-                         ('res', None),
-                         ('den', None),
-                         ('label', None),
-                         ('desc', None)])
+    order = OrderedDict(
+        [
+            ("task", None),
+            ("acq", None),
+            ("ce", None),
+            ("rec", None),
+            ("dir", None),
+            ("run", None),
+            ("mod", None),
+            ("echo", None),
+            ("hemi", None),
+            ("space", None),
+            ("res", None),
+            ("den", None),
+            ("label", None),
+            ("desc", None),
+        ]
+    )
 
     # Now add in entities (this preserves ordering above)
     for key, val in entities.items():
@@ -177,21 +181,21 @@ def bids(
     # if subject defined then append to file and folder
     if isinstance(subject, str):
         if include_subject_dir is True:
-            folder.append(f'sub-{subject}')
-        filename.append(f'sub-{subject}')
+            folder.append(f"sub-{subject}")
+        filename.append(f"sub-{subject}")
 
     # if session defined then append to file and folder
     if isinstance(session, str):
         if include_session_dir is True:
-            folder.append(f'ses-{session}')
-        filename.append(f'ses-{session}')
+            folder.append(f"ses-{session}")
+        filename.append(f"ses-{session}")
 
     if isinstance(datatype, str):
         folder.append(datatype)
 
     # add the entities
     filename += [
-        f'{key}-{val}' for key, val in order.items() if val is not None
+        f"{key}-{val}" for key, val in order.items() if val is not None
     ]
 
     # if suffix is defined, append it
@@ -199,10 +203,10 @@ def bids(
         filename.append(suffix)
 
     if len(filename) == 0:
-        return ''
+        return ""
 
     # now, join up the lists:
-    filename = '_'.join(filename)
+    filename = "_".join(filename)
 
     if len(folder) > 0:
         filename = join(*folder, filename)
@@ -211,10 +215,11 @@ def bids(
 
 
 def print_boilerplate():
-    """ Function to print out boilerplate to add to Snakefile. (not used
+    """Function to print out boilerplate to add to Snakefile. (not used
     anywhere yet)"""
 
-    print('''
+    print(
+        """
 # ---- begin snakebids boilerplate ------------------------------------------
 
 import snakebids
@@ -236,11 +241,12 @@ wildcard_constraints:  **snakebids.get_wildcard_constraints(
 )
 
 # ---- end snakebids boilerplate --------------------------------------------
-''')
+"""
+    )
 
 
 def filter_list(zip_list, wildcards, return_indices_only=False):
-    """ This function is used when you are expanding over some subset of the
+    """This function is used when you are expanding over some subset of the
     wildcards i.e. if your output file doesn't contain all the wildcards in
     input_wildcards
 
@@ -441,9 +447,7 @@ def get_filtered_ziplist_index(zip_list, wildcards, subj_wildcards):
 
     # get the index of the wildcard from this filtered list
     indices = filter_list(
-        zip_list_filtered,
-        wildcards,
-        return_indices_only=True
+        zip_list_filtered, wildcards, return_indices_only=True
     )
     if len(indices) == 1:
         return indices[0]
@@ -451,7 +455,7 @@ def get_filtered_ziplist_index(zip_list, wildcards, subj_wildcards):
 
 
 def __read_bids_tags(bids_json=None):
-    """ Read the bids tags we are aware of from a JSON file. This is used
+    """Read the bids tags we are aware of from a JSON file. This is used
     specifically for compatibility with pybids, since some tag keys are
     different from how they appear in the file name, e.g. ``subject`` for
     ``sub``, and ``acquisition`` for ``acq``.
@@ -465,28 +469,25 @@ def __read_bids_tags(bids_json=None):
     Returns
     -------
     dict:
-        Dictionary of bids tags
-"""
+        Dictionary of bids tags"""
     if bids_json is None:
         bids_json = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)),
-            'bids_tags.json'
+            os.path.dirname(os.path.realpath(__file__)), "bids_tags.json"
         )
-    with open(bids_json, 'r') as infile:
+    with open(bids_json, "r") as infile:
         bids_tags = json.load(infile)
     return bids_tags
 
 
 def __parse_search_terms(
-    participant_label=None,
-    exclude_participant_label=None
+    participant_label=None, exclude_participant_label=None
 ):
     search_terms = {}
 
     if participant_label is not None and exclude_participant_label is not None:
         print(
-            'ERROR: cannot define both participant_label and '
-            'exclude_participant_label at the same time'
+            "ERROR: cannot define both participant_label and "
+            "exclude_participant_label at the same time"
         )
         return None
 
@@ -496,20 +497,20 @@ def __parse_search_terms(
     # participant_label and exclude_participant_label defined
     if participant_label is not None:
         if isinstance(participant_label, list):
-            search_terms['subject'] = participant_label
+            search_terms["subject"] = participant_label
         else:
-            search_terms['subject'] = [participant_label]
+            search_terms["subject"] = [participant_label]
 
     if exclude_participant_label is not None:
         # if multiple subjects to exclude, combine with with subj1|subj2|...
         if isinstance(exclude_participant_label, list):
-            exclude_string = '|'.join(exclude_participant_label)
+            exclude_string = "|".join(exclude_participant_label)
         # if not, then string is the label itself
         else:
             exclude_string = exclude_participant_label
-        search_terms['regex_search'] = True
+        search_terms["regex_search"] = True
         # regex to exclude subjects
-        search_terms['subject'] = [f'^((?!({exclude_string})).)*$']
+        search_terms["subject"] = [f"^((?!({exclude_string})).)*$"]
     return search_terms
 
 
@@ -520,9 +521,9 @@ def generate_inputs(
     search_terms=None,
     limit_to=None,
     participant_label=None,
-    exclude_participant_label=None
+    exclude_participant_label=None,
 ):
-    """ Dynamically generate snakemake inputs using pybids_inputs dict, and
+    """Dynamically generate snakemake inputs using pybids_inputs dict, and
     pybids to parse the bids dataset.
 
     Parameters
@@ -559,8 +560,7 @@ def generate_inputs(
     """
 
     search_terms = __parse_search_terms(
-        participant_label,
-        exclude_participant_label
+        participant_label, exclude_participant_label
     )
     # This should really just be an exception
     if search_terms is None:
@@ -572,15 +572,12 @@ def generate_inputs(
             bids_dir,
             derivatives=derivatives,
             validate=False,
-            indexer=BIDSLayoutIndexer(
-                validate=False,
-                index_metadata=False
-            )
+            indexer=BIDSLayoutIndexer(validate=False, index_metadata=False),
         )
     else:
         print(
-            'WARNING: bids_dir does not exist, skipping PyBIDS and using '
-            'custom file paths only'
+            "WARNING: bids_dir does not exist, skipping PyBIDS and using "
+            "custom file paths only"
         )
         layout = None
 
@@ -590,43 +587,41 @@ def generate_inputs(
         bids_layout=layout,
         pybids_inputs=pybids_inputs,
         limit_to=limit_to,
-        **search_terms
+        **search_terms,
     )
 
     if layout is None:
         # if no layout, then use subjects/sessions from --path vars
         subjects = list()
         sessions = list()
-        for input_type in inputs_config_dict['input_lists']:
+        for input_type in inputs_config_dict["input_lists"]:
             subjects.append(
-                set(
-                    inputs_config_dict['input_lists'][input_type]['subject']
-                )
+                set(inputs_config_dict["input_lists"][input_type]["subject"])
             )
-            if 'session' in (
-                inputs_config_dict['input_lists'][input_type].keys()
+            if "session" in (
+                inputs_config_dict["input_lists"][input_type].keys()
             ):
                 sessions.append(
-                    {inputs_config_dict['input_lists'][input_type]['session']}
+                    {inputs_config_dict["input_lists"][input_type]["session"]}
                 )
             else:
                 sessions.append(set([]))
 
         # take set intersection of all input types
-        inputs_config_dict['subjects'] = list(set.intersection(*subjects))
-        inputs_config_dict['sessions'] = list(set.intersection(*sessions))
+        inputs_config_dict["subjects"] = list(set.intersection(*subjects))
+        inputs_config_dict["sessions"] = list(set.intersection(*sessions))
 
     else:
         # populate subjects, sessions and subj_wildcards in the config
-        inputs_config_dict['subjects'] = layout.get_subjects(**search_terms)
-        inputs_config_dict['sessions'] = layout.get_sessions(**search_terms)
+        inputs_config_dict["subjects"] = layout.get_subjects(**search_terms)
+        inputs_config_dict["sessions"] = layout.get_sessions(**search_terms)
 
-    if len(inputs_config_dict['sessions']) == 0:
-        inputs_config_dict['subj_wildcards'] = {'subject': '{subject}'}
+    if len(inputs_config_dict["sessions"]) == 0:
+        inputs_config_dict["subj_wildcards"] = {"subject": "{subject}"}
     else:
-        inputs_config_dict['subj_wildcards'] = {
-            'subject': '{subject}',
-            'session': '{session}'
+        inputs_config_dict["subj_wildcards"] = {
+            "subject": "{subject}",
+            "session": "{session}",
         }
 
     return inputs_config_dict
@@ -637,7 +632,7 @@ def __process_wildcards(input_path):
     wildcard_names = list(wildcards._fields)
 
     if len(wildcard_names) == 0:
-        print(f'WARNING: no wildcards defined in {input_path}')
+        print(f"WARNING: no wildcards defined in {input_path}")
 
     input_wildcards = {}
     input_zip_lists = {}
@@ -646,9 +641,9 @@ def __process_wildcards(input_path):
     for i, wildcard in enumerate(wildcard_names):
         input_zip_lists[wildcard] = wildcards[i]
         input_lists[wildcard] = list(set(wildcards[i]))
-        input_wildcards[wildcard] = f'{{{wildcard}}}'
+        input_wildcards[wildcard] = f"{{{wildcard}}}"
         if len(wildcards[i]) == 0:
-            print(f'ERROR: No matching files for {input_path}')
+            print(f"ERROR: No matching files for {input_path}")
 
     return input_zip_lists, input_lists, input_wildcards
 
@@ -668,16 +663,13 @@ def __process_layout_wildcard(path, wildcard_name):
     # bids_tags.json, where e.g. acquisition -> acq is
     # defined.. -- then, can use wildcard_name instead
     # of out_name..
-    if wildcard_name not in ['subject', 'session']:
+    if wildcard_name not in ["subject", "session"]:
         out_name = tag
     else:
         out_name = wildcard_name
 
-    pattern = '{tag}-([a-zA-Z0-9]+)'.format(tag=tag)
-    replace = '{tag}-{{{replace}}}'.format(
-        tag=tag,
-        replace=out_name
-    )
+    pattern = "{tag}-([a-zA-Z0-9]+)".format(tag=tag)
+    replace = "{tag}-{{{replace}}}".format(tag=tag, replace=out_name)
     match = re.search(pattern, path)
     # update the path with the {wildcards} -- uses the
     # value from the string (not from the pybids
@@ -689,12 +681,9 @@ def __process_layout_wildcard(path, wildcard_name):
 
 
 def __get_lists_from_bids(
-    bids_layout,
-    pybids_inputs,
-    limit_to=None,
-    **filters
+    bids_layout, pybids_inputs, limit_to=None, **filters
 ):
-    """ Grabs files using pybids and creates snakemake-friendly lists
+    """Grabs files using pybids and creates snakemake-friendly lists
 
     Parameters
     ----------
@@ -721,10 +710,10 @@ def __get_lists_from_bids(
 
     out_dict = dict(
         {
-            'input_path': {},
-            'input_zip_lists': {},
-            'input_lists': {},
-            'input_wildcards': {}
+            "input_path": {},
+            "input_zip_lists": {},
+            "input_lists": {},
+            "input_wildcards": {},
         }
     )
 
@@ -736,58 +725,54 @@ def __get_lists_from_bids(
         input_wildcards = {}
         input_zip_lists = {}
         input_lists = {}
-        if 'custom_path' in pybids_inputs[input_name].keys():
+        if "custom_path" in pybids_inputs[input_name].keys():
             # a custom path was specified for this input, skip pybids:
             # get input_wildcards by parsing path for {} entries (using a set
             # to get unique only)
             # get input_zip_lists by using glob_wildcards (but need to modify
             # to deal with multiple wildcards
 
-            input_path = pybids_inputs[input_name]['custom_path']
+            input_path = pybids_inputs[input_name]["custom_path"]
             (
-                input_zip_lists, input_lists, input_wildcards
-            ) = __process_wildcards(
-                input_path
-            )
+                input_zip_lists,
+                input_lists,
+                input_wildcards,
+            ) = __process_wildcards(input_path)
         else:
             paths = set()
             for img in bids_layout.get(
-                **pybids_inputs[input_name]['filters'],
-                **filters
+                **pybids_inputs[input_name]["filters"], **filters
             ):
                 input_path = img.path
-                for wildcard_name in pybids_inputs[input_name]['wildcards']:
+                for wildcard_name in pybids_inputs[input_name]["wildcards"]:
                     if wildcard_name not in img.get_entities():
                         continue
                     (
                         input_path,
                         input_list,
-                        out_name
-                    ) = __process_layout_wildcard(
-                        input_path,
-                        wildcard_name
-                    )
+                        out_name,
+                    ) = __process_layout_wildcard(input_path, wildcard_name)
                     if out_name not in input_zip_lists:
                         input_zip_lists[out_name] = []
                         input_lists[out_name] = set()
                         input_wildcards[out_name] = {}
                     input_zip_lists[out_name].append(input_list)
                     input_lists[out_name].add(input_list)
-                    input_wildcards[out_name] = f'{{{out_name}}}'
+                    input_wildcards[out_name] = f"{{{out_name}}}"
                 paths.add(input_path)
 
             # now, check to see if unique
             if len(paths) == 0:
-                print(f'WARNING: no images found for {input_name}')
+                print(f"WARNING: no images found for {input_name}")
                 continue
             if len(paths) > 1:
                 print(
-                    'WARNING: more than one snakemake filename for '
-                    f'{input_name}, taking the first'
+                    "WARNING: more than one snakemake filename for "
+                    f"{input_name}, taking the first"
                 )
                 print(
-                    f'  To correct this, use the --filter_{input_name} '
-                    'option to narrow the search'
+                    f"  To correct this, use the --filter_{input_name} "
+                    "option to narrow the search"
                 )
                 print(paths)
 
@@ -796,16 +781,16 @@ def __get_lists_from_bids(
             # convert sets to lists
             input_lists = {key: list(val) for key, val in input_lists.items()}
 
-        out_dict['input_path'][input_name] = input_path
-        out_dict['input_zip_lists'][input_name] = input_zip_lists
-        out_dict['input_lists'][input_name] = input_lists
-        out_dict['input_wildcards'][input_name] = input_wildcards
+        out_dict["input_path"][input_name] = input_path
+        out_dict["input_zip_lists"][input_name] = input_zip_lists
+        out_dict["input_lists"][input_name] = input_lists
+        out_dict["input_wildcards"][input_name] = input_wildcards
 
     return out_dict
 
 
 def get_wildcard_constraints(image_types):
-    """ Return a wildcard_constraints dict for snakemake to use, containing
+    """Return a wildcard_constraints dict for snakemake to use, containing
     all the wildcards that are in the dynamically grabbed inputs
 
     Parameters
@@ -818,7 +803,7 @@ def get_wildcard_constraints(image_types):
         inputs, with typical bids naming constraints, ie letters and numbers
         ``[a-zA-Z0-9]+``.
     """
-    bids_constraints = '[a-zA-Z0-9]+'
+    bids_constraints = "[a-zA-Z0-9]+"
     return {
         entity: bids_constraints
         for imgtype in image_types.keys()
@@ -827,7 +812,7 @@ def get_wildcard_constraints(image_types):
 
 
 def write_derivative_json(snakemake, **kwargs):
-    """ Snakemake function to read a json file, and write to a new one,
+    """Snakemake function to read a json file, and write to a new one,
     adding BIDS derivatives fields for Sources and Parameters.
 
     Parameters
@@ -839,16 +824,16 @@ def write_derivative_json(snakemake, **kwargs):
         it will read and write json files
     """
 
-    with open(snakemake.input.json, 'r') as input_json:
+    with open(snakemake.input.json, "r") as input_json:
         sidecar = json.load(input_json)
 
     sidecar.update(
         {
-            'Sources': [snakemake.input],
-            'Parameters': snakemake.params,
-            **kwargs
+            "Sources": [snakemake.input],
+            "Parameters": snakemake.params,
+            **kwargs,
         }
     )
 
-    with open(snakemake.output.json, 'w') as outfile:
+    with open(snakemake.output.json, "w") as outfile:
         json.dump(sidecar, outfile, indent=4)

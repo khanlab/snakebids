@@ -4,7 +4,7 @@ with open("README.rst", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="snakebids", 
+    name="snakebids",
     version="0.3.0",
     author="Ali Khan",
     author_email="alik@robarts.ca",
@@ -24,5 +24,5 @@ setuptools.setup(
         "snakemake>=5.28.0",
         "PyYAML>=5.3.1",
     ],
-    python_requires='>=3.7'
+    python_requires=">=3.7",
 )

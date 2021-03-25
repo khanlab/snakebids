@@ -11,30 +11,25 @@ import yaml
 import bids
 from snakemake import get_argument_parser
 
-bids.config.set_option('extension_initial_dot', True)
+bids.config.set_option("extension_initial_dot", True)
 
 
 class KeyValue(argparse.Action):
     """Class for accepting key=value pairs in argparse"""
+
     # Constructor calling
-    def __call__(
-        self,
-        parser,
-        namespace,
-        values,
-        option_string=None
-    ):
+    def __call__(self, parser, namespace, values, option_string=None):
         setattr(namespace, self.dest, dict())
 
         for value in values:
             # split it into key and value
-            key, value = value.split('=')
+            key, value = value.split("=")
             # assign into dictionary
             getattr(namespace, self.dest)[key] = value
 
 
 def run(command, env=None):
-    """ Helper function for running a system command while merging
+    """Helper function for running a system command while merging
     stderr/stdout to stdout.
 
     Parameters
@@ -50,14 +45,18 @@ def run(command, env=None):
 
     merged_env = os.environ
     merged_env.update(env)
-    process = subprocess.Popen(command, stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT, shell=True,
-                               env=merged_env)
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        shell=True,
+        env=merged_env,
+    )
     while True:
         line = process.stdout.readline()
-        line = str(line, 'utf-8')[:-1]
+        line = str(line, "utf-8")[:-1]
         print(line)
-        if line == '' and process.poll() is not None:
+        if line == "" and process.poll() is not None:
             break
     if process.returncode != 0:
         raise Exception("Non zero return code: %d" % process.returncode)
@@ -71,14 +70,11 @@ SNAKEFILE_CHOICES = [
 ]
 
 
-CONFIGFILE_CHOICES = [
-    "config/snakebids.yml",
-    "snakebids.yml"
-]
+CONFIGFILE_CHOICES = ["config/snakebids.yml", "snakebids.yml"]
 
 
 class SnakeBidsApp:
-    """ Class for a snakebids app
+    """Class for a snakebids app
     to do: add docs
     """
 
@@ -94,8 +90,7 @@ class SnakeBidsApp:
         for config_path in CONFIGFILE_CHOICES:
             if os.path.exists(os.path.join(snakemake_dir, config_path)):
                 self.snakebids_config = os.path.join(
-                    snakemake_dir,
-                    config_path
+                    snakemake_dir, config_path
                 )
                 break
         if self.snakebids_config is None:
@@ -103,7 +98,7 @@ class SnakeBidsApp:
                 "Error: no snakebids.yml config file found, tried {}.".format(
                     ", ".join(SNAKEFILE_CHOICES)
                 ),
-                file=sys.stderr
+                file=sys.stderr,
             )
             sys.exit(1)
 
@@ -118,7 +113,7 @@ class SnakeBidsApp:
                 "Error: no Snakefile found, tried {}.".format(
                     ", ".join(SNAKEFILE_CHOICES)
                 ),
-                file=sys.stderr
+                file=sys.stderr,
             )
             sys.exit(1)
 
@@ -126,7 +121,7 @@ class SnakeBidsApp:
 
         # add path to snakefile to the config -- so workflows can grab files
         # relative to the snakefile folder
-        self.config['snakemake_dir'] = snakemake_dir
+        self.config["snakemake_dir"] = snakemake_dir
         self.updated_config = []
 
         self.parser_include_snakemake = self.__create_parser(
@@ -139,7 +134,7 @@ class SnakeBidsApp:
 
     def __load_config(self):
         # load up workflow config file
-        with open(self.snakebids_config, 'r') as infile:
+        with open(self.snakebids_config, "r") as infile:
             self.config = yaml.load(infile, Loader=yaml.FullLoader)
 
     def __create_parser(self, include_snakemake=False):
@@ -155,60 +150,61 @@ class SnakeBidsApp:
 
             # create parser
             parser = argparse.ArgumentParser(
-                description='Snakebids helps build BIDS Apps with Snakemake',
+                description="Snakebids helps build BIDS Apps with Snakemake",
                 add_help=False,
-                parents=[smk_parser]
+                parents=[smk_parser],
             )
         else:
             parser = argparse.ArgumentParser(
-                description='Snakebids helps build BIDS Apps with Snakemake'
+                description="Snakebids helps build BIDS Apps with Snakemake"
             )
 
         # create parser group for app options
         app_group = parser.add_argument_group(
-            'SNAKEBIDS',
-            'Options for snakebids app'
+            "SNAKEBIDS", "Options for snakebids app"
         )
 
         # update the parser with config options
-        for name, parse_args in self.config['parse_args'].items():
+        for name, parse_args in self.config["parse_args"].items():
             app_group.add_argument(name, **parse_args)
 
         # general parser for
         # --filter_{input_type} {key1}={value1} {key2}={value2}...
         # create filter parsers, one for each input_type
         filter_opts = parser.add_argument_group(
-            'BIDS FILTERS',
-            'Filters to customize PyBIDS get() as key=value pairs'
+            "BIDS FILTERS",
+            "Filters to customize PyBIDS get() as key=value pairs",
         )
 
-        for input_type in self.config['pybids_inputs'].keys():
-            argname = f'--filter_{input_type}'
+        for input_type in self.config["pybids_inputs"].keys():
+            argname = f"--filter_{input_type}"
             arglist_default = [
-                f'{key}={value}' for (key, value) in
-                self.config['pybids_inputs'][input_type]['filters'].items()
+                f"{key}={value}"
+                for (key, value) in self.config["pybids_inputs"][input_type][
+                    "filters"
+                ].items()
             ]
-            arglist_default_string = ' '.join(arglist_default)
+            arglist_default_string = " ".join(arglist_default)
 
             filter_opts.add_argument(
                 argname,
-                nargs='+',
+                nargs="+",
                 action=KeyValue,
-                help=f'(default: {arglist_default_string})'
+                help=f"(default: {arglist_default_string})",
             )
 
         override_opts = parser.add_argument_group(
-            'PATH OVERRIDE',
+            "PATH OVERRIDE",
             (
-                'Options for overriding BIDS by specifying absolute paths '
-                'that include wildcards, e.g.: '
-                '/path/to/my_data/{subject}/t1.nii.gz'
+                "Options for overriding BIDS by specifying absolute paths "
+                "that include wildcards, e.g.: "
+                "/path/to/my_data/{subject}/t1.nii.gz"
             ),
         )
 
         # create path override parser
-        for input_type in self.config['pybids_inputs'].keys():
-            argname = f'--path_{input_type}'
+        for input_type in self.config["pybids_inputs"].keys():
+            argname = f"--path_{input_type}"
             override_opts.add_argument(argname, default=None)
 
         return parser
@@ -223,49 +219,44 @@ class SnakeBidsApp:
         args = all_args[0]
         snakemake_args = all_args[1]
 
-        if args.help_snakemake:
-            print(self.parser_include_snakemake.print_help())
-
         # add arguments to config
         self.config.update(args.__dict__)
-        self.config.update({'snakemake_args': snakemake_args})
+        self.config.update({"snakemake_args": snakemake_args})
 
         # argparse adds filter_{input_type} to the config
         # we want to update the pybids_inputs dict with this, then remove the
         # filter_{input_type} dict
-        for input_type in self.config['pybids_inputs'].keys():
-            arg_filter_dict = self.config[f'filter_{input_type}']
+        for input_type in self.config["pybids_inputs"].keys():
+            arg_filter_dict = self.config[f"filter_{input_type}"]
             if arg_filter_dict is not None:
-                self.config['pybids_inputs'][input_type]['filters'].update(
+                self.config["pybids_inputs"][input_type]["filters"].update(
                     arg_filter_dict
                 )
-            del self.config[f'filter_{input_type}']
+            del self.config[f"filter_{input_type}"]
 
         # add custom input paths to
         # config['pybids_inputs'][input_type]['custom_path']
-        for input_type in self.config['pybids_inputs'].keys():
-            custom_path = self.config[f'path_{input_type}']
+        for input_type in self.config["pybids_inputs"].keys():
+            custom_path = self.config[f"path_{input_type}"]
             if custom_path is not None:
-                self.config['pybids_inputs'][input_type][
-                    'custom_path'
+                self.config["pybids_inputs"][input_type][
+                    "custom_path"
                 ] = os.path.realpath(custom_path)
-            del self.config[f'path_{input_type}']
+            del self.config[f"path_{input_type}"]
 
         # replace paths with realpaths
-        self.config['bids_dir'] = os.path.realpath(self.config['bids_dir'])
-        self.config['output_dir'] = os.path.realpath(self.config['output_dir'])
+        self.config["bids_dir"] = os.path.realpath(self.config["bids_dir"])
+        self.config["output_dir"] = os.path.realpath(self.config["output_dir"])
 
     def write_updated_config(self):
         """Create an updated snakebids config file in the output dir."""
         self.updated_config = os.path.join(
-            self.config['output_dir'],
-            'config',
-            'snakebids.yml'
+            self.config["output_dir"], "config", "snakebids.yml"
         )
 
         # write it to file
         os.makedirs(os.path.dirname(self.updated_config), exist_ok=True)
-        with open(self.updated_config, 'w') as outfile:
+        with open(self.updated_config, "w") as outfile:
             yaml.dump(self.config, outfile, default_flow_style=False)
 
     def run_snakemake(self):
@@ -280,19 +271,19 @@ class SnakeBidsApp:
 
         # running the chosen participant level
 
-        analysis_level = self.config['analysis_level']
+        analysis_level = self.config["analysis_level"]
         # runs snakemake, using the workflow config and inputs config to
         # override
 
         # run snakemake command-line (passing any leftover args from argparse)
         snakemake_cmd_list = [
-            'snakemake',
-            f'--snakefile {self.snakefile}',
+            "snakemake",
+            f"--snakefile {self.snakefile}",
             f"--directory {self.config['output_dir']}",
-            f'--configfile {self.updated_config} ',
-            *self.config['snakemake_args'],
-            *self.config['targets_by_analysis_level'][analysis_level]
+            f"--configfile {self.updated_config} ",
+            *self.config["snakemake_args"],
+            *self.config["targets_by_analysis_level"][analysis_level],
         ]
 
-        snakemake_cmd = ' '.join(snakemake_cmd_list)
+        snakemake_cmd = " ".join(snakemake_cmd_list)
         run(snakemake_cmd)
