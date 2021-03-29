@@ -84,6 +84,7 @@ class SnakeBidsApp:
     skip_parse_args : bool, optional
         If true, the Snakebids app will not attempt to parse input arguments,
         and will only handle the config file.
+
     Attributes
     ----------
     config : dict
