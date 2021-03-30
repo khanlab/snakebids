@@ -674,14 +674,27 @@ def __process_layout_wildcard(path, wildcard_name):
     else:
         out_name = wildcard_name
 
-    pattern = "{tag}-([a-zA-Z0-9]+)".format(tag=tag)
-    replace = "{tag}-{{{replace}}}".format(tag=tag, replace=out_name)
-    match = re.search(pattern, path)
+    if wildcard_name == "suffix":
+        # capture suffix
+        matching_pattern = ".*_([a-zA-Z0-9]+).*$"
+        # capture before and after suffix
+        replace_pattern = "(.*_)[a-zA-Z0-9]+(.*)$"
+        # replace with before, {suffix}, after
+        replace = "\\1{{{replace}}}\\2".format(replace=out_name)
+        match = re.search(matching_pattern, path)
+        path = re.sub(replace_pattern, replace, path)
+
+    else:
+        pattern = "{tag}-([a-zA-Z0-9]+)".format(tag=tag)
+        replace = "{tag}-{{{replace}}}".format(tag=tag, replace=out_name)
+
+        match = re.search(pattern, path)
+        path = re.sub(pattern, replace, path)
+
     # update the path with the {wildcards} -- uses the
     # value from the string (not from the pybids
     # entities), since that has issues with integer
     # formatting (e.g. for run=01)
-    path = re.sub(pattern, replace, path)
 
     return path, match[1], out_name
 
@@ -751,6 +764,7 @@ def __get_lists_from_bids(
             ):
                 input_path = img.path
                 for wildcard_name in pybids_inputs[input_name]["wildcards"]:
+
                     if wildcard_name not in img.get_entities():
                         continue
                     (
