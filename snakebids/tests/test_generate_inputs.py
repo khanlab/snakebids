@@ -47,6 +47,37 @@ def test_t1w():
     assert config["sessions"] == []
     assert config["subj_wildcards"] == {"subject": "{subject}"}
 
+    pybids_inputs_suffix = {
+        "scan": {
+            "filters": {},
+            "wildcards": [
+                "acquisition",
+                "subject",
+                "session",
+                "run",
+                "suffix",
+            ],
+        }
+    }
+    config = generate_inputs(
+        pybids_inputs=pybids_inputs_suffix,
+        bids_dir=real_bids_dir,
+        derivatives=derivatives,
+        participant_label="001",
+    )
+    assert config["input_lists"] == {
+        "scan": {"acq": ["mprage"], "subject": ["001"], "suffix": ["T1w"]}
+    }
+    assert config["input_zip_lists"] == {
+        "scan": {"acq": ["mprage"], "subject": ["001"], "suffix": ["T1w"]}
+    }
+    assert config["input_wildcards"] == {
+        "scan": {"acq": "{acq}", "subject": "{subject}", "suffix": "{suffix}"}
+    }
+    assert config["subjects"] == ["001"]
+    assert config["sessions"] == []
+    assert config["subj_wildcards"] == {"subject": "{subject}"}
+
     # Two input types, specified by pybids or path override
     wildcard_path_t1 = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
