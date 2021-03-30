@@ -74,8 +74,28 @@ CONFIGFILE_CHOICES = ["config/snakebids.yml", "snakebids.yml"]
 
 
 class SnakeBidsApp:
-    """Class for a snakebids app
-    to do: add docs
+    """Snakebids app with config and arguments.
+
+    Parameters
+    ----------
+    snakemake_dir : str
+        Root directory of the snakebids app, containing the config file and
+        workflow files.
+    skip_parse_args : bool, optional
+        If true, the Snakebids app will not attempt to parse input arguments,
+        and will only handle the config file.
+
+    Attributes
+    ----------
+    config : dict
+        Contains all the configuration variables parsed from the config file
+        and generated during the initialization of the SnakeBidsApp.
+    parser_include_snakemake : ArgumentParser
+        Parser including the generic Snakemake parser as a parent. This will
+        contain all arguments a Snakemake app can receive.
+    parser : ArgumentParser
+        Parser including only the arguments specific to this Snakebids app, as
+        specified in the config file.
     """
 
     def __init__(self, snakemake_dir, skip_parse_args=False):
