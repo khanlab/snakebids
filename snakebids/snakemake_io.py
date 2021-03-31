@@ -93,8 +93,8 @@ def glob_wildcards(pattern, files=None, followlinks=False):
         match.group("name") for match in _wildcard_regex.finditer(pattern)
     ]
 
-    # remove duplicates:
-    names = list(set(names))
+    # remove duplicates while preserving ordering
+    names = list(collections.OrderedDict.fromkeys(names))
 
     # pylint: disable-msg=invalid-name
     Wildcards = collections.namedtuple("Wildcards", names)
