@@ -5,7 +5,7 @@ with open("README.rst", "r") as fh:
 
 setuptools.setup(
     name="snakebids",
-    version="0.2.1",
+    version="1.0.0",
     author="Ali Khan",
     author_email="alik@robarts.ca",
     description="BIDS integration into snakemake workflows",
