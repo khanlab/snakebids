@@ -30,6 +30,7 @@ class KeyValue(argparse.Action):
 
 class SnakemakeHelpAction(argparse.Action):
     """Class for printing snakemake usage in argparse"""
+
     def __call__(self, parser, namespace, values, option_string=None):
         run("snakemake -h")
         sys.exit(0)
@@ -268,7 +269,7 @@ class SnakeBidsApp:
 
     def __parse_args(self):
 
-        # use snakebids parser to parse the known arguments 
+        # use snakebids parser to parse the known arguments
         # will pass the rest of args when running snakemake
         all_args = self.parser.parse_known_args()
 
