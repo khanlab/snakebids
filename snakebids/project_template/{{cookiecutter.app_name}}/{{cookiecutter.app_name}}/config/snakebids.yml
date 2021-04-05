@@ -1,0 +1,95 @@
+bids_dir: '/path/to/bids_dir'
+output_dir: '/path/to/output_dir'
+
+#enable printing debug statements during parsing -- disable if generating dag visualization
+debug: False
+
+derivatives: False #will search in bids/derivatives if True; can also be path(s) to derivatives datasets
+
+#list of analysis levels in the bids app 
+analysis_levels: &analysis_levels
+ - participant
+  
+
+#mapping from analysis_level to set of target rules or files
+targets_by_analysis_level:
+  participant:
+    - ''  # if '', then the first rule is run
+
+#this configures the pybids grabber - create an entry for each type of input you want to grab
+# indexed by name of input
+#   dictionary for each input is passed directly to pybids get()
+#    https://bids-standard.github.io/pybids/generated/bids.layout.BIDSLayout.html#bids.layout.BIDSLayout.get
+
+pybids_inputs:
+  bold:
+    filters:
+      suffix: 'bold'
+      extension: '.nii.gz'
+      datatype: 'func'
+    wildcards:
+      - subject
+      - session
+      - acquisition
+      - task
+      - run
+   
+
+#configuration for the command-line parameters to make available
+# passed on the argparse add_argument()
+parse_args:
+
+#---  core BIDS-app options --- (do not modify below) 
+
+  bids_dir:
+    help: The directory with the input dataset formatted according 
+          to the BIDS standard.
+
+  output_dir:
+    help: The directory where the output files 
+          should be stored. If you are running group level analysis
+          this folder should be prepopulated with the results of the
+          participant level analysis.
+
+  analysis_level: 
+    help: Level of the analysis that will be performed. 
+    choices: *analysis_levels
+
+  --participant_label:
+    help: The label(s) of the participant(s) that should be analyzed. The label 
+          corresponds to sub-<participant_label> from the BIDS spec 
+          (so it does not include "sub-"). If this parameter is not 
+          provided all subjects should be analyzed. Multiple 
+          participants can be specified with a space separated list.
+    nargs: '+'
+
+  --exclude_participant_label:
+    help: The label(s) of the participant(s) that should be excluded. The label 
+          corresponds to sub-<participant_label> from the BIDS spec 
+          (so it does not include "sub-"). If this parameter is not 
+          provided all subjects should be analyzed. Multiple 
+          participants can be specified with a space separated list.
+    nargs: '+'
+
+  --derivatives:
+    help: 'Path(s) to a derivatives dataset, for folder(s) that contains multiple derivatives datasets (default: %(default)s) '
+    default: False
+    nargs: '+'
+
+ # custom command-line parameters can then be added, these will get added to the config
+ # below is an example to override config['bet_frac']
+  --smoothing_fwhm:
+      nargs: '+'
+      required: True
+
+
+#--- workflow specific configuration -- below is just an example:
+
+
+#singularity containers
+singularity:
+    fsl: 'docker://brainlife/fsl/6.0.0'
+
+
+
+
