@@ -192,7 +192,10 @@ class SnakeBidsApp:
             "--help_snakemake",
             nargs=0,
             action=SnakemakeHelpAction,
-            help="Options to Snakemake can also be passed directly at the command-line, use this to print Snakemake usage",
+            help=(
+                "Options to Snakemake can also be passed directly at the "
+                "command-line, use this to print Snakemake usage"
+            ),
         )
 
         # create parser group for app options
