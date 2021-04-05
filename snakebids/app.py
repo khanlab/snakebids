@@ -28,6 +28,14 @@ class KeyValue(argparse.Action):
             getattr(namespace, self.dest)[key] = value
 
 
+class SnakemakeHelpAction(argparse.Action):
+    """Class for printing snakemake usage in argparse"""
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        run("snakemake -h")
+        sys.exit(0)
+
+
 def run(command, env=None):
     """Helper function for running a system command while merging
     stderr/stdout to stdout.
@@ -179,6 +187,14 @@ class SnakeBidsApp:
                 description="Snakebids helps build BIDS Apps with Snakemake"
             )
 
+        # add option for printing out snakemake usage
+        parser.add_argument(
+            "--help_snakemake",
+            nargs=0,
+            action=SnakemakeHelpAction,
+            help="Options to Snakemake can also be passed directly at the command-line, use this to print Snakemake usage",
+        )
+
         # create parser group for app options
         app_group = parser.add_argument_group(
             "SNAKEBIDS", "Options for snakebids app"
@@ -252,17 +268,18 @@ class SnakeBidsApp:
         return parser
 
     def __parse_args(self):
-        # use combined parser first - to show snakebids+snakemake opts
-        self.parser_include_snakemake.parse_args()
 
-        # then use snakebids parser to actually parse the arguments
+        # use snakebids parser to parse the known arguments
+        # will pass the rest of args when running snakemake
         all_args = self.parser.parse_known_args()
 
         args = all_args[0]
         snakemake_args = all_args[1]
 
-        # add arguments to config
+        # add snakebids arguments to config
         self.config.update(args.__dict__)
+
+        # add snakemake arguments to config
         self.config.update({"snakemake_args": snakemake_args})
 
         # argparse adds filter_{input_type} to the config
