@@ -19,10 +19,16 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
+    entry_points={
+        "console_scripts": [
+            "snakebids-create=snakebids.template:main",
+        ],
+    },
     install_requires=[
         "pybids==0.12.3",
         "snakemake>=5.28.0",
         "PyYAML>=5.3.1",
+        "cookiecutter>=1.7.2",
     ],
     python_requires=">=3.7",
 )
