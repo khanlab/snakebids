@@ -123,7 +123,7 @@ class SnakeBidsApp:
             )
 
         self.__load_config()
-        if "debug" in self.config and self.config["debug"]:
+        if self.config.get("debug", False):
             logging.basicConfig(level=logging.DEBUG)
 
         # add path to snakefile to the config -- so workflows can grab files
