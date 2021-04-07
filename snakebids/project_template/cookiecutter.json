@@ -1,0 +1,10 @@
+{
+  "full_name": "Ali Khan",
+  "email": "ali.khan@uwo.ca",
+  "github_username": "akhanf",
+  "app_full_name": "My BIDS App",
+  "app_name": "{{ cookiecutter.app_full_name.lower().replace(' ', '_').replace('-', '_') }}",
+  "app_description": "My template snakebids app.",
+  "snakebids_version": "0.2.0",
+  "_py": "py"
+}

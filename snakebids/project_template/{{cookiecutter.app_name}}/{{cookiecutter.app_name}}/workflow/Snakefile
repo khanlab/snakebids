@@ -1,0 +1,33 @@
+#---- begin snakebids boilerplate ----------------------------------------------
+
+import snakebids
+from snakebids import bids
+
+configfile: 'config/snakebids.yml'
+
+#writes inputs_config.yml and updates config dict
+config = snakebids.generate_inputs_config(config)
+
+#this adds constraints to the bids naming
+wildcard_constraints:  **snakebids.get_wildcard_constraints(config)
+
+#---- end snakebids boilerplate ------------------------------------------------
+
+
+
+rule all:
+    input: 
+        expand( bids(root='results', datatype='func',suffix='bold.nii.gz', desc='smooth{fwhm}mm', **config['input_wildcards']['bold']), 
+            fwhm = config['smoothing_fwhm'],**config['input_lists']['bold'])
+
+
+rule smooth:
+    input: config['input_path']['bold']
+    params: sigma = lambda wildcards: f'{float(wildcards.fwhm)/2.355:0.2f}'
+    output: bids(root='results', datatype='func',\
+                  desc='smooth{fwhm}mm', suffix='bold.nii.gz',\
+                  **config['input_wildcards']['bold'])
+    container: config['singularity']['fsl']
+    log: bids(root='logs',suffix='smooth.log',fwhm='{fwhm}',**config['input_wildcards']['bold'])
+    shell: 'fslmaths {input} -s {params.sigma} {output}'
+
