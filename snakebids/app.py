@@ -4,14 +4,23 @@
 
 import os
 import subprocess
-import sys
 import argparse
+import logging
 
 import yaml
 import bids
 from snakemake import get_argument_parser
 
 bids.config.set_option("extension_initial_dot", True)
+logger = logging.Logger(__name__)
+
+
+class ConfigError(Exception):
+    """Exception raised for errors with the Snakebids config."""
+
+    def __init__(self, msg):
+        self.msg = msg
+        Exception.__init__()
 
 
 class KeyValue(argparse.Action):
@@ -122,13 +131,11 @@ class SnakeBidsApp:
                 )
                 break
         if self.snakebids_config is None:
-            print(
+            raise ConfigError(
                 "Error: no snakebids.yml config file found, tried {}.".format(
                     ", ".join(SNAKEFILE_CHOICES)
-                ),
-                file=sys.stderr,
+                )
             )
-            sys.exit(1)
 
         # look for snakefile in the snakemake_dir, quit if not found
         self.snakefile = None
@@ -137,15 +144,15 @@ class SnakeBidsApp:
                 self.snakefile = os.path.join(snakemake_dir, snakefile_path)
                 break
         if self.snakefile is None:
-            print(
+            raise ConfigError(
                 "Error: no Snakefile found, tried {}.".format(
                     ", ".join(SNAKEFILE_CHOICES)
-                ),
-                file=sys.stderr,
+                )
             )
-            sys.exit(1)
 
         self.__load_config()
+        if self.config.get("debug", False):
+            logging.basicConfig(level=logging.DEBUG)
 
         # add path to snakefile to the config -- so workflows can grab files
         # relative to the snakefile folder
