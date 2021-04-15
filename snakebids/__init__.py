@@ -338,19 +338,19 @@ def filter_list(zip_list, wildcards, return_indices_only=False):
         ... }
         True
     """
-    keep_indices = set()
+    keep_indices = list()
     for key, val in wildcards.items():
         # get indices where wildcard exists
         if key not in zip_list.keys():
             continue
-        indices = {i for i, v in enumerate(zip_list[key]) if v == val}
+        indices = [i for i, v in enumerate(zip_list[key]) if v == val]
         if len(keep_indices) == 0:
             keep_indices = indices
         else:
-            keep_indices = keep_indices.intersection(indices)
+            keep_indices = [x for x in indices if x in keep_indices]
     # Now we have the indices, so filter the lists
     if return_indices_only:
-        return list(keep_indices)
+        return keep_indices
     return {
         key: [zip_list[key][i] for i in keep_indices]
         for key, val in zip_list.items()
