@@ -16,5 +16,5 @@ jobs:
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-          tags: true
+          tags: false
 
