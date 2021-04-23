@@ -6,7 +6,7 @@ import os
 import subprocess
 import argparse
 import logging
-
+import sys
 import yaml
 import bids
 from snakemake import get_argument_parser
