@@ -5,6 +5,6 @@
   "app_full_name": "My BIDS App",
   "app_name": "{{ cookiecutter.app_full_name.lower().replace(' ', '_').replace('-', '_') }}",
   "app_description": "My template snakebids app.",
-  "snakebids_version": "0.2.0",
+  "snakebids_version": "0.3.8",
   "_py": "py"
 }
