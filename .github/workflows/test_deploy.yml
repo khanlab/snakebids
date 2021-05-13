@@ -8,14 +8,6 @@ on:
   pull_request:
 
 jobs:
-#  lint:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v2
-#      - uses: actions/setup-python@v2
-#      - uses: psf/black@master
-#        with:
-#          args: "--check -l 79"
   test:
     runs-on: ubuntu-latest
     strategy:
