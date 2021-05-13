@@ -593,9 +593,21 @@ def generate_inputs(
         subjects = list()
         sessions = list()
         for input_type in inputs_config_dict["input_lists"]:
-            subjects.append(
-                set(inputs_config_dict["input_lists"][input_type]["subject"])
-            )
+
+            subj_set = set(inputs_config_dict["input_lists"][input_type]["subject"])
+            
+            #filter the list of subjects with participant_label
+            if participant_label is not None:
+                subj_set = set.intersection(subj_set,set(participant_label))
+
+            # TODO: need to also remove subjects based on exclude_participant_label
+ 
+            #replace with filtered list
+            inputs_config_dict["input_lists"][input_type]["subject"] = list(subj_set)
+            
+            #add to set of subjects from all input_types
+            subjects.append(subj_set)
+
             if "session" in (
                 inputs_config_dict["input_lists"][input_type].keys()
             ):
