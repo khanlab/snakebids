@@ -1,0 +1,6 @@
+
+rule smooth:
+    input: '../bids/sub-001/func/sub-001_task-rest_run-1_bold.nii.gz'
+    output: 'results/sub-001/func/sub-001_task-rest_run-1_fwhm-5mm_bold.nii.gz'
+    shell: 'fslmaths {input} -s 2.12 {output}'
+

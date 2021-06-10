@@ -1,0 +1,18 @@
+subjects:
+  - '001'
+
+tasks:
+  - rest
+
+runs:
+  - 1
+  - 2
+
+fwhm:
+  - 5
+  - 10
+  - 15
+  - 20
+
+
+in_bold: '../bids/sub-{subject}/func/sub-{subject}_task-{task}_run-{run}_bold.nii.gz'

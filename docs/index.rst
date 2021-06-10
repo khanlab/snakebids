@@ -17,6 +17,7 @@
    :maxdepth: 2
 
    general/why_snakebids
+   tutorial/tutorial
 
 .. toctree::
    :caption: Using the bids function 
