@@ -18,3 +18,44 @@ In this rule, we start by creating a rule that is effectively hard-coding the pa
 
 .. asciinema:: step0/step0.cast
 
+Step 1:
+-------
+
+TODO
+
+.. literalinclude:: step1/Snakefile
+  :language: python
+
+.. asciinema:: step1/step1.cast
+
+
+Step 2:
+-------
+
+TODO
+
+.. literalinclude:: step2/Snakefile
+  :language: python
+
+.. asciinema:: step2/step2.cast
+
+Step 3:
+-------
+
+TODO
+
+.. literalinclude:: step3/Snakefile
+  :language: python
+
+.. asciinema:: step3/step3.cast
+
+Step 4:
+-------
+
+TODO
+
+.. literalinclude:: step4/Snakefile
+  :language: python
+
+.. asciinema:: step4/step4.cast
+
