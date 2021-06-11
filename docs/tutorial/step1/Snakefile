@@ -1,6 +1,10 @@
 
 rule smooth:
-    input: '../bids/sub-{subject}/func/sub-{subject}_task-{task}_run-{run}_bold.nii.gz'
-    output: 'results/sub-{subject}/func/sub-{subject}_task-{task}_run-{run}_fwhm-5mm_bold.nii.gz'
-    shell: 'fslmaths {input} -s 2.12 {output}'
+    input: 
+        '../bids/sub-{subject}/func/sub-{subject}_task-{task}_run-{run}_bold.nii.gz'
+    params:
+        sigma = '2.12'
+    output: 
+        'results/sub-{subject}/func/sub-{subject}_task-{task}_run-{run}_fwhm-5mm_bold.nii.gz'
+    shell: 'fslmaths {input} -s {params.sigma} {output}'
 

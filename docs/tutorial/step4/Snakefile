@@ -19,5 +19,6 @@ rule smooth:
         sigma = calc_sigma_from_fwhm
     output: 
         'results/sub-{subject}/func/sub-{subject}_task-{task}_run-{run}_fwhm-{fwhm}mm_bold.nii.gz'
-    shell: 'fslmaths {input} -s {params.sigma} {output}'
+    shell: 
+        'fslmaths {input} -s {params.sigma} {output}'
 
