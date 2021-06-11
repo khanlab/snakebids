@@ -1,19 +1,19 @@
 Tutorial
 ========
 
-In this example we will make a workflow to smooth `bold` scans from a bids dataset.
+In this example we will make a workflow to smooth ``bold`` scans from a bids dataset.
 
 We will start by creating a simple rule, then make this more generalizable in each step. To begin with, this is the command we are using to smooth a bold scan. ::
 
     fslmaths ../bids/sub-001/func/sub-001_task-rest_run-1_bold.nii.gz -s 2.12 results/sub-001/func/sub-001_task-rest_run-1_fwhm-5mm_bold.nii.gz
 
-This command performs smoothing with a sigma=2.12 Gaussian kernel (equivalent to 5mm FWHM, with sigma=fwhm/2.355), and saves the smoothed file as `results/sub-001/func/sub-001_task-rest_run-1_fwhm-5mm_bold.nii.gz`. 
+This command performs smoothing with a sigma=2.12 Gaussian kernel (equivalent to 5mm FWHM, with sigma=fwhm/2.355), and saves the smoothed file as ``results/sub-001/func/sub-001_task-rest_run-1_fwhm-5mm_bold.nii.gz``. 
 
 Prerequisites:
 --------------
 
-- To go through this tutorial you only need to have snakemake and snakebids installed (`pip install snakebids`)
-- Since we will just make use of snakemake dry-runs (`-n` option ), the tutorial data are just placeholders (zero-sized files), and you don't actually need to have FSL installed for `fslmaths`.
+- To go through this tutorial you only need to have snakemake and snakebids installed (``pip install snakebids``)
+- Since we will just make use of snakemake dry-runs (``-n`` option ), the tutorial data are just placeholders (zero-sized files), and you don't actually need to have FSL installed for ``fslmaths``.
 
 *  TODO: instructions to get or recreate the bids tutorial data
 
@@ -25,16 +25,16 @@ Step 0: a basic non-generic workflow
 
 In this rule, we start by creating a rule that is effectively hard-coding the paths for input and output to re-create the command as above. 
 
-In this rule we have an `input:` section for input **files**, a `params:` section for **non-file**  parameters, and an `output:` section for output files. The shell section is used to build the shell command, and can refer to the input, output or params using curly braces. Note that any of these can also be named inputs, but we have only used this for the `sigma` parameter in this case. 
+In this rule we have an ``input:`` section for input **files**, a ``params:`` section for **non-file**  parameters, and an ``output:`` section for output files. The shell section is used to build the shell command, and can refer to the input, output or params using curly braces. Note that any of these can also be named inputs, but we have only used this for the ``sigma`` parameter in this case. 
 
 .. literalinclude:: step0/Snakefile
   :language: python
 
-With this rule in our Snakefile, we can then run `snakemake -np` to execute a dry-run of the workflow. Here the `-n` specifies dry-run, and the `-p` prints any shell commands that are to be executed. 
+With this rule in our Snakefile, we can then run ``snakemake -np`` to execute a dry-run of the workflow. Here the ``-n`` specifies dry-run, and the ``-p`` prints any shell commands that are to be executed. 
 
 .. asciinema:: step0/step0.cast
 
-When we invoke `snakemake`, it uses the first rule in the snakefile as the `target` rule. The target rule is what snakemake uses as a starting point to determine what other rules need to be run in order to generate the inputs. We'll learn a bit more about that in the next step.
+When we invoke ``snakemake``, it uses the first rule in the snakefile as the ``target`` rule. The target rule is what snakemake uses as a starting point to determine what other rules need to be run in order to generate the inputs. We'll learn a bit more about that in the next step.
 
 So far, we just have a fancy way of specifying the exact same command we started with, so there is no added benefit (yet). But we will soon add to this rule to make it more generalizable. 
 
@@ -48,11 +48,11 @@ In the Snakefile, we can replace sub-001 with sub-{subject}, and so forth for ta
 .. literalinclude:: step1/Snakefile
   :language: python
 
-However, now, if we try to execute (dry-run) the workflow as before, we get an error. This is because the `target` rule now has wildcards in it. So snakemake is unable to determine what rules need to be run to generate the inputs, since the wildcards can take any value. 
+However, now, if we try to execute (dry-run) the workflow as before, we get an error. This is because the ``target`` rule now has wildcards in it. So snakemake is unable to determine what rules need to be run to generate the inputs, since the wildcards can take any value. 
 
 .. asciinema:: step1/step1.cast
 
-So for the time being, we will make use of the snakemake command-line argument to specify `targets`, and specify the file we want generated from the command-line, by running::
+So for the time being, we will make use of the snakemake command-line argument to specify ``targets``, and specify the file we want generated from the command-line, by running::
 
     snakemake -np results/sub-001/func/sub-001_task-rest_run-1_fwhm-5mm_bold.nii.gz
 
@@ -62,15 +62,15 @@ We can now even try running this for another subject by changing the target file
 
 Try using a subject that doesn't exist in our bids dataset, what happens?
 
-Now, try changing the output smoothing value, e.g. `fwhm-10mm`, and see what happens.
+Now, try changing the output smoothing value, e.g. ``fwhm-10mm``, and see what happens.
 As expected the command still uses a smoothing value of 2.12, since that has been hard-coded, but we will see how to rectify this in the next step.
 
 Step 2: adding a params function
 --------------------------------
 
-As we noted, the sigma parameter needs to be computed from the FWHM. We can use a function to do this. Functions can be used for any `input` or `params`, and must take `wildcards` as an input argument, which provides a mechanism to pass the wildcards (determined from the output file) to the function. 
+As we noted, the sigma parameter needs to be computed from the FWHM. We can use a function to do this. Functions can be used for any ``input`` or ``params``, and must take ``wildcards`` as an input argument, which provides a mechanism to pass the wildcards (determined from the output file) to the function. 
 
-We can thus define a simple function that returns a string representing `FWHM/2.355` as follows::
+We can thus define a simple function that returns a string representing ``FWHM/2.355`` as follows::
 
     def calc_sigma_from_fwhm(wildcards):
         return f'{float(wildcards.fwhm)/2.355:0.2f}'
@@ -79,7 +79,7 @@ Note 1: We now have to make the fwhm in the output filename a wildcard, so that 
 
 Note 2: We have to convert the fwhm to float, since all wildcards are always strings (since they are parsed from the output filename). 
 
-Once we have this function, we can replace the hardcoded `2.12` with the name of the function::
+Once we have this function, we can replace the hardcoded ``2.12`` with the name of the function::
 
         params:
             sigma = calc_sigma_from_fwhm
@@ -102,7 +102,7 @@ This is where target rules come in. If you recall from earlier, the first rule i
 
 In this case, we have a BIDS dataset with two runs (run-1, run-2), and suppose we wanted to compute smoothing with several different FWHM kernels (5,10,15,20). We can thus make a target rule that has all these resulting filenames as inputs. 
 
-A very useful function in snakemake is `expand()`. It is a way to perform array expansion to create lists of strings (input filenames). TODO refer to snakemake docs. ::
+A very useful function in snakemake is ``expand()``. It is a way to perform array expansion to create lists of strings (input filenames). TODO refer to snakemake docs. ::
 
     rule all:
         input: 
@@ -136,9 +136,9 @@ To do this, we simply add a line to our workflow::
 
     configfile: 'config.yml'
 
-Snakemake will then handle reading it in, and making the configuration variables available via dictionary called `config`. 
+Snakemake will then handle reading it in, and making the configuration variables available via dictionary called ``config``. 
 
-In our config file, we will add variables for everything in the target rule `expand()`::
+In our config file, we will add variables for everything in the target rule ``expand()``::
 
     subjects:
       - '001'
@@ -162,7 +162,7 @@ We will also add a new variable to point to our input bold file::
     in_bold: '../bids/sub-{subject}/func/sub-{subject}_task-{task}_run-{run}_bold.nii.gz'
 
 
-In our Snakefile, we then need to replace these hardcoded values with `config[key]`. The entire updated Snakefile is shown here:
+In our Snakefile, we then need to replace these hardcoded values with ``config[key]``. The entire updated Snakefile is shown here:
 
 .. literalinclude:: step4/Snakefile
   :language: python
@@ -181,13 +181,13 @@ Now that we have a fully functioning and generic Snakemake workflow, let's see w
 Step 5: the bids() function
 ---------------------------
 
-The first thing we can make use of is the `bids()` function. This provides an easy way to generate bids filenames. This is especially useful when defining output files in your workflow and you have many bids entities. 
+The first thing we can make use of is the ``bids()`` function. This provides an easy way to generate bids filenames. This is especially useful when defining output files in your workflow and you have many bids entities. 
 
 In our existing workflow, this was our output file::
 
     'results/sub-{subject}/func/sub-{subject}_task-{task}_run-{run}_fwhm-{fwhm}mm_bold.nii.gz'
     
-To create the same path using `bids()`, we just need to specify the root directory (`results`), all the bids tags (subject, task, run, fwhm), and the suffix (which includes the extension)::
+To create the same path using ``bids()``, we just need to specify the root directory (``results``), all the bids tags (subject, task, run, fwhm), and the suffix (which includes the extension)::
     
     bids(root='results',
             subject='{subject}',
@@ -199,7 +199,7 @@ To create the same path using `bids()`, we just need to specify the root directo
 
 Note 1: we used curly braces wherever we wanted a wildcard, just as we do when defining the filename directly, though it is not required that these be wildcards.
 
-Note 2: the entities you supply in the `bids()` function do not have to be in the BIDS specification, e.g. `fwhm` is not in the spec. But if you do use entities that are in the BIDS specification, snakebids will ensure that the ordering of them is consistent with the specification. 
+Note 2: the entities you supply in the ``bids()`` function do not have to be in the BIDS specification, e.g. ``fwhm`` is not in the spec. But if you do use entities that are in the BIDS specification, snakebids will ensure that the ordering of them is consistent with the specification. 
 
 The Snakefile with the output filename replaced (in both rules) is below::
 
@@ -212,11 +212,11 @@ Step 6: parsing the BIDS dataset
 
 So far, we have had to manually enter the path to input bold file in the config file, and also specify what subjects, tasks, and runs we want processed. Can't we use the fact that we have a BIDS dataset to automate this a bit more?
 
-With **Snakemake**, there are ways to glob the files to figure out what wildcards are present (e.g. `glob_wildcards`), however, this is not so straightforward with BIDS, since filenames in BIDS often have optional components. E.g. some datasets may have a `ses` tag/sub-directory, and others do not. Also there are often optional user-defined values, such as the `acq` tag, that a workflow in most cases should ignore. Thus, the input that we use in our workflow, `in_bold`, that has wildcards to be generic, would need to be altered for any given BIDS dataset, along with the workflow itself, making this automated BIDS parsing difficult within Snakemake.
+With **Snakemake**, there are ways to glob the files to figure out what wildcards are present (e.g. ``glob_wildcards``), however, this is not so straightforward with BIDS, since filenames in BIDS often have optional components. E.g. some datasets may have a ``ses`` tag/sub-directory, and others do not. Also there are often optional user-defined values, such as the ``acq`` tag, that a workflow in most cases should ignore. Thus, the input that we use in our workflow, ``in_bold``, that has wildcards to be generic, would need to be altered for any given BIDS dataset, along with the workflow itself, making this automated BIDS parsing difficult within Snakemake.
 
-The functionality **Snakebids** adds is a way to parse a bids dataset (using `pyBIDS` under the hood), and create a configfile that has inputs that contain the required wildcards, along with data structures that specify all the wildcard values for all the subjects. This in combination with the `bids()` function, as we will see, can allow one to make snakemake workflows that are compatible with any general bids dataset. 
+The functionality **Snakebids** adds is a way to parse a bids dataset (using ``pyBIDS`` under the hood), and create a configfile that has inputs that contain the required wildcards, along with data structures that specify all the wildcard values for all the subjects. This in combination with the ``bids()`` function, as we will see, can allow one to make snakemake workflows that are compatible with any general bids dataset. 
 
-To add this parsing to the workflow, we call a `snakebids.generate_inputs()` function before our rules are defined, and pass along some configuration data to specify the location of the bids directory (`bids_dir`), and the inputs we want to parse for the workflow (`pybids_inputs`). The function returns a config dictionary that we use to update our existing config dict::
+To add this parsing to the workflow, we call a ``snakebids.generate_inputs()`` function before our rules are defined, and pass along some configuration data to specify the location of the bids directory (``bids_dir``), and the inputs we want to parse for the workflow (``pybids_inputs``). The function returns a config dictionary that we use to update our existing config dict::
 
     config.update(
         snakebids.generate_inputs(
@@ -243,7 +243,7 @@ The config variables we need pre-defined are as follows::
           - task
           - run
 
-For educational purposes, we can also print the config dict after calling `generate_inputs()`::
+For educational purposes, we can also print the config dict after calling ``generate_inputs()``::
 
     import pprint
     pprint.pp(config)
@@ -252,7 +252,7 @@ Try running the workflow to see what new variables are added to the config.
 
 TODO: add asciinema
 
-So far, we are not yet using any of these dynamically-generated config variables. The first one we can make use of is one to replace the input path, `config['in_bold']`. Here we will use the `config['input_path']` dict. For each pybids named input we have defined (in this case we just have `bold`), we will have a key and value that has the path to the find, with wildcards. 
+So far, we are not yet using any of these dynamically-generated config variables. The first one we can make use of is one to replace the input path, ``config['in_bold']``. Here we will use the ``config['input_path']`` dict. For each pybids named input we have defined (in this case we just have ``bold``), we will have a key and value that has the path to the find, with wildcards. 
 
 Thus, we can update this in our workflow::
 
