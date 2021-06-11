@@ -70,7 +70,7 @@ Step 2: adding a params function
 
 As we noted, the sigma parameter needs to be computed from the FWHM. We can use a function to do this. Functions can be used for any `input` or `params`, and must take `wildcards` as an input argument, which provides a mechanism to pass the wildcards (determined from the output file) to the function. 
 
-We can thus define a simple function that returns a string representing FWHM/2.355 as follows::
+We can thus define a simple function that returns a string representing `FWHM/2.355` as follows::
 
     def calc_sigma_from_fwhm(wildcards):
         return f'{float(wildcards.fwhm)/2.355:0.2f}'
@@ -79,9 +79,10 @@ Note 1: We now have to make the fwhm in the output filename a wildcard, so that 
 
 Note 2: We have to convert the fwhm to float, since all wildcards are always strings (since they are parsed from the output filename). 
 
-Once we have this function, we can replace the hardcoded 2.12 with the name of the function::
-    params:
-        sigma = calc_sigma_from_fwhm
+Once we have this function, we can replace the hardcoded `2.12` with the name of the function::
+
+        params:
+            sigma = calc_sigma_from_fwhm
 
 Here is the full Snakefile:
 
@@ -113,11 +114,13 @@ A very useful function in snakemake is `expand()`. It is a way to perform array 
 
 
 Now, we don't need to specify any targets from the command-line, and can just run::
+
     snakemake -np
 
 .. asciinema:: step3/step3.cast
 
 The entire Snakefile for reference is:
+
 .. literalinclude:: step3/Snakefile
   :language: python
 
@@ -130,11 +133,13 @@ We have a functional workflow, but suppose you need to configure or run it on an
 It is a better practice instead to keep your configuration variables separate from the actual workflow. Snakemake supports this by allowing for a separate config file (can be YAML or JSON, here we will use YAML), where we can store any dataset specific configuration. Then to apply it for a new purpose, you can simply update the config file. 
 
 To do this, we simply add a line to our workflow::
+
     configfile: 'config.yml'
 
 Snakemake will then handle reading it in, and making the configuration variables available via dictionary called `config`. 
 
 In our config file, we will add variables for everything in the target rule `expand()`::
+
     subjects:
       - '001'
 
@@ -153,6 +158,7 @@ In our config file, we will add variables for everything in the target rule `exp
 
 
 We will also add a new variable to point to our input bold file::
+
     in_bold: '../bids/sub-{subject}/func/sub-{subject}_task-{task}_run-{run}_bold.nii.gz'
 
 
@@ -178,6 +184,7 @@ Step 5: the bids() function
 The first thing we can make use of is the `bids()` function. This provides an easy way to generate bids filenames. This is especially useful when defining output files in your workflow and you have many bids entities. 
 
 In our existing workflow, this was our output file::
+
     'results/sub-{subject}/func/sub-{subject}_task-{task}_run-{run}_fwhm-{fwhm}mm_bold.nii.gz'
     
 To create the same path using `bids()`, we just need to specify the root directory (`results`), all the bids tags (subject, task, run, fwhm), and the suffix (which includes the extension)::
@@ -237,6 +244,7 @@ The config variables we need pre-defined are as follows::
           - run
 
 For educational purposes, we can also print the config dict after calling `generate_inputs()`::
+
     import pprint
     pprint.pp(config)
 
@@ -247,6 +255,7 @@ TODO: add asciinema
 So far, we are not yet using any of these dynamically-generated config variables. The first one we can make use of is one to replace the input path, `config['in_bold']`. Here we will use the `config['input_path']` dict. For each pybids named input we have defined (in this case we just have `bold`), we will have a key and value that has the path to the find, with wildcards. 
 
 Thus, we can update this in our workflow::
+
         input: 
             config['input_path']['bold']
 
