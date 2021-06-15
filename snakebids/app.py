@@ -10,6 +10,7 @@ import sys
 import yaml
 import bids
 from snakemake import get_argument_parser
+from snakemake.io import load_configfile
 
 bids.config.set_option("extension_initial_dot", True)
 logger = logging.Logger(__name__)
@@ -78,6 +79,16 @@ def run(command, env=None):
     if process.returncode != 0:
         raise Exception("Non zero return code: %d" % process.returncode)
 
+def get_time_hash():
+    """ currently unused """
+    import hashlib
+    import time
+
+    hash = hashlib.sha1()
+    hash.update(str(time.time()).encode('utf-8'))
+    return hash.hexdigest()[:8]
+
+
 
 SNAKEFILE_CHOICES = [
     "Snakefile",
@@ -87,7 +98,15 @@ SNAKEFILE_CHOICES = [
 ]
 
 
-CONFIGFILE_CHOICES = ["config/snakebids.yml", "snakebids.yml"]
+CONFIGFILE_CHOICES = [
+            "config/snakebids.yml",
+            "config/snakebids.json",
+            "snakebids.yml",
+            "snakebids.json",
+            "config.yml",
+            "config.json",
+            "config/config.json",
+            "config/config.yml"]
 
 
 class SnakeBidsApp:
@@ -101,6 +120,10 @@ class SnakeBidsApp:
     skip_parse_args : bool, optional
         If true, the Snakebids app will not attempt to parse input arguments,
         and will only handle the config file.
+    out_configfile : str
+        Path to the updated configfile (YAML or JSON), relative to the output 
+        working directory. This should be the same as the `configfile: ` used
+        in your workflow. (default: 'config/snakebids.yml')
 
     Attributes
     ----------
@@ -113,6 +136,14 @@ class SnakeBidsApp:
     parser : ArgumentParser
         Parser including only the arguments specific to this Snakebids app, as
         specified in the config file.
+    snakefile : str
+        Absolute path to the input Snakefile
+            join(snakemake_dir, snakefile_path)
+    configfile_path : str
+        Relative path to config file (relative to snakemake_dir)
+    updated_config : str
+        Absolute path to the updated config file to write
+
     """
 
     def __init__(self, snakemake_dir, skip_parse_args=False):
@@ -123,17 +154,15 @@ class SnakeBidsApp:
         # it (e.g. atlases etc..)
 
         # look for snakebids.yml in the snakemake_dir, quit if not found
-        self.snakebids_config = None
-        for config_path in CONFIGFILE_CHOICES:
-            if os.path.exists(os.path.join(snakemake_dir, config_path)):
-                self.snakebids_config = os.path.join(
-                    snakemake_dir, config_path
-                )
+        self.configfile_path = None
+        for path in CONFIGFILE_CHOICES:
+            if os.path.exists(os.path.join(snakemake_dir, path)):
+                self.configfile_path = path
                 break
-        if self.snakebids_config is None:
+        if self.configfile_path is None:
             raise ConfigError(
-                "Error: no snakebids.yml config file found, tried {}.".format(
-                    ", ".join(SNAKEFILE_CHOICES)
+                "Error: no config file found, tried {}.".format(
+                    ", ".join(CONFIGFILE_CHOICES)
                 )
             )
 
@@ -150,14 +179,17 @@ class SnakeBidsApp:
                 )
             )
 
-        self.__load_config()
+        self.config = load_configfile(os.path.join(
+                                        snakemake_dir,
+                                        self.configfile_path))
+
         if self.config.get("debug", False):
             logging.basicConfig(level=logging.DEBUG)
 
         # add path to snakefile to the config -- so workflows can grab files
         # relative to the snakefile folder
         self.config["snakemake_dir"] = snakemake_dir
-        self.updated_config = []
+        self.config["snakefile"] = self.snakefile
 
         self.parser_include_snakemake = self.__create_parser(
             include_snakemake=True
@@ -167,10 +199,6 @@ class SnakeBidsApp:
         if not skip_parse_args:
             self.__parse_args()
 
-    def __load_config(self):
-        # load up workflow config file
-        with open(self.snakebids_config, "r") as infile:
-            self.config = yaml.load(infile, Loader=yaml.FullLoader)
 
     def __create_parser(self, include_snakemake=False):
         """Create a parser with snakemake parser as parent solely for
@@ -327,16 +355,42 @@ class SnakeBidsApp:
         self.config["bids_dir"] = os.path.realpath(self.config["bids_dir"])
         self.config["output_dir"] = os.path.realpath(self.config["output_dir"])
 
+
     def write_updated_config(self):
         """Create an updated snakebids config file in the output dir."""
         self.updated_config = os.path.join(
-            self.config["output_dir"], "config", "snakebids.yml"
-        )
+                                    self.config["output_dir"],
+                                    self.configfile_path)
 
-        # write it to file
+
+        # create the output folder if needed
         os.makedirs(os.path.dirname(self.updated_config), exist_ok=True)
-        with open(self.updated_config, "w") as outfile:
-            yaml.dump(self.config, outfile, default_flow_style=False)
+
+        # write either as JSON or YAML
+        config_file_ext = os.path.splitext(self.updated_config)
+
+        time_hash = get_time_hash() # TODO: copy to a time-hashed file too
+                                    # for provenance? 
+                                    #  unused as of now.. 
+
+
+        with open(self.updated_config, "w") as f:
+            if config_file_ext[-1] == '.json':
+                import json
+                json.dump(self.config, f, indent=4)
+            else: #if not json, then should be yaml or yml
+                from collections import OrderedDict
+                
+                #this is needed to make the output yaml clean
+                yaml.add_representer(OrderedDict,
+                                        lambda dumper,data: 
+                                            dumper.represent_mapping(
+                                                'tag:yaml.org,2002:map',
+                                                data.items()))
+                yaml.dump(dict(self.config),
+                            f, 
+                            default_flow_style=False,
+                            sort_keys=False)
 
     def run_snakemake(self):
         """Run snake make with that config.
@@ -359,7 +413,6 @@ class SnakeBidsApp:
             "snakemake",
             f"--snakefile {self.snakefile}",
             f"--directory {self.config['output_dir']}",
-            f"--configfile {self.updated_config} ",
             *self.config["snakemake_args"],
             *self.config["targets_by_analysis_level"][analysis_level],
         ]
