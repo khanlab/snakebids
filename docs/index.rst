@@ -17,6 +17,13 @@
    :maxdepth: 2
 
    general/why_snakebids
+
+.. toctree::
+   :caption: Tutorial
+   :name: tutorial
+   :hidden:
+   :maxdepth: 2
+
    tutorial/tutorial
 
 .. toctree::

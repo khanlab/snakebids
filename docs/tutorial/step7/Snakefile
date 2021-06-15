@@ -16,11 +16,11 @@ pprint.pp(config)
 rule all:
     input: 
         expand(bids(root='results',
-                **config['input_wildcards']['bold'],
                 fwhm='{fwhm}',
-                suffix='bold.nii.gz'),
-                    **config['input_lists']['bold'],
-                    fwhm=config['fwhm'])
+                suffix='bold.nii.gz',
+                **config['input_wildcards']['bold']),
+                    fwhm=config['fwhm'],
+                    **config['input_lists']['bold'])
 
 
 def calc_sigma_from_fwhm(wildcards):
@@ -34,9 +34,9 @@ rule smooth:
         sigma = calc_sigma_from_fwhm
     output: 
         bids(root='results',
-                **config['input_wildcards']['bold'],
                 fwhm='{fwhm}',
-                suffix='bold.nii.gz')
+                suffix='bold.nii.gz',
+                **config['input_wildcards']['bold'])
     shell: 
         'fslmaths {input} -s {params.sigma} {output}'
 
