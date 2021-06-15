@@ -1,0 +1,24 @@
+configfile: 'config.yml'
+
+rule all:
+    input: 
+        expand('results/sub-{subject}/func/sub-{subject}_task-{task}_run-{run}_fwhm-{fwhm}mm_bold.nii.gz',
+                    subject=config['subjects'],
+                    task=config['tasks'],
+                    run=config['runs'],
+                    fwhm=config['fwhm'])
+
+
+def calc_sigma_from_fwhm(wildcards):
+    return f'{float(wildcards.fwhm)/2.355:0.2f}'
+
+rule smooth:
+    input: 
+        config['in_bold']
+    params: 
+        sigma = calc_sigma_from_fwhm
+    output: 
+        'results/sub-{subject}/func/sub-{subject}_task-{task}_run-{run}_fwhm-{fwhm}mm_bold.nii.gz'
+    shell: 
+        'fslmaths {input} -s {params.sigma} {output}'
+
