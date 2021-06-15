@@ -35,6 +35,7 @@ extensions = [
     "sphinxarg.ext",
     "sphinx.ext.autodoc",
     "sphinxcontrib.napoleon",
+    "sphinxcontrib.asciinema"
 ]
 
 napoleon_google_docstring = False

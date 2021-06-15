@@ -1,0 +1,32 @@
+bids_dir: '../bids'
+
+subjects:
+  - '001'
+
+tasks:
+  - rest
+
+runs:
+  - 1
+  - 2
+
+
+fwhm:
+  - 5
+  - 10
+  - 15
+  - 20
+
+pybids_inputs:
+  bold:
+    filters:
+      suffix: 'bold'
+      extension: '.nii.gz'
+      datatype: 'func'
+    wildcards:
+      - subject
+      - session
+      - acquisition
+      - task
+      - run
+      
