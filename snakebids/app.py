@@ -236,6 +236,14 @@ class SnakeBidsApp:
 
         # update the parser with config options
         for name, parse_args in self.config["parse_args"].items():
+            if "type" in parse_args:
+                type_ = parse_args["type"]
+                if not type_ in globals():
+                    raise TypeError(
+                        f"{type_} is not available "
+                        f"as a type for {name}"
+                    )
+                parse_args["type"] = globals()[parse_args["type"]]
             app_group.add_argument(name, **parse_args)
 
         # general parser for
