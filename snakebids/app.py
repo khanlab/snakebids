@@ -89,7 +89,14 @@ def get_time_hash():
     hash.update(str(time.time()).encode('utf-8'))
     return hash.hexdigest()[:8]
 
-
+def resolve_path(path_candidate):
+    if isinstance(path_candidate, list):
+        return [resolve_path(p) for p in path_candidate]
+    elif isinstance(path_candidate, os.PathLike):
+        
+        return path_candidate.resolve()
+    else:
+        return path_candidate
 
 SNAKEFILE_CHOICES = [
     "Snakefile",
@@ -318,6 +325,11 @@ class SnakeBidsApp:
         args = all_args[0]
         snakemake_args = all_args[1]
 
+        # resolve all path items to get absolute paths
+        args.__dict__ = {
+            k: resolve_path(v) for k, v in args.__dict__.items()
+        }
+
         # add snakebids arguments to config
         self.config.update(args.__dict__)
 
@@ -359,7 +371,7 @@ class SnakeBidsApp:
         self.config["bids_dir"] = Path(self.config["bids_dir"]).resolve()
         self.config["output_dir"] = Path(self.config["output_dir"]).resolve()
 
-
+    
     def write_updated_config(self):
         """Create an updated snakebids config file in the output dir."""
         self.updated_config = Path(self.config["output_dir"],
