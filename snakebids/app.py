@@ -379,7 +379,7 @@ class SnakeBidsApp:
 
 
         # create the output folder if needed
-        self.updated_config.parent.mkdir(exist_ok=True)
+        self.updated_config.parent.mkdir(parents = True, exist_ok=True)
 
 
         time_hash = get_time_hash() # TODO: copy to a time-hashed file too
