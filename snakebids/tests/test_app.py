@@ -1,8 +1,9 @@
 from argparse import ArgumentParser
 from os import PathLike
+from pathlib import Path
 from configargparse import Namespace
 from pytest_mock.plugin import MockerFixture
-from ..app import SnakeBidsApp
+from ..app import SnakeBidsApp, resolve_path
 from .mock.config import config
 from unittest.mock import patch
 import pytest
@@ -53,3 +54,34 @@ class TestCreateParser:
         }
         with pytest.raises(TypeError):
             app._SnakeBidsApp__create_parser()
+
+
+class TestResolvePath:
+    @pytest.fixture
+    def arg_dict(self):
+        return {
+            "bids_dir": "path/to/input",
+            "output_dir": "path/to/output",
+            "analysis_level": "participant",
+            "--derivatives": [
+                "path/to/deriv1",
+                "path/to/deriv2"
+            ]
+        }
+
+    def test_does_not_change_dict_without_paths(self, arg_dict):
+        arg_dict_copy = copy.deepcopy(arg_dict)
+        resolved = {key: resolve_path(value) for key, value in arg_dict.items()}
+        assert resolved == arg_dict_copy
+    
+    def test_resolves_all_paths(self, arg_dict):
+        arg_dict["--derivatives"] = [
+            Path("path/to/deriv1"),
+            Path("path/to/deriv2")
+        ]
+        arg_dict_copy = copy.deepcopy(arg_dict)
+        arg_dict_copy["--derivatives"] = [
+            p.resolve() for p in arg_dict_copy["--derivatives"]
+        ]
+        resolved = {key: resolve_path(value) for key, value in arg_dict.items()}
+        assert resolved == arg_dict_copy
