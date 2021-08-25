@@ -243,7 +243,8 @@ class SnakeBidsApp:
 
         # update the parser with config options
         for name, parse_args in self.config["parse_args"].items():
-            if "type" in parse_args:
+            # Convert type annotations froms strings to class types
+            if "type" in parse_args and isinstance(parse_args["type"], str):
                 type_ = parse_args["type"]
                 if not type_ in globals():
                     raise TypeError(
@@ -324,7 +325,6 @@ class SnakeBidsApp:
 
         args = all_args[0]
         snakemake_args = all_args[1]
-
         # resolve all path items to get absolute paths
         args.__dict__ = {
             k: resolve_path(v) for k, v in args.__dict__.items()
