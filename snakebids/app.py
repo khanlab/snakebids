@@ -3,13 +3,14 @@
 """Tools to generate a Snakemake-based BIDS app."""
 
 import os
+from pathlib import Path
 import subprocess
 import argparse
 import logging
 import sys
 import yaml
 import bids
-from snakemake import get_argument_parser
+import snakemake
 from snakemake.io import load_configfile
 
 bids.config.set_option("extension_initial_dot", True)
@@ -156,32 +157,27 @@ class SnakeBidsApp:
         # look for snakebids.yml in the snakemake_dir, quit if not found
         self.configfile_path = None
         for path in CONFIGFILE_CHOICES:
-            if os.path.exists(os.path.join(snakemake_dir, path)):
+            if Path(snakemake_dir, path).exists():
                 self.configfile_path = path
                 break
         if self.configfile_path is None:
             raise ConfigError(
-                "Error: no config file found, tried {}.".format(
-                    ", ".join(CONFIGFILE_CHOICES)
-                )
+                f"Error: no config file found, tried {', '.join(CONFIGFILE_CHOICES)}."
             )
 
         # look for snakefile in the snakemake_dir, quit if not found
         self.snakefile = None
         for snakefile_path in SNAKEFILE_CHOICES:
-            if os.path.exists(os.path.join(snakemake_dir, snakefile_path)):
-                self.snakefile = os.path.join(snakemake_dir, snakefile_path)
+            if Path(snakemake_dir, snakefile_path).exists():
+                self.snakefile = Path(snakemake_dir, snakefile_path)
                 break
         if self.snakefile is None:
             raise ConfigError(
-                "Error: no Snakefile found, tried {}.".format(
-                    ", ".join(SNAKEFILE_CHOICES)
-                )
+                f"Error: no Snakefile found, tried {', '.join(SNAKEFILE_CHOICES)}."
             )
 
-        self.config = load_configfile(os.path.join(
-                                        snakemake_dir,
-                                        self.configfile_path))
+        self.config = load_configfile(Path(snakemake_dir,
+                                            self.configfile_path))
 
         if self.config.get("debug", False):
             logging.basicConfig(level=logging.DEBUG)
@@ -209,7 +205,7 @@ class SnakeBidsApp:
 
         if include_snakemake:
             # get snakemake parser
-            smk_parser = get_argument_parser()
+            smk_parser = snakemake.get_argument_parser()
 
             # create parser
             parser = argparse.ArgumentParser(
@@ -348,26 +344,23 @@ class SnakeBidsApp:
             if custom_path is not None:
                 self.config["pybids_inputs"][input_type][
                     "custom_path"
-                ] = os.path.realpath(custom_path)
+                ] = Path(custom_path).resolve()
             del self.config[f"path_{input_type}"]
 
         # replace paths with realpaths
-        self.config["bids_dir"] = os.path.realpath(self.config["bids_dir"])
-        self.config["output_dir"] = os.path.realpath(self.config["output_dir"])
+        self.config["bids_dir"] = Path(self.config["bids_dir"]).resolve()
+        self.config["output_dir"] = Path(self.config["output_dir"]).resolve()
 
 
     def write_updated_config(self):
         """Create an updated snakebids config file in the output dir."""
-        self.updated_config = os.path.join(
-                                    self.config["output_dir"],
+        self.updated_config = Path(self.config["output_dir"],
                                     self.configfile_path)
 
 
         # create the output folder if needed
-        os.makedirs(os.path.dirname(self.updated_config), exist_ok=True)
+        self.updated_config.parent.mkdir(exist_ok=True)
 
-        # write either as JSON or YAML
-        config_file_ext = os.path.splitext(self.updated_config)
 
         time_hash = get_time_hash() # TODO: copy to a time-hashed file too
                                     # for provenance? 
@@ -375,7 +368,8 @@ class SnakeBidsApp:
 
 
         with open(self.updated_config, "w") as f:
-            if config_file_ext[-1] == '.json':
+            # write either as JSON or YAML
+            if self.updated_config.suffix == '.json':
                 import json
                 json.dump(self.config, f, indent=4)
             else: #if not json, then should be yaml or yml
