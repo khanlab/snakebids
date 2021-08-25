@@ -1,13 +1,21 @@
+# Core
+import sys, copy
+from pathlib import Path
+
+# Testing 
+import pytest
+
+# Typings
 from argparse import ArgumentParser
 from os import PathLike
-from pathlib import Path
 from configargparse import Namespace
+
+# Fixtures
 from pytest_mock.plugin import MockerFixture
+
+# Local
 from ..app import SnakeBidsApp, resolve_path
 from .mock.config import config
-from unittest.mock import patch
-import pytest
-import sys, copy
 
 def init_snakebids_app(self):
     self.configfile_path="mock/config.yaml"
