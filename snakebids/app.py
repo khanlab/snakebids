@@ -4,6 +4,7 @@
 
 import os
 from pathlib import Path
+import pathlib
 import subprocess
 import argparse
 import logging
@@ -401,6 +402,12 @@ class SnakeBidsApp:
                                             dumper.represent_mapping(
                                                 'tag:yaml.org,2002:map',
                                                 data.items()))
+
+                # Represent any PathLikes as str.
+                path2str = lambda dumper, data: dumper.represent_scalar('tag:yaml.org,2002:str',str(data))
+                yaml.add_representer(pathlib.PosixPath, path2str)
+                yaml.add_representer(pathlib.WindowsPath, path2str)
+
                 yaml.dump(dict(self.config),
                             f, 
                             default_flow_style=False,
