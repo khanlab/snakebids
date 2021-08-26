@@ -3,7 +3,6 @@
 """Tools to generate a Snakemake-based BIDS app."""
 
 import os
-from pathlib import Path
 import pathlib
 import subprocess
 import argparse
@@ -13,6 +12,8 @@ import yaml
 import bids
 import snakemake
 from snakemake.io import load_configfile
+
+Path = pathlib.Path
 
 bids.config.set_option("extension_initial_dot", True)
 logger = logging.Logger(__name__)
