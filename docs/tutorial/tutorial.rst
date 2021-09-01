@@ -372,10 +372,13 @@ However, we will first need to add some additional information to our config fil
       --derivatives:
         help: 'Path(s) to a derivatives dataset, for folder(s) that contains multiple derivatives datasets (default: %(default)s) '
         default: False
+        type: Path
         nargs: '+'
 
 
 The above is standard boilerplate for any BIDS app.  You can also define any new command-line arguments you wish. Snakebids uses the ``argparse`` module, and each entry in this ``parse_args`` dict thus becomes a call to ``add_argument()`` from ``argparse``. When you run the workflow, snakebids adds the named argument values to the config dict, so your workflow can make use of it as if you had manually added the variable to your configfile. 
+
+Arguments that will receive paths should be given the item ``type: Path``, as is done for ``--derivatives`` in the example above. Without this annotation, paths given to keyword arguments will be interpreted relative to the output directory. Indicating ``type: Path`` will tell Snakebids to first resolve the path according to your current working directory 
 
 BIDS apps also have a requried ``analysis_level`` positional argument, so there are some config variables to set this as well. The analysis levels are in an ``analysis_levels`` list in the config, and also as keys in a ``targets_by_analysis_level`` dict, which can be used to map each analysis level to the name of a target rule::
 
