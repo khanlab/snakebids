@@ -29,6 +29,7 @@ setuptools.setup(
         "snakemake>=5.28.0",
         "PyYAML>=5.3.1",
         "cookiecutter>=1.7.2",
+        "pytest-mock==3.6.1"
     ],
     python_requires=">=3.7",
 )
