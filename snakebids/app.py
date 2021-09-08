@@ -92,13 +92,28 @@ def get_time_hash():
     return hash.hexdigest()[:8]
 
 def resolve_path(path_candidate):
+    """Helper function to resolve any paths or list
+    of paths it's passed. Otherwise, returns the argument 
+    unchanged. 
+
+    Parameters
+    ----------
+    command : list, os.Pathlike, object
+        command to run
+
+    Returns
+    -------
+    list, os.Pathlike, object
+        If os.Pathlike or list  of os.Pathlike, the same paths resolved.
+        Otherwise, the argument unchanged.
+    """
     if isinstance(path_candidate, list):
         return [resolve_path(p) for p in path_candidate]
-    elif isinstance(path_candidate, os.PathLike):
-        
+
+    if isinstance(path_candidate, os.PathLike):
         return path_candidate.resolve()
-    else:
-        return path_candidate
+    
+    return path_candidate
 
 SNAKEFILE_CHOICES = [
     "Snakefile",
@@ -245,15 +260,19 @@ class SnakeBidsApp:
 
         # update the parser with config options
         for name, parse_args in self.config["parse_args"].items():
-            # Convert type annotations froms strings to class types
+            # Convert type annotations from strings to class types
+            # We first check that the type annotation is, in fact,
+            # a str to allow the edge case where it's already
+            # been converted
             if "type" in parse_args and isinstance(parse_args["type"], str):
-                type_ = parse_args["type"]
-                if not type_ in globals():
+                try:
+                    parse_args["type"] = globals()[parse_args["type"]]
+                except KeyError as err:
                     raise TypeError(
-                        f"{type_} is not available "
-                        f"as a type for {name}"
-                    )
-                parse_args["type"] = globals()[parse_args["type"]]
+                        f"{parse_args['type']} is not available "
+                        + f"as a type for {name}"
+                    ) from err
+                    
             app_group.add_argument(name, **parse_args)
 
         # general parser for
