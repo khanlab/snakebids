@@ -13,6 +13,9 @@ import bids
 import snakemake
 from snakemake.io import load_configfile
 
+# We define Path here in addition to pathlib to put both variables in globals()
+# This way, users specifying a path type in their config.yaml can indicate
+# either Path or pathlib.Path
 Path = pathlib.Path
 
 bids.config.set_option("extension_initial_dot", True)
