@@ -38,7 +38,7 @@ def bids(
 
     Parameters
     ----------
-    root : str, default=None
+    root : str or Path, default=None
         root folder to include in the path (e.g. 'results')
     datatype : str, default=None
         folder to include after sub-/ses- (e.g. anat, dwi )
