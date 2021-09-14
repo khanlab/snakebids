@@ -4,6 +4,7 @@ import os
 from os.path import join
 from collections import OrderedDict
 import json
+from pathlib import Path
 import re
 import logging
 
@@ -175,6 +176,8 @@ def bids(
     # root directory
     if isinstance(root, str):
         folder.append(root)
+    elif isinstance(root, Path):
+        folder.append(str(root.resolve()))
 
     # if prefix is defined, put it before other anything else
     if isinstance(prefix, str):
@@ -473,10 +476,8 @@ def __read_bids_tags(bids_json=None):
     dict:
         Dictionary of bids tags"""
     if bids_json is None:
-        bids_json = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), "bids_tags.json"
-        )
-    with open(bids_json, "r") as infile:
+        bids_json = Path(__file__).parent.resolve() / "bids_tags.json"
+    with bids_json.open("r") as infile:
         bids_tags = json.load(infile)
     return bids_tags
 
