@@ -48,7 +48,11 @@ def test_t1w():
     assert config["input_wildcards"] == {
         "t1": {"acq": "{acq}", "subject": "{subject}"}
     }
-    assert config["subjects"] == ["001", "002"]
+    # Order of the subjects is not deterministic
+    assert config["subjects"] in [
+        ["001", "002"],
+        ["002", "001"]
+    ]
     assert config["sessions"] == []
     assert config["subj_wildcards"] == {"subject": "{subject}"}
 
@@ -131,7 +135,12 @@ def test_t1w():
             "t1": {"acq": "{acq}", "subject": "{subject}"},
             "t2": {"subject": "{subject}"},
         }
-        assert config["subjects"] == ["001", "002"]
+        # Order of the subjects is not deterministic
+        assert config["subjects"] in [
+            ["001", "002"],
+            ["002", "001"]
+        ]
+ 
         assert config["sessions"] == []
         assert config["subj_wildcards"] == {"subject": "{subject}"}
 
