@@ -19,40 +19,45 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install pytest
-        python -m pip install pytest-mock
-        python -m pip install -e .
+    #----------------------------------------------
+    #  -----  install & configure poetry  -----
+    #----------------------------------------------
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+    #----------------------------------------------
+    # install your root project, if required
+    #----------------------------------------------
+    - name: Install library
+      run: poetry install --no-interaction
     - name: Test with pytest
       run: |
-        pytest --doctest-modules --ignore=docs
+        poetry run pytest --doctest-modules --ignore=docs
 
         
   deploy:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     needs: [ 'test' ]
-    strategy:
-      matrix:
-        python-version: ['3.8']
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
+    #----------------------------------------------
+    #  -----  install & configure poetry  -----
+    #----------------------------------------------
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
       with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install setuptools wheel twine
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+    
     - name: Build and publish
       env:
-        TWINE_USERNAME: '__token__'
-        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
       run: |
-        python setup.py sdist bdist_wheel
-        twine upload dist/*
+        poetry publish --build
 
 
