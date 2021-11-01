@@ -64,7 +64,7 @@ class TestArgTypeAnnotation:
 
     @pytest.fixture
     def parser(self, app):
-        return app._SnakeBidsApp__create_parser()
+        return app._create_parser()
 
     def test_snakebids_app_is_properly_mocked(self, app):
         assert isinstance(app, SnakeBidsApp)
@@ -90,11 +90,11 @@ class TestArgTypeAnnotation:
             "type": "UnheardClass"
         }
         with pytest.raises(TypeError):
-            app._SnakeBidsApp__create_parser()
+            app._create_parser()
 
     def test_resolves_paths(self, app: SnakeBidsApp, mocker: MockerFixture):
         mocker.patch.object(sys, 'argv', self.mock_all_args)
-        app.parser = app._SnakeBidsApp__create_parser()
-        app._SnakeBidsApp__parse_args()
+        app.parser = app._create_parser()
+        app._parse_args()
         assert app.config["bids_dir"] == Path.cwd() / "path/to/input"
         assert app.config["derivatives"][0] == Path.cwd() / "path/to/nowhere" 

@@ -3,7 +3,7 @@ import os
 from bids import BIDSLayout
 import pytest
 
-from .. import generate_inputs, __get_lists_from_bids
+from .. import generate_inputs, _get_lists_from_bids
 
 
 def test_t1w():
@@ -178,7 +178,7 @@ def test_get_lists_from_bids():
         elif idx == 2:
             pybids_inputs["t2"]["custom_path"] = wildcard_path_t2
 
-        config = __get_lists_from_bids(layout, pybids_inputs)
+        config = _get_lists_from_bids(layout, pybids_inputs)
         assert config["input_path"] == {
             "t1": wildcard_path_t1,
             "t2": wildcard_path_t2,

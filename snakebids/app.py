@@ -214,16 +214,16 @@ class SnakeBidsApp:
         self.config["snakemake_dir"] = snakemake_dir
         self.config["snakefile"] = self.snakefile
 
-        self.parser_include_snakemake = self.__create_parser(
+        self.parser_include_snakemake = self._create_parser(
             include_snakemake=True
         )
-        self.parser = self.__create_parser()
+        self.parser = self._create_parser()
 
         if not skip_parse_args:
-            self.__parse_args()
+            self._parse_args()
 
 
-    def __create_parser(self, include_snakemake=False):
+    def _create_parser(self, include_snakemake=False):
         """Create a parser with snakemake parser as parent solely for
         displaying help and checking conflicts, but then for actual parsing
         use snakebids parser to parse known args, then pass remaining to
@@ -341,7 +341,7 @@ class SnakeBidsApp:
 
         return parser
 
-    def __parse_args(self):
+    def _parse_args(self):
 
         # use snakebids parser to parse the known arguments
         # will pass the rest of args when running snakemake
