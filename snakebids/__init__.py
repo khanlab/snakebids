@@ -459,7 +459,7 @@ def get_filtered_ziplist_index(zip_list, wildcards, subj_wildcards):
     return indices
 
 
-def __read_bids_tags(bids_json=None):
+def _read_bids_tags(bids_json=None):
     """Read the bids tags we are aware of from a JSON file. This is used
     specifically for compatibility with pybids, since some tag keys are
     different from how they appear in the file name, e.g. ``subject`` for
@@ -482,7 +482,7 @@ def __read_bids_tags(bids_json=None):
     return bids_tags
 
 
-def __generate_search_terms(
+def _generate_search_terms(
     participant_label=None, exclude_participant_label=None
 ):
     search_terms = {}
@@ -664,7 +664,7 @@ def generate_inputs(
         }
     """
 
-    search_terms = __generate_search_terms(
+    search_terms = _generate_search_terms(
         participant_label, exclude_participant_label
     )
 
@@ -685,7 +685,7 @@ def generate_inputs(
 
     # this will populate input_path, input_lists, input_zip_lists, and
     # input_wildcards
-    inputs_config_dict = __get_lists_from_bids(
+    inputs_config_dict = _get_lists_from_bids(
         bids_layout=layout,
         pybids_inputs=pybids_inputs,
         limit_to=limit_to,
@@ -741,7 +741,7 @@ def generate_inputs(
     return inputs_config_dict
 
 
-def __process_path_override(input_path):
+def _process_path_override(input_path):
     """Glob wildcards from a path override and arrange into a zip list of
     matches, list of matches, and Snakemake wildcard for each wildcard.
     """
@@ -765,7 +765,7 @@ def __process_path_override(input_path):
     return input_zip_lists, input_lists, input_wildcards
 
 
-def __process_layout_wildcard(path, wildcard_name):
+def _process_layout_wildcard(path, wildcard_name):
     """Convert an absolute BIDS path to the same path with the given tag
     replaced by a wildcard.
 
@@ -787,7 +787,7 @@ def __process_layout_wildcard(path, wildcard_name):
     out_name : str
         Name of the applied wildcard (e.g. "subject")
     """
-    bids_tags = __read_bids_tags()
+    bids_tags = _read_bids_tags()
     tag = (
         bids_tags[wildcard_name]
         if wildcard_name in bids_tags
@@ -831,7 +831,7 @@ def __process_layout_wildcard(path, wildcard_name):
     return path, match[1], out_name
 
 
-def __get_lists_from_bids(
+def _get_lists_from_bids(
     bids_layout, pybids_inputs, limit_to=None, **filters
 ):
     """Grabs files using pybids and creates snakemake-friendly lists
@@ -903,7 +903,7 @@ def __get_lists_from_bids(
                 input_zip_lists,
                 input_lists,
                 input_wildcards,
-            ) = __process_path_override(input_path)
+            ) = _process_path_override(input_path)
         else:
             paths = set()
             for img in bids_layout.get(
@@ -923,7 +923,7 @@ def __get_lists_from_bids(
                         input_path,
                         input_list,
                         out_name,
-                    ) = __process_layout_wildcard(input_path, wildcard_name)
+                    ) = _process_layout_wildcard(input_path, wildcard_name)
                     if out_name not in input_zip_lists:
                         input_zip_lists[out_name] = []
                         input_lists[out_name] = set()
