@@ -13,6 +13,8 @@ import bids
 import snakemake
 from snakemake.io import load_configfile
 
+from snakebids.exceptions import ConfigError
+
 # We define Path here in addition to pathlib to put both variables in globals()
 # This way, users specifying a path type in their config.yaml can indicate
 # either Path or pathlib.Path
@@ -22,12 +24,6 @@ bids.config.set_option("extension_initial_dot", True)
 logger = logging.Logger(__name__)
 
 
-class ConfigError(Exception):
-    """Exception raised for errors with the Snakebids config."""
-
-    def __init__(self, msg):
-        self.msg = msg
-        Exception.__init__()
 
 
 class KeyValue(argparse.Action):
