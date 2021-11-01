@@ -5,7 +5,7 @@ with open("README.rst", "r") as fh:
 
 setuptools.setup(
     name="snakebids",
-    version="0.3.12",
+    version="0.3.16",
     author="Ali Khan",
     author_email="alik@robarts.ca",
     description="BIDS integration into snakemake workflows",
@@ -25,10 +25,10 @@ setuptools.setup(
         ],
     },
     install_requires=[
-        "pybids==0.12.3",
+        "pybids>=0.13.2",
         "snakemake>=5.28.0",
         "PyYAML>=5.3.1",
-        "cookiecutter>=1.7.2",
+        "cookiecutter>=1.7.2"
     ],
     python_requires=">=3.7",
 )
