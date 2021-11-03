@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """Tools to generate a Snakemake-based BIDS app."""
 
 import os
@@ -13,6 +11,7 @@ import bids
 import snakemake
 from snakemake.io import load_configfile
 
+from bids import config as bidsconfig
 from snakebids.exceptions import ConfigError
 
 # We define Path here in addition to pathlib to put both variables in globals()
@@ -20,7 +19,7 @@ from snakebids.exceptions import ConfigError
 # either Path or pathlib.Path
 Path = pathlib.Path
 
-bids.config.set_option("extension_initial_dot", True)
+bidsconfig.set_option("extension_initial_dot", True)
 logger = logging.Logger(__name__)
 
 
