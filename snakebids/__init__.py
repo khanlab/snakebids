@@ -10,10 +10,10 @@ import logging
 
 from bids import BIDSLayout, BIDSLayoutIndexer
 import bids as pybids
-
+from bids import config as bidsconfig
 from snakebids.snakemake_io import glob_wildcards
 
-pybids.config.set_option("extension_initial_dot", True)
+bidsconfig.set_option("extension_initial_dot", True)
 logger = logging.getLogger(__name__)
 
 
