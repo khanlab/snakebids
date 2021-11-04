@@ -481,6 +481,7 @@ class SnakeBidsApp:
         else:
             new_config_file = self.outputdir/"code"/Path(self.configfile_path).name
             cwd = self.snakemake_dir
+            force_config_overwrite = True
 
         write_config_file(new_config_file, self.config, force_config_overwrite)
 
