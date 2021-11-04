@@ -304,48 +304,23 @@ def _copy_snakemake_app(src: Path, dest: Path, create_results: bool = True):
     old_cwd = Path().cwd()
     os.chdir(src)
     file_list = [*it.chain(
-        # All root level files and symlinks
-        [f for f in Path().iterdir() if not f.is_dir() and f != Path()/".snakebids"],
-        # Recursive search through all directories
-        *[
-            f.glob("**/*") for f in Path().iterdir() if f not in [
-                Path() / "config",
-                Path() / "results",
-            ]
+        # All root level items
+        f for f in Path().iterdir() if f not in [
+            Path(".snakebids"),
+            Path("config"),
+            Path("results"),
         ]
     )]
 
-    relative_symlink_paths = {
-        # Get set of paths for all symlinks pointing to paths within the
-        # file_list. First, find the set of all symlink paths:
-        f.resolve() for f in file_list if f.is_symlink()
-    } & {
-        # Then get its union with the set of all potential symlink targets (e.g files
-        # and directories)
-        f.resolve() for f in file_list if not f.is_symlink()
-    }
     
     # Iterate through files
-    links = []
     for file in file_list:
-        if file.is_symlink():
-            # If the object is a symlink pointing to something else that we copied, save
-            # it for after the loop
-            if file.resolve() in relative_symlink_paths:
-                links.append(file)
-            # Otherwise go ahead and move it now
-            else:
-                shutil.copy(file, dest/file, follow_symlinks=False) 
-
+        if file.is_dir():
+            shutil.copytree(file, dest/file)
         # Copy over files, making parents as necessary
         elif file.is_file():
             (dest/file).parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy(file, dest/file)
-
-    # Loop through our collected symlinks and relink
-    for link in links:
-        dest_link = dest/link.resolve().relative_to(src)
-        (dest/link).symlink_to(dest_link)
+            shutil.copy(file, dest/file, follow_symlinks=False)
 
     os.chdir(old_cwd)
     if create_results: (dest/"results").mkdir()
