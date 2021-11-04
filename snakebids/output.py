@@ -9,6 +9,7 @@ from typing import Iterable, List, Union
 
 from colorama import Fore
 from typing_extensions import Literal
+from progress.bar import IncrementalBar
 import yaml
 
 from snakebids.exceptions import RunError
@@ -220,6 +221,10 @@ def _convert_output(start: Mode, end: Mode, src: Path, output: Path, force=False
     
     # Convert to workflow mode
     if end == "workflow":
+        print(
+            f"{Fore.GREEN}Found bidsapp output at {Fore.RESET}{output.resolve()}\n\n"
+            f"{Fore.GREEN}Converting to workflow mode...{Fore.RESET}\n"
+        )
         results = _check_for_results_folder(output)
         results.mkdir()
         [shutil.move(f, results / f.name) for f in output.iterdir() if f != results]
@@ -278,6 +283,7 @@ def _remove_all(paths: Iterable[Path], confirm: bool = False):
 def _format_path_list(paths: Iterable[Path]):
     return '\t\t- ' + '\n\t\t- '.join(str(p) for p in paths)
 
+
 def _copy_snakemake_app(src: Path, dest: Path, create_results: bool = True):
     """Copies snakemap app from src to dest, skipping the config and results directories
     
@@ -289,7 +295,7 @@ def _copy_snakemake_app(src: Path, dest: Path, create_results: bool = True):
     src : Path
         Directory to copy from
     dest : Path
-        Directroy to copy to
+        Directory to copy to
     create_results: bool
         If True, create an empty results folder (Default value = True)
 
@@ -312,8 +318,8 @@ def _copy_snakemake_app(src: Path, dest: Path, create_results: bool = True):
         ]
     )]
 
-    
     # Iterate through files
+    bar = IncrementalBar("Copying snakebids app", max=len(file_list))
     for file in file_list:
         if file.is_dir():
             shutil.copytree(file, dest/file)
@@ -321,11 +327,13 @@ def _copy_snakemake_app(src: Path, dest: Path, create_results: bool = True):
         elif file.is_file():
             (dest/file).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(file, dest/file, follow_symlinks=False)
+        bar.next()
 
     os.chdir(old_cwd)
     if create_results: (dest/"results").mkdir()
     (dest/"config").mkdir()
     return dest/"results"
+
 
 def _get_snakebids_file(outputdir: Path):
     """Ensure populated dir contains .snakebids file, retrieving it if it does.
