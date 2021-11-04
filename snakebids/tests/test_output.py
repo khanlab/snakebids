@@ -24,15 +24,12 @@ def fake_snakemake(tmp_path: Path):
     (app1 / "results" / "app1").mkdir(parents=True)
     (app1 / "results" / "app1" / "result1.data").touch()
     (app1 / "results" / "app1" / "link").symlink_to(
-        app1 / "results" / "app1" / "rule1.smk"
+        app1 / "workflow" / "rules" / "rule1.smk"
     )
 
     (app1 / "workflow" / "rules").mkdir(parents=True)
     (app1 / "workflow" / "Snakefile").touch()
     (app1 / "workflow" / "rules" / "rule1.smk").touch()
-    (app1 / "workflow" / "rules" / "link").symlink_to(
-        app1 / "workflow" / "rules" / "rule1.smk"
-    )
 
     output = tmp_path/"output"
     output.mkdir()
@@ -102,9 +99,7 @@ def test_copy_snakemake_app(fake_snakemake: Path):
     assert dirlen(app2 / "config") == 0
     assert (app2 / "workflow/Snakefile").exists()
     assert (app2 / "workflow/rules/rule1.smk").exists()
-    assert (
-        (app2 / "workflow/rules/link").resolve() == app2/"workflow/rules/rule1.smk"
-    )
+    assert not (app2/"results/app1/link").exists()
 
 class TestConvertOutput:
     @pytest.mark.parametrize(
