@@ -444,7 +444,7 @@ def write_config_file(config_file: Path, data: dict, force_overwrite: bool = Fal
     if (config_file.exists()) and not force_overwrite:
         raise RunError(
             f"A config file named {config_file.name} already exists:\n"
-            f"\t{config_file}\n"
+            f"\t- {config_file.resolve()}\n"
             "Please move or rename either the existing or incoming config."
         )
     config_file.parent.mkdir(exist_ok=True)

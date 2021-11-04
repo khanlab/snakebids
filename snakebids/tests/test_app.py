@@ -185,7 +185,7 @@ class TestRunSnakemake:
         io_mocks["write_config"].assert_called_once_with(
             Path("/tmp/output/code/config.yaml"),
             expected_config,
-            False
+            True
         )
         io_mocks["snakemake"].assert_called_once_with([
             "--snakefile",
