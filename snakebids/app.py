@@ -1,5 +1,6 @@
 """Tools to generate a Snakemake-based BIDS app."""
 
+import json
 import os
 import pathlib
 import subprocess
@@ -7,12 +8,16 @@ import argparse
 import logging
 import sys
 import yaml
-import bids
+import itertools as it
+import shutil
+
 import snakemake
 from snakemake.io import load_configfile
+from colorama import Fore
 
 from bids import config as bidsconfig
 from snakebids.exceptions import ConfigError
+from snakebids.output import prepare_output, retrofit_output, write_config_file, write_output_mode
 
 # We define Path here in addition to pathlib to put both variables in globals()
 # This way, users specifying a path type in their config.yaml can indicate
@@ -80,14 +85,7 @@ def run(command, env=None):
     if process.returncode != 0:
         raise Exception("Non zero return code: %d" % process.returncode)
 
-def get_time_hash():
-    """ currently unused """
-    import hashlib
-    import time
 
-    hash = hashlib.sha1()
-    hash.update(str(time.time()).encode('utf-8'))
-    return hash.hexdigest()[:8]
 
 def resolve_path(path_candidate):
     """Helper function to resolve any paths or list
@@ -122,14 +120,19 @@ SNAKEFILE_CHOICES = [
 
 
 CONFIGFILE_CHOICES = [
-            "config/snakebids.yml",
-            "config/snakebids.json",
-            "snakebids.yml",
-            "snakebids.json",
-            "config.yml",
-            "config.json",
-            "config/config.json",
-            "config/config.yml"]
+    "config/snakebids.yml",
+    "config/snakebids.yaml",
+    "config/snakebids.json",
+    "snakebids.yml",
+    "snakebids.yaml",
+    "snakebids.json",
+    "config.yml",
+    "config.yaml",
+    "config.json",
+    "config/config.json",
+    "config/config.yml",
+    "config/config.yaml"
+]
 
 
 class SnakeBidsApp:
@@ -165,9 +168,20 @@ class SnakeBidsApp:
     configfile_path : str
         Relative path to config file (relative to snakemake_dir)
     updated_config : str
-        Absolute path to the updated config file to write
-
+        Absolute path to the updated config file to write.
+    workflow_mode : bool
+        If true, produces output in workflow mode, otherwise snakemake mode.
+    force : bool
+        If false, prevents conversion of output from workflow mode to bidsapp mode.
+    outputdir : Path
+        Path to outputdir specified by user
+    retrofit : bool
+        If true, run_snakemake will attempt to convert legacy output format into bidsapp
+        format.
     """
+
+    outputdir: Path
+    snakemake_dir: Path
 
     def __init__(self, snakemake_dir, skip_parse_args=False):
         # input argument is the dir where snakemake would be run
@@ -176,13 +190,15 @@ class SnakeBidsApp:
         # generated_config, so the workflow can use it to source files from
         # it (e.g. atlases etc..)
 
+        self.snakemake_dir = Path(snakemake_dir).resolve()
+
         # look for snakebids.yml in the snakemake_dir, quit if not found
-        self.configfile_path = None
+        self.configfile_path = ""
         for path in CONFIGFILE_CHOICES:
-            if Path(snakemake_dir, path).exists():
+            if (self.snakemake_dir / path).exists():
                 self.configfile_path = path
                 break
-        if self.configfile_path is None:
+        if not self.configfile_path:
             raise ConfigError(
                 f"Error: no config file found, tried {', '.join(CONFIGFILE_CHOICES)}."
             )
@@ -190,7 +206,7 @@ class SnakeBidsApp:
         # look for snakefile in the snakemake_dir, quit if not found
         self.snakefile = None
         for snakefile_path in SNAKEFILE_CHOICES:
-            if Path(snakemake_dir, snakefile_path).exists():
+            if (self.snakemake_dir / snakefile_path).exists():
                 self.snakefile = Path(snakemake_dir, snakefile_path)
                 break
         if self.snakefile is None:
@@ -239,6 +255,24 @@ class SnakeBidsApp:
             parser = argparse.ArgumentParser(
                 description="Snakebids helps build BIDS Apps with Snakemake"
             )
+
+        parser.add_argument(
+            "--workflow-mode",
+            "-W",
+            action="store_true"
+        )
+
+        # We use -x as the alias because both -f and -F are taken by snakemake
+        parser.add_argument(
+            "--force-conversion",
+            "-x",
+            action="store_true"
+        )
+
+        parser.add_argument(
+            "--retrofit",
+            action="store_true"
+        )
 
         # add option for printing out snakemake usage
         parser.add_argument(
@@ -349,6 +383,11 @@ class SnakeBidsApp:
             k: resolve_path(v) for k, v in args.__dict__.items()
         }
 
+        self.workflow_mode = args.workflow_mode
+        self.force = args.force_conversion
+        self.outputdir = Path(args.output_dir).resolve()
+        self.retrofit = args.retrofit
+
         # add snakebids arguments to config
         self.config.update(args.__dict__)
 
@@ -391,70 +430,75 @@ class SnakeBidsApp:
         self.config["output_dir"] = Path(self.config["output_dir"]).resolve()
 
     
-    def write_updated_config(self):
-        """Create an updated snakebids config file in the output dir."""
-        self.updated_config = Path(self.config["output_dir"],
-                                    self.configfile_path)
-
-
-        # create the output folder if needed
-        self.updated_config.parent.mkdir(parents = True, exist_ok=True)
-
-
-        time_hash = get_time_hash() # TODO: copy to a time-hashed file too
-                                    # for provenance? 
-                                    #  unused as of now.. 
-
-
-        with open(self.updated_config, "w") as f:
-            # write either as JSON or YAML
-            if self.updated_config.suffix == '.json':
-                import json
-                json.dump(self.config, f, indent=4)
-            else: #if not json, then should be yaml or yml
-                from collections import OrderedDict
-                
-                #this is needed to make the output yaml clean
-                yaml.add_representer(OrderedDict,
-                                        lambda dumper,data: 
-                                            dumper.represent_mapping(
-                                                'tag:yaml.org,2002:map',
-                                                data.items()))
-
-                # Represent any PathLikes as str.
-                path2str = lambda dumper, data: dumper.represent_scalar('tag:yaml.org,2002:str',str(data))
-                yaml.add_representer(pathlib.PosixPath, path2str)
-                yaml.add_representer(pathlib.WindowsPath, path2str)
-
-                yaml.dump(dict(self.config),
-                            f, 
-                            default_flow_style=False,
-                            sort_keys=False)
-
     def run_snakemake(self):
-        """Run snake make with that config.
+        """Run snakemake with that config.
 
         Workflow snakefile will read snakebids config, create inputs_config,
         and read that in.
         """
 
-        # write updated config
-        self.write_updated_config()
+        if self.snakemake_dir == self.outputdir:
+            write_output_mode(self.outputdir/".snakebids", "workflow")
+            mode = "workflow"
+            force_config_overwrite = True
+            if self.workflow_mode == False:
+                print(
+                    f"{Fore.YELLOW}You specified your output to be in the snakebids "
+                    "directory, so we're switching automatically to workflow mode!\n"
+
+                    f"{Fore.RESET}You'll find your results in the "
+                    "`snakebidsdir/results` directory."
+                )
+        else:
+            mode = "workflow" if self.workflow_mode else "bidsapp"
+            force_config_overwrite = False
+            if self.retrofit:
+                for path in CONFIGFILE_CHOICES:
+                    if (self.outputdir / path).exists():
+                        self.configfile_path = path
+                if not retrofit_output(
+                    self.outputdir,
+                    # Find all config files in the outputdir
+                    (
+                        self.outputdir/p 
+                        for p in CONFIGFILE_CHOICES if (self.outputdir/p).exists()
+                    )
+                ):
+                    exit(1)
+        
+        root = prepare_output(
+            self.snakemake_dir,
+            self.outputdir,
+            mode,
+            self.force
+        )
+
+        if mode == "workflow":
+            self.config["output_dir"] = str(root)
+            new_config_file = self.outputdir/self.configfile_path
+            
+            cwd = self.outputdir
+        else:
+            new_config_file = self.outputdir/"code"/Path(self.configfile_path).name
+            cwd = self.snakemake_dir
+
+        write_config_file(new_config_file, self.config, force_config_overwrite)
 
         # running the chosen participant level
-
         analysis_level = self.config["analysis_level"]
-        # runs snakemake, using the workflow config and inputs config to
-        # override
 
-        # run snakemake command-line (passing any leftover args from argparse)
-        snakemake_cmd_list = [
-            "snakemake",
-            f"--snakefile {self.snakefile}",
-            f"--directory {self.config['output_dir']}",
+        # run snakemake (passing any leftover args from argparse)
+        # Filter any blank strings before submitting
+        snakemake_argv = [*filter(None, [
+            "--snakefile",
+            str(self.snakefile),
+            "--directory",
+            str(cwd),
+            "--configfile",
+            str(new_config_file.resolve()),
             *self.config["snakemake_args"],
             *self.config["targets_by_analysis_level"][analysis_level],
-        ]
+        ])]
 
-        snakemake_cmd = " ".join(snakemake_cmd_list)
-        run(snakemake_cmd)
+        snakemake.main(snakemake_argv)
+        
