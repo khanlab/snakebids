@@ -540,6 +540,7 @@ def generate_inputs(
 
         * ``"filters"``: Dictionary containing keyword arguments that will
           be passed to pybids ``get()``.
+
         * ``"wildcards"``: List of (str) bids tags to include as wildcards in
           snakemake. At minimum this should usually include
           ``['subject','session']``, plus any other wildcards that you may
@@ -549,16 +550,118 @@ def generate_inputs(
 
     Returns
     -------
-    dict of dicts
-        * ``"input_path"``: Nested `dict` with keys as image names (`str`),
-          and values as absolute paths with snakemake wildcard formatting
-          (`str`).
-        * ``"input_wildcards"``
-        * ``"input_lists"``
-        * ``"input_zip_lists"``
-        * ``"subjects"``
-        * ``"sessions"``
-        * ``"subj_wildcards"``
+    dict:
+        The dict returned by this functions contains seven items. Each of
+        the following four items is a dict containing one item for each
+        modality described by ``pybids_inputs``.
+
+        * ``"input_path"``: String with a wildcard-filled path that matches
+          the images for this modality.
+
+        * ``"input_zip_lists"``: Dictionary where each key is a wildcard
+          entity and each value is a list of the values found for that
+          entity. Each of these lists has length equal to the number of
+          images matched for this modality, so they can be zipped together to
+          get a list of the wildcard values for each image.
+
+        * ``"input_lists"``: Dictionary where each key is a wildcard entity
+          and each value is a list of the unique values found for that
+          entity. These lists may not be the same length.
+
+        * ``"input_wildcards"``: Dictionary where each key is the name of a
+          wildcard entity, and each value is the Snakemake wildcard used for
+          that entity.
+
+        Then there are three more top-level entries in the dictionary:
+
+        * ``"subjects"``: A list of the subjects in the dataset.
+
+        * ``"sessions"``: A list of the sessions in the dataset.
+
+        * ``"subj_wildcards"``: The subject and session wildcards applicable
+          to this dataset. ``{"subject": "{subject}"}`` if there is only one
+          session, ``{"subject": "{subject}", "session": "{session}"}`` if
+          there are multiple sessions.
+
+    Notes
+    -----
+    As an example, consider the following BIDS dataset::
+
+        bids-example/
+        ├── dataset_description.json
+        ├── participants.tsv
+        ├── README
+        └── sub-control01
+            ├── anat
+            │   ├── sub-control01_T1w.json
+            │   ├── sub-control01_T1w.nii.gz
+            │   ├── sub-control01_T2w.json
+            │   └── sub-control01_T2w.nii.gz
+            ├── dwi
+            │   ├── sub-control01_dwi.bval
+            │   ├── sub-control01_dwi.bvec
+            │   └── sub-control01_dwi.nii.gz
+            ├── fmap
+            │   ├── sub-control01_magnitude1.nii.gz
+            │   ├── sub-control01_phasediff.json
+            │   ├── sub-control01_phasediff.nii.gz
+            │   └── sub-control01_scans.tsv
+            └── func
+                ├── sub-control01_task-nback_bold.json
+                ├── sub-control01_task-nback_bold.nii.gz
+                ├── sub-control01_task-nback_events.tsv
+                ├── sub-control01_task-nback_physio.json
+                ├── sub-control01_task-nback_physio.tsv.gz
+                ├── sub-control01_task-nback_sbref.nii.gz
+                ├── sub-control01_task-rest_bold.json
+                ├── sub-control01_task-rest_bold.nii.gz
+                ├── sub-control01_task-rest_physio.json
+                └── sub-control01_task-rest_physio.tsv.gz
+
+    With the following ``pybids_inputs`` defined in the config file::
+
+        pybids_inputs:
+          bold:
+            filters:
+              suffix: 'bold'
+              extension: '.nii.gz'
+              datatype: 'func'
+            wildcards:
+              - subject
+              - session
+              - acquisition
+              - task
+              - run
+
+    Then ``generate_inputs(bids_dir, pybids_input)`` would return the
+    following dictionary::
+
+        {
+            "input_path": {
+                "bold": "bids-example/sub-{subject}/func/sub-{subject}_task-{task}_bold.nii.gz"
+            },
+            "input_zip_lists": {
+                "bold": {
+                    "subject": ["control01", "control01"],
+                    "task": ["nback", "rest"]
+                }
+            },
+            "input_lists": {
+                "bold": {
+                    "subject": ["control01"],
+                    "task": ["nback", "rest"]
+                }
+            },
+            "input_wildcards": {
+                "bold": {
+                    "subject": "{subject}",
+                    "task": "{task}"
+                }
+            },
+            "subjects": ["subject01"],
+            "sessions": [],
+            "subj_wildcards": {"subject": "{subject}"}
+        }
     """
 
     search_terms = __generate_search_terms(
@@ -665,6 +768,24 @@ def __process_path_override(input_path):
 def __process_layout_wildcard(path, wildcard_name):
     """Convert an absolute BIDS path to the same path with the given tag
     replaced by a wildcard.
+
+    Parameters
+    ----------
+    path : str
+        Absolute BIDS path
+        (e.g. "root/sub-01/ses-01/sub-01_ses-01_T1w.nii.gz")
+    wildcard_name : str
+        BIDS entity to replace with a wildcard. (e.g. "subject")
+
+    Returns
+    -------
+    path : str
+        Original path with the original entity replaced with a wildcard.
+        (e.g. "root/sub-{subject}/ses-01/sub-{subject}_ses-01_T1w.nii.gz")
+    match : str
+        Matched BIDS entity in the input path (e.g. "01")
+    out_name : str
+        Name of the applied wildcard (e.g. "subject")
     """
     bids_tags = __read_bids_tags()
     tag = (
@@ -733,9 +854,23 @@ def __get_lists_from_bids(
 
     Returns
     -------
-    dict:
-        Config dictionary with ``input_path``, ``input_zip_lists``,
-        ``input_lists``, and ``input_wildcards``
+    dict of dicts:
+        There is one entry in the dictionary for each modality described by
+        ``pybids_inputs``. Each of these entries contains the following items:
+
+        * ``"input_path"``: String with a wildcard-filled path that matches
+          the images for this modality.
+        * ``"input_zip_lists"``: Dictionary where each key is a wildcard
+          entity and each value is a list of the values found for that
+          entity. Each of these lists has length equal to the number of
+          images matched for this modality, so they can be zipped together to
+          get a list of the wildcard values for each image.
+        * ``"input_lists"``: Dictionary where each key is a wildcard entity
+          and each value is a list of the unique values found for that
+          entity. These lists may not be the same length.
+        * ``"input_wildcards"``: Dictionary where each key is the name of a
+          wildcard entity, and each value is the Snakemake wildcard used for
+          that entity.
     """
 
     out_dict = dict(
