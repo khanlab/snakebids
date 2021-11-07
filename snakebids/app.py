@@ -475,13 +475,14 @@ class SnakeBidsApp:
 
         if mode == "workflow":
             self.config["output_dir"] = str(root)
+            self.config["root"] = 'results'
             new_config_file = self.outputdir/self.configfile_path
-            
-            cwd = self.outputdir
         else:
-            new_config_file = self.outputdir/"code"/Path(self.configfile_path).name
-            cwd = self.snakemake_dir
             force_config_overwrite = True
+            self.config["root"] = ''
+            new_config_file = self.outputdir/'code'/Path(self.configfile_path).name
+        
+        cwd = self.outputdir
 
         write_config_file(new_config_file, self.config, force_config_overwrite)
 

@@ -128,6 +128,7 @@ class TestRunSnakemake:
         app.force = False
         expected_config = copy.deepcopy(app.config)
         expected_config["output_dir"] = "/tmp/output/results"
+        expected_config["root"] = "results"
 
         io_mocks["prepare_output"].return_value = Path("/tmp/output/results")
 
@@ -166,6 +167,7 @@ class TestRunSnakemake:
         app.snakemake_dir = Path("app")
         app.force = False
         expected_config = copy.deepcopy(app.config)
+        expected_config["root"] = ""
 
         io_mocks["prepare_output"].return_value = Path("/tmp/output")
 
@@ -191,7 +193,7 @@ class TestRunSnakemake:
             "--snakefile",
             app.snakefile,
             "--directory",
-            "app",
+            "/tmp/output",
             "--configfile",
             "/tmp/output/code/config.yaml"
         ])
@@ -207,6 +209,7 @@ class TestRunSnakemake:
         app.force = False
         expected_config = copy.deepcopy(app.config)
         expected_config["output_dir"] = "app/results"
+        expected_config["root"] = "results"
 
         io_mocks["prepare_output"].return_value = Path("app/results")
 
