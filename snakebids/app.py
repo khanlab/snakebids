@@ -1,22 +1,18 @@
 """Tools to generate a Snakemake-based BIDS app."""
 
-import json
 import os
 import pathlib
 import subprocess
 import argparse
 import logging
 import sys
-import yaml
-import itertools as it
-import shutil
 
 import snakemake
 from snakemake.io import load_configfile
 from colorama import Fore
 
 from bids import config as bidsconfig
-from snakebids.exceptions import ConfigError
+from snakebids.exceptions import ConfigError, RunError
 from snakebids.output import prepare_output, retrofit_output, write_config_file, write_output_mode
 
 # We define Path here in addition to pathlib to put both variables in globals()
@@ -259,19 +255,34 @@ class SnakeBidsApp:
         parser.add_argument(
             "--workflow-mode",
             "-W",
-            action="store_true"
+            action="store_true",
+            help=(
+                "Run Snakebids in Workflow mode. This will cause the entire Snakebids "
+                "app, except for the results folder, to be copied into your "
+                "output_dir. Snakemake will be run in this new child app, and results "
+                "will be put in output_dir/results."
+            )
         )
 
         # We use -x as the alias because both -f and -F are taken by snakemake
         parser.add_argument(
             "--force-conversion",
             "-x",
-            action="store_true"
+            action="store_true",
+            help=(
+                "Force snakebids to convert a workflow output to a bidsapp output. "
+                "conversion will delete all the files in the workflow snakebids app."
+            )
         )
 
         parser.add_argument(
             "--retrofit",
-            action="store_true"
+            action="store_true",
+            help=(
+                "Convert a legacy Snakebids output (Snakebids 0.3.x or lower) into "
+                "bidsapp mode. This will delete any config files currently in the "
+                "output."
+            )
         )
 
         # add option for printing out snakemake usage
@@ -446,8 +457,8 @@ class SnakeBidsApp:
                     f"{Fore.YELLOW}You specified your output to be in the snakebids "
                     "directory, so we're switching automatically to workflow mode!\n"
 
-                    f"{Fore.RESET}You'll find your results in the "
-                    "`snakebidsdir/results` directory."
+                    f"{Fore.RESET}You'll find your results in "
+                    f"`{(self.snakemake_dir/'results').resolve()}`"
                 )
         else:
             mode = "workflow" if self.workflow_mode else "bidsapp"
@@ -464,14 +475,19 @@ class SnakeBidsApp:
                         for p in CONFIGFILE_CHOICES if (self.outputdir/p).exists()
                     )
                 ):
+                    print(f"{Fore.YELLOW}Exiting. No conversion performed.{Fore.RESET}")
                     exit(1)
         
-        root = prepare_output(
-            self.snakemake_dir,
-            self.outputdir,
-            mode,
-            self.force
-        )
+        try:
+            root = prepare_output(
+                self.snakemake_dir,
+                self.outputdir,
+                mode,
+                self.force
+            )
+        except RunError as err:
+            print(err.msg)
+            exit(1)
 
         if mode == "workflow":
             self.config["output_dir"] = str(root)

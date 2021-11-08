@@ -31,6 +31,8 @@ def fake_snakemake(tmp_path: Path):
     (app1 / "workflow" / "Snakefile").touch()
     (app1 / "workflow" / "rules" / "rule1.smk").touch()
 
+    (app1/".snakemake").mkdir()
+
     output = tmp_path/"output"
     output.mkdir()
     (output/"random_file").touch()
@@ -95,6 +97,7 @@ def test_copy_snakemake_app(fake_snakemake: Path):
     out = output._copy_snakemake_app(fake_snakemake/"app1", app2)
 
     assert out == fake_snakemake/"app2"/"results"
+    assert not (out/".snakemake").exists()
     assert dirlen(app2 / "results") == 0
     assert dirlen(app2 / "config") == 0
     assert (app2 / "workflow/Snakefile").exists()
@@ -228,6 +231,7 @@ class TestPrepareOutput:
         )
 
         assert out == fake_snakemake/"output"/"results"
+        assert not (out/".snakemake").exists()
         assert dirlen(fake_snakemake/"output") == 5
         assert out.exists()
         assert dirlen(out) == 2
@@ -246,6 +250,9 @@ class TestPrepareOutput:
             False
         )
 
+        assert not (fake_snakemake/"output"/".snakemake").exists()
+        (fake_snakemake/"output"/".snakemake").touch()
+
         out = output.prepare_output(
             fake_snakemake/"app1",
             fake_snakemake/"output",
@@ -254,8 +261,9 @@ class TestPrepareOutput:
         )
 
         assert out == fake_snakemake/"output"
+        assert (fake_snakemake/"output"/".snakemake").exists()
         assert out.exists()
-        assert dirlen(out) == 3
+        assert dirlen(out) == 4
         with (out/".snakebids").open() as f:
             assert json.load(f)["mode"] == "bidsapp"
 
@@ -311,3 +319,4 @@ class TestRetrofitOutput:
         (o/"config"/"random").touch()
         with pytest.raises(RunError):
             output.retrofit_output(o, [o/"config/config.yaml"])
+        

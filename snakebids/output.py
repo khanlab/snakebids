@@ -47,14 +47,6 @@ def prepare_output(
     force_conversion : bool
         Force conversion from workflow to bidsapp
         mode. Defaults to False.
-    src: Path :
-        
-    outputdir: Path :
-        
-    mode: Mode :
-        
-    force_conversion: bool :
-         (Default value = False)
 
     Returns
     -------
@@ -227,7 +219,10 @@ def _convert_output(start: Mode, end: Mode, src: Path, output: Path, force=False
         )
         results = _check_for_results_folder(output)
         results.mkdir()
-        [shutil.move(f, results / f.name) for f in output.iterdir() if f != results]
+        for f in output.iterdir():
+            if f != results:
+                shutil.move(f, results / f.name) 
+         
 
         # Move .snakebids file back to the top level
         shutil.move(results / ".snakebids", output / ".snakebids")
@@ -251,7 +246,8 @@ def _convert_output(start: Mode, end: Mode, src: Path, output: Path, force=False
     # Delete everything in the output folder except for .snakebids and results
     _remove_all(f for f in output.iterdir() if f not in [
         output/".snakebids",
-        output/"results"
+        output/"results",
+        output/".snakemake"
     ])            
     
     [shutil.move(f, output / f.name) for f in (output/"results").iterdir()]
@@ -263,7 +259,8 @@ def _remove_all(paths: Iterable[Path], confirm: bool = False):
     if confirm:
         paths = [*paths]
         print(
-            f"\t{Fore.YELLOW}The following files and folders will be DELETED:\n{Fore.RESET}",
+            f"\t{Fore.YELLOW}The following files and folders will be DELETED:\n"
+            f"{Fore.RESET}",
             _format_path_list(paths)
         )
         user_response = input("Would you like to continue? [yes,NO]")
@@ -285,7 +282,7 @@ def _format_path_list(paths: Iterable[Path]):
 
 
 def _copy_snakemake_app(src: Path, dest: Path, create_results: bool = True):
-    """Copies snakemap app from src to dest, skipping the config and results directories
+    """Copies snakemake app from src to dest, skipping config and results directories
     
     Creates an empty results and config folder, and returns the path to the results
     folder.
@@ -307,29 +304,27 @@ def _copy_snakemake_app(src: Path, dest: Path, create_results: bool = True):
     """
     # shutils.copytree makes it hard to exclude just root level folders, so we do this
     # manually
-    old_cwd = Path().cwd()
-    os.chdir(src)
     file_list = [*it.chain(
         # All root level items
-        f for f in Path().iterdir() if f not in [
-            Path(".snakebids"),
-            Path("config"),
-            Path("results"),
+        f.relative_to(src) for f in Path(src).iterdir() if f not in [
+            src/".snakebids",
+            src/"config",
+            src/"results",
+            src/".snakemake",
         ]
     )]
 
     # Iterate through files
     bar = IncrementalBar("Copying snakebids app", max=len(file_list))
     for file in file_list:
-        if file.is_dir():
-            shutil.copytree(file, dest/file)
+        if (src/file).is_dir():
+            shutil.copytree(src/file, dest/file)
         # Copy over files, making parents as necessary
-        elif file.is_file():
+        elif (src/file).is_file():
             (dest/file).parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy(file, dest/file, follow_symlinks=False)
+            shutil.copy(src/file, dest/file, follow_symlinks=False)
         bar.next()
 
-    os.chdir(old_cwd)
     if create_results: (dest/"results").mkdir()
     (dest/"config").mkdir()
     return dest/"results"
@@ -338,7 +333,7 @@ def _copy_snakemake_app(src: Path, dest: Path, create_results: bool = True):
 def _get_snakebids_file(outputdir: Path):
     """Ensure populated dir contains .snakebids file, retrieving it if it does.
     
-    First checks if outpdir doesn't exist or is completely empty, returing None if so.
+    First checks if outputdir doesn't exist or is completely empty, returing None if so.
     If it does have data, it checks for a .snakebids file, returning its Path if found.
     If no .snakebids file is found, it raises an exception.
 
@@ -349,9 +344,9 @@ def _get_snakebids_file(outputdir: Path):
 
     Returns
     -------
-    Optional[Path]
+    Path or None
         None if output dir is nonexistant or empty, otherwise the path
-        of the .snakbids file
+        of the .snakebids file
 
     Raises
     ------
