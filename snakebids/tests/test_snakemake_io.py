@@ -1,5 +1,7 @@
 """Tests for snakemake_io"""
 
+from __future__ import absolute_import
+
 import collections
 
 from .. import snakemake_io
@@ -8,15 +10,13 @@ from .. import snakemake_io
 def test_glob_wildcards():
     """Test glob_wildcards() with various patterns"""
     file_path = (
-        "snakebids/tests/data/bids_t1w/sub-001/anat/"
-        "sub-001_acq-mprage_T1w.nii.gz"
+        "snakebids/tests/data/bids_t1w/sub-001/anat/" "sub-001_acq-mprage_T1w.nii.gz"
     )
     empty_wildcards = collections.namedtuple("Wildcards", [])()
     assert snakemake_io.glob_wildcards(file_path) == empty_wildcards
 
     acq_wildcard_path = (
-        "snakebids/tests/data/bids_t1w/sub-001/anat/"
-        "sub-001_acq-{acq}_T1w.nii.gz"
+        "snakebids/tests/data/bids_t1w/sub-001/anat/" "sub-001_acq-{acq}_T1w.nii.gz"
     )
     acq_wildcards = collections.namedtuple("Wildcards", ["acq"])(["mprage"])
     assert snakemake_io.glob_wildcards(acq_wildcard_path) == acq_wildcards
@@ -41,12 +41,8 @@ def test_glob_wildcards():
         ),
     ]
     both_wildcards_one_file = [
-        collections.namedtuple("Wildcards", ["subject", "acq"])(
-            ["001"], ["mprage"]
-        ),
-        collections.namedtuple("Wildcards", ["acq", "subject"])(
-            ["mprage"], ["001"]
-        ),
+        collections.namedtuple("Wildcards", ["subject", "acq"])(["001"], ["mprage"]),
+        collections.namedtuple("Wildcards", ["acq", "subject"])(["mprage"], ["001"]),
     ]
 
     assert snakemake_io.glob_wildcards(both_wildcard_path) in both_wildcards

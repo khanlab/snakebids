@@ -1,9 +1,11 @@
+from __future__ import absolute_import
+
 import os
 
-from bids import BIDSLayout
 import pytest
+from bids import BIDSLayout
 
-from .. import generate_inputs, _get_lists_from_bids
+from .. import _get_lists_from_bids, generate_inputs
 
 
 def test_t1w():
@@ -45,14 +47,9 @@ def test_t1w():
     assert config["input_zip_lists"] == {
         "t1": {"acq": ["mprage", "mprage"], "subject": ["001", "002"]}
     }
-    assert config["input_wildcards"] == {
-        "t1": {"acq": "{acq}", "subject": "{subject}"}
-    }
+    assert config["input_wildcards"] == {"t1": {"acq": "{acq}", "subject": "{subject}"}}
     # Order of the subjects is not deterministic
-    assert config["subjects"] in [
-        ["001", "002"],
-        ["002", "001"]
-    ]
+    assert config["subjects"] in [["001", "002"], ["002", "001"]]
     assert config["sessions"] == []
     assert config["subj_wildcards"] == {"subject": "{subject}"}
 
@@ -136,11 +133,8 @@ def test_t1w():
             "t2": {"subject": "{subject}"},
         }
         # Order of the subjects is not deterministic
-        assert config["subjects"] in [
-            ["001", "002"],
-            ["002", "001"]
-        ]
- 
+        assert config["subjects"] in [["001", "002"], ["002", "001"]]
+
         assert config["sessions"] == []
         assert config["subj_wildcards"] == {"subject": "{subject}"}
 

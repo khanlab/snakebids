@@ -1,31 +1,30 @@
 """Tools to manage generation and interconversion of bidsapps and snakemake outputs."""
 
+import hashlib
 import itertools as it
 import json
-from pathlib import Path, PosixPath, WindowsPath
-import shutil
 import os
+import shutil
+import time
+from collections import OrderedDict
+from pathlib import Path, PosixPath, WindowsPath
 from typing import Iterable, List, Union
 
-from colorama import Fore
-from typing_extensions import Literal
-from progress.bar import IncrementalBar
 import yaml
+from colorama import Fore
+from progress.bar import IncrementalBar
+from typing_extensions import Literal
 
 from snakebids.exceptions import RunError
-
 
 Mode = Union[Literal["workflow"], Literal["bidsapp"]]
 
 
 def prepare_output(
-    src: Path,
-    outputdir: Path,
-    mode: Mode,
-    force_conversion: bool = False
+    src: Path, outputdir: Path, mode: Mode, force_conversion: bool = False
 ):
     """Ensure output directory is in the correct mode and is ready for snakemake to run
-    
+
     Checks for existing output at the directory, converting to the appropriate mode if
     necessary. If running in workflow mode, the src snakemake directory is copied over
     to the output, and snakemake output will be put in results. In bidsapp mode, the
@@ -65,31 +64,26 @@ def prepare_output(
     if mode not in ["workflow", "bidsapp"]:
         raise RunError(
             f"Requested unsupported output mode: {mode}.\n"
-            "Please select between \"workflow\" and \"bidsapp\""
+            'Please select between "workflow" and "bidsapp"'
         )
 
     # Look for .snakebids file. If the outputdir doesn't yet exist, we'll get None.
     # If it does exist but there's no .snakebids file, an error will be raised.
     snakebids_file = _get_snakebids_file(outputdir)
     outputdir.mkdir(exist_ok=True)
-    
+
     if not snakebids_file:
         write_output_mode(outputdir / ".snakebids", mode)
-    
+
         if mode == "bidsapp":
             return outputdir
 
         return _copy_snakemake_app(src, outputdir)
 
-    
     with snakebids_file.open("r") as f:
         snakebids_data = json.load(f)
     root = _convert_output(
-        snakebids_data["mode"],
-        mode,
-        src,
-        outputdir,
-        force_conversion
+        snakebids_data["mode"], mode, src, outputdir, force_conversion
     )
     write_output_mode(outputdir / ".snakebids", mode)
     return root
@@ -106,7 +100,7 @@ def write_output_mode(dotfile: Path, mode: Mode):
         Mode to write: either "bidsapp" or "workflow"
     """
     if dotfile.exists():
-        with dotfile.open('r') as f:
+        with dotfile.open("r") as f:
             data = json.load(f)
     else:
         data = {}
@@ -144,38 +138,32 @@ def retrofit_output(output: Path, config_files: Iterable[Path]):
         config folder, or if no config files are provided.
     """
     config_files = [*config_files]
-    if (output/".snakebids").exists():
-        raise RunError(
-            f".snakebids file already found at {output}"
-        )
+    if (output / ".snakebids").exists():
+        raise RunError(f".snakebids file already found at {output}")
     if not config_files:
-        raise RunError(
-            f"No config files found in {output}. Cannot perform retrofit."
-        )
-    if (output/"config").exists() and (output/"config").is_dir():
-        to_delete = it.chain(config_files, [output/"config"])
-        unknown_files = {*(output/"config").iterdir()} - {*config_files}
+        raise RunError(f"No config files found in {output}. Cannot perform retrofit.")
+    if (output / "config").exists() and (output / "config").is_dir():
+        to_delete = it.chain(config_files, [output / "config"])
+        unknown_files = {*(output / "config").iterdir()} - {*config_files}
         if len(unknown_files) > 0:
             raise RunError(
                 f"Unrecognized files found in config folder ({output/'config'}",
-                _format_path_list(unknown_files)
+                _format_path_list(unknown_files),
             )
     else:
         to_delete = config_files
 
-    print(
-        f"Converting {output} into bidsapp format.\n"
-    )
+    print(f"Converting {output} into bidsapp format.\n")
 
     if not _remove_all(to_delete, confirm=True):
         return False
-    write_output_mode(output/".snakebids", "bidsapp")
+    write_output_mode(output / ".snakebids", "bidsapp")
     return True
 
 
 def _convert_output(start: Mode, end: Mode, src: Path, output: Path, force=False):
     """Convert existing output between bidsapp and workflow mode
-    
+
     Does nothing if start and end are the same. Because of the potential loss of
     information (all the workflow files), this will only convert from bidsapp to
     workflow mode if force is True, otherwise it raises an exception. Returns the
@@ -208,9 +196,9 @@ def _convert_output(start: Mode, end: Mode, src: Path, output: Path, force=False
     """
     if start == end:
         if end == "workflow":
-            return output/"results"
+            return output / "results"
         return output
-    
+
     # Convert to workflow mode
     if end == "workflow":
         print(
@@ -221,37 +209,38 @@ def _convert_output(start: Mode, end: Mode, src: Path, output: Path, force=False
         results.mkdir()
         for f in output.iterdir():
             if f != results:
-                shutil.move(f, results / f.name) 
-         
+                shutil.move(f, results / f.name)
 
         # Move .snakebids file back to the top level
         shutil.move(results / ".snakebids", output / ".snakebids")
         _copy_snakemake_app(src, output, False)
         return results
-    
+
     # Convert to Bidsapp mode
     if not force:
         raise RunError(
             f"You are attempting to convert a preexisting output ({output}) "
             "from workflow mode to bidsapp mode. This will result in the loss "
             "of all workflow files and custom configs. If you are sure you "
-            "wish to do this, run this command again with --force-conversion. " 
+            "wish to do this, run this command again with --force-conversion. "
             "Otherwise, run the command with --workflow-mode to maintain the current "
             "output mode."
         )
-    # Check if results folder/file exists within the results folder. We don't 
+    # Check if results folder/file exists within the results folder. We don't
     # need its output, just its exception.
     _check_for_results_folder(output / "results")
 
     # Delete everything in the output folder except for .snakebids and results
-    _remove_all(f for f in output.iterdir() if f not in [
-        output/".snakebids",
-        output/"results",
-        output/".snakemake"
-    ])            
-    
-    [shutil.move(f, output / f.name) for f in (output/"results").iterdir()]
-    (output/"results").rmdir()
+    _remove_all(
+        f
+        for f in output.iterdir()
+        if f not in [output / ".snakebids", output / "results", output / ".snakemake"]
+    )
+
+    for f in (output / "results").iterdir():
+        shutil.move(f, output / f.name)
+
+    (output / "results").rmdir()
     return output
 
 
@@ -261,29 +250,32 @@ def _remove_all(paths: Iterable[Path], confirm: bool = False):
         print(
             f"\t{Fore.YELLOW}The following files and folders will be DELETED:\n"
             f"{Fore.RESET}",
-            _format_path_list(paths)
+            _format_path_list(paths),
         )
         user_response = input("Would you like to continue? [yes,NO]")
         if user_response.lower() != "yes":
             return False
 
     dirs: List[Path] = []
-    for f in paths:
-        if f.is_dir(): dirs.append(f)
-        if f.is_symlink(): f.unlink()
-        if f.is_file(): os.remove(f)
+    for path in paths:
+        if path.is_dir():
+            dirs.append(path)
+        if path.is_symlink():
+            path.unlink()
+        if path.is_file():
+            os.remove(path)
     for d in dirs:
         shutil.rmtree(d)
     return True
 
 
 def _format_path_list(paths: Iterable[Path]):
-    return '\t\t- ' + '\n\t\t- '.join(str(p) for p in paths)
+    return "\t\t- " + "\n\t\t- ".join(str(p) for p in paths)
 
 
 def _copy_snakemake_app(src: Path, dest: Path, create_results: bool = True):
     """Copies snakemake app from src to dest, skipping config and results directories
-    
+
     Creates an empty results and config folder, and returns the path to the results
     folder.
 
@@ -304,35 +296,41 @@ def _copy_snakemake_app(src: Path, dest: Path, create_results: bool = True):
     """
     # shutils.copytree makes it hard to exclude just root level folders, so we do this
     # manually
-    file_list = [*it.chain(
-        # All root level items
-        f.relative_to(src) for f in Path(src).iterdir() if f not in [
-            src/".snakebids",
-            src/"config",
-            src/"results",
-            src/".snakemake",
-        ]
-    )]
+    file_list = [
+        *it.chain(
+            # All root level items
+            f.relative_to(src)
+            for f in Path(src).iterdir()
+            if f
+            not in [
+                src / ".snakebids",
+                src / "config",
+                src / "results",
+                src / ".snakemake",
+            ]
+        )
+    ]
 
     # Iterate through files
-    bar = IncrementalBar("Copying snakebids app", max=len(file_list))
+    progress_bar = IncrementalBar("Copying snakebids app", max=len(file_list))
     for file in file_list:
-        if (src/file).is_dir():
-            shutil.copytree(src/file, dest/file)
+        if (src / file).is_dir():
+            shutil.copytree(src / file, dest / file)
         # Copy over files, making parents as necessary
-        elif (src/file).is_file():
-            (dest/file).parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy(src/file, dest/file, follow_symlinks=False)
-        bar.next()
+        elif (src / file).is_file():
+            (dest / file).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(src / file, dest / file, follow_symlinks=False)
+        progress_bar.next()
 
-    if create_results: (dest/"results").mkdir()
-    (dest/"config").mkdir()
-    return dest/"results"
+    if create_results:
+        (dest / "results").mkdir()
+    (dest / "config").mkdir()
+    return dest / "results"
 
 
 def _get_snakebids_file(outputdir: Path):
     """Ensure populated dir contains .snakebids file, retrieving it if it does.
-    
+
     First checks if outputdir doesn't exist or is completely empty, returing None if so.
     If it does have data, it checks for a .snakebids file, returning its Path if found.
     If no .snakebids file is found, it raises an exception.
@@ -359,26 +357,25 @@ def _get_snakebids_file(outputdir: Path):
         return None
 
     # If it does exist, is it empty?
-    elif len([*outputdir.iterdir()]) == 0:
+    if len([*outputdir.iterdir()]) == 0:
         return None
 
     # If it's not empty, is there a .snakebids file?
-    elif (outputdir / ".snakebids").exists():
-        return (outputdir / ".snakebids")
-    
+    if (outputdir / ".snakebids").exists():
+        return outputdir / ".snakebids"
+
     # We have an occupied directory without a .snakebids file, so we have no idea
     # what's there.
-    else:
-        raise RunError(
-            f"Output dir `{outputdir.resolve()}` exists, but `.snakebids` file "
-            "not found. Please specify either a new directory, or a ",
-            "directory where you've previously run this Snakebids app."
-        )
+    raise RunError(
+        f"Output dir `{outputdir.resolve()}` exists, but `.snakebids` file "
+        "not found. Please specify either a new directory, or a ",
+        "directory where you've previously run this Snakebids app.",
+    )
 
 
 def _check_for_results_folder(root: Path):
     """Check folder for results folder
-    
+
     Raises exception if it does exist, otherwise returns the name of the folder it
     looked for.
 
@@ -410,12 +407,10 @@ def _check_for_results_folder(root: Path):
 
 def get_time_hash():
     """currently unused"""
-    import hashlib
-    import time
 
-    hash = hashlib.sha1()
-    hash.update(str(time.time()).encode('utf-8'))
-    return hash.hexdigest()[:8]
+    time_hash = hashlib.sha1()
+    time_hash.update(str(time.time()).encode("utf-8"))
+    return time_hash.hexdigest()[:8]
 
 
 def write_config_file(config_file: Path, data: dict, force_overwrite: bool = False):
@@ -427,41 +422,31 @@ def write_config_file(config_file: Path, data: dict, force_overwrite: bool = Fal
         )
     config_file.parent.mkdir(exist_ok=True)
 
-    # TODO: copy to a time-hashed file for provenance purposes? 
-    #       unused as of now.. 
-    time_hash = get_time_hash() 
+    # TODO: copy to a time-hashed file for provenance purposes?
+    #       unused as of now..
+    # time_hash = get_time_hash()
 
-    
-    with open(config_file, "w") as f:
+    with open(config_file, "w", encoding="utf-8") as f:
         # write either as JSON or YAML
-        if config_file.suffix == '.json':
-            import json
+        if config_file.suffix == ".json":
             json.dump(data, f, indent=4)
             return
 
         # if not json, then should be yaml or yml
-        from collections import OrderedDict
-        
+
         # this is needed to make the output yaml clean
         yaml.add_representer(
             OrderedDict,
             lambda dumper, data: dumper.represent_mapping(
-                'tag:yaml.org,2002:map',
-                data.items()
-            )
+                "tag:yaml.org,2002:map", data.items()
+            ),
         )
 
         # Represent any PathLikes as str.
-        path2str = lambda dumper, data: dumper.represent_scalar(
-            'tag:yaml.org,2002:str',
-            str(data)
-        )
+        def path2str(dumper, data):
+            return dumper.represent_scalar("tag:yaml.org,2002:str", str(data))
+
         yaml.add_representer(PosixPath, path2str)
         yaml.add_representer(WindowsPath, path2str)
 
-        yaml.dump(
-            data,
-            f, 
-            default_flow_style=False,
-            sort_keys=False
-        )
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
