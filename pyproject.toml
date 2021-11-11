@@ -14,11 +14,11 @@ include = ["snakebids/project_template"]
 exclude = ["snakebids/tests/**"]
 
 [tool.poetry.dependencies]
-python = ">=3.7"
-pybids = ">=0.13.2"
+python = ">=3.7,<3.10"
+pybids = "^0.13.2"
 snakemake = ">=5.28.0"
-PyYAML = ">=5.3.1"
-cookiecutter = ">=1.7.2"
+PyYAML = "^5.3.1"
+cookiecutter = "^1.7.2"
 colorama = "^0.4.4"
 typing-extensions = "^3.10.0"
 progress = "^1.6"
@@ -27,6 +27,11 @@ progress = "^1.6"
 black = "^21.10b0"
 pytest = "^6.2.5"
 pytest-mock = "^3.6.1"
+pylint = "^2.11.1"
+isort = "^5.10.1"
+flake8 = "^4.0.1"
+poethepoet = "^0.10.0"
+pre-commit = "^2.15.0"
 
 [tool.poetry.scripts]
 snakebids-create = "snakebids.template:main"
@@ -34,3 +39,25 @@ snakebids-create = "snakebids.template:main"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poe.tasks]
+setup = "pre-commit install"
+quality = { shell = "isort snakebids && black snakebids && flake8 snakebids && pylint snakebids" }
+test = "pytest"
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+
+[tool.pylint.master]
+ignore-patterns = "^[0-9][0-9]+_,^test_"
+
+[tool.pylint.format]
+good-names = "i,j,k,ex,_,x,y,f,d"
+
+[tool.pylint.messages_control]
+disable = """
+    missing-function-docstring,
+    missing-module-docstring,
+    fixme
+"""

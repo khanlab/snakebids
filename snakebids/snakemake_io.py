@@ -1,9 +1,9 @@
 """ Minor modification to allow glob_wildcards() to have multiple occurence of
 same wildcard """
 
+import collections
 import os
 import re
-import collections
 from itertools import chain
 
 
@@ -21,19 +21,14 @@ def regex(filepattern):
                     "Constraint regex must be defined only in the first "
                     "occurence of the wildcard in a string."
                 )
-            regex_list.append("(?P={})".format(wildcard))
+            regex_list.append(f"(?P={wildcard})")
         else:
             wildcards.add(wildcard)
-            regex_list.append(
-                "(?P<{}>{})".format(
-                    wildcard,
-                    (
-                        match.group("constraint")
-                        if match.group("constraint")
-                        else ".+"
-                    ),
-                )
+            constraint = (
+                match.group("constraint") if match.group("constraint") else ".+"
             )
+            regex_list.append(f"(?P<{wildcard}>{constraint})")
+
         last = match.end()
     regex_list.append(re.escape(filepattern[last:]))
     regex_list.append("$")  # ensure that the match spans the whole file
@@ -89,9 +84,7 @@ def glob_wildcards(pattern, files=None, followlinks=False):
     if not dirname:
         dirname = "."
 
-    names = [
-        match.group("name") for match in _wildcard_regex.finditer(pattern)
-    ]
+    names = [match.group("name") for match in _wildcard_regex.finditer(pattern)]
 
     # remove duplicates while preserving ordering
     names = list(collections.OrderedDict.fromkeys(names))
@@ -99,7 +92,7 @@ def glob_wildcards(pattern, files=None, followlinks=False):
     # pylint: disable-msg=invalid-name
     Wildcards = collections.namedtuple("Wildcards", names)
 
-    wildcards = Wildcards(*[list() for name in names])
+    wildcards = Wildcards(*[[] for _ in names])
 
     pattern = re.compile(regex(pattern))
 
@@ -149,7 +142,7 @@ def update_wildcard_constraints(
             return match.group(0)
         # Only update if a new constraint has actually been set
         if newconstraint is not None:
-            return "{{{},{}}}".format(name, newconstraint)
+            return f"{{{name},{newconstraint}}}"
         return match.group(0)
 
     examined_names = set()
