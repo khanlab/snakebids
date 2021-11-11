@@ -180,7 +180,7 @@ class TestRunSnakemake:
             Path("app"), Path("/tmp/output"), "bidsapp", False
         )
         io_mocks["write_config"].assert_called_once_with(
-            Path("/tmp/output/code/config.yaml"), expected_config, True
+            Path("/tmp/output/mock/config.yaml"), expected_config, True
         )
         io_mocks["snakemake"].assert_called_once_with(
             [
@@ -189,7 +189,7 @@ class TestRunSnakemake:
                 "--directory",
                 "/tmp/output",
                 "--configfile",
-                "/tmp/output/code/config.yaml",
+                "/tmp/output/mock/config.yaml",
             ]
         )
 
