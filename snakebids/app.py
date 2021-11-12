@@ -255,6 +255,7 @@ class SnakeBidsApp:
 
         parser.add_argument(
             "--workflow-mode",
+            "--workflow_mode",
             "-W",
             action="store_true",
             help=(
@@ -268,6 +269,7 @@ class SnakeBidsApp:
         # We use -x as the alias because both -f and -F are taken by snakemake
         parser.add_argument(
             "--force-conversion",
+            "--force_conversion",
             "-x",
             action="store_true",
             help=(
@@ -288,6 +290,7 @@ class SnakeBidsApp:
 
         # add option for printing out snakemake usage
         parser.add_argument(
+            "--help-snakemake",
             "--help_snakemake",
             nargs=0,
             action=SnakemakeHelpAction,
@@ -326,7 +329,7 @@ class SnakeBidsApp:
         )
 
         for input_type in self.config["pybids_inputs"].keys():
-            argname = f"--filter_{input_type}"
+            argnames = (f"--filter_{input_type}", f"--filter-{input_type}")
             arglist_default = [
                 f"{key}={value}"
                 for (key, value) in self.config["pybids_inputs"][input_type][
@@ -336,7 +339,7 @@ class SnakeBidsApp:
             arglist_default_string = " ".join(arglist_default)
 
             filter_opts.add_argument(
-                argname,
+                *argnames,
                 nargs="+",
                 action=KeyValue,
                 help=f"(default: {arglist_default_string})",
@@ -351,14 +354,14 @@ class SnakeBidsApp:
         )
 
         for input_type in self.config["pybids_inputs"].keys():
-            argname = f"--wildcards_{input_type}"
+            argnames = (f"--wildcards-{input_type}", f"--wildcards_{input_type}")
             arglist_default = [
                 f"{wc}" for wc in self.config["pybids_inputs"][input_type]["wildcards"]
             ]
             arglist_default_string = " ".join(arglist_default)
 
             wildcards_opts.add_argument(
-                argname,
+                *argnames,
                 nargs="+",
                 help=f"(default: {arglist_default_string})",
             )
@@ -374,8 +377,8 @@ class SnakeBidsApp:
 
         # create path override parser
         for input_type in self.config["pybids_inputs"].keys():
-            argname = f"--path_{input_type}"
-            override_opts.add_argument(argname, default=None)
+            argnames = (f"--path-{input_type}", f"--path_{input_type}")
+            override_opts.add_argument(*argnames, default=None)
 
         return parser
 
