@@ -1,19 +1,19 @@
 """Utilities for converting Snakemake apps to BIDS apps."""
 
-import os
-from os.path import join
-from collections import OrderedDict
 import json
-from pathlib import Path
-import re
 import logging
+import os
+import re
+from collections import OrderedDict
+from os.path import join
+from pathlib import Path
 
 from bids import BIDSLayout, BIDSLayoutIndexer
-import bids as pybids
+from bids import config as bidsconfig
 
 from snakebids.snakemake_io import glob_wildcards
 
-pybids.config.set_option("extension_initial_dot", True)
+bidsconfig.set_option("extension_initial_dot", True)
 logger = logging.getLogger(__name__)
 
 
@@ -199,9 +199,7 @@ def bids(
         folder.append(datatype)
 
     # add the entities
-    filename += [
-        f"{key}-{val}" for key, val in order.items() if val is not None
-    ]
+    filename += [f"{key}-{val}" for key, val in order.items() if val is not None]
 
     # if suffix is defined, append it
     if isinstance(suffix, str):
@@ -341,7 +339,7 @@ def filter_list(zip_list, wildcards, return_indices_only=False):
         ... }
         True
     """
-    keep_indices = list()
+    keep_indices = []
     for key, val in wildcards.items():
         # get indices where wildcard exists
         if key not in zip_list.keys():
@@ -355,8 +353,7 @@ def filter_list(zip_list, wildcards, return_indices_only=False):
     if return_indices_only:
         return keep_indices
     return {
-        key: [zip_list[key][i] for i in keep_indices]
-        for key, val in zip_list.items()
+        key: [zip_list[key][i] for i in keep_indices] for key, val in zip_list.items()
     }
 
 
@@ -451,15 +448,13 @@ def get_filtered_ziplist_index(zip_list, wildcards, subj_wildcards):
     zip_list_filtered = filter_list(zip_list, subj_dict)
 
     # get the index of the wildcard from this filtered list
-    indices = filter_list(
-        zip_list_filtered, wildcards, return_indices_only=True
-    )
+    indices = filter_list(zip_list_filtered, wildcards, return_indices_only=True)
     if len(indices) == 1:
         return indices[0]
     return indices
 
 
-def __read_bids_tags(bids_json=None):
+def _read_bids_tags(bids_json=None):
     """Read the bids tags we are aware of from a JSON file. This is used
     specifically for compatibility with pybids, since some tag keys are
     different from how they appear in the file name, e.g. ``subject`` for
@@ -482,9 +477,7 @@ def __read_bids_tags(bids_json=None):
     return bids_tags
 
 
-def __generate_search_terms(
-    participant_label=None, exclude_participant_label=None
-):
+def _generate_search_terms(participant_label=None, exclude_participant_label=None):
     search_terms = {}
 
     if participant_label is not None and exclude_participant_label is not None:
@@ -662,11 +655,9 @@ def generate_inputs(
             "sessions": [],
             "subj_wildcards": {"subject": "{subject}"}
         }
-    """
+    """  # noqa
 
-    search_terms = __generate_search_terms(
-        participant_label, exclude_participant_label
-    )
+    search_terms = _generate_search_terms(participant_label, exclude_participant_label)
 
     if os.path.exists(bids_dir):
         # generate inputs based on config
@@ -685,7 +676,7 @@ def generate_inputs(
 
     # this will populate input_path, input_lists, input_zip_lists, and
     # input_wildcards
-    inputs_config_dict = __get_lists_from_bids(
+    inputs_config_dict = _get_lists_from_bids(
         bids_layout=layout,
         pybids_inputs=pybids_inputs,
         limit_to=limit_to,
@@ -694,27 +685,25 @@ def generate_inputs(
 
     if layout is None:
         # if no layout, then use subjects/sessions from --path vars
-        subjects = list()
-        sessions = list()
+        subjects = []
+        sessions = []
         for input_type in inputs_config_dict["input_lists"]:
 
             subj_set = set(inputs_config_dict["input_lists"][input_type]["subject"])
-            
-            #filter the list of subjects with participant_label
+
+            # filter the list of subjects with participant_label
             if participant_label is not None:
-                subj_set = set.intersection(subj_set,set(participant_label))
+                subj_set = set.intersection(subj_set, set(participant_label))
 
             # TODO: need to also remove subjects based on exclude_participant_label
- 
-            #replace with filtered list
+
+            # replace with filtered list
             inputs_config_dict["input_lists"][input_type]["subject"] = list(subj_set)
-            
-            #add to set of subjects from all input_types
+
+            # add to set of subjects from all input_types
             subjects.append(subj_set)
 
-            if "session" in (
-                inputs_config_dict["input_lists"][input_type].keys()
-            ):
+            if "session" in (inputs_config_dict["input_lists"][input_type].keys()):
                 sessions.append(
                     {inputs_config_dict["input_lists"][input_type]["session"]}
                 )
@@ -741,7 +730,7 @@ def generate_inputs(
     return inputs_config_dict
 
 
-def __process_path_override(input_path):
+def _process_path_override(input_path):
     """Glob wildcards from a path override and arrange into a zip list of
     matches, list of matches, and Snakemake wildcard for each wildcard.
     """
@@ -765,7 +754,7 @@ def __process_path_override(input_path):
     return input_zip_lists, input_lists, input_wildcards
 
 
-def __process_layout_wildcard(path, wildcard_name):
+def _process_layout_wildcard(path, wildcard_name):
     """Convert an absolute BIDS path to the same path with the given tag
     replaced by a wildcard.
 
@@ -787,12 +776,8 @@ def __process_layout_wildcard(path, wildcard_name):
     out_name : str
         Name of the applied wildcard (e.g. "subject")
     """
-    bids_tags = __read_bids_tags()
-    tag = (
-        bids_tags[wildcard_name]
-        if wildcard_name in bids_tags
-        else wildcard_name
-    )
+    bids_tags = _read_bids_tags()
+    tag = bids_tags[wildcard_name] if wildcard_name in bids_tags else wildcard_name
 
     # this changes e.g. sub-001 to sub-{subject} in the path
     # (so snakemake can use the wildcards)
@@ -812,13 +797,13 @@ def __process_layout_wildcard(path, wildcard_name):
         # capture before and after suffix
         replace_pattern = "(.*_)[a-zA-Z0-9]+(.*)$"
         # replace with before, {suffix}, after
-        replace = "\\1{{{replace}}}\\2".format(replace=out_name)
+        replace = f"\\1{{{out_name}}}\\2"
         match = re.search(matching_pattern, path)
         path = re.sub(replace_pattern, replace, path)
 
     else:
-        pattern = "{tag}-([a-zA-Z0-9]+)".format(tag=tag)
-        replace = "{tag}-{{{replace}}}".format(tag=tag, replace=out_name)
+        pattern = f"{tag}-([a-zA-Z0-9]+)"
+        replace = f"{tag}-{{{out_name}}}"
 
         match = re.search(pattern, path)
         path = re.sub(pattern, replace, path)
@@ -831,9 +816,7 @@ def __process_layout_wildcard(path, wildcard_name):
     return path, match[1], out_name
 
 
-def __get_lists_from_bids(
-    bids_layout, pybids_inputs, limit_to=None, **filters
-):
+def _get_lists_from_bids(bids_layout, pybids_inputs, limit_to=None, **filters):
     """Grabs files using pybids and creates snakemake-friendly lists
 
     Parameters
@@ -903,7 +886,7 @@ def __get_lists_from_bids(
                 input_zip_lists,
                 input_lists,
                 input_wildcards,
-            ) = __process_path_override(input_path)
+            ) = _process_path_override(input_path)
         else:
             paths = set()
             for img in bids_layout.get(
@@ -923,7 +906,7 @@ def __get_lists_from_bids(
                         input_path,
                         input_list,
                         out_name,
-                    ) = __process_layout_wildcard(input_path, wildcard_name)
+                    ) = _process_layout_wildcard(input_path, wildcard_name)
                     if out_name not in input_zip_lists:
                         input_zip_lists[out_name] = []
                         input_lists[out_name] = set()
@@ -995,7 +978,7 @@ def write_derivative_json(snakemake, **kwargs):
         it will read and write json files
     """
 
-    with open(snakemake.input.json, "r") as input_json:
+    with open(snakemake.input.json, "r", encoding="utf-8") as input_json:
         sidecar = json.load(input_json)
 
     sidecar.update(
@@ -1006,5 +989,5 @@ def write_derivative_json(snakemake, **kwargs):
         }
     )
 
-    with open(snakemake.output.json, "w") as outfile:
+    with open(snakemake.output.json, "w", encoding="utf-8") as outfile:
         json.dump(sidecar, outfile, indent=4)
