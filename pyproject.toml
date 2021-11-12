@@ -14,7 +14,7 @@ include = ["snakebids/project_template"]
 exclude = ["snakebids/tests/**"]
 
 [tool.poetry.dependencies]
-python = ">=3.7,<3.10"
+python = ">=3.7,<3.11"
 pybids = "^0.13.2"
 snakemake = ">=5.28.0"
 PyYAML = "^5.3.1"
