@@ -111,7 +111,7 @@ jobs:
       run: poetry install --no-interaction
     - name: Test with pytest
       run: |
-        poetry run pytest --doctest-modules --ignore=docs --ignore=snakebids/project_template
+        poetry run pytest --doctest-modules --ignore=docs --ignore=project_template
 
   deploy:
     if: startsWith(github.ref, 'refs/tags/v')
