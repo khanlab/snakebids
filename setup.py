@@ -22,6 +22,7 @@ setuptools.setup(
     entry_points={
         "console_scripts": [
             "snakebids-create=snakebids.template:main",
+            "snakebids-fix-dd=snakebids.fix_dd:main",
         ],
     },
     install_requires=[
