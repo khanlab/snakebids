@@ -4,7 +4,7 @@ import json
 with open("README.rst", "r") as fh:
     long_description = fh.read()
 
-with open('{{cookiecutter.app_name}}/pipeline_description.json', 'r') as fh:
+with open('pipeline_description.json', 'r') as fh:
     pipeline = json.load(fh)
     name = pipeline['GeneratedBy'][0]['Name']
     description = pipeline['Name']
