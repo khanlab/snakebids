@@ -9,7 +9,7 @@ def get_parser():
         description="Update BIDS Derivatives Dataset  to be backwards compatible with pybids",
         epilog=("Adds PipelineDescription.Name to the dataset_description.json file, from earlier BIDS spec) that pybids requires, using the first entry of the GeneratedBy list.  This is needed if parsing a modern version of fmriprep derivatives with snakebids/pybids."),
     )
-    parser.add_argument("dataset_root", help="BIDS derivative dataset to fix")
+    parser.add_argument("dataset_root","dataset-root", help="BIDS derivative dataset to fix")
     return parser
 
 
