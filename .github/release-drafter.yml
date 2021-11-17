@@ -5,18 +5,19 @@ template: |
 
   $CHANGES
 categories:
-  - title: 'Features'
+  - title: '🚀 Features'
     labels:
-      - 'enhancement'
       - 'breaking'
-  - title: 'Bug Fix'
-    label: 'bug'
-  - title: 'Maintenance Update'
+      - 'enhancement'
+  - title: '🐛 Bug Fixes'
+    labels:
+      - 'bug'
+  - title: '🧰 Maintenance'
     label: 'maintenance'
-  - title: 'Dependency Upgrade'
-    label: 'dependency'
+
 exclude-labels:
   - skip_changelog
+
 change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
 change-title-escapes: '\<*_&' # You can add # and @ to disable mentions, and add ` to disable code blocks.
 
@@ -30,6 +31,5 @@ version-resolver:
   patch:
     labels:
       - 'maintenance'
-      - 'dependency'
       - 'bug'
   default: patch
