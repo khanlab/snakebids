@@ -7,7 +7,7 @@ from pathlib import Path
 def get_parser():
     parser = argparse.ArgumentParser(
         description="Update BIDS Derivatives Dataset to be "
-                    "backwards compatible with pybids",
+        "backwards compatible with pybids",
         epilog=(
             "Adds PipelineDescription.Name to the dataset_description.json "
             "file, from earlier BIDS spec) that pybids requires, using the "
