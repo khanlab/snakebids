@@ -129,9 +129,37 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ 'draft_changelog' ]
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout latest tag
+      id: semver_checkout
+      uses: EasyDesk/action-semver-checkout@v1
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
+
+    - name: Update version in files
+      uses: jacobtomlinson/gha-find-replace@master
+      with:
+        include: 'pyproject.toml'
+        find: 'version = "[0-9]+.[0-9]+.[0-9]+"'
+        replace: 'version = "${{ steps.semver_checkout.outputs.version }}"'
+
+    - name: Commit updates
+      run: |
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git commit -m "Bump version in files" -a
+
+    - name: Push to master
+      uses: ad-m/github-push-action@master
+      with:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Modify release files
+      run: |
+        git tag -a v${{ steps.semver_checkout.outputs.version }}
+        git push
+        git push origin -f v${{ steps.semver_checkout.outputs.version }}
+
     #----------------------------------------------
     #  -----  install & configure poetry  -----
     #----------------------------------------------
