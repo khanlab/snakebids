@@ -133,8 +133,10 @@ jobs:
       id: semver_checkout
       uses: EasyDesk/action-semver-checkout@v1
 
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python 3.9
       uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'
 
     - name: Update version in files
       uses: jacobtomlinson/gha-find-replace@master
