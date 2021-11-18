@@ -1,15 +1,23 @@
 """ Script to fix dataset_description.json PyBIDS compatibility """
-from pathlib import Path
-import json
 import argparse
+import json
+from pathlib import Path
 
 
 def get_parser():
     parser = argparse.ArgumentParser(
-        description="Update BIDS Derivatives Dataset  to be backwards compatible with pybids",
-        epilog=("Adds PipelineDescription.Name to the dataset_description.json file, from earlier BIDS spec) that pybids requires, using the first entry of the GeneratedBy list.  This is needed if parsing a modern version of fmriprep derivatives with snakebids/pybids."),
+        description="Update BIDS Derivatives Dataset to be "
+        "backwards compatible with pybids",
+        epilog=(
+            "Adds PipelineDescription.Name to the dataset_description.json "
+            "file, from earlier BIDS spec) that pybids requires, using the "
+            "first entry of the GeneratedBy list.  This is needed if parsing "
+            "a modern version of fmriprep derivatives with snakebids/pybids."
+        ),
     )
-    parser.add_argument("dataset_root","dataset-root", help="BIDS derivative dataset to fix")
+    parser.add_argument(
+        "dataset_root", "dataset-root", help="BIDS derivative dataset to fix"
+    )
     return parser
 
 
@@ -23,7 +31,7 @@ def main():
     json_path = root_path.joinpath("dataset_description.json")
 
     # read the dataset_description json file
-    with open(json_path) as f:
+    with open(json_path, "r", encoding="utf-8") as f:
         dataset_dict = json.load(f)
 
     if "PipelineDescription" in dataset_dict.keys():
@@ -36,7 +44,8 @@ def main():
 
     # add to the dict
     print(
-        f"Adding PipelineDescription.Name: {pipeline_name}, PipelineDescription.Version: {pipeline_version}"
+        f"Adding PipelineDescription.Name: {pipeline_name}, "
+        f"PipelineDescription.Version: {pipeline_version}"
     )
 
     dataset_dict["PipelineDescription"] = {
@@ -45,7 +54,7 @@ def main():
     }
 
     print(f"Saving to {json_path}")
-    with open(json_path, "w") as write_file:
+    with open(json_path, "w", encoding="utf-8") as write_file:
         json.dump(dataset_dict, write_file, indent=4, sort_keys=True)
 
 

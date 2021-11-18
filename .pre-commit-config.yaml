@@ -1,0 +1,40 @@
+default_language_version:
+  python: python3.9
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.0.1
+    hooks:
+    - id: check-yaml
+    - id: debug-statements
+    - id: end-of-file-fixer
+    - id: trailing-whitespace
+  - repo: local
+    hooks:
+      - id: isort
+        entry: poetry run isort
+        name: isort
+        language: system
+        types_or: [cython, pyi, python]
+  - repo: local
+    hooks:
+      - id: black
+        entry: poetry run black
+        name: black
+        language: system
+        types_or: [cython, pyi, python]
+  - repo: local
+    hooks:
+      - id: flake8
+        exclude: snakebids/tests
+        entry: poetry run flake8
+        language: system
+        name: flake8
+        types_or: [cython, pyi, python]
+  - repo: local
+    hooks:
+      - id: system
+        name: PyLint
+        entry: poetry run pylint
+        language: system
+        exclude: \._py\}\}$
+        types_or: [cython, pyi, python]
