@@ -21,6 +21,8 @@ jobs:
           next_version: ${{ steps.release-drafter.outputs.name }}
         run: |
           current_version=`grep 'version = *' pyproject.toml | sed 's/version = //' | tr -d '"'`
+          echo "\nCurrent version: $current_version"
+          echo "Next resolved version: $next_version"
           if [[ $next_version == $current_version ]]; then
             echo '::set-output name=commit::false'
           else
