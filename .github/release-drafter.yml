@@ -24,9 +24,10 @@ change-title-escapes: '\<*_&' # You can add # and @ to disable mentions, and add
 version-resolver:
   major:
     labels:
-      - 'breaking'
+      # - 'breaking'
   minor:
     labels:
+      - 'breaking'
       - 'enhancement'
   patch:
     labels:
