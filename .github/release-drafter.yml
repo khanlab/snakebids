@@ -13,7 +13,12 @@ categories:
     labels:
       - 'bug'
   - title: '🧰 Maintenance'
-    label: 'maintenance'
+    labels:
+      - 'maintenance'
+      - 'test'
+  - title: 'Documentation'
+    labels:
+      - 'documentation'
 
 exclude-labels:
   - skip_changelog
@@ -33,4 +38,6 @@ version-resolver:
     labels:
       - 'maintenance'
       - 'bug'
+      - 'test'
+      - 'documentation'
   default: patch
