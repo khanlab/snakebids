@@ -16,7 +16,7 @@ categories:
     labels:
       - 'maintenance'
       - 'test'
-  - title: 'Documentation'
+  - title: '📝 Documentation'
     labels:
       - 'documentation'
 
