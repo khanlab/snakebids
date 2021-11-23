@@ -110,6 +110,27 @@ class TestArgTypeAnnotation:
         assert app.config["derivatives"][0] == Path.cwd() / "path/to/nowhere"
 
 
+def test_dash_syntax_in_config_cli_args(app: SnakeBidsApp, mocker: MockerFixture):
+    mocker.patch.object(
+        sys,
+        "argv",
+        [
+            "script_name",
+            "path/to/input",
+            "path/to/output",
+            "participant",
+            "--participant-label",
+            "12345",
+            "--arg_using_dash_syntax",
+            "7890",
+        ],
+    )
+    app.parser = app._create_parser()
+    app._parse_args()
+    assert app.config["participant_label"][0] == "12345"
+    assert app.config["arg_using_dash_syntax"][0] == "7890"
+
+
 class TestRunSnakemake:
     @pytest.fixture
     def io_mocks(self, mocker: MockerFixture):
