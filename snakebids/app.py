@@ -4,6 +4,7 @@ import argparse
 import logging
 import os
 import pathlib
+import re
 import subprocess
 import sys
 
@@ -231,6 +232,7 @@ class SnakeBidsApp:
         if not skip_parse_args:
             self._parse_args()
 
+    # pylint: disable=too-many-locals
     def _create_parser(self, include_snakemake=False):
         """Create a parser with snakemake parser as parent solely for
         displaying help and checking conflicts, but then for actual parsing
@@ -318,7 +320,16 @@ class SnakeBidsApp:
                         + f"as a type for {name}"
                     ) from err
 
-            app_group.add_argument(name, **parse_args)
+            if re.match(r"^--", name):
+                name_part = re.match(r"^--(.+)$", name).group(1)
+                names = (
+                    name,
+                    re.sub(r"\_", "-", name),
+                    f"--{re.sub(r'-', '_', name_part)}",
+                )
+            else:
+                names = (name,)
+            app_group.add_argument(*names, **parse_args)
 
         # general parser for
         # --filter_{input_type} {key1}={value1} {key2}={value2}...
