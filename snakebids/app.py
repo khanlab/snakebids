@@ -25,7 +25,6 @@ from snakebids.output import (
 # either Path or pathlib.Path
 Path = pathlib.Path
 
-bidsconfig.set_option("extension_initial_dot", True)
 logger = logging.Logger(__name__)
 
 
