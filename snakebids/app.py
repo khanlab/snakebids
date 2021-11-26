@@ -8,7 +8,6 @@ import subprocess
 import sys
 
 import snakemake
-from bids import config as bidsconfig
 from colorama import Fore
 from snakemake.io import load_configfile
 

@@ -9,7 +9,6 @@ from os.path import join
 from pathlib import Path
 
 from bids import BIDSLayout, BIDSLayoutIndexer
-from bids import config as bidsconfig
 
 from snakebids.snakemake_io import glob_wildcards
 
