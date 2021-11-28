@@ -25,9 +25,9 @@ jobs:
           echo "Date: ${{ github.event.inputs.date }}"
           echo "Comments: ${{ github.event.inputs.comments }}"
 
-        uses: actions/checkout@master
+      - uses: actions/checkout@master
         with:
-          ref: refs/heads/master
+          ref: refs/heads/main
 
       - name: Draft change log
         uses: release-drafter/release-drafter@v5
@@ -69,7 +69,7 @@ jobs:
     steps:
       - uses: actions/checkout@master
         with:
-          ref: refs/heads/master
+          ref: refs/heads/main
 
       - name: Set up Python
         uses: actions/setup-python@v2
