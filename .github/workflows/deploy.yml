@@ -25,7 +25,7 @@ jobs:
           echo "Date: ${{ github.event.inputs.date }}"
           echo "Comments: ${{ github.event.inputs.comments }}"
 
-        uses: actions/checkout@master
+      - uses: actions/checkout@master
         with:
           ref: refs/heads/master
 
