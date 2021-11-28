@@ -15,39 +15,42 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Find current version
-        id: version-check
-        env:
-          next_version: ${{ steps.release-drafter.outputs.name }}
+      - name: Get previous release version
         run: |
-          current_version=`grep 'version = *' pyproject.toml | sed 's/version = //' | tr -d '"'`
-          echo "\nCurrent version: $current_version"
-          echo "Next resolved version: $next_version"
-          if [[ $next_version == $current_version ]]; then
-            echo '::set-output name=commit::false'
+          echo "PREV_VER=$(cat pyproject.toml | grep -o -E '(version\s=\s)([[:punct:]])([0-9]+.[0-9]+.[0-9]+.+)([[:punct:]])' | cut -d ' ' -f 3 | tr -d '"')" >> $GITHUB_ENV
+
+      - name: Get previous bump version
+        env:
+          PREV_VER: ${{ env.PREV_VER }}
+        run: |
+          if [[ "$PREV_VER" != *"-prerelease."* ]]; then
+            echo "OLD_BUMP=0" >> $GITHUB_ENV
           else
-            echo '::set-output name=commit::true'
+            echo "OLD_BUMP=$(echo $PREV_VER | cut -d '.' -f 4)" >> $GITHUB_ENV
           fi
+
+      - name: Bump version
+        env:
+          BUMP_VER: ${{ env.OLD_BUMP }}
+        run: |
+          echo "NEW_BUMP=$(($BUMP_VER + 1))" >> $GITHUB_ENV
 
       - name: Update version in files
         uses: jacobtomlinson/gha-find-replace@master
-        if: steps.version-check.outputs.commit == 'true'
         with:
           include: 'pyproject.toml'
-          find: 'version = "[0-9]+.[0-9]+.[0-9]+"'
-          replace: 'version = "${{ steps.release-drafter.outputs.name }}"'
+          find: 'version = "(?:([0-9]+.[0-9]+.[0-9]+.+)|([0-9]+.[0-9]+.[0-9]+))"'
+          replace: 'version = "${{ steps.release-drafter.outputs.name }}-prerelease.${{ env.NEW_BUMP }}"'
 
       - name: Commit updates
-        if: steps.version-check.outputs.commit == 'true'
         env:
-          SNAKEBIDS_VERSION: ${{ steps.release-drafter.outputs.name }}
+          SNAKEBIDS_VERSION: ${{ steps.release-drafter.outputs.name }}-prerelease.${{ env.NEW_BUMP }}
         run: |
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git commit -m "Bump version to $SNAKEBIDS_VERSION" -a
+          git diff-index --quiet HEAD || git commit -m "Bump version to $SNAKEBIDS_VERSION" -a
 
       - name: Push changes
-        if: steps.version-check.outputs.commit == 'true'
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
