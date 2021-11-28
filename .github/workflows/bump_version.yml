@@ -8,13 +8,47 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Bump version and push tag
-        uses: jaumann/github-bumpversion-action@v0.0.7
+
+      - name: Update changelog
+        uses: release-drafter/release-drafter@v5
+        id: release-drafter
         env:
-          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Find current version
+        id: version-check
+        env:
+          next_version: ${{ steps.release-drafter.outputs.name }}
+        run: |
+          current_version=`grep 'version = *' pyproject.toml | sed 's/version = //' | tr -d '"'`
+          echo "\nCurrent version: $current_version"
+          echo "Next resolved version: $next_version"
+          if [[ $next_version == $current_version ]]; then
+            echo '::set-output name=commit::false'
+          else
+            echo '::set-output name=commit::true'
+          fi
+
+      - name: Update version in files
+        uses: jacobtomlinson/gha-find-replace@master
+        if: steps.version-check.outputs.commit == 'true'
+        with:
+          include: 'pyproject.toml'
+          find: 'version = "[0-9]+.[0-9]+.[0-9]+"'
+          replace: 'version = "${{ steps.release-drafter.outputs.name }}"'
+
+      - name: Commit updates
+        if: steps.version-check.outputs.commit == 'true'
+        env:
+          SNAKEBIDS_VERSION: ${{ steps.release-drafter.outputs.name }}
+        run: |
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git commit -m "Bump version to $SNAKEBIDS_VERSION" -a
+
       - name: Push changes
+        if: steps.version-check.outputs.commit == 'true'
         uses: ad-m/github-push-action@master
         with:
-          github_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           tags: false
-
