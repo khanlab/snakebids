@@ -39,7 +39,7 @@ jobs:
         uses: jacobtomlinson/gha-find-replace@master
         with:
           include: 'pyproject.toml'
-          find: 'version = "(?:([0-9]+.[0-9]+.[0-9]+.+)|([0-9]+.[0-9]+.[0-9]+))"'
+          find: 'version = "(?:([0-9]+\.[0-9]+\.[0-9]+.+)|([0-9]+\.[0-9]+\.[0-9]+))"'
           replace: 'version = "${{ steps.release-drafter.outputs.name }}"'
 
       - name: Commit updates
