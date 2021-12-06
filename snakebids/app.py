@@ -13,7 +13,7 @@ from colorama import Fore
 from snakemake.io import load_configfile
 
 from snakebids.exceptions import ConfigError, RunError
-from snakebids.output import (
+from snakebids.utils.output import (
     prepare_output,
     retrofit_output,
     write_config_file,

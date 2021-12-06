@@ -32,6 +32,7 @@ isort = "^5.10.1"
 flake8 = "^4.0.1"
 poethepoet = "^0.10.0"
 pre-commit = "^2.15.0"
+mkinit = "^0.3.3"
 
 [tool.poetry.scripts]
 snakebids-create = "snakebids.template:main"
@@ -44,6 +45,7 @@ build-backend = "poetry.core.masonry.api"
 setup = "pre-commit install"
 quality = { shell = "isort snakebids && black snakebids && flake8 snakebids && pylint snakebids" }
 test = "pytest"
+mkinit = "mkinit --recursive --nomods --black -i snakebids"
 
 [tool.isort]
 profile = "black"
