@@ -8,7 +8,6 @@ import subprocess
 import sys
 
 import snakemake
-from bids import config as bidsconfig
 from colorama import Fore
 from snakemake.io import load_configfile
 
@@ -25,7 +24,6 @@ from snakebids.output import (
 # either Path or pathlib.Path
 Path = pathlib.Path
 
-bidsconfig.set_option("extension_initial_dot", True)
 logger = logging.Logger(__name__)
 
 
