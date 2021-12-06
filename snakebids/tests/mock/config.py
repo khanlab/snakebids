@@ -36,5 +36,9 @@ config = {
             "type": "Path",
             "nargs": "+",
         },
+        "--arg-using-dash-syntax": {
+            "help": "A fake argument for testing purposes",
+            "nargs": "+",
+        },
     },
 }
