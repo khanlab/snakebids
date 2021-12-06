@@ -2,133 +2,38 @@
 from __future__ import absolute_import
 
 import copy
-import sys
-from argparse import ArgumentParser
-from os import PathLike
 from pathlib import Path
 from typing import Dict
 from unittest.mock import MagicMock
 
 import pytest
 import snakemake
-from configargparse import Namespace
 from pytest_mock.plugin import MockerFixture
 
+from snakebids.cli import SnakebidsArgs
+
 from .. import app as sn_app
-from ..app import SnakeBidsApp, resolve_path
+from ..app import SnakeBidsApp
 from .mock.config import config
-
-
-def init_snakebids_app(self):
-    self.configfile_path = "mock/config.yaml"
-    self.snakefile = "mock/Snakefile"
-    self.retrofit = False
-    self.config = copy.deepcopy(config)
-    self.config["analysis_level"] = "participant"
-    self.config["snakemake_args"] = []
 
 
 @pytest.fixture
 def app(mocker: MockerFixture):
-    mocker.patch.object(SnakeBidsApp, "__init__", init_snakebids_app)
-    return SnakeBidsApp()
-
-
-class TestResolvePath:
-    @pytest.fixture
-    def arg_dict(self):
-        return {
-            "bids_dir": "path/to/input",
-            "output_dir": "path/to/output",
-            "analysis_level": "participant",
-            "--derivatives": ["path/to/deriv1", "path/to/deriv2"],
-        }
-
-    def test_does_not_change_dict_without_paths(self, arg_dict):
-        arg_dict_copy = copy.deepcopy(arg_dict)
-        resolved = {key: resolve_path(value) for key, value in arg_dict.items()}
-        assert resolved == arg_dict_copy
-
-    def test_resolves_all_paths(self, arg_dict):
-        arg_dict["--derivatives"] = [Path("path/to/deriv1"), Path("path/to/deriv2")]
-        arg_dict_copy = copy.deepcopy(arg_dict)
-        arg_dict_copy["--derivatives"] = [
-            p.resolve() for p in arg_dict_copy["--derivatives"]
-        ]
-        resolved = {key: resolve_path(value) for key, value in arg_dict.items()}
-        assert resolved == arg_dict_copy
-
-
-class TestArgTypeAnnotation:
-    mock_args_special = ["--derivatives", "path/to/nowhere"]
-    mock_basic_args = ["script_name", "path/to/input", "path/to/output", "participant"]
-    mock_all_args = mock_basic_args + mock_args_special
-
-    @pytest.fixture
-    def parser(self, app):
-        return app._create_parser()
-
-    def test_snakebids_app_is_properly_mocked(self, app):
-        assert isinstance(app, SnakeBidsApp)
-        assert not hasattr(app, "parser")
-
-    def test_fails_if_missing_arguments(
-        self, parser: ArgumentParser, mocker: MockerFixture
-    ):
-        mocker.patch.object(sys, "argv", ["script_name"])
-        with pytest.raises(SystemExit):
-            parser.parse_args()
-
-    def test_succeeds_if_given_positional_args(
-        self, parser: ArgumentParser, mocker: MockerFixture
-    ):
-        mocker.patch.object(sys, "argv", self.mock_basic_args)
-        assert isinstance(parser.parse_args(), Namespace)
-
-    def test_converts_type_path_into_pathlike(
-        self, parser: ArgumentParser, mocker: MockerFixture
-    ):
-        mocker.patch.object(sys, "argv", self.mock_all_args)
-        args = parser.parse_args()
-        assert isinstance(getattr(args, "derivatives")[0], PathLike)
-
-    def test_fails_if_undefined_type_given(
-        self, app: SnakeBidsApp, mocker: MockerFixture
-    ):
-        app.config["parse_args"]["--new-param"] = {
-            "help": "Generic Help Message",
-            "type": "UnheardClass",
-        }
-        with pytest.raises(TypeError):
-            app._create_parser()
-
-    def test_resolves_paths(self, app: SnakeBidsApp, mocker: MockerFixture):
-        mocker.patch.object(sys, "argv", self.mock_all_args)
-        app.parser = app._create_parser()
-        app._parse_args()
-        assert app.config["bids_dir"] == Path.cwd() / "path/to/input"
-        assert app.config["derivatives"][0] == Path.cwd() / "path/to/nowhere"
-
-
-def test_dash_syntax_in_config_cli_args(app: SnakeBidsApp, mocker: MockerFixture):
-    mocker.patch.object(
-        sys,
-        "argv",
-        [
-            "script_name",
-            "path/to/input",
-            "path/to/output",
-            "participant",
-            "--participant-label",
-            "12345",
-            "--arg_using_dash_syntax",
-            "7890",
-        ],
+    app = SnakeBidsApp(
+        Path("app"),
+        False,
+        snakefile_path=Path("Snakefile"),
+        configfile_path=Path("mock/config.yaml"),
+        config=copy.deepcopy(config),
     )
-    app.parser = app._create_parser()
-    app._parse_args()
-    assert app.config["participant_label"][0] == "12345"
-    assert app.config["arg_using_dash_syntax"][0] == "7890"
+    app.config["analysis_level"] = "participant"
+    app.config["snakemake_args"] = []
+    mocker.patch.object(sn_app, "update_config", return_value=app.config)
+    return app
+
+
+def test_update_config(app: SnakeBidsApp, mocker: MockerFixture):
+    pass
 
 
 class TestRunSnakemake:
@@ -144,15 +49,22 @@ class TestRunSnakemake:
     def test_runs_in_workflow_mode(
         self, io_mocks: Dict[str, MagicMock], app: SnakeBidsApp
     ):
-        app.workflow_mode = True
-        app.outputdir = Path("/tmp/output")
-        app.snakemake_dir = Path("app")
-        app.force = False
         expected_config = copy.deepcopy(app.config)
         expected_config["output_dir"] = "/tmp/output/results"
         expected_config["root"] = "results"
+        expected_config["snakemake_dir"] = Path("app").resolve()
+        expected_config["snakefile"] = Path("Snakefile")
 
         io_mocks["prepare_output"].return_value = Path("/tmp/output/results")
+
+        app.args = SnakebidsArgs(
+            workflow_mode=True,
+            force=False,
+            outputdir=Path("/tmp/output"),
+            retrofit=False,
+            snakemake_args=[],
+            args_dict={},
+        )
 
         try:
             app.run_snakemake()
@@ -162,15 +74,17 @@ class TestRunSnakemake:
 
         io_mocks["write_output_mode"].assert_not_called()
         io_mocks["prepare_output"].assert_called_once_with(
-            Path("app"), Path("/tmp/output"), "workflow", False
+            Path("app").resolve(), Path("/tmp/output"), "workflow", False
         )
         io_mocks["write_config"].assert_called_once_with(
-            Path("/tmp/output/mock/config.yaml"), expected_config, False
+            config_file=Path("/tmp/output/mock/config.yaml"),
+            data=expected_config,
+            force_overwrite=False,
         )
         io_mocks["snakemake"].assert_called_once_with(
             [
                 "--snakefile",
-                app.snakefile,
+                str(app.snakefile_path),
                 "--directory",
                 "/tmp/output",
                 "--configfile",
@@ -181,14 +95,21 @@ class TestRunSnakemake:
     def test_runs_in_bidsapp_mode(
         self, io_mocks: Dict[str, MagicMock], app: SnakeBidsApp
     ):
-        app.workflow_mode = False
-        app.outputdir = Path("/tmp/output")
-        app.snakemake_dir = Path("app")
-        app.force = False
         expected_config = copy.deepcopy(app.config)
         expected_config["root"] = ""
+        expected_config["snakemake_dir"] = Path("app").resolve()
+        expected_config["snakefile"] = Path("Snakefile")
 
         io_mocks["prepare_output"].return_value = Path("/tmp/output")
+
+        app.args = SnakebidsArgs(
+            workflow_mode=False,
+            force=False,
+            outputdir=Path("/tmp/output"),
+            retrofit=False,
+            snakemake_args=[],
+            args_dict={},
+        )
 
         try:
             app.run_snakemake()
@@ -198,15 +119,17 @@ class TestRunSnakemake:
 
         io_mocks["write_output_mode"].assert_not_called()
         io_mocks["prepare_output"].assert_called_once_with(
-            Path("app"), Path("/tmp/output"), "bidsapp", False
+            Path("app").resolve(), Path("/tmp/output"), "bidsapp", False
         )
         io_mocks["write_config"].assert_called_once_with(
-            Path("/tmp/output/mock/config.yaml"), expected_config, True
+            config_file=Path("/tmp/output/mock/config.yaml"),
+            data=expected_config,
+            force_overwrite=True,
         )
         io_mocks["snakemake"].assert_called_once_with(
             [
                 "--snakefile",
-                app.snakefile,
+                str(app.snakefile_path),
                 "--directory",
                 "/tmp/output",
                 "--configfile",
@@ -217,15 +140,22 @@ class TestRunSnakemake:
     def test_runs_in_workflow_mode_when_output_same_as_snakebids_app(
         self, io_mocks: Dict[str, MagicMock], app: SnakeBidsApp
     ):
-        app.workflow_mode = False
-        app.outputdir = Path("app")
-        app.snakemake_dir = Path("app")
-        app.force = False
         expected_config = copy.deepcopy(app.config)
         expected_config["output_dir"] = "app/results"
         expected_config["root"] = "results"
+        expected_config["snakemake_dir"] = Path("app").resolve()
+        expected_config["snakefile"] = Path("Snakefile")
 
         io_mocks["prepare_output"].return_value = Path("app/results")
+
+        app.args = SnakebidsArgs(
+            workflow_mode=False,
+            force=False,
+            outputdir=Path("app").resolve(),
+            retrofit=False,
+            snakemake_args=[],
+            args_dict={},
+        )
 
         try:
             app.run_snakemake()
@@ -234,20 +164,22 @@ class TestRunSnakemake:
             print(e)
 
         io_mocks["write_output_mode"].assert_called_once_with(
-            Path("app/.snakebids"), "workflow"
+            Path("app/.snakebids").resolve(), "workflow"
         )
         io_mocks["prepare_output"].assert_called_once_with(
-            Path("app"), Path("app"), "workflow", False
+            Path("app").resolve(), Path("app").resolve(), "workflow", False
         )
         io_mocks["write_config"].assert_called_once_with(
-            Path("app/mock/config.yaml"), expected_config, True
+            config_file=Path("app/mock/config.yaml").resolve(),
+            data=expected_config,
+            force_overwrite=True,
         )
         io_mocks["snakemake"].assert_called_once_with(
             [
                 "--snakefile",
-                app.snakefile,
+                str(app.snakefile_path),
                 "--directory",
-                "app",
+                str(Path("app").resolve()),
                 "--configfile",
                 str(Path("app/mock/config.yaml").resolve()),
             ]

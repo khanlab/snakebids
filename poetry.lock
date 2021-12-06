@@ -226,7 +226,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "distlib"
-version = "0.3.3"
+version = "0.3.4"
 description = "Distribution utilities"
 category = "dev"
 optional = false
@@ -1103,7 +1103,7 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "snakemake"
-version = "6.12.1"
+version = "6.12.2"
 description = "Snakemake is a workflow management system that aims to reduce the complexity of creating workflows by providing a fast and comfortable execution environment, together with a clean and modern specification language in python style. Snakemake workflows are essentially Python scripts extended by declarative code to define rules. Rules describe how to create output files from input files."
 category = "main"
 optional = false
@@ -1244,7 +1244,7 @@ python-versions = "*"
 
 [[package]]
 name = "ubelt"
-version = "0.10.1"
+version = "0.10.2"
 description = "A Python utility belt containing simple tools, a stdlib like feel, and extra batteries."
 category = "dev"
 optional = false
@@ -1334,7 +1334,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.11"
-content-hash = "ce815ae31b99fcf34ffe122c7cc7bc4853f84fa9d48de84788a040490ccd55cc"
+content-hash = "f9dce78b2bf891b1466d80cefdce9b79d1695a443e70292440028e5c439be9a6"
 
 [metadata.files]
 appdirs = [
@@ -1440,8 +1440,8 @@ datrie = [
     {file = "datrie-0.8.2.tar.gz", hash = "sha256:525b08f638d5cf6115df6ccd818e5a01298cd230b2dac91c8ff2e6499d18765d"},
 ]
 distlib = [
-    {file = "distlib-0.3.3-py2.py3-none-any.whl", hash = "sha256:c8b54e8454e5bf6237cc84c20e8264c3e991e824ef27e8f1e81049867d861e31"},
-    {file = "distlib-0.3.3.zip", hash = "sha256:d982d0751ff6eaaab5e2ec8e691d949ee80eddf01a62eaa96ddb11531fe16b05"},
+    {file = "distlib-0.3.4-py2.py3-none-any.whl", hash = "sha256:6564fe0a8f51e734df6333d08b8b94d4ea8ee6b99b5ed50613f731fd4089f34b"},
+    {file = "distlib-0.3.4.zip", hash = "sha256:e4b58818180336dc9c529bfb9a0b58728ffc09ad92027a3f30b7cd91e3458579"},
 ]
 docopt = [
     {file = "docopt-0.6.2.tar.gz", hash = "sha256:49b3a825280bd66b3aa83585ef59c4a8c82f2c8a522dbe754a8bc8d08c85c491"},
@@ -1970,7 +1970,7 @@ smmap = [
     {file = "smmap-5.0.0.tar.gz", hash = "sha256:c840e62059cd3be204b0c9c9f74be2c09d5648eddd4580d9314c3ecde0b30936"},
 ]
 snakemake = [
-    {file = "snakemake-6.12.1.tar.gz", hash = "sha256:6bc45e98c0cd90d8e696ff09ad87cddf815baf50bd75964ea01639c9699ca50d"},
+    {file = "snakemake-6.12.2.tar.gz", hash = "sha256:2e63e239a4cbba0c0432bb24f7a3b59063da9cc8e90537e28e73350c10190d7d"},
 ]
 sqlalchemy = [
     {file = "SQLAlchemy-1.3.24-cp27-cp27m-macosx_10_14_x86_64.whl", hash = "sha256:87a2725ad7d41cd7376373c15fd8bf674e9c33ca56d0b8036add2d634dba372e"},
@@ -2066,9 +2066,10 @@ typing-extensions = [
     {file = "typing_extensions-3.10.0.2.tar.gz", hash = "sha256:49f75d16ff11f1cd258e1b988ccff82a3ca5570217d7ad8c5f48205dd99a677e"},
 ]
 ubelt = [
-    {file = "ubelt-0.10.1-py2.py3-none-any.whl", hash = "sha256:abf633e4a0a9dec5276aef01ba1beec211f9634ae859bd480d54946d8f730d7a"},
-    {file = "ubelt-0.10.1-py3-none-any.whl", hash = "sha256:56444d834c86990875b96c994e7adf5f5b5a98ec953ff7185084ab04384933b9"},
-    {file = "ubelt-0.10.1.tar.gz", hash = "sha256:406898bb6cf24871185be455a3a65c2da80fd9edbc471de732382be35c86c681"},
+    {file = "ubelt-0.10.2-py2-none-any.whl", hash = "sha256:ced4933d3b8a6239f6e01c82612b80182f4db688056fa6be0562bdf9adf8b52d"},
+    {file = "ubelt-0.10.2-py2.py3-none-any.whl", hash = "sha256:0b0c1b3f6b8d770b798efea747f138f0cddb93e6d42de59d1eff9bc326a7c402"},
+    {file = "ubelt-0.10.2-py3-none-any.whl", hash = "sha256:0ba15d8bb35c27b751225812805169ea1e97e6aad05080362e8683e48d45bf15"},
+    {file = "ubelt-0.10.2.tar.gz", hash = "sha256:1d7a84a58f540796c0aadca506ea02a279a53a4b802088def1ce9d808c160711"},
 ]
 urllib3 = [
     {file = "urllib3-1.26.7-py2.py3-none-any.whl", hash = "sha256:c4fdf4019605b6e5423637e01bc9fe4daef873709a7973e195ceba0a62bbc844"},

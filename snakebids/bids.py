@@ -7,6 +7,7 @@ import re
 from collections import OrderedDict
 from os.path import join
 from pathlib import Path
+from typing import Optional
 
 from bids import BIDSLayout, BIDSLayoutIndexer
 
@@ -143,7 +144,7 @@ def bids(
     entities = {k.replace("_", ""): v for k, v in entities.items()}
 
     # strict ordering of bids entities is specified here:
-    order = OrderedDict(
+    order: OrderedDict[str, Optional[str]] = OrderedDict(
         [
             ("task", None),
             ("acq", None),
