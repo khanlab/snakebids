@@ -112,11 +112,11 @@ def write_output_mode(dotfile: Path, mode: Mode):
 def retrofit_output(output: Path, config_files: Iterable[Path]):
     """Convert legacy snakebids output to bidsapp mode.
 
-    Expects a directory containing previous snakebids outpus. This should contain one or
-    more config files, as specified in the config_files parameter. If a config directory
-    resides in the output, it should only contain specified config files. If extra files
-    are found, an error will be thrown. All config files will be deleted, and a new
-    .snakebids file will be created.
+    Expects a directory containing previous snakebids outputs. This should contain one
+    or more config files, as specified in the config_files parameter. If a config
+    directory resides in the output, it should only contain specified config files. If
+    extra files are found, an error will be thrown. All config files will be deleted,
+    and a new .snakebids file will be created.
 
     Parameters
     ----------
