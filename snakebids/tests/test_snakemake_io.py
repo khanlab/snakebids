@@ -4,7 +4,7 @@ from __future__ import absolute_import
 
 import collections
 
-from .. import snakemake_io
+from snakebids.utils import snakemake_io
 
 
 def test_glob_wildcards():

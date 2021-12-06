@@ -9,7 +9,7 @@ from typing import Callable
 import pytest
 from pytest_mock.plugin import MockerFixture
 
-import snakebids.output as output
+import snakebids.utils.output as output
 from snakebids.exceptions import RunError
 
 dirlen: Callable[[Path], int] = lambda f: len([*f.iterdir()])
