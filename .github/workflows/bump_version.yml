@@ -5,6 +5,7 @@ on:
       - main
 jobs:
   build:
+    if: ${{ github.event.label.name != 'skip_changelog' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
