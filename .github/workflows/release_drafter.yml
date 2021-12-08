@@ -1,4 +1,4 @@
-name: Bump version
+name: Manual release-drafter update
 
 on:
   workflow_dispatch:
