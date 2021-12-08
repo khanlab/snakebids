@@ -10,7 +10,7 @@ jobs:
       - uses: actions/checkout@v2
       
       - name: Check PR label
-        uses: danielchabr/pr-labels-checker@v3
+        uses: danielchabr/pr-labels-checker@v3.1
         id: check-label
         with:
           hasNone: skip_changelog
