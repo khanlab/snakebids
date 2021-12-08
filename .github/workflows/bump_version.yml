@@ -5,22 +5,31 @@ on:
       - main
 jobs:
   build:
-    if: ${{ github.event.label.name != 'skip_changelog' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      
+      - name: Check PR label
+        uses: danielchabr/pr-labels-checker@v3
+        id: check-label
+        with:
+          hasNone: skip_changelog
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update changelog
+        if: ${{ steps.check-label.outputs.passed }} == true 
         uses: release-drafter/release-drafter@v5
         id: release-drafter
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get previous release version
+        if: ${{ steps.check-label.outputs.passed }} == true 
         run: |
           echo "PREV_VER=$(cat pyproject.toml | grep -o -E '(version\s=\s)([[:punct:]])([0-9]+\.[0-9]+\.[0-9]+.+)([[:punct:]])' | cut -d ' ' -f 3 | tr -d '"')" >> $GITHUB_ENV
 
       - name: Get previous bump version
+        if: ${{ steps.check-label.outputs.passed }} == true 
         env:
           PREV_VER: ${{ env.PREV_VER }}
         run: |
@@ -31,12 +40,14 @@ jobs:
           fi
 
       - name: Bump version
+        if: ${{ steps.check-label.outputs.passed }} == true 
         env:
           BUMP_VER: ${{ env.OLD_BUMP }}
         run: |
           echo "NEW_BUMP=$(($BUMP_VER + 1))" >> $GITHUB_ENV
 
       - name: Update version in files
+        if: ${{ steps.check-label.outputs.passed }} == true 
         uses: jacobtomlinson/gha-find-replace@master
         with:
           include: 'pyproject.toml'
@@ -44,6 +55,7 @@ jobs:
           replace: 'version = "${{ steps.release-drafter.outputs.name }}-pre.${{ env.NEW_BUMP }}"'
 
       - name: Commit updates
+        if: ${{ steps.check-label.outputs.passed }} == true 
         env:
           SNAKEBIDS_VERSION: ${{ steps.release-drafter.outputs.name }}-pre.${{ env.NEW_BUMP }}
         run: |
@@ -52,6 +64,7 @@ jobs:
           git diff-index --quiet HEAD || git commit -m "Bump version to $SNAKEBIDS_VERSION" -a
 
       - name: Push changes
+        if: ${{ steps.check-label.outputs.passed }} == true 
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
