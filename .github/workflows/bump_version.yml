@@ -9,27 +9,17 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       
-      - name: Check PR label
-        uses: danielchabr/pr-labels-checker@v3.1
-        id: check-label
-        with:
-          hasNone: skip_changelog
-          githubToken: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Update changelog
-        if: ${{ steps.check-label.outputs.passed }} == true 
         uses: release-drafter/release-drafter@v5
         id: release-drafter
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get previous release version
-        if: ${{ steps.check-label.outputs.passed }} == true 
         run: |
           echo "PREV_VER=$(cat pyproject.toml | grep -o -E '(version\s=\s)([[:punct:]])([0-9]+\.[0-9]+\.[0-9]+.+)([[:punct:]])' | cut -d ' ' -f 3 | tr -d '"')" >> $GITHUB_ENV
 
       - name: Get previous bump version
-        if: ${{ steps.check-label.outputs.passed }} == true 
         env:
           PREV_VER: ${{ env.PREV_VER }}
         run: |
@@ -40,31 +30,37 @@ jobs:
           fi
 
       - name: Bump version
-        if: ${{ steps.check-label.outputs.passed }} == true 
         env:
           BUMP_VER: ${{ env.OLD_BUMP }}
         run: |
           echo "NEW_BUMP=$(($BUMP_VER + 1))" >> $GITHUB_ENV
 
+      - name: Set new release version
+        env:
+          RD_RELEASE: ${{ steps.release-drafter.outputs.name }}
+        run: | 
+          if [ ! -z "$RD_RELEASE" ]; then
+            echo "NEW_RELEASE=$RD_RELEASE" >> $GITHUB_ENV
+          else
+            echo "NEW_RELEASE=0.1.0" >> $GITHUB_ENV
+          fi 
+
       - name: Update version in files
-        if: ${{ steps.check-label.outputs.passed }} == true 
         uses: jacobtomlinson/gha-find-replace@master
         with:
           include: 'pyproject.toml'
           find: 'version = "(?:([0-9]+\.[0-9]+\.[0-9]+.+)|([0-9]+\.[0-9]+\.[0-9]+))"'
-          replace: 'version = "${{ steps.release-drafter.outputs.name }}-pre.${{ env.NEW_BUMP }}"'
+          replace: 'version = "${{ env.NEW_RELEASE }}-pre.${{ env.NEW_BUMP }}"'
 
       - name: Commit updates
-        if: ${{ steps.check-label.outputs.passed }} == true 
         env:
-          SNAKEBIDS_VERSION: ${{ steps.release-drafter.outputs.name }}-pre.${{ env.NEW_BUMP }}
+          SNAKEBIDS_VERSION: ${{ env.NEW_RELEASE }}-pre.${{ env.NEW_BUMP }}
         run: |
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git diff-index --quiet HEAD || git commit -m "Bump version to $SNAKEBIDS_VERSION" -a
 
       - name: Push changes
-        if: ${{ steps.check-label.outputs.passed }} == true 
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
