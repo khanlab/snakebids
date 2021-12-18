@@ -464,7 +464,7 @@ def get_source_path(rel_path):
     rel_path : str
         Path to retrieve assumed to be relative to the location of
         the calling file.
-    
+
     Returns
     -------
     str
