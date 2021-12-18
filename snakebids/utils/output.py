@@ -1,6 +1,7 @@
 """Tools to manage generation and interconversion of bidsapps and snakemake outputs."""
 
 import hashlib
+import inspect
 import itertools as it
 import json
 import os
@@ -450,3 +451,28 @@ def write_config_file(config_file: Path, data: dict, force_overwrite: bool = Fal
         yaml.add_representer(WindowsPath, path2str)
 
         yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+
+
+def get_source_path(rel_path):
+    """Gets path relative to the file that calls this function.
+
+    Adapted from snakemake's workflow.source_path(), but does not do any caching.
+    Used to resolves paths for resources relative to the workflow.
+
+    Parameters
+    ----------
+    rel_path : str
+        Path to retrieve assumed to be relative to the location of
+        the calling file.
+    
+    Returns
+    -------
+    str
+        Absolute path to the file
+
+    """
+
+    frame = inspect.currentframe().f_back
+    calling_file = frame.f_code.co_filename
+    calling_dir = os.path.dirname(calling_file)
+    return Path(os.path.join(calling_dir, rel_path)).resolve()

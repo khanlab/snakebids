@@ -1,5 +1,6 @@
 from snakebids.utils.output import (
     Mode,
+    get_source_path,
     get_time_hash,
     prepare_output,
     retrofit_output,
@@ -14,6 +15,7 @@ from snakebids.utils.snakemake_io import (
 
 __all__ = [
     "Mode",
+    "get_source_path",
     "get_time_hash",
     "glob_wildcards",
     "prepare_output",
