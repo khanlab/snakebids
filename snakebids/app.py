@@ -76,10 +76,6 @@ class SnakeBidsApp:
     snakemake_dir : str
         Root directory of the snakebids app, containing the config file and workflow
         files.
-    skip_parse_args : bool, optional
-        @DEPRECATED (This argument currently has no functionality). If true, the
-        Snakebids app will not attempt to parse input arguments, and will only handle
-        the config file. (default: False)
     parser : ArgumentParser, optional
         Parser including only the arguments specific to this Snakebids app, as specified
         in the config file. By default, it will use `create_parser()` from `cli.py`
@@ -119,13 +115,6 @@ class SnakeBidsApp:
         Workflow snakefile will read snakebids config, create inputs_config,
         and read that in.
         """
-
-        # Issue deprecation warning for skip_parse_args
-        if self.skip_parse_args:
-            logger.warning(
-                "[DEPRECATION WARNING]: skip_parse_args will not have any effect on"
-                "this app. It will be removed in a future version"
-            )
 
         # If no SnakebidsArgs were provided on class instantiation, we compute args
         # using the provided parser
