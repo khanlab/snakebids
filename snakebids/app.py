@@ -329,7 +329,7 @@ class SnakeBidsApp:
                 )
             else:
                 names = (name,)
-            app_group.add_argument(*names, **parse_args)
+            app_group.add_argument(*set(names), **parse_args)
 
         # general parser for
         # --filter_{input_type} {key1}={value1} {key2}={value2}...
