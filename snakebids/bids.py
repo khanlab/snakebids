@@ -5,9 +5,8 @@ import logging
 import os
 import re
 from collections import OrderedDict
-from os.path import join
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 from bids import BIDSLayout, BIDSLayoutIndexer
 
@@ -18,15 +17,15 @@ _logger = logging.getLogger(__name__)
 
 # pylint: disable=too-many-arguments
 def bids(
-    root=None,
-    datatype=None,
-    prefix=None,
-    suffix=None,
-    subject=None,
-    session=None,
-    include_subject_dir=True,
-    include_session_dir=True,
-    **entities,
+    root: Union[str, Path] = None,
+    datatype: str = None,
+    prefix: str = None,
+    suffix: str = None,
+    subject: str = None,
+    session: str = None,
+    include_subject_dir: bool = True,
+    include_session_dir: bool = True,
+    **entities: str,
 ):
     """Helper function for generating bids paths for snakemake workflows.
 
@@ -61,7 +60,7 @@ def bids(
 
     Returns
     -------
-    str
+    Path
         bids-like file path
 
     Examples
@@ -139,7 +138,7 @@ def bids(
       https://mne.tools/mne-bids/stable/_modules/mne_bids/utils.html
     """
 
-    # replace underscores in keys (needed to that users can use reserved
+    # replace underscores in keys (needed so that users can use reserved
     # keywords by appending a _)
     entities = {k.replace("_", ""): v for k, v in entities.items()}
 
@@ -167,53 +166,44 @@ def bids(
     for key, val in entities.items():
         order[key] = val
 
-    # initialize lists for filename and folder
-    # will append to these, then '_'.join() os.path.join() respectively
-    filename = []
-    folder = []
+    # Form all entities for filename as a list, and join with "_". Any undefined
+    # entities will be `None` and will be filtered out.
+    filename: str = "_".join(
+        filter(
+            None,
+            [
+                # Put the prefix before anything else
+                prefix,
+                # Add in subject and session
+                f"sub-{subject}" if subject else None,
+                f"ses-{session}" if session else None,
+                # Iterate through all other entities and add as "key-value"
+                *(f"{key}-{val}" for key, val in order.items() if val is not None),
+                # Put the suffix last
+                suffix,
+            ],
+        )
+    )
 
-    # root directory
-    if isinstance(root, str):
-        folder.append(root)
-    elif isinstance(root, Path):
-        folder.append(str(root.resolve()))
-
-    # if prefix is defined, put it before other anything else
-    if isinstance(prefix, str):
-        filename.append(prefix)
-
-    # if subject defined then append to file and folder
-    if isinstance(subject, str):
-        if include_subject_dir is True:
-            folder.append(f"sub-{subject}")
-        filename.append(f"sub-{subject}")
-
-    # if session defined then append to file and folder
-    if isinstance(session, str):
-        if include_session_dir is True:
-            folder.append(f"ses-{session}")
-        filename.append(f"ses-{session}")
-
-    if isinstance(datatype, str):
-        folder.append(datatype)
-
-    # add the entities
-    filename += [f"{key}-{val}" for key, val in order.items() if val is not None]
-
-    # if suffix is defined, append it
-    if isinstance(suffix, str):
-        filename.append(suffix)
-
-    if len(filename) == 0:
+    # If all entities were `None`, the list will be empty and filename == ""
+    if not filename:
         return ""
 
-    # now, join up the lists:
-    filename = "_".join(filename)
+    # Form folder using list similar to filename, above. Filter out Nones, and convert
+    # to Path.
+    folder = Path(
+        *filter(
+            None,
+            [
+                str(root) if root else None,
+                f"sub-{subject}" if subject and include_subject_dir else None,
+                f"ses-{session}" if session and include_session_dir else None,
+                datatype,
+            ],
+        )
+    )
 
-    if len(folder) > 0:
-        filename = join(*folder, filename)
-
-    return filename
+    return folder / filename
 
 
 def print_boilerplate():
