@@ -1,3 +1,4 @@
+import itertools as it
 import json
 import logging
 import operator as op
@@ -5,8 +6,10 @@ import re
 from pathlib import Path
 from typing import Dict, Iterable, List, Tuple, Union
 
+import attr
 import more_itertools as itx
 from bids import BIDSLayout, BIDSLayoutIndexer
+from typing_extensions import TypedDict
 
 from snakebids.core.filtering import filter_list
 from snakebids.utils.snakemake_io import glob_wildcards
@@ -15,7 +18,93 @@ from snakebids.utils.utils import get_match_search_func, read_bids_tags
 _logger = logging.getLogger(__name__)
 
 
-# pylint: disable=too-many-arguments,too-many-locals
+class BidsInputsDict(TypedDict):
+    """Dict equivalent of BidsInputs, for backwards-compatibility"""
+
+    input_path: Dict[str, str]
+    input_zip_lists: Dict[str, Dict[str, List[str]]]
+    input_lists: Dict[str, Dict[str, List[str]]]
+    input_wildcards: Dict[str, Dict[str, str]]
+    subjects: List[str]
+    sessions: List[str]
+    subj_wildcards: Dict[str, str]
+
+
+@attr.frozen
+class BidsInputs:
+    """Bids input entities and their resolved values
+
+    Parameters
+    ----------
+    input_path
+        Wildcard-filled path that matches the images for this modality.
+    input_zip_lists
+        Dictionary where each key is a wildcard entity and each value is a list of the
+        values found for that entity. Each of these lists has length equal to the number
+        of images matched for this modality, so they can be zipped together to get a
+        list of the wildcard values for each image.
+    input_lists
+        Dictionary where each key is a wildcard entity and each value is a list of the
+        unique values found for that entity. These lists might not be the same length.
+    input_wildcards
+        Dictionary where each key is the name of a wildcard entity, and each value is
+        the Snakemake wildcard used for that entity.
+    """
+
+    input_path: Dict[str, str]
+    input_zip_lists: Dict[str, Dict[str, List[str]]]
+    input_lists: Dict[str, Dict[str, List[str]]]
+    input_wildcards: Dict[str, Dict[str, str]]
+
+    @property
+    def subjects(self):
+        """A list of the subjects in the dataset."""
+        return [
+            *{
+                *it.chain.from_iterable(
+                    input_list["subject"] for input_list in self.input_lists.values()
+                )
+            }
+        ]
+
+    @property
+    def sessions(self):
+        """A list of the sessions in the dataset."""
+        return [
+            *{
+                *it.chain.from_iterable(
+                    input_list["session"]
+                    for input_list in self.input_lists.values()
+                    if "session" in input_list
+                )
+            }
+        ]
+
+    @property
+    def subj_wildcards(self):
+        """The subject and session wildcards applicable to this dataset.
+
+        ``{"subject":"{subject}"}`` if there is only one session, ``{"subject":
+        "{subject}", "session": "{session}"}`` if there are multiple sessions.
+        """
+        if len(self.sessions) == 0:
+            return {"subject": "{subject}"}
+        return {
+            "subject": "{subject}",
+            "session": "{session}",
+        }
+
+    @property
+    def as_dict(self):
+        return BidsInputsDict(
+            **attr.asdict(self),
+            subjects=self.subjects,
+            sessions=self.sessions,
+            subj_wildcards=self.subj_wildcards,
+        )
+
+
+# pylint: disable=too-many-arguments, too-many-locals
 def generate_inputs(
     bids_dir,
     pybids_inputs,
