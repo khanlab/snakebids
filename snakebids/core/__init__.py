@@ -5,14 +5,12 @@ __submodules__ = ["bids", "filtering", "input_generation"]
 from snakebids.core.bids import bids, print_boilerplate
 from snakebids.core.filtering import filter_list, get_filtered_ziplist_index
 from snakebids.core.input_generation import (
-    BidsInputs,
     generate_inputs,
     get_wildcard_constraints,
     write_derivative_json,
 )
 
 __all__ = [
-    "BidsInputs",
     "bids",
     "filter_list",
     "generate_inputs",
