@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 from pathlib import Path
 
-from .. import bids
+from snakebids.core.bids import bids
 
 
 def test_bids_subj():
