@@ -23,6 +23,7 @@ colorama = "^0.4.4"
 typing-extensions = "^3.10.0"
 progress = "^1.6"
 attrs = "^21.2.0"
+more-itertools = "^8.12.0"
 
 [tool.poetry.dev-dependencies]
 black = "^21.10b0"
@@ -34,6 +35,7 @@ flake8 = "^4.0.1"
 poethepoet = "^0.10.0"
 pre-commit = "^2.15.0"
 mkinit = "^0.3.3"
+hypothesis = "^6.34.1"
 
 [tool.poetry.scripts]
 snakebids-create = "snakebids.template:main"
@@ -53,7 +55,7 @@ profile = "black"
 multi_line_output = 3
 
 [tool.pylint.master]
-ignore-patterns = "^[0-9][0-9]+_,^test_"
+ignore-patterns = "^[0-9][0-9]+_,^test_,^__init__"
 
 [tool.pylint.format]
 good-names = "i,j,k,ex,_,x,y,f,d"
