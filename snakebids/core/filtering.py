@@ -1,4 +1,40 @@
-def filter_list(zip_list, wildcards, return_indices_only=False):
+import itertools as it
+import operator as op
+import re
+from typing import Dict, List, Tuple, Union, overload
+
+import more_itertools as itx
+from typing_extensions import Literal
+
+from snakebids.utils.utils import matches_any
+
+
+@overload
+def filter_list(
+    zip_list,
+    filters: Dict[str, Union[str, List[str]]],
+    return_indices_only: Literal[False] = ...,
+    regex_search: bool = ...,
+) -> Dict[str, Tuple[str]]:
+    ...
+
+
+@overload
+def filter_list(
+    zip_list,
+    filters: Dict[str, Union[str, List[str]]],
+    return_indices_only: Literal[True] = ...,
+    regex_search: bool = ...,
+) -> Tuple[int]:
+    ...
+
+
+def filter_list(
+    zip_list: Dict[str, List[str]],
+    filters: Dict[str, Union[str, List[str]]],
+    return_indices_only=False,
+    regex_search=False,
+):
     """This function is used when you are expanding over some subset of the
     wildcards i.e. if your output file doesn't contain all the wildcards in
     input_wildcards
@@ -8,11 +44,14 @@ def filter_list(zip_list, wildcards, return_indices_only=False):
     zip_list : dict
         generated zip lists dict from config file to filter
 
-    wildcards : dict
+    filters : dict
         wildcard values to filter the zip lists
 
     return_indices_only : bool, default=False
         return the indices of the matching wildcards
+
+    regex_search : bool, default=False
+        Use regex matching to filter instead of the default equality check.
 
     Returns
     -------
@@ -35,9 +74,9 @@ def filter_list(zip_list, wildcards, return_indices_only=False):
         ...     },
         ...     {'subject': '01'}
         ... ) == {
-        ...     'dir': ['AP', 'PA', 'AP', 'PA'],
-        ...     'acq': ['98', '98', '99', '99'],
-        ...     'subject': ['01', '01', '01', '01']
+        ...     'dir': ('AP', 'PA', 'AP', 'PA'),
+        ...     'acq': ('98', '98', '99', '99'),
+        ...     'subject': ('01', '01', '01', '01')
         ... }
         True
 
@@ -51,9 +90,9 @@ def filter_list(zip_list, wildcards, return_indices_only=False):
         ...     },
         ...     {'acq': '98'}
         ... ) == {
-        ...     'dir': ['AP', 'PA', 'AP', 'PA'],
-        ...     'acq': ['98', '98', '98', '98'],
-        ...     'subject': ['01', '01', '02', '02']
+        ...     'dir': ('AP', 'PA', 'AP', 'PA'),
+        ...     'acq': ('98', '98', '98', '98'),
+        ...     'subject': ('01', '01', '02', '02')
         ... }
         True
 
@@ -67,9 +106,9 @@ def filter_list(zip_list, wildcards, return_indices_only=False):
         ...     },
         ...     {'dir': 'AP'}
         ... ) == {
-        ...     'dir': ['AP', 'AP', 'AP', 'AP'],
-        ...     'acq': ['98', '98', '99', '99'],
-        ...     'subject': ['01', '02', '01', '02']
+        ...     'dir': ('AP', 'AP', 'AP', 'AP'),
+        ...     'acq': ('98', '98', '99', '99'),
+        ...     'subject': ('01', '02', '01', '02')
         ... }
         True
 
@@ -83,28 +122,57 @@ def filter_list(zip_list, wildcards, return_indices_only=False):
         ...     },
         ...     {'subject': '03'}
         ... ) == {
-        ...     'dir': [],
-        ...     'acq': [],
-        ...     'subject': []
+        ...     'dir': (),
+        ...     'acq': (),
+        ...     'subject': ()
         ... }
         True
     """
-    keep_indices = []
-    for key, val in wildcards.items():
-        # get indices where wildcard exists
-        if key not in zip_list.keys():
-            continue
-        indices = [i for i, v in enumerate(zip_list[key]) if v == val]
-        if len(keep_indices) == 0:
-            keep_indices = indices
-        else:
-            keep_indices = [x for x in indices if x in keep_indices]
-    # Now we have the indices, so filter the lists
-    if return_indices_only:
-        return keep_indices
-    return {
-        key: [zip_list[key][i] for i in keep_indices] for key, val in zip_list.items()
-    }
+
+    # Unzip values to group them by path instead of by wildcard type:
+    #   ['AP', 'PA', 'AP', 'PA']            ['AP', '01']
+    #   ['01', '01', '02', 'PA']    ->      ['PA', '01']
+    #                                       ['AP', '02']
+    #                                       ['PA', '02']
+    value_groups = zip(*zip_list.values())
+
+    # Select a match function based on the value of regex_search
+    if regex_search:
+        match_func = re.match
+    else:
+        match_func = op.eq
+
+    def filter_values(args: Tuple[int, Tuple[str]]):
+        # This function is used to filter each value group obtained above. The first
+        # member of args is an enumeration integer not used for filtering.
+        value_group = args[1]
+
+        # Reassociate each member of the value group with its wildcard key
+        for key, value in zip(zip_list.keys(), value_group):
+            # If the key has a filter, check if the value matches any of the filters
+            if key in filters and not matches_any(
+                value, [*itx.always_iterable(filters[key])], match_func
+            ):
+                # If not, immediately return False
+                return False
+        # If every value in the group passes the filters, return True
+        return True
+
+    # Run the above filter function. Enumerate is used to track which indices were kept
+    filtered = [*filter(filter_values, enumerate(value_groups))]
+    if len(filtered):
+        # Unzip filtered to seperated the indices from the filtered_values
+        filtered_values: Tuple[Tuple[str]]
+        indices, filtered_values = zip(*filtered)  # type: ignore
+        if return_indices_only:
+            return indices
+        # Unzip filtered_values to restore to the original structure. These are zipped
+        # with keys and turned back into a dict
+        return dict(zip(zip_list.keys(), zip(*filtered_values)))
+
+    # If no values survivied filtering, we return a dict with all the keys mapping to
+    # empty tuples
+    return dict(it.zip_longest(zip_list.keys(), [], fillvalue=tuple()))
 
 
 def get_filtered_ziplist_index(zip_list, wildcards, subj_wildcards):
