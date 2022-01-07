@@ -69,6 +69,7 @@ class SnakebidsArgs:
     retrofit: bool
     snakemake_args: List[str]
     args_dict: Dict[str, Any]
+    boutiques: Path
 
 
 def create_parser(include_snakemake=False):
@@ -132,6 +133,11 @@ def create_parser(include_snakemake=False):
             "bidsapp mode. This will delete any config files currently in the "
             "output."
         ),
+    )
+
+    standard_group.add_argument(
+        "--boutiques",
+        help="Save a boutiques descriptor of the Snakebids app to the provided path.",
     )
 
     # add option for printing out snakemake usage
@@ -240,6 +246,7 @@ def parse_snakebids_args(parser: argparse.ArgumentParser):
         force=all_args[0].force_conversion,
         outputdir=Path(all_args[0].output_dir).resolve(),
         retrofit=all_args[0].retrofit,
+        boutiques=Path(all_args[0].boutiques).resolve(),
     )
 
 

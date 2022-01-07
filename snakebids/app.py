@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import attr
+import boutiques.creator as bc
 import snakemake
 from colorama import Fore
 from snakemake.io import load_configfile
@@ -128,6 +129,11 @@ class SnakeBidsApp:
             )
             args = parse_snakebids_args(self.parser)
 
+        if args.boutiques is not None:
+            self.create_descriptor(args.boutiques)
+            print(f"Boutiques descriptor created at {args.boutiques}")
+            return
+
         # If the snakemake_dir is the same as the outputdir, we need to switch into
         # workflow mode
         if self.snakemake_dir == args.outputdir:
@@ -219,6 +225,11 @@ class SnakeBidsApp:
                 )
             ]
         )
+
+    def create_descriptor(self, out_file):
+        """Generate a boutiques descriptor for this Snakebids app."""
+        new_descriptor = bc.CreateDescriptor(self.parser, execname="run.py")
+        new_descriptor.save(out_file)
 
 
 def update_config(config: Dict[str, Any], snakebids_args: SnakebidsArgs):

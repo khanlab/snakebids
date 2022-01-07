@@ -23,6 +23,7 @@ colorama = "^0.4.4"
 typing-extensions = "^3.10.0"
 progress = "^1.6"
 attrs = "^21.2.0"
+boutiques = "^0.5.25"
 
 [tool.poetry.dev-dependencies]
 black = "^21.10b0"
