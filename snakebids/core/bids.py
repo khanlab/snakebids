@@ -133,6 +133,7 @@ def bids(
     entities = {k.replace("_", ""): v for k, v in entities.items()}
 
     # strict ordering of bids entities is specified here:
+    # pylint: disable=unsubscriptable-object
     order: OrderedDict[str, Optional[str]] = OrderedDict(
         [
             ("task", None),

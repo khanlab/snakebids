@@ -2,11 +2,11 @@ import json
 import logging
 import os
 import re
-from pathlib import Path
 
 from bids import BIDSLayout, BIDSLayoutIndexer
 
 from snakebids.utils.snakemake_io import glob_wildcards
+from snakebids.utils.utils import read_bids_tags
 
 _logger = logging.getLogger(__name__)
 
@@ -339,7 +339,7 @@ def _process_layout_wildcard(path, wildcard_name):
     out_name : str
         Name of the applied wildcard (e.g. "subject")
     """
-    bids_tags = _read_bids_tags()
+    bids_tags = read_bids_tags()
     tag = bids_tags[wildcard_name] if wildcard_name in bids_tags else wildcard_name
 
     # this changes e.g. sub-001 to sub-{subject} in the path
@@ -526,26 +526,3 @@ def get_wildcard_constraints(image_types):
         for imgtype in image_types.keys()
         for entity in image_types[imgtype].keys()
     }
-
-
-def _read_bids_tags(bids_json=None):
-    """Read the bids tags we are aware of from a JSON file. This is used
-    specifically for compatibility with pybids, since some tag keys are
-    different from how they appear in the file name, e.g. ``subject`` for
-    ``sub``, and ``acquisition`` for ``acq``.
-
-    Parameters
-    ----------
-    bids_json : str, optional
-        Path to JSON file to use, if not specified will use
-        ``bids_tags.json`` in the snakebids module.
-
-    Returns
-    -------
-    dict:
-        Dictionary of bids tags"""
-    if bids_json is None:
-        bids_json = Path(__file__).parent.parent.resolve() / "bids_tags.json"
-    with bids_json.open("r") as infile:
-        bids_tags = json.load(infile)
-    return bids_tags
