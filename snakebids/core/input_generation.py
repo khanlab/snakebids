@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+from typing import Dict, List, Tuple
 
 from bids import BIDSLayout, BIDSLayoutIndexer
 
@@ -303,9 +304,10 @@ def _process_path_override(input_path):
     if len(wildcard_names) == 0:
         _logger.warning("No wildcards defined in %s", input_path)
 
-    input_wildcards = {}
-    input_zip_lists = {}
-    input_lists = {}
+    # Initialize output values
+    input_wildcards: Dict[str, str] = {}
+    input_zip_lists: Dict[str, Tuple[str]] = {}
+    input_lists: Dict[str, List[str]] = {}
 
     for i, wildcard in enumerate(wildcard_names):
         input_zip_lists[wildcard] = wildcards[i]
