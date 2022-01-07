@@ -5,7 +5,7 @@ import os
 import pytest
 from bids import BIDSLayout
 
-from ..bids import _get_lists_from_bids, generate_inputs
+from snakebids.core.input_generation import _get_lists_from_bids, generate_inputs
 
 
 def test_t1w():
