@@ -1,7 +1,7 @@
 import functools as ft
 import importlib.resources
 import json
-from typing import Dict
+from typing import Any, Callable, Dict, List
 
 
 @ft.lru_cache(None)
@@ -28,3 +28,36 @@ def read_bids_tags(bids_json=None) -> Dict[str, str]:
     with importlib.resources.open_text("snakebids.resources", "bids_tags.json") as file:
         bids_tags = json.load(file)
     return bids_tags
+
+
+def matches_any(
+    item: Any, match_list: List[Any], match_func: Callable[[Any, Any], Any], *args: Any
+):
+    for match in match_list:
+        if match_func(match, item, *args):
+            return True
+    return False
+
+
+def get_match_search_func(match_list: List[Any], match_func: Callable[[Any, Any], Any]):
+    """Return a match search function suitable for use in filter
+
+    Parameters
+    ----------
+    match_list : list
+        list of items to search for matches
+    match_func : callable
+        Any callable that takes two args and returns truthy/falsy values. The first arg
+        will be drawn from match_list, the second will be the value being matched
+
+    Returns
+    -------
+    callable
+        Takes as a single arg a value to be matched. It will be compared to every item
+        in match list using match_func
+    """
+
+    def inner(item: Any):
+        return matches_any(item, match_list, match_func)
+
+    return inner
