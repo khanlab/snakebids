@@ -1,7 +1,7 @@
 import functools as ft
 import importlib.resources
 import json
-from typing import Any, Callable, Dict, Iterable, List
+from typing import Any, Callable, Dict, Iterable
 
 
 @ft.lru_cache(None)
@@ -42,7 +42,9 @@ def matches_any(
     return False
 
 
-def get_match_search_func(match_list: List[Any], match_func: Callable[[Any, Any], Any]):
+def get_match_search_func(
+    match_list: Iterable[Any], match_func: Callable[[Any, Any], Any]
+):
     """Return a match search function suitable for use in filter
 
     Parameters
@@ -59,6 +61,7 @@ def get_match_search_func(match_list: List[Any], match_func: Callable[[Any, Any]
         Takes as a single arg a value to be matched. It will be compared to every item
         in match list using match_func
     """
+    match_list = [*match_list]
 
     def inner(item: Any):
         return matches_any(item, match_list, match_func)

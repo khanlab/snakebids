@@ -24,6 +24,7 @@ progress = "^1.6"
 attrs = "^21.2.0"
 boutiques = "^0.5.25"
 more-itertools = "^8.12.0"
+pytest-benchmark = "^3.4.1"
 
 [tool.poetry.dev-dependencies]
 black = "^22.1.0"
@@ -47,8 +48,9 @@ build-backend = "poetry.core.masonry.api"
 [tool.poe.tasks]
 setup = "pre-commit install"
 quality = { shell = "isort snakebids && black snakebids && flake8 snakebids && pylint snakebids" }
-test = "pytest --doctest-modules --ignore=docs --ignore=snakebids/project_template"
+test = "pytest --doctest-modules --ignore=docs --ignore=snakebids/project_template --benchmark-disable"
 mkinit = "mkinit --recursive --nomods --black -i snakebids"
+benchmark = "pytest --benchmark-only --benchmark-autosave"
 
 [tool.isort]
 profile = "black"
