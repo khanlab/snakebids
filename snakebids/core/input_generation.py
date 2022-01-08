@@ -4,7 +4,7 @@ import logging
 import operator as op
 import re
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple, Union
+from typing import Dict, Iterable, List, NamedTuple, Tuple, Union
 
 import attr
 import more_itertools as itx
@@ -16,6 +16,38 @@ from snakebids.utils.snakemake_io import glob_wildcards
 from snakebids.utils.utils import get_match_search_func, read_bids_tags
 
 _logger = logging.getLogger(__name__)
+
+
+BidsLists = NamedTuple(
+    "BidsLists",
+    [
+        ("input_name", str),
+        ("input_path", str),
+        ("input_zip_lists", Dict[str, List[str]]),
+        ("input_lists", Dict[str, List[str]]),
+        ("input_wildcards", Dict[str, str]),
+    ],
+)
+"""Bids inputs from a single input descriptor
+
+Attributes
+----------
+input_name : str
+    The name of the input descriptor.
+input_path : str
+    Wildcard-filled path that matches the images for this modality.
+input_zip_lists : dict
+    Each key is a wildcard entity and each value is a list of the values found for that
+    entity. Each of these lists has length equal to the number of images matched for
+    this modality, so they can be zipped together to get a list of the wildcard values
+    for each image.
+input_lists : dict
+    Each key is a wildcard entity and each value is a list of the unique values found
+    for that entity. These lists might not be the same length.
+input_wildcards : dict
+    Where each key is the name of a wildcard entity, and each value is the Snakemake
+    wildcard used for that entity.
+"""
 
 
 class BidsInputsDict(TypedDict):
@@ -102,6 +134,54 @@ class BidsInputs:
             sessions=self.sessions,
             subj_wildcards=self.subj_wildcards,
         )
+
+    @staticmethod
+    def _get_bids_lists_as_dicts(bids_lists: Iterable[BidsLists]):
+        """Convert Iterable of Bids lists into dictionaries
+
+        The dictionaries will be in a form suitable for use in BidsInputs. In other
+        words, each list type (input_path, input_zip_lists, etc) will be a dict with
+        input descriptors as keys and the list type as values.
+
+        Parameters
+        ----------
+        bids_lists : Iterable[BidsLists]
+            BidsLists to be converted
+
+        Returns
+        -------
+        Tuple of Dicts
+            Tuple of all the dicts generated from the BidsLists
+        """
+        bids_lists = [*bids_lists]
+
+        def get_as_dict(attr_name):
+            return {
+                bids_list.input_name: getattr(bids_list, attr_name)
+                for bids_list in bids_lists
+            }
+
+        return (
+            get_as_dict("input_path"),
+            get_as_dict("input_zip_lists"),
+            get_as_dict("input_lists"),
+            get_as_dict("input_wildcards"),
+        )
+
+    @classmethod
+    def from_bids_lists(cls, bids_lists: Iterable[BidsLists]):
+        """Generate BidsInputs based on an iterable of BidsLists
+
+        Parameters
+        ----------
+        bids_lists : Iterable[BidsLists]
+            Iterable of BidsLists to convert
+
+        Returns
+        -------
+        BidsInputs
+        """
+        return cls(*cls._get_bids_lists_as_dicts(bids_lists))
 
 
 # pylint: disable=too-many-arguments, too-many-locals
@@ -493,7 +573,7 @@ def _parse_custom_path(
 
     # Initialize output values
     input_wildcards: Dict[str, str] = {}
-    input_zip_lists: Dict[str, Tuple[str]] = {}
+    input_zip_lists: Dict[str, List[str]] = {}
     input_lists: Dict[str, List[str]] = {}
 
     # Loop through every wildcard name
