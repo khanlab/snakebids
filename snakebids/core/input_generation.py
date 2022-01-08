@@ -1,5 +1,6 @@
 import json
 import logging
+import operator as op
 import re
 from pathlib import Path
 from typing import Dict, List, Tuple, Union
@@ -7,8 +8,9 @@ from typing import Dict, List, Tuple, Union
 import more_itertools as itx
 from bids import BIDSLayout, BIDSLayoutIndexer
 
+from snakebids.core.filtering import filter_list
 from snakebids.utils.snakemake_io import glob_wildcards
-from snakebids.utils.utils import read_bids_tags
+from snakebids.utils.utils import get_match_search_func, read_bids_tags
 
 _logger = logging.getLogger(__name__)
 
@@ -365,9 +367,34 @@ def _generate_filters(
     return [], False
 
 
-def _process_path_override(input_path):
-    """Glob wildcards from a path override and arrange into a zip list of
-    matches, list of matches, and Snakemake wildcard for each wildcard.
+def _parse_custom_path(
+    input_path: Union[Path, str],
+    regex_search: bool = False,
+    **filters: Union[List[str], str],
+):
+    """Glob wildcards from a custom path and apply filters
+
+    This replicates pybids path globbing for any custom path. Input path should have
+    wildcards in braces as in "path/of/{wildcard_1}/{wildcard_2}_{wildcard_3}" Output
+    will be arranged into a zip list of matches, list of matches, and Snakemake wildcard
+    for each wildcard.
+
+    Note that, currently, this will get confused if wildcard content matches
+    non-wildcard content. For example, considering the path template above, the example
+    "path/of/var1/variable_2_var3" would bug out because of the extra underscore.
+
+    Parameters
+    ----------
+    input_path : str
+        Path to be globbed
+    regex_search : bool
+        If True, use regex matching for filtering rather than simple equality
+    **filters : str or list of str
+        Values to keep. Each argument is the name of the entity to search
+
+    Returns
+    -------
+    input_zip_list, input_list, input_wildcards
     """
     wildcards = glob_wildcards(input_path)
     wildcard_names = list(wildcards._fields)
@@ -380,14 +407,40 @@ def _process_path_override(input_path):
     input_zip_lists: Dict[str, Tuple[str]] = {}
     input_lists: Dict[str, List[str]] = {}
 
+    # Loop through every wildcard name
     for i, wildcard in enumerate(wildcard_names):
+        # Check if this wildcard needs to be filtered
+        if wildcard not in filters:
+            # If not, the match_func will always return True
+            match_func = lambda _: True  # noqa: E731
+        elif regex_search:
+            # Otherwise, we use regex matching for regex_search
+            match_func = get_match_search_func(
+                itx.always_iterable(filters[wildcard]), re.match
+            )
+        else:
+            # And a simple equality operator for everything else
+            match_func = get_match_search_func(
+                itx.always_iterable(filters[wildcard]), op.eq
+            )
+
+        # Add the wildcard item to each output value, using filtering for input_lists
         input_zip_lists[wildcard] = wildcards[i]
-        input_lists[wildcard] = list(set(wildcards[i]))
+        input_lists[wildcard] = [*filter(match_func, set(wildcards[i]))]
         input_wildcards[wildcard] = f"{{{wildcard}}}"
+
+        # Log an error if no matches found
+        # TODO: This will fail to detect filtering correctly as, up till now, it has
+        #       only been performed on input_lists
         if len(wildcards[i]) == 0:
             _logger.error("No matching files for %s", input_path)
 
-    return input_zip_lists, input_lists, input_wildcards
+    # Return the output values, running filtering on the input_zip_lists
+    return (
+        filter_list(input_zip_lists, filters, regex_search=regex_search),
+        input_lists,
+        input_wildcards,
+    )
 
 
 def _process_layout_wildcard(path, wildcard_name):
@@ -522,7 +575,7 @@ def _get_lists_from_bids(bids_layout, pybids_inputs, limit_to=None, **filters):
                 input_zip_lists,
                 input_lists,
                 input_wildcards,
-            ) = _process_path_override(input_path)
+            ) = _parse_custom_path(input_path)
         else:
             paths = set()
             for img in bids_layout.get(
