@@ -3,16 +3,21 @@ from __future__ import absolute_import
 import filecmp
 import itertools as it
 import os
+import re
 import shutil
 from collections import defaultdict
 from pathlib import Path
 
+import more_itertools as itx
 import pytest
 from bids import BIDSLayout
+from hypothesis import assume, given
+from hypothesis import strategies as st
 
 from snakebids.core.construct_bids import bids
 from snakebids.core.input_generation import (
     _gen_bids_layout,
+    _generate_filters,
     _get_lists_from_bids,
     generate_inputs,
 )
@@ -82,6 +87,56 @@ class TestAbsentConfigEntries:
         assert config["input_zip_lists"] == {"t1": {}}
         assert config["input_wildcards"] == {"t1": {}}
         assert config["subj_wildcards"] == {"subject": "{subject}"}
+
+
+class TestGenerateFilter:
+    valid_chars = st.characters(blacklist_characters=["\n"])
+    st_lists_or_text = st.lists(st.text(valid_chars)) | st.text(valid_chars)
+
+    @given(st.tuples(st_lists_or_text, st_lists_or_text))
+    def test_throws_error_if_labels_and_excludes_are_given(self, args):
+        with pytest.raises(ValueError):
+            _generate_filters(*args)
+
+    @given(st_lists_or_text)
+    def test_returns_participant_label_as_list(self, label):
+        result = _generate_filters(label)[0]
+        if isinstance(label, str):
+            assert result == [label]
+        else:
+            assert result == label
+
+    @given(
+        st_lists_or_text,
+        st.lists(st.text(valid_chars, min_size=1), min_size=1),
+        st.text(valid_chars, min_size=1, max_size=3),
+    )
+    def test_exclude_gives_regex_that_matches_anything_except_exclude(
+        self, excluded, dummy_values, padding
+    ):
+        # Make sure the dummy_values and padding we'll be testing against are different
+        # from our test values
+        for value in dummy_values:
+            assume(value not in itx.always_iterable(excluded))
+        assume(padding not in itx.always_iterable(excluded))
+
+        result = _generate_filters(exclude=excluded)
+        assert result[1] is True
+        assert isinstance(result[0], list)
+        assert len(result[0]) == 1
+
+        # We match any value that isn't the exclude string
+        for value in dummy_values:
+            assert re.match(result[0][0], value)
+
+        for exclude in itx.always_iterable(excluded):
+            # We don't match the exclude string
+            assert re.match(result[0][0], exclude) is None
+
+            # Addition of random strings before and/or after lets the match occur again
+            assert re.match(result[0][0], padding + exclude)
+            assert re.match(result[0][0], exclude + padding)
+            assert re.match(result[0][0], padding + exclude + padding)
 
 
 def test_custom_pybids_config(tmpdir: Path):

@@ -2,8 +2,9 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
+import more_itertools as itx
 from bids import BIDSLayout, BIDSLayoutIndexer
 
 from snakebids.utils.snakemake_io import glob_wildcards
@@ -20,7 +21,6 @@ def generate_inputs(
     pybids_reset_database=False,
     derivatives=False,
     pybids_config=None,
-    search_terms=None,
     limit_to=None,
     participant_label=None,
     exclude_participant_label=None,
@@ -164,7 +164,9 @@ def generate_inputs(
         }
     """  # noqa
 
-    search_terms = _generate_search_terms(participant_label, exclude_participant_label)
+    subject_filter, regex_search = _generate_filters(
+        participant_label, exclude_participant_label
+    )
 
     # Generates a BIDSLayout
     layout = _gen_bids_layout(
@@ -177,11 +179,14 @@ def generate_inputs(
 
     # this will populate input_path, input_lists, input_zip_lists, and
     # input_wildcards
+
+    filters = {"subject": subject_filter} if subject_filter else {}
     inputs_config_dict = _get_lists_from_bids(
         bids_layout=layout,
         pybids_inputs=pybids_inputs,
         limit_to=limit_to,
-        **search_terms,
+        regex_search=regex_search,
+        **filters,
     )
 
     if layout is None:
@@ -217,8 +222,8 @@ def generate_inputs(
 
     else:
         # populate subjects, sessions and subj_wildcards in the config
-        inputs_config_dict["subjects"] = layout.get_subjects(**search_terms)
-        inputs_config_dict["sessions"] = layout.get_sessions(**search_terms)
+        inputs_config_dict["subjects"] = layout.get_subjects(**filters)
+        inputs_config_dict["sessions"] = layout.get_sessions(**filters)
 
     if len(inputs_config_dict["sessions"]) == 0:
         inputs_config_dict["subj_wildcards"] = {"subject": "{subject}"}
@@ -305,10 +310,37 @@ def write_derivative_json(snakemake, **kwargs):
         json.dump(sidecar, outfile, indent=4)
 
 
-def _generate_search_terms(participant_label=None, exclude_participant_label=None):
-    search_terms = {}
+def _generate_filters(
+    include: Union[List[str], str] = None, exclude: Union[List[str], str] = None
+) -> Tuple[List[str], bool]:
+    """Generate Pybids filter based on inclusion or exclusion criteria
 
-    if participant_label is not None and exclude_participant_label is not None:
+    Converts either a list of values to include or exclude in a list of Pybids
+    compatible filters. Unlike inclusion values, exclusion requires regex filtering. The
+    necessity for regex will be indicated by the boolean value of the second returned
+    item: True if regex is needed, False otherwise. Raises an exception if both include
+    and exclude are stipulated
+
+    Parameters
+    ----------
+    include : list of str or str, optional
+        Values to include, values not found in this list will be excluded, by default
+        None
+    exclude : list of str or str, optional
+        Values to exclude, only values not found in this list will be included, by
+        default None
+
+    Returns
+    -------
+    list of str, bool
+        Two values: the first, a list of pybids compatible filters; the second, a
+        boolean indicating whether regex_search must be enabled in pybids
+
+    Raises
+    ------
+    ValueError Raised of both include and exclude values are stipulated.
+    """
+    if include is not None and exclude is not None:
         raise ValueError(
             "Cannot define both participant_label and "
             "exclude_participant_label at the same time"
@@ -316,25 +348,21 @@ def _generate_search_terms(participant_label=None, exclude_participant_label=Non
 
     # add participant_label or exclude_participant_label to search terms (if
     # defined)
-    # we make the subject key in search_terms a list so we can have both
-    # participant_label and exclude_participant_label defined
-    if participant_label is not None:
-        if isinstance(participant_label, list):
-            search_terms["subject"] = participant_label
-        else:
-            search_terms["subject"] = [participant_label]
+    # we make the item key in search_terms a list so we can have both
+    # include and exclude defined
+    if include is not None:
+        return [*itx.always_iterable(include)], False
 
-    if exclude_participant_label is not None:
-        # if multiple subjects to exclude, combine with with subj1|subj2|...
-        if isinstance(exclude_participant_label, list):
-            exclude_string = "|".join(exclude_participant_label)
+    if exclude is not None:
+        # if multiple items to exclude, combine with with item1|item2|...
+        if isinstance(exclude, list):
+            exclude_string = "|".join(re.escape(label) for label in exclude)
         # if not, then string is the label itself
         else:
-            exclude_string = exclude_participant_label
-        search_terms["regex_search"] = True
+            exclude_string = re.escape(exclude)
         # regex to exclude subjects
-        search_terms["subject"] = [f"^((?!({exclude_string})).)*$"]
-    return search_terms
+        return [f"^((?!({exclude_string})$).*)$"], True
+    return [], False
 
 
 def _process_path_override(input_path):
