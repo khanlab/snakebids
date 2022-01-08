@@ -3,7 +3,7 @@ import logging
 import operator as op
 import re
 from pathlib import Path
-from typing import Dict, List, Tuple, Union
+from typing import Dict, Iterable, List, Tuple, Union
 
 import more_itertools as itx
 from bids import BIDSLayout, BIDSLayoutIndexer
@@ -443,68 +443,77 @@ def _parse_custom_path(
     )
 
 
-def _process_layout_wildcard(path, wildcard_name):
-    """Convert an absolute BIDS path to the same path with the given tag
-    replaced by a wildcard.
+def _parse_bids_path(path: str, wildcards: Iterable[str]) -> Tuple[str, Dict[str, str]]:
+    """Replace parameters in an bids path with the given wildcard {tags}.
 
     Parameters
     ----------
     path : str
         Absolute BIDS path
         (e.g. "root/sub-01/ses-01/sub-01_ses-01_T1w.nii.gz")
-    wildcard_name : str
-        BIDS entity to replace with a wildcard. (e.g. "subject")
+    wildcards : iterable of str
+        BIDS entities to replace with wildcards. (e.g. "subject", "session", "suffix")
 
     Returns
     -------
     path : str
-        Original path with the original entity replaced with a wildcard.
-        (e.g. "root/sub-{subject}/ses-01/sub-{subject}_ses-01_T1w.nii.gz")
-    match : str
-        Matched BIDS entity in the input path (e.g. "01")
-    out_name : str
-        Name of the applied wildcard (e.g. "subject")
+        Original path with the original entities replaced with wildcards.
+        (e.g. "root/sub-{subject}/ses-{session}/sub-{subject}_ses-{session}_{suffix}")
+    matches : iterable of (wildcard, value)
+        The values matched with each wildcard
     """
-    bids_tags = read_bids_tags()
-    tag = bids_tags[wildcard_name] if wildcard_name in bids_tags else wildcard_name
 
-    # this changes e.g. sub-001 to sub-{subject} in the path
-    # (so snakemake can use the wildcards)
-    # HACK FIX FOR acq vs acquisition etc -- should
-    # eventually update the bids() function to also use
-    # bids_tags.json, where e.g. acquisition -> acq is
-    # defined.. -- then, can use wildcard_name instead
-    # of out_name..
-    if wildcard_name not in ["subject", "session"]:
-        out_name = tag
-    else:
-        out_name = wildcard_name
+    wildcard_values: Dict[str, str] = {}
 
-    if wildcard_name == "suffix":
-        # capture suffix
-        matching_pattern = ".*_([a-zA-Z0-9]+).*$"
-        # capture before and after suffix
-        replace_pattern = "(.*_)[a-zA-Z0-9]+(.*)$"
-        # replace with before, {suffix}, after
-        replace = f"\\1{{{out_name}}}\\2"
-        match = re.search(matching_pattern, path)
-        path = re.sub(replace_pattern, replace, path)
+    for wildcard in wildcards:
+        # Iterate over wildcards, slowly updating the path as each entity is replaced
 
-    else:
-        pattern = f"{tag}-([a-zA-Z0-9]+)"
-        replace = f"{tag}-{{{out_name}}}"
+        bids_tags = read_bids_tags()
+        tag = bids_tags[wildcard] if wildcard in bids_tags else wildcard
 
-        match = re.search(pattern, path)
-        path = re.sub(pattern, replace, path)
+        # this changes e.g. sub-001 to sub-{subject} in the path
+        # (so snakemake can use the wildcards)
+        # HACK FIX FOR acq vs acquisition etc -- should
+        # eventually update the bids() function to also use
+        # bids_tags.json, where e.g. acquisition -> acq is
+        # defined.. -- then, can use wildcard_name instead
+        # of out_name..
+        if wildcard not in ["subject", "session"]:
+            out_name = tag
+        else:
+            out_name = wildcard
 
-    # update the path with the {wildcards} -- uses the
-    # value from the string (not from the pybids
-    # entities), since that has issues with integer
-    # formatting (e.g. for run=01)
+        if wildcard == "suffix":
+            # capture suffix
+            match = re.search(r".*_([a-zA-Z0-9]+).*$", path)
 
-    return path, match[1], out_name
+            # capture "(before)suffix(after)" and replace with "before{suffix}after"
+            new_path = re.sub(r"(.*_)[a-zA-Z0-9]+(.*)$", rf"\1{{{out_name}}}\2", path)
+
+        else:
+            pattern = f"{tag}-([a-zA-Z0-9]+)"
+            replace = f"{tag}-{{{out_name}}}"
+
+            match = re.search(pattern, path)
+            new_path = re.sub(pattern, replace, path)
+
+        if match and match.group(1):
+            entity = match.group(1)
+        else:
+            entity = ""
+
+        # update the path with the {wildcards} -- uses the
+        # value from the string (not from the pybids
+        # entities), since that has issues with integer
+        # formatting (e.g. for run=01)
+
+        path = new_path
+        wildcard_values[out_name] = entity
+
+    return path, wildcard_values
 
 
+# pylint: disable=too-many-locals
 def _get_lists_from_bids(bids_layout, pybids_inputs, limit_to=None, **filters):
     """Grabs files using pybids and creates snakemake-friendly lists
 
@@ -582,20 +591,22 @@ def _get_lists_from_bids(bids_layout, pybids_inputs, limit_to=None, **filters):
                 **pybids_inputs[input_name].get("filters", {}), **filters
             ):
                 input_path = img.path
-                for wildcard_name in pybids_inputs[input_name].get("wildcards", []):
 
-                    if wildcard_name not in img.get_entities():
-                        continue
+                wildcards: List[str] = [
+                    wildcard
+                    for wildcard in pybids_inputs[input_name].get("wildcards", [])
+                    if wildcard in img.get_entities()
+                ]
+
+                for wildcard in wildcards:
                     _logger.debug(
                         "Wildcard %s found entities for %s",
-                        wildcard_name,
+                        wildcard,
                         img.path,
                     )
-                    (
-                        input_path,
-                        input_list,
-                        out_name,
-                    ) = _process_layout_wildcard(input_path, wildcard_name)
+                path_template, matches = _parse_bids_path(input_path, wildcards)
+
+                for out_name, input_list in matches.items():
                     if out_name not in input_zip_lists:
                         input_zip_lists[out_name] = []
                         input_lists[out_name] = set()
@@ -603,7 +614,7 @@ def _get_lists_from_bids(bids_layout, pybids_inputs, limit_to=None, **filters):
                     input_zip_lists[out_name].append(input_list)
                     input_lists[out_name].add(input_list)
                     input_wildcards[out_name] = f"{{{out_name}}}"
-                paths.add(input_path)
+                paths.add(path_template)
 
             # now, check to see if unique
             if len(paths) == 0:
