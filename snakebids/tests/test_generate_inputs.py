@@ -152,6 +152,16 @@ class TestGenerateFilter:
             assert re.match(result[0][0], padding + exclude + padding)
 
 
+PathEntities = NamedTuple(
+    "PathEntities",
+    [
+        ("entities", Dict[str, List[str]]),
+        ("template", Path),
+        ("filters", Dict[str, List[str]]),
+    ],
+)
+
+
 @st.composite
 def BidsListElements(draw: st.DrawFn):
     """Generate the elements of BidsLists for use in test_get_bids_lists_as_dict"""
@@ -432,6 +442,151 @@ def test_t1w():
 
     # Can't define particpant_label and exclude_participant_label
     with pytest.raises(ValueError) as v_error:
+        result = generate_inputs(
+            pybids_inputs=pybids_inputs,
+            bids_dir=real_bids_dir,
+            derivatives=derivatives,
+            participant_label="001",
+            exclude_participant_label="002",
+        )
+        assert v_error.msg == (  # type: ignore
+            "Cannot define both participant_label and "
+            "exclude_participant_label at the same time"
+        )
+
+    # Simplest case -- one input type, using pybids
+    result = generate_inputs(
+        pybids_inputs=pybids_inputs,
+        bids_dir=real_bids_dir,
+        derivatives=derivatives,
+        use_bids_inputs=True,
+    )
+    # Order of the subjects is not deterministic
+    assert result.input_lists in [
+        {"t1": {"acq": ["mprage"], "subject": ["001", "002"]}},
+        {"t1": {"acq": ["mprage"], "subject": ["002", "001"]}},
+    ]
+    assert result.input_zip_lists == {
+        "t1": {"acq": ["mprage", "mprage"], "subject": ["001", "002"]}
+    }
+    assert result.input_wildcards == {"t1": {"acq": "{acq}", "subject": "{subject}"}}
+    # Order of the subjects is not deterministic
+    assert result.subjects in [["001", "002"], ["002", "001"]]
+    assert result.sessions == []
+    assert result.subj_wildcards == {"subject": "{subject}"}
+
+    pybids_inputs_suffix = {
+        "scan": {
+            "filters": {},
+            "wildcards": [
+                "acquisition",
+                "subject",
+                "session",
+                "run",
+                "suffix",
+            ],
+        }
+    }
+    result = generate_inputs(
+        pybids_inputs=pybids_inputs_suffix,
+        bids_dir=real_bids_dir,
+        derivatives=derivatives,
+        participant_label="001",
+        use_bids_inputs=True,
+    )
+    assert result.input_lists == {
+        "scan": {"acq": ["mprage"], "subject": ["001"], "suffix": ["T1w"]}
+    }
+    assert result.input_zip_lists == {
+        "scan": {
+            "acq": [
+                "mprage",
+            ],
+            "subject": [
+                "001",
+            ],
+            "suffix": [
+                "T1w",
+            ],
+        }
+    }
+    assert result.input_wildcards == {
+        "scan": {"acq": "{acq}", "subject": "{subject}", "suffix": "{suffix}"}
+    }
+    assert result.subjects == ["001"]
+    assert result.sessions == []
+    assert result.subj_wildcards == {"subject": "{subject}"}
+
+    # Two input types, specified by pybids or path override
+    wildcard_path_t1 = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "data/bids_t1w",
+        "sub-{subject}/anat/sub-{subject}_acq-{acq}_T1w.nii.gz",
+    )
+    wildcard_path_t2 = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "data/bids_t1w",
+        "sub-{subject}/anat/sub-{subject}_T2w.nii.gz",
+    )
+    pybids_inputs = {
+        "t1": {
+            "filters": {"suffix": "T1w"},
+            "wildcards": ["acquisition", "subject", "session", "run"],
+        },
+        "t2": {
+            "filters": {"suffix": "T2w"},
+            "wildcards": ["acquisition", "subject", "session", "run"],
+        },
+    }
+    bids_dir = real_bids_dir
+
+    for idx in range(2):
+        if idx == 1:
+            pybids_inputs["t1"]["custom_path"] = wildcard_path_t1
+        if idx == 2:
+            pybids_inputs["t2"]["custom_path"] = wildcard_path_t2
+            bids_dir = "-"
+        result = generate_inputs(
+            pybids_inputs=pybids_inputs,
+            bids_dir=bids_dir,
+            derivatives=derivatives,
+            use_bids_inputs=True,
+        )
+        # Order of the subjects is not deterministic
+        assert result.input_lists["t1"] in [
+            {"acq": ["mprage"], "subject": ["001", "002"]},
+            {"acq": ["mprage"], "subject": ["002", "001"]},
+        ]
+        assert result.input_lists["t2"] == {"subject": ["002"]}
+        assert tuple_to_list(result.input_zip_lists["t1"]) in [
+            {"acq": ["mprage", "mprage"], "subject": ["001", "002"]},
+            {"acq": ["mprage", "mprage"], "subject": ["002", "001"]},
+        ]
+        assert tuple_to_list(result.input_zip_lists["t2"]) == {"subject": ["002"]}
+        assert result.input_wildcards == {
+            "t1": {"acq": "{acq}", "subject": "{subject}"},
+            "t2": {"subject": "{subject}"},
+        }
+        # Order of the subjects is not deterministic
+        assert result.subjects in [["001", "002"], ["002", "001"]]
+
+        assert result.sessions == []
+        assert result.subj_wildcards == {"subject": "{subject}"}
+
+
+def test_t1w_with_dict():
+    # create config
+    real_bids_dir = "snakebids/tests/data/bids_t1w"
+    derivatives = False
+    pybids_inputs = {
+        "t1": {
+            "filters": {"suffix": "T1w"},
+            "wildcards": ["acquisition", "subject", "session", "run"],
+        }
+    }
+
+    # Can't define particpant_label and exclude_participant_label
+    with pytest.raises(ValueError) as v_error:
         config = generate_inputs(
             pybids_inputs=pybids_inputs,
             bids_dir=real_bids_dir,
@@ -534,7 +689,7 @@ def test_t1w():
                 "t2": {"subject": ["002"], "suffix": ["T2w"]},
             }
         )
-        assert tuple_to_list(config["input_zip_lists"]["t1"]) in [
+        assert config["input_zip_lists"]["t1"] in [
             {
                 "acq": ["mprage", "mprage"],
                 "subject": ["001", "002"],
@@ -546,7 +701,7 @@ def test_t1w():
                 "suffix": ["T2w", "T2w"],
             },
         ]
-        assert tuple_to_list(config["input_zip_lists"]["t2"]) == {
+        assert config["input_zip_lists"]["t2"] == {
             "subject": ["002"],
             "suffix": ["T2w"],
         }
@@ -594,27 +749,44 @@ def test_get_lists_from_bids():
         elif idx == 2:
             pybids_inputs["t2"]["custom_path"] = wildcard_path_t2
 
-        config = _get_lists_from_bids(layout, pybids_inputs)
-        assert config["input_path"] == {
-            "t1": wildcard_path_t1,
-            "t2": wildcard_path_t2,
-        }
-        assert tuple_to_list(config["input_zip_lists"]["t1"]) in [
-            {"acq": ["mprage", "mprage"], "subject": ["001", "002"]},
-            {"acq": ["mprage", "mprage"], "subject": ["002", "001"]},
-        ]
-        assert tuple_to_list(config["input_zip_lists"]["t2"]) == {"subject": ["002"]}
-        # The order of multiple wildcard values is not deterministic
-        assert config["input_lists"] == BidsListCompare(
-            {
-                "t1": {"acq": ["mprage"], "subject": ["001", "002"]},
-                "t2": {"subject": ["002"]},
-            }
-        )
-        assert config["input_wildcards"] == {
-            "t1": {"acq": "{acq}", "subject": "{subject}"},
-            "t2": {"subject": "{subject}"},
-        }
+        result = _get_lists_from_bids(layout, pybids_inputs)
+        for bids_lists in result:
+            if bids_lists.input_name == "t1":
+                assert bids_lists.input_path == wildcard_path_t1
+                assert tuple_to_list(bids_lists.input_zip_lists) in [
+                    {"acq": ["mprage", "mprage"], "subject": ["001", "002"]},
+                    {"acq": ["mprage", "mprage"], "subject": ["002", "001"]},
+                ]
+                # The order of multiple wildcard values is not deterministic
+                assert {"key": bids_lists.input_lists} == BidsListCompare(
+                    {
+                        "key": {"acq": ["mprage"], "subject": ["001", "002"]},
+                    }
+                )
+                assert bids_lists.input_lists in [
+                    {"acq": ["mprage"], "subject": ["001", "002"]},
+                    {"acq": ["mprage"], "subject": ["002", "001"]},
+                ]
+                assert bids_lists.input_wildcards == {
+                    "acq": "{acq}",
+                    "subject": "{subject}",
+                }
+            elif bids_lists.input_name == "t2":
+                assert bids_lists.input_path == wildcard_path_t2
+                assert tuple_to_list(bids_lists.input_zip_lists) == {"subject": ["002"]}
+                # The order of multiple wildcard values is not deterministic
+                assert {"key": bids_lists.input_lists} == BidsListCompare(
+                    {
+                        "key": {"subject": ["002"]},
+                    }
+                )
+                assert bids_lists.input_lists in [
+                    {"subject": ["002"]},
+                    {"subject": ["002"]},
+                ]
+                assert bids_lists.input_wildcards == {"subject": "{subject}"}
+            else:
+                assert False, f"Unexpected input name: {bids_lists.input_name}"
 
 
 class TestDB:
