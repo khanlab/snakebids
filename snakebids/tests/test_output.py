@@ -2,7 +2,6 @@ from __future__ import absolute_import
 
 import itertools as it
 import json
-import shutil
 from pathlib import Path
 from typing import Callable
 
@@ -86,12 +85,12 @@ class TestGetSnakebidsFile:
         assert path == tmp_path / ".snakebids"
 
     def test_returns_none_if_directory_empty(self, tmp_path: Path):
-        assert output._get_snakebids_file(tmp_path) == None
+        assert output._get_snakebids_file(tmp_path) is None
 
     def test_returns_none_if_directory_nonexistant(self, tmp_path: Path):
         empty_dir = tmp_path / "empty"
         empty_dir.mkdir()
-        assert output._get_snakebids_file(empty_dir) == None
+        assert output._get_snakebids_file(empty_dir) is None
 
 
 def test_copy_snakemake_app(fake_snakemake: Path):
@@ -263,7 +262,7 @@ class TestRetrofitOutput:
         o = fake_snakemake / "old-style"
         mocker.patch("builtins.input", return_value="yes")
         out = output.retrofit_output(o, [o / "config/config.yaml"])
-        assert out == True
+        assert out is True
         assert not (o / "config").exists()
         assert dirlen(o / "app1") == 1
         with (o / ".snakebids").open() as f:
@@ -275,7 +274,7 @@ class TestRetrofitOutput:
         o = fake_snakemake / "old-style"
         mocker.patch("builtins.input", return_value="")
         out = output.retrofit_output(o, [o / "config/config.yaml"])
-        assert out == False
+        assert out is False
         assert (o / "config").exists()
 
     def test_fails_when_snakebids_file_exists(
