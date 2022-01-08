@@ -14,11 +14,13 @@ from typing import Dict, Iterable, List, NamedTuple, TypeVar
 import more_itertools as itx
 import pytest
 from bids import BIDSLayout
-from hypothesis import assume, given
+from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
 from snakebids.core.construct_bids import bids
 from snakebids.core.input_generation import (
+    BidsInputs,
+    BidsLists,
     _gen_bids_layout,
     _generate_filters,
     _get_lists_from_bids,
@@ -148,6 +150,62 @@ class TestGenerateFilter:
             assert re.match(result[0][0], padding + exclude)
             assert re.match(result[0][0], exclude + padding)
             assert re.match(result[0][0], padding + exclude + padding)
+
+
+@st.composite
+def BidsListElements(draw: st.DrawFn):
+    """Generate the elements of BidsLists for use in test_get_bids_lists_as_dict"""
+    # We restrict the character range and size of text generation in an effort to
+    # improve speed.
+    bids_text = st.text(max_size=5, min_size=1)
+    for _ in range(draw(st.sampled_from(range(1, 3)))):
+        num_entities = draw(st.sampled_from(range(1, 3)))
+        wildcards = draw(st.lists(st.text(), min_size=num_entities, unique=True))
+        yield (
+            draw(bids_text),
+            draw(bids_text),
+            draw(
+                st.dictionaries(
+                    st.sampled_from(wildcards),
+                    st.lists(bids_text, max_size=5),
+                    max_size=num_entities,
+                )
+            ),
+            draw(
+                st.dictionaries(
+                    st.sampled_from(wildcards),
+                    st.lists(bids_text, max_size=5),
+                    max_size=num_entities,
+                )
+            ),
+            draw(
+                st.dictionaries(
+                    st.sampled_from(wildcards), bids_text, max_size=num_entities
+                )
+            ),
+        )
+
+
+@settings(deadline=None)
+@given(BidsListElements())
+def test_get_bids_lists_as_dict(elements):
+    """Get random list of elements that can be used to compose BidsLists. Use these
+    to both form a list of BidsLists for the test, and to directly find the dict form.
+
+    Technically, the code here in the test is interchangeable with the code in
+    get_bids_lists_as_dicts. BidsInputs is just a tuple, so below, elements could be
+    swapped with BidsLists. Hopefully the code in get_bids_lists_as_dicts is more
+    readable
+    """
+    elements = [*elements]
+    bids_lists = [BidsLists(*element) for element in elements]
+    zipped = [*zip(*elements)]
+    assert BidsInputs._get_bids_lists_as_dicts(bids_lists) == (
+        dict(zip(zipped[0], zipped[1])),
+        dict(zip(zipped[0], zipped[2])),
+        dict(zip(zipped[0], zipped[3])),
+        dict(zip(zipped[0], zipped[4])),
+    )
 
 
 PathEntities = NamedTuple(
