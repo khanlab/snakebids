@@ -278,7 +278,7 @@ def path_entities(draw: st.DrawFn):
         )
     )
 
-    def get_subset(of: Iterable[T]):
+    def get_subset(of: Iterable[T]) -> List[T]:
         return draw(
             st.lists(st.sampled_from([*of]), unique=True, max_size=len(entities))
         )
