@@ -539,7 +539,8 @@ def write_derivative_json(snakemake, **kwargs):
 
 
 def _generate_filters(
-    include: Union[List[str], str] = None, exclude: Union[List[str], str] = None
+    include: Union[List[str], str, None] = None,
+    exclude: Union[List[str], str, None] = None,
 ) -> Tuple[List[str], bool]:
     """Generate Pybids filter based on inclusion or exclusion criteria
 
@@ -633,6 +634,13 @@ def _parse_custom_path(
     input_zip_lists: Dict[str, List[str]] = {}
     input_lists: Dict[str, List[str]] = {}
 
+    # Log an error if no matches found
+    # TODO: This will fail to detect filtering correctly as, up till now, it has
+    #       only been performed on input_lists
+    if len(wildcards[0]) == 0:
+        _logger.error("No matching files for %s", input_path)
+        return (input_zip_lists, input_lists, input_wildcards)
+
     # Loop through every wildcard name
     for i, wildcard in enumerate(wildcard_names):
         # Check if this wildcard needs to be filtered
@@ -655,12 +663,6 @@ def _parse_custom_path(
         input_lists[wildcard] = [*filter(match_func, set(wildcards[i]))]
         input_wildcards[wildcard] = f"{{{wildcard}}}"
 
-        # Log an error if no matches found
-        # TODO: This will fail to detect filtering correctly as, up till now, it has
-        #       only been performed on input_lists
-        if len(wildcards[i]) == 0:
-            _logger.error("No matching files for %s", input_path)
-
     # Return the output values, running filtering on the input_zip_lists
     return (
         filter_list(input_zip_lists, filters, regex_search=regex_search),
@@ -675,7 +677,7 @@ def _parse_bids_path(path: str, wildcards: Iterable[str]) -> Tuple[str, Dict[str
     Parameters
     ----------
     path : str
-        Absolute BIDS path
+        BIDS path
         (e.g. "root/sub-01/ses-01/sub-01_ses-01_T1w.nii.gz")
     wildcards : iterable of str
         BIDS entities to replace with wildcards. (e.g. "subject", "session", "suffix")
@@ -807,11 +809,8 @@ def _get_lists_from_bids(
                 for wildcard in pybids_inputs[input_name].get("wildcards", [])
                 if wildcard in img.get_entities()
             ]
-            _logger.debug(
-                "Wildcards %s found entities for %s",
-                wildcards,
-                img.path,
-            )
+            _logger.debug("Wildcards %s found entities for %s", wildcards, img.path)
+
             input_path, parsed_wildcards = _parse_bids_path(img.path, wildcards)
 
             for wildcard_name, value in parsed_wildcards.items():
