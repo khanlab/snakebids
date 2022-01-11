@@ -69,7 +69,6 @@ class SnakebidsArgs:
     retrofit: bool
     snakemake_args: List[str]
     args_dict: Dict[str, Any]
-    boutiques: Path
 
 
 def create_parser(include_snakemake=False):
@@ -96,7 +95,16 @@ def create_parser(include_snakemake=False):
             description="Snakebids helps build BIDS Apps with Snakemake"
         )
 
-    standard_group = parser.add_argument_group(
+    subparsers = parser.add_subparsers()
+    parser_boutiques = subparsers.add_parser("boutiques")
+    parser_boutiques.add_argument(
+        "path_boutiques",
+        help="Save a boutiques descriptor of the Snakebids app to the provided path.",
+    )
+
+    parser_run = subparsers.add_parser("run")
+
+    standard_group = parser_run.add_argument_group(
         "STANDARD", "Standard options for all snakebids apps"
     )
 
@@ -135,11 +143,6 @@ def create_parser(include_snakemake=False):
         ),
     )
 
-    standard_group.add_argument(
-        "--boutiques",
-        help="Save a boutiques descriptor of the Snakebids app to the provided path.",
-    )
-
     # add option for printing out snakemake usage
     standard_group.add_argument(
         "--help-snakemake",
@@ -151,7 +154,7 @@ def create_parser(include_snakemake=False):
             "command-line, use this to print Snakemake usage"
         ),
     )
-    return parser
+    return parser, parser_run
 
 
 def add_dynamic_args(
@@ -238,6 +241,8 @@ def add_dynamic_args(
 
 def parse_snakebids_args(parser: argparse.ArgumentParser):
     all_args = parser.parse_known_args()
+    if hasattr(all_args[0], "path_boutiques"):
+        return all_args[0]
     return SnakebidsArgs(
         snakemake_args=all_args[1],
         # resolve all path items to get absolute paths
@@ -246,7 +251,6 @@ def parse_snakebids_args(parser: argparse.ArgumentParser):
         force=all_args[0].force_conversion,
         outputdir=Path(all_args[0].output_dir).resolve(),
         retrofit=all_args[0].retrofit,
-        boutiques=Path(all_args[0].boutiques).resolve(),
     )
 
 
