@@ -77,6 +77,12 @@ class TestAddDynamicArgs:
         mocker.patch.object(sys, "argv", self.mock_basic_args)
         assert isinstance(parser.parse_args(), Namespace)
 
+    def test_succeeds_if_given_boutiques_args(
+        self, parser: ArgumentParser, mocker: MockerFixture
+    ):
+        mocker.patch.object(sys, "argv", ["script_name", "boutiques", "descriptor.txt"])
+        assert isinstance(parser.parse_args(), Namespace)
+
     def test_converts_type_path_into_pathlike(
         self, parser: ArgumentParser, mocker: MockerFixture
     ):

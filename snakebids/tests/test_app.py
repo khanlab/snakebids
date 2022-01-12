@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 
 import copy
+import json
 from pathlib import Path
 from typing import Dict
 from unittest.mock import MagicMock
@@ -188,3 +189,13 @@ class TestRunSnakemake:
                 str(Path("app/mock/config.yaml").resolve()),
             ]
         )
+
+
+class TestGenBoutiques:
+    def test_boutiques_descriptor(self, tmp_path: Path, app: SnakeBidsApp):
+        descriptor_path = tmp_path / "descriptor.json"
+        app.create_descriptor(descriptor_path)
+        with open(descriptor_path, encoding="utf-8") as descriptor_file:
+            descriptor_json = json.load(descriptor_file)
+            assert "command-line" in descriptor_json
+            assert "inputs" in descriptor_json
