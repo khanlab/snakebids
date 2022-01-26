@@ -58,8 +58,8 @@ def _get_file_paths(choices: List[str], file_name: str):
             if (self.snakemake_dir / path).exists():
                 if file_name == "config":
                     return Path(path)
-                elif file_name == "Snakefile":
-                    return Path(self.snakemake_dir, path)
+                # else, snakefile
+                return Path(self.snakemake_dir, path)
 
         raise ConfigError(
             f"Error: no {file_name} file found, tried {', '.join(choices)}."
