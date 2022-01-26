@@ -194,7 +194,7 @@ def bids(
         )
     )
 
-    return folder / filename
+    return str(folder / filename)
 
 
 def print_boilerplate():
