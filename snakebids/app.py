@@ -56,9 +56,9 @@ def _get_file_paths(choices: List[str], file_name: str):
     def wrapper(self: "SnakeBidsApp"):
         for path in choices:
             if (self.snakemake_dir / path).exists():
-                if file_name == 'config':                
+                if file_name == "config":
                     return Path(path)
-                elif file_name == 'Snakefile':
+                elif file_name == "Snakefile":
                     return Path(self.snakemake_dir, path)
 
         raise ConfigError(
@@ -66,7 +66,6 @@ def _get_file_paths(choices: List[str], file_name: str):
         )
 
     return wrapper
-
 
 
 # pylint: disable=unsubscriptable-object, unsupported-assignment-operation,
