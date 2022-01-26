@@ -10,7 +10,6 @@ license = "MIT"
 packages = [
     { include = "snakebids" }
 ]
-include = ["project_template"]
 exclude = ["snakebids/tests/**"]
 
 [tool.poetry.dependencies]

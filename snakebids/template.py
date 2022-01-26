@@ -9,4 +9,4 @@ import snakebids
 
 def main():
     """Invoke Cookiecutter on the Snakebids project template."""
-    cookiecutter(os.path.join(snakebids.__path__[0], "../project_template"))
+    cookiecutter(os.path.join(snakebids.__path__[0], "project_template"))
