@@ -52,30 +52,21 @@ CONFIGFILE_CHOICES = [
 ]
 
 
-def _get_configfile_paths(choices: List[str], file_name: str):
+def _get_file_paths(choices: List[str], file_name: str):
     def wrapper(self: "SnakeBidsApp"):
-        # look for snakebids.yml in the snakemake_dir, quit if not found
         for path in choices:
             if (self.snakemake_dir / path).exists():
-                return Path(path)
+                if file_name == 'config':                
+                    return Path(path)
+                elif file_name == 'Snakefile':
+                    return Path(self.snakemake_dir, path)
+
         raise ConfigError(
-            f"Error: no {file_name} file found, tried {', '.join(CONFIGFILE_CHOICES)}."
+            f"Error: no {file_name} file found, tried {', '.join(choices)}."
         )
 
     return wrapper
 
-
-def _get_snakefile_paths(choices: List[str], file_name: str):
-    def wrapper(self: "SnakeBidsApp"):
-        # look for Snakefile in the snakemake_dir, quit if not found
-        for path in choices:
-            if (self.snakemake_dir / path).exists():
-                return Path(self.snakemake_dir / path)
-        raise ConfigError(
-            f"Error: no {file_name} file found, tried {', '.join(SNAKEFILE_CHOICES)}."
-        )
-
-    return wrapper
 
 
 # pylint: disable=unsubscriptable-object, unsupported-assignment-operation,
@@ -111,10 +102,10 @@ class SnakeBidsApp:
     skip_parse_args: bool = False
     parser: argparse.ArgumentParser = create_parser()
     configfile_path: Path = attr.Factory(
-        _get_configfile_paths(CONFIGFILE_CHOICES, "config"), takes_self=True
+        _get_file_paths(CONFIGFILE_CHOICES, "config"), takes_self=True
     )
     snakefile_path: Path = attr.Factory(
-        _get_snakefile_paths(SNAKEFILE_CHOICES, "Snakefile"), takes_self=True
+        _get_file_paths(SNAKEFILE_CHOICES, "Snakefile"), takes_self=True
     )
     config: Dict[str, Any] = attr.Factory(
         lambda self: load_configfile(self.snakemake_dir / self.configfile_path),
