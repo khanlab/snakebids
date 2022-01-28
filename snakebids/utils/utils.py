@@ -1,7 +1,7 @@
 import functools as ft
 import importlib.resources
 import json
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, Iterable, List
 
 
 @ft.lru_cache(None)
@@ -31,7 +31,10 @@ def read_bids_tags(bids_json=None) -> Dict[str, str]:
 
 
 def matches_any(
-    item: Any, match_list: List[Any], match_func: Callable[[Any, Any], Any], *args: Any
+    item: Any,
+    match_list: Iterable[Any],
+    match_func: Callable[[Any, Any], Any],
+    *args: Any
 ):
     for match in match_list:
         if match_func(match, item, *args):
