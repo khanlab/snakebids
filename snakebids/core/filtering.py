@@ -12,7 +12,7 @@ from snakebids.utils.utils import matches_any
 @overload
 def filter_list(
     zip_list,
-    filters: Dict[str, Union[str, List[str]]],
+    filters: Union[Dict[str, str], Dict[str, List[str]]],
     return_indices_only: Literal[False] = ...,
     regex_search: bool = ...,
 ) -> Dict[str, Tuple[str]]:
@@ -22,7 +22,7 @@ def filter_list(
 @overload
 def filter_list(
     zip_list,
-    filters: Dict[str, Union[str, List[str]]],
+    filters: Union[Dict[str, str], Dict[str, List[str]]],
     return_indices_only: Literal[True] = ...,
     regex_search: bool = ...,
 ) -> Tuple[int]:
@@ -31,7 +31,7 @@ def filter_list(
 
 def filter_list(
     zip_list: Dict[str, List[str]],
-    filters: Dict[str, Union[str, List[str]]],
+    filters: Union[Dict[str, str], Dict[str, List[str]]],
     return_indices_only=False,
     regex_search=False,
 ):
