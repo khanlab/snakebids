@@ -21,12 +21,11 @@ from .mock.config import config
 
 @pytest.fixture
 def app(mocker: MockerFixture):
-    parser, parser_run = create_parser()
+    parser = create_parser()
     app = SnakeBidsApp(
         snakemake_dir=Path("app"),
         skip_parse_args=False,
         parser=parser,
-        parser_run=parser_run,
         snakefile_path=Path("Snakefile"),
         configfile_path=Path("mock/config.yaml"),
         config=copy.deepcopy(config),

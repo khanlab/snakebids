@@ -23,8 +23,8 @@ from .mock.config import parse_args, pybids_inputs
 
 @pytest.fixture
 def parser():
-    p, p_run = create_parser()
-    add_dynamic_args(p_run, copy.deepcopy(parse_args), copy.deepcopy(pybids_inputs))
+    p = create_parser()
+    add_dynamic_args(p, copy.deepcopy(parse_args), copy.deepcopy(pybids_inputs))
     return p
 
 
@@ -57,7 +57,6 @@ class TestAddDynamicArgs:
     mock_args_special = ["--derivatives", "path/to/nowhere"]
     mock_basic_args = [
         "script_name",
-        "run",
         "path/to/input",
         "path/to/output",
         "participant",
@@ -67,7 +66,7 @@ class TestAddDynamicArgs:
     def test_fails_if_missing_arguments(
         self, parser: ArgumentParser, mocker: MockerFixture
     ):
-        mocker.patch.object(sys, "argv", ["run", "script_name"])
+        mocker.patch.object(sys, "argv", ["script_name"])
         with pytest.raises(SystemExit):
             parser.parse_args()
 
@@ -75,12 +74,6 @@ class TestAddDynamicArgs:
         self, parser: ArgumentParser, mocker: MockerFixture
     ):
         mocker.patch.object(sys, "argv", self.mock_basic_args)
-        assert isinstance(parser.parse_args(), Namespace)
-
-    def test_succeeds_if_given_boutiques_args(
-        self, parser: ArgumentParser, mocker: MockerFixture
-    ):
-        mocker.patch.object(sys, "argv", ["script_name", "boutiques", "descriptor.txt"])
         assert isinstance(parser.parse_args(), Namespace)
 
     def test_converts_type_path_into_pathlike(
@@ -97,7 +90,7 @@ class TestAddDynamicArgs:
             "type": "UnheardClass",
         }
         with pytest.raises(TypeError):
-            add_dynamic_args(create_parser()[1], parse_args_copy, pybids_inputs)
+            add_dynamic_args(create_parser(), parse_args_copy, pybids_inputs)
 
     def test_resolves_paths(self, parser: ArgumentParser, mocker: MockerFixture):
         mocker.patch.object(sys, "argv", self.mock_all_args)
@@ -111,7 +104,6 @@ def test_dash_syntax_in_config_cli_args(parser: ArgumentParser, mocker: MockerFi
         "argv",
         [
             "script_name",
-            "run",
             "path/to/input",
             "path/to/output",
             "participant",

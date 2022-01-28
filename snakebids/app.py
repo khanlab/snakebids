@@ -76,8 +76,6 @@ class SnakeBidsApp:
     parser : ArgumentParser
         Parser including only the arguments specific to this Snakebids app, as specified
         in the config file. By default, it will use `create_parser()` from `cli.py`
-    parser_run : ArgumentParser
-        Subparser containing the run-specific arguments.
     configfile_path : str
         Relative path to config file (relative to snakemake_dir). By default,
         autocalculates based on snakemake_dir
@@ -95,7 +93,6 @@ class SnakeBidsApp:
 
     snakemake_dir: Path = attr.ib(converter=lambda path: Path(path).resolve())
     parser: argparse.ArgumentParser
-    parser_run: argparse.ArgumentParser
     configfile_path: Path
     snakefile_path: Path
     config: Dict[str, Any]
@@ -119,14 +116,13 @@ class SnakeBidsApp:
         skip_parse_args : bool
             The SnakebidsApp won't parse arguments if true.
         """
-        parser, parser_run = create_parser()
+        parser = create_parser()
         configfile_path = _get_file_paths(CONFIGFILE_CHOICES, "config", snakemake_dir)
         snakefile_path = _get_file_paths(CONFIGFILE_CHOICES, "Snakefile", snakemake_dir)
         config = load_configfile(snakemake_dir / configfile_path)
         return cls(
             snakemake_dir=snakemake_dir,
             parser=parser,
-            parser_run=parser_run,
             configfile_path=configfile_path,
             snakefile_path=snakefile_path,
             config=config,
@@ -149,14 +145,9 @@ class SnakeBidsApp:
             # Dynamic args include --filter-... and --wildcards-... . They depend on the
             # config
             add_dynamic_args(
-                self.parser_run, self.config["parse_args"], self.config["pybids_inputs"]
+                self.parser, self.config["parse_args"], self.config["pybids_inputs"]
             )
             args = parse_snakebids_args(self.parser)
-
-        if hasattr(args, "path_boutiques"):
-            self.create_descriptor(args.path_boutiques)
-            print(f"Boutiques descriptor created at {args.path_boutiques}")
-            return
 
         # If the snakemake_dir is the same as the outputdir, we need to switch into
         # workflow mode
