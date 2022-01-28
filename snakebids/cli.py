@@ -232,8 +232,6 @@ def add_dynamic_args(
 
 def parse_snakebids_args(parser: argparse.ArgumentParser):
     all_args = parser.parse_known_args()
-    if hasattr(all_args[0], "path_boutiques"):
-        return all_args[0]
     return SnakebidsArgs(
         snakemake_args=all_args[1],
         # resolve all path items to get absolute paths
