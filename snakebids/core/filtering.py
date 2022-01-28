@@ -135,7 +135,7 @@ def filter_list(
     keep_indices = set.intersection(
         # Get a set {0,1,2,3...n-1} where n is the length of any one of the lists in
         # zip_list
-        {*range(len(zip_list[next(iter(zip_list))]))},
+        {*_get_zip_list_indices(zip_list)},
         *(
             {
                 i
@@ -248,3 +248,42 @@ def get_filtered_ziplist_index(zip_list, wildcards, subj_wildcards):
     if len(indices) == 1:
         return indices[0]
     return indices
+
+
+def _get_zip_list_indices(zip_list: Dict[str, List[str]]):
+    """Convert a zip_list into its indices
+
+    Generates a sequence of numbers from 0 up to the length of the zip_lists. For
+    example, the zip list:
+
+    zip_list = {
+        "subject": ["001", "002", "001", "002"],
+        "contrast": ["T1w", "T1w", "T2w", "T2w"]
+    }
+
+    would lead to:
+
+    (0, 1, 2, 3)
+
+    Parameters
+    ----------
+    zip_list : Dict[str, List[str]]
+        Zip_list to be converted
+
+    Yields
+    -------
+    integers
+        The indices of the zip_list
+    """
+
+    if not zip_list:
+        return
+
+    # Retrieve the first zip_list (all zip_lists should be the same, so it doesn't
+    # matter which one we take)
+    # pylint: disable=stop-iteration-return
+    sample_zip_list = zip_list[next(iter(zip_list))]
+
+    # Return a sequence of numbers 0, 1, 2, 3, ... n-1 where n is the length of the
+    # zip list
+    yield from range(len(sample_zip_list))
