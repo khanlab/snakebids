@@ -67,6 +67,20 @@ from snakebids.core.filtering import filter_list
                 "subject": ["01", "01", "03", "03"],
             },
         ),
+        (
+            {
+                "dir": ["AP", "PA", "AP", "PA", "AP", "PA", "AP", "PA"],
+                "subject": ["01", "01", "02", "02", "03", "03", "04", "04"],
+            },
+            {"subject": ["01", "02"], "dir": "AP"},
+            {
+                "dir": [
+                    "AP",
+                    "AP",
+                ],
+                "subject": ["01", "02"],
+            },
+        ),
     ],
 )
 def test_filter_list(
