@@ -89,6 +89,8 @@ def glob_wildcards(pattern, files=None, followlinks=False):
     # remove duplicates while preserving ordering
     names = list(collections.OrderedDict.fromkeys(names))
 
+    # TODO: using namedtuple prevents python keywords (as, from, etc) from being used
+    #       as wildcards. A Dict would be more appropriate here
     # pylint: disable-msg=invalid-name
     Wildcards = collections.namedtuple("Wildcards", names)
 

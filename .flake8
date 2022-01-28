@@ -8,3 +8,4 @@ extend-exclude =
     .venv/
     .hypothesis/
     docs/
+    snakebids/project_template/*/docs
