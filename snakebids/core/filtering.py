@@ -73,9 +73,9 @@ def filter_list(
         ...     },
         ...     {'subject': '01'}
         ... ) == {
-        ...     'dir': ('AP', 'PA', 'AP', 'PA'),
-        ...     'acq': ('98', '98', '99', '99'),
-        ...     'subject': ('01', '01', '01', '01')
+        ...     'dir': ['AP', 'PA', 'AP', 'PA'],
+        ...     'acq': ['98', '98', '99', '99'],
+        ...     'subject': ['01', '01', '01', '01']
         ... }
         True
 
@@ -89,9 +89,9 @@ def filter_list(
         ...     },
         ...     {'acq': '98'}
         ... ) == {
-        ...     'dir': ('AP', 'PA', 'AP', 'PA'),
-        ...     'acq': ('98', '98', '98', '98'),
-        ...     'subject': ('01', '01', '02', '02')
+        ...     'dir': ['AP', 'PA', 'AP', 'PA'],
+        ...     'acq': ['98', '98', '98', '98'],
+        ...     'subject': ['01', '01', '02', '02']
         ... }
         True
 
@@ -105,9 +105,9 @@ def filter_list(
         ...     },
         ...     {'dir': 'AP'}
         ... ) == {
-        ...     'dir': ('AP', 'AP', 'AP', 'AP'),
-        ...     'acq': ('98', '98', '99', '99'),
-        ...     'subject': ('01', '02', '01', '02')
+        ...     'dir': ['AP', 'AP', 'AP', 'AP'],
+        ...     'acq': ['98', '98', '99', '99'],
+        ...     'subject': ['01', '02', '01', '02']
         ... }
         True
 
@@ -121,9 +121,9 @@ def filter_list(
         ...     },
         ...     {'subject': '03'}
         ... ) == {
-        ...     'dir': (),
-        ...     'acq': (),
-        ...     'subject': ()
+        ...     'dir': [],
+        ...     'acq': [],
+        ...     'subject': []
         ... }
         True
     """
@@ -137,11 +137,11 @@ def filter_list(
         # zip_list
         {*range(len(zip_list[next(iter(zip_list))]))},
         *(
-            (
+            {
                 i
                 for i, v in enumerate(zip_list[key])
                 if matches_any(v, itx.always_iterable(val), match_func)
-            )
+            }
             for key, val in filters.items()
             if key in zip_list
         )
