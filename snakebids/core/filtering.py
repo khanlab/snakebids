@@ -1,7 +1,6 @@
-import itertools as it
 import operator as op
 import re
-from typing import Dict, List, Tuple, Union, overload
+from typing import Dict, List, Union, overload
 
 import more_itertools as itx
 from typing_extensions import Literal
@@ -15,7 +14,7 @@ def filter_list(
     filters: Union[Dict[str, str], Dict[str, List[str]]],
     return_indices_only: Literal[False] = ...,
     regex_search: bool = ...,
-) -> Dict[str, Tuple[str]]:
+) -> Dict[str, List[str]]:
     ...
 
 
@@ -25,7 +24,7 @@ def filter_list(
     filters: Union[Dict[str, str], Dict[str, List[str]]],
     return_indices_only: Literal[True] = ...,
     regex_search: bool = ...,
-) -> Tuple[int]:
+) -> List[int]:
     ...
 
 
@@ -128,51 +127,30 @@ def filter_list(
         ... }
         True
     """
-
-    # Unzip values to group them by path instead of by wildcard type:
-    #   ['AP', 'PA', 'AP', 'PA']            ['AP', '01']
-    #   ['01', '01', '02', 'PA']    ->      ['PA', '01']
-    #                                       ['AP', '02']
-    #                                       ['PA', '02']
-    value_groups = zip(*zip_list.values())
-
-    # Select a match function based on the value of regex_search
     if regex_search:
         match_func = re.match
     else:
         match_func = op.eq
 
-    def filter_values(args: Tuple[int, Tuple[str]]):
-        # This function is used to filter each value group obtained above. The first
-        # member of args is an enumeration integer not used for filtering.
-        value_group = args[1]
+    keep_indices = set.intersection(
+        # Get a set {0,1,2,3...n-1} where n is the length of any one of the lists in
+        # zip_list
+        {*range(len(zip_list[next(iter(zip_list))]))},
+        *(
+            (
+                i
+                for i, v in enumerate(zip_list[key])
+                if matches_any(v, itx.always_iterable(val), match_func)
+            )
+            for key, val in filters.items()
+            if key in zip_list
+        )
+    )
 
-        # Reassociate each member of the value group with its wildcard key
-        for key, value in zip(zip_list.keys(), value_group):
-            # If the key has a filter, check if the value matches any of the filters
-            if key in filters and not matches_any(
-                value, [*itx.always_iterable(filters[key])], match_func
-            ):
-                # If not, immediately return False
-                return False
-        # If every value in the group passes the filters, return True
-        return True
-
-    # Run the above filter function. Enumerate is used to track which indices were kept
-    filtered = [*filter(filter_values, enumerate(value_groups))]
-    if len(filtered):
-        # Unzip filtered to seperated the indices from the filtered_values
-        filtered_values: Tuple[Tuple[str]]
-        indices, filtered_values = zip(*filtered)  # type: ignore
-        if return_indices_only:
-            return indices
-        # Unzip filtered_values to restore to the original structure. These are zipped
-        # with keys and turned back into a dict
-        return dict(zip(zip_list.keys(), zip(*filtered_values)))
-
-    # If no values survivied filtering, we return a dict with all the keys mapping to
-    # empty tuples
-    return dict(it.zip_longest(zip_list.keys(), [], fillvalue=tuple()))
+    # Now we have the indices, so filter the lists
+    if return_indices_only:
+        return list(keep_indices)
+    return {key: [val[i] for i in keep_indices] for key, val in zip_list.items()}
 
 
 def get_filtered_ziplist_index(zip_list, wildcards, subj_wildcards):
