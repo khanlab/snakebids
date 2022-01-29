@@ -85,7 +85,7 @@ from snakebids.core.filtering import filter_list
 )
 def test_filter_list(
     zip_list: Dict[str, Dict[str, List[str]]],
-    filters: Union[Dict[str, str], Dict[str, List[str]]],
+    filters: Dict[str, Union[List[str], str]],
     output: Dict[str, Dict[str, List[str]]],
 ):
     assert filter_list(zip_list, filters) == output
