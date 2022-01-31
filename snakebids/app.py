@@ -68,27 +68,23 @@ def _get_file_paths(choices, file_name, snakemake_dir):
 class SnakeBidsApp:
     """Snakebids app with config and arguments.
 
-    Attributes
+    Parameters
     ----------
-    snakemake_dir : Path
+    snakemake_dir : Path or str
         Root directory of the snakebids app, containing the config file and workflow
         files.
     parser : ArgumentParser
         Parser including only the arguments specific to this Snakebids app, as specified
-        in the config file. By default, it will use `create_parser()` from `cli.py`
+        in the config file.
     configfile_path : str
-        Relative path to config file (relative to snakemake_dir). By default,
-        autocalculates based on snakemake_dir
+        Relative path to config file (relative to snakemake_dir).
     snakefile_path : str
-        Absolute path to the input Snakefile. By default, autocalculates based on
-        snakemake_dir
-            join(snakemake_dir, snakefile_path)
+        Absolute path to the input Snakefile.
     config : dict
-        Contains all the configuration variables parsed from the config file
-        and generated during the initialization of the SnakeBidsApp.
+        Contains the app's configuration variables.
     args : SnakebidsArgs, optional
         Arguments to use when running the app. By default, generated using the parser
-        attribute, autopopulated with args from `config.py`
+        attribute when snakemake is run.
     """
 
     snakemake_dir: Path = attr.ib(converter=lambda path: Path(path).resolve())
