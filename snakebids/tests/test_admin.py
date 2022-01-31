@@ -27,7 +27,7 @@ class TestAdminCli:
         self, parser: ArgumentParser, mocker: MockerFixture
     ):
         mocker.patch.object(sys, "argv", ["snakebids", "dummy"])
-        with pytest.raises(SystemExit):
+        with pytest.raises((SystemExit, TypeError)):
             parser.parse_args()
 
     def test_create_succeeds(self, parser: ArgumentParser, mocker: MockerFixture):
