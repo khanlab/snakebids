@@ -2,12 +2,12 @@
 from pathlib import Path
 
 from snakebids.app import SnakeBidsApp
+from snakebids.cli import create_parser
 
 
 def get_parser():
     """Exposes parser for sphinx doc generation, cwd is the docs dir"""
-    app = SnakeBidsApp.from_filesystem("../", skip_parse_args=True)
-    return app.parser
+    return create_parser()
 
 
 def main():
