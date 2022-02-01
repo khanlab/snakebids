@@ -2,17 +2,16 @@
 from pathlib import Path
 
 from snakebids.app import SnakeBidsApp
-from snakebids.cli import create_parser
 
 
 def get_parser():
     """Exposes parser for sphinx doc generation, cwd is the docs dir"""
-    return create_parser()
+    app = SnakeBidsApp("../", skip_parse_args=True)
+    return app.parser
 
 
 def main():
-    # to get repository root
-    app = SnakeBidsApp.from_filesystem(Path(__file__).resolve().parents[1])
+    app = SnakeBidsApp(Path(__file__).resolve().parents[1])  # to get repository root
     app.run_snakemake()
 
 
