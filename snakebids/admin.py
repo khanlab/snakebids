@@ -16,7 +16,8 @@ def create_app(_):
 
 
 def create_descriptor(args):
-    app = SnakeBidsApp.from_filesystem(args.app_dir.resolve())
+    # pylint: disable=unsubscriptable-object
+    app = SnakeBidsApp(args.app_dir.resolve())
     add_dynamic_args(app.parser, app.config["parse_args"], app.config["pybids_inputs"])
     app.create_descriptor(args.out_path)
     print(f"Boutiques descriptor created at {args.out_path}")
