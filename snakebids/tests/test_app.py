@@ -15,17 +15,14 @@ from snakebids.cli import SnakebidsArgs
 
 from .. import app as sn_app
 from ..app import SnakeBidsApp
-from ..cli import create_parser
 from .mock.config import config
 
 
 @pytest.fixture
 def app(mocker: MockerFixture):
-    parser = create_parser()
     app = SnakeBidsApp(
-        snakemake_dir=Path("app"),
-        skip_parse_args=False,
-        parser=parser,
+        Path("app"),
+        False,
         snakefile_path=Path("Snakefile"),
         configfile_path=Path("mock/config.yaml"),
         config=copy.deepcopy(config),
