@@ -55,12 +55,15 @@ CONFIGFILE_CHOICES = [
 
 def _get_file_paths(choices: List[str], file_name: str):
     def wrapper(self: "SnakeBidsApp"):
-        # look for snakebids.yml in the snakemake_dir, quit if not found
         for path in choices:
             if (self.snakemake_dir / path).exists():
+                if file_name == "config":
+                    return Path(path)
+                # else, snakefile
                 return Path(self.snakemake_dir, path)
+
         raise ConfigError(
-            f"Error: no {file_name} file found, tried {', '.join(CONFIGFILE_CHOICES)}."
+            f"Error: no {file_name} file found, tried {', '.join(choices)}."
         )
 
     return wrapper
