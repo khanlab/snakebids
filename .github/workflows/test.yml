@@ -5,7 +5,13 @@ name: Test workflow
 
 on:
   push:
+    branches:
+      - '*'
+      - '!push-action/*'
   pull_request:
+    branches:
+      - '*'
+      - '!push-action/*'
 
 jobs:
   quality:
