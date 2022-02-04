@@ -27,7 +27,7 @@ def gen_parser():
     parser = argparse.ArgumentParser(
         description="Perform administrative Snakebids tasks."
     )
-    subparsers = parser.add_subparsers(required=True)
+    subparsers = parser.add_subparsers(required=True, dest="command")
 
     parser_create = subparsers.add_parser("create", help="Create a new Snakebids app.")
     parser_create.set_defaults(func=create_app)

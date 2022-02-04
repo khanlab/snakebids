@@ -20,14 +20,14 @@ class TestAdminCli:
         self, parser: ArgumentParser, mocker: MockerFixture
     ):
         mocker.patch.object(sys, "argv", ["snakebids"])
-        with pytest.raises((SystemExit, TypeError)):
+        with pytest.raises(SystemExit):
             parser.parse_args()
 
     def test_fails_if_invalid_subcommand(
         self, parser: ArgumentParser, mocker: MockerFixture
     ):
         mocker.patch.object(sys, "argv", ["snakebids", "dummy"])
-        with pytest.raises((SystemExit, TypeError)):
+        with pytest.raises(SystemExit):
             parser.parse_args()
 
     def test_create_succeeds(self, parser: ArgumentParser, mocker: MockerFixture):
