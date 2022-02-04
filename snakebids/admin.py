@@ -36,7 +36,9 @@ def gen_parser():
         "boutiques", help="Create a Boutiques descriptor for an existing Snakebids app."
     )
     parser_boutiques.add_argument(
-        "out_path", help="Path for the output Boutiques descriptor.", type=Path
+        "out_path",
+        help="Path for the output Boutiques descriptor. Should be a .json file.",
+        type=Path,
     )
     parser_boutiques.add_argument(
         "--app_dir",
