@@ -55,7 +55,12 @@ class TestResolvePath:
 
 class TestAddDynamicArgs:
     mock_args_special = ["--derivatives", "path/to/nowhere"]
-    mock_basic_args = ["script_name", "path/to/input", "path/to/output", "participant"]
+    mock_basic_args = [
+        "script_name",
+        "path/to/input",
+        "path/to/output",
+        "participant",
+    ]
     mock_all_args = mock_basic_args + mock_args_special
 
     def test_fails_if_missing_arguments(
