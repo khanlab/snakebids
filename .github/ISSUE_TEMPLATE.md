@@ -1,10 +1,11 @@
 ## The problem
 
-Briefly describe the issue you are experiencing (or feature you want to see added).
+Briefly describe the issue you are experiencing (or feature you want to see added). If you received an error,
+please include the error message!
 
-## Error
+## Steps to reproduce
 
-Did you receive an error? If you did, include it here!
+Please also include the steps you took so we can try to reproduce the error!
 
 ## Screenshots
 
