@@ -1,7 +1,7 @@
 import json
 import logging
-import os
 import re
+from pathlib import Path
 from typing import Dict, List, Tuple
 
 from bids import BIDSLayout, BIDSLayoutIndexer
@@ -12,10 +12,12 @@ from snakebids.utils.utils import read_bids_tags
 _logger = logging.getLogger(__name__)
 
 
-# pylint: disable=too-many-arguments
+# pylint: disable=too-many-arguments,too-many-locals
 def generate_inputs(
     bids_dir,
     pybids_inputs,
+    pybids_database_dir=None,
+    pybids_reset_database=False,
     derivatives=False,
     pybids_config=None,
     search_terms=None,
@@ -164,23 +166,14 @@ def generate_inputs(
 
     search_terms = _generate_search_terms(participant_label, exclude_participant_label)
 
-    if os.path.exists(bids_dir):
-        # generate inputs based on config
-        layout = BIDSLayout(
-            bids_dir,
-            derivatives=derivatives,
-            validate=False,
-            # In the next version of pybids, config will accept Paths, so we won't
-            # need this long stringify line
-            config=str(pybids_config) if pybids_config is not None else pybids_config,
-            indexer=BIDSLayoutIndexer(validate=False, index_metadata=False),
-        )
-    else:
-        _logger.info(
-            "bids_dir does not exist, skipping PyBIDS and using "
-            "custom file paths only"
-        )
-        layout = None
+    # Generates a BIDSLayout
+    layout = _gen_bids_layout(
+        bids_dir=bids_dir,
+        derivatives=derivatives,
+        pybids_config=pybids_config,
+        pybids_database_dir=pybids_database_dir,
+        pybids_reset_database=pybids_reset_database,
+    )
 
     # this will populate input_path, input_lists, input_zip_lists, and
     # input_wildcards
@@ -236,6 +229,54 @@ def generate_inputs(
         }
 
     return inputs_config_dict
+
+
+def _gen_bids_layout(
+    bids_dir,
+    derivatives,
+    pybids_database_dir,
+    pybids_reset_database,
+    pybids_config=None,
+):
+    """Create (or reindex) the BIDSLayout if one doesn't exist,
+    which is only saved if a database directory path is provided
+    """
+
+    # Set db dir to None (otherwise saves to parent dir)
+    if Path(bids_dir):
+        # Check for database_dir
+        # If blank, assume db not to be used
+        if pybids_database_dir == "":
+            pybids_database_dir = None
+        # Otherwise check for relative path and update
+        elif (
+            pybids_database_dir is not None
+            and not Path(pybids_database_dir).is_absolute()
+        ):
+            pybids_database_dir = None
+            _logger.warning(
+                "Absolute path must be provided, database will " "not be used"
+            )
+
+        layout = BIDSLayout(
+            bids_dir,
+            derivatives=derivatives,
+            validate=False,
+            # In the next version of pybids, config will accept Paths, so we won't
+            # need this long stringify line
+            config=str(pybids_config) if pybids_config is not None else pybids_config,
+            database_path=pybids_database_dir,
+            reset_database=pybids_reset_database,
+            indexer=BIDSLayoutIndexer(validate=False, index_metadata=False),
+        )
+    else:
+        _logger.info(
+            "bids_dir does not exist, skipping PyBIDS and using "
+            "custom file paths only"
+        )
+        layout = None
+
+    return layout
 
 
 def write_derivative_json(snakemake, **kwargs):

@@ -10,6 +10,8 @@ config.update(
     snakebids.generate_inputs(
         bids_dir=config["bids_dir"],
         pybids_inputs=config["pybids_inputs"],
+        pybids_database_dir=config.get("pybids_db_dir"),
+        pybids_reset_database=config.get("pybids_db_reset"),
         derivatives=config["derivatives"],
         participant_label=config["participant_label"],
         exclude_participant_label=config["exclude_participant_label"]

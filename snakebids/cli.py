@@ -53,6 +53,8 @@ class SnakebidsArgs:
         data loss
     outputdir : Path
         Directory to place outputs
+    pybidsdb_dir : Path
+        Directory to place pybids database
     retrofit : Path
         Convert a legacy snakebids app to the new style
     snakemake_args : list of strings
@@ -69,6 +71,8 @@ class SnakebidsArgs:
     retrofit: bool
     snakemake_args: List[str]
     args_dict: Dict[str, Any]
+    pybidsdb_dir: Path = None
+    reset_db: bool = False
 
 
 def create_parser(include_snakemake=False):
@@ -122,6 +126,24 @@ def create_parser(include_snakemake=False):
             "Force snakebids to convert a workflow output to a bidsapp output. "
             "conversion will delete all the files in the workflow snakebids app."
         ),
+    )
+
+    standard_group.add_argument(
+        "--pybidsdb-dir",
+        "--pybidsdb_dir",
+        action="store",
+        help=(
+            "Optional path to directory of SQLite databasefile for PyBIDS. "
+            "If directory is passed and folder exists, indexing is skipped. "
+            "If reset_db is called, indexing will persist"
+        ),
+    )
+
+    standard_group.add_argument(
+        "--reset-db",
+        "--reset_db",
+        action="store_true",
+        help=("Reindex existing PyBIDS SQLite database"),
     )
 
     standard_group.add_argument(
@@ -239,6 +261,12 @@ def parse_snakebids_args(parser: argparse.ArgumentParser):
         workflow_mode=all_args[0].workflow_mode,
         force=all_args[0].force_conversion,
         outputdir=Path(all_args[0].output_dir).resolve(),
+        pybidsdb_dir=(
+            None
+            if all_args[0].pybidsdb_dir is None
+            else Path(all_args[0].pybidsdb_dir).resolve()
+        ),
+        reset_db=all_args[0].reset_db,
         retrofit=all_args[0].retrofit,
     )
 

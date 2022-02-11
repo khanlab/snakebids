@@ -29,6 +29,7 @@ def app(mocker: MockerFixture):
     )
     app.config["analysis_level"] = "participant"
     app.config["snakemake_args"] = []
+    app.config["pybids_db_reset"] = False
     mocker.patch.object(sn_app, "update_config", return_value=app.config)
     return app
 
@@ -55,6 +56,8 @@ class TestRunSnakemake:
         expected_config["root"] = "results"
         expected_config["snakemake_dir"] = Path("app").resolve()
         expected_config["snakefile"] = Path("Snakefile")
+        expected_config["pybids_db_dir"] = Path("/tmp/output/.db")
+        expected_config["pybids_db_reset"] = True
 
         io_mocks["prepare_output"].return_value = Path("/tmp/output/results")
 
@@ -62,6 +65,8 @@ class TestRunSnakemake:
             workflow_mode=True,
             force=False,
             outputdir=Path("/tmp/output"),
+            pybidsdb_dir=Path("/tmp/output/.db"),
+            reset_db=True,
             retrofit=False,
             snakemake_args=[],
             args_dict={},
@@ -100,13 +105,16 @@ class TestRunSnakemake:
         expected_config["root"] = ""
         expected_config["snakemake_dir"] = Path("app").resolve()
         expected_config["snakefile"] = Path("Snakefile")
+        expected_config["pybids_db_dir"] = Path("/tmp/output/.db")
+        expected_config["pybids_db_reset"] = True
 
         io_mocks["prepare_output"].return_value = Path("/tmp/output")
-
         app.args = SnakebidsArgs(
             workflow_mode=False,
             force=False,
             outputdir=Path("/tmp/output"),
+            pybidsdb_dir=Path("/tmp/output/.db"),
+            reset_db=True,
             retrofit=False,
             snakemake_args=[],
             args_dict={},
