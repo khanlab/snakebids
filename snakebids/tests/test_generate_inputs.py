@@ -1,11 +1,53 @@
 from __future__ import absolute_import
 
 import os
+from pathlib import Path
 
 import pytest
 from bids import BIDSLayout
 
+from snakebids.core.construct_bids import bids
 from snakebids.core.input_generation import _get_lists_from_bids, generate_inputs
+
+
+def test_custom_pybids_config(tmpdir: Path):
+    # Generate directory
+    for i in range(2):
+        path = Path(
+            bids(
+                tmpdir, datatype="anat", subject="001", foo=str(i), suffix="T1w.nii.gz"
+            )
+        )
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
+
+    # create config
+    derivatives = False
+    pybids_inputs = {
+        "t1": {
+            "filters": {"suffix": "T1w"},
+            "wildcards": ["acquisition", "subject", "foo"],
+        }
+    }
+
+    # Simplest case -- one input type, using pybids
+    config = generate_inputs(
+        pybids_inputs=pybids_inputs,
+        bids_dir=tmpdir,
+        derivatives=derivatives,
+        pybids_config=str(Path(__file__).parent / "data" / "custom_config.json"),
+    )
+    # Order of the subjects is not deterministic
+    assert config["input_lists"] in [
+        {"t1": {"foo": ["0", "1"], "subject": ["001"]}},
+        {"t1": {"foo": ["1", "0"], "subject": ["001"]}},
+    ]
+    assert config["input_zip_lists"] == {
+        "t1": {"foo": ["0", "1"], "subject": ["001", "001"]}
+    }
+    assert config["input_wildcards"] == {"t1": {"foo": "{foo}", "subject": "{subject}"}}
+    # Order of the subjects is not deterministic
+    assert config["subj_wildcards"] == {"subject": "{subject}"}
 
 
 def test_t1w():
