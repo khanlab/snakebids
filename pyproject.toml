@@ -47,7 +47,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.poe.tasks]
 setup = "pre-commit install"
 quality = { shell = "isort snakebids && black snakebids && flake8 snakebids && pylint snakebids" }
-test = "pytest --doctest-modules --ignore=docs --ignore=project_template"
+test = "pytest --doctest-modules --ignore=docs --ignore=snakebids/project_template"
 mkinit = "mkinit --recursive --nomods --black -i snakebids"
 
 [tool.isort]
