@@ -17,6 +17,7 @@ def generate_inputs(
     bids_dir,
     pybids_inputs,
     derivatives=False,
+    pybids_config=None,
     search_terms=None,
     limit_to=None,
     participant_label=None,
@@ -169,6 +170,9 @@ def generate_inputs(
             bids_dir,
             derivatives=derivatives,
             validate=False,
+            # In the next version of pybids, config will accept Paths, so we won't
+            # need this long stringify line
+            config=str(pybids_config) if pybids_config is not None else pybids_config,
             indexer=BIDSLayoutIndexer(validate=False, index_metadata=False),
         )
     else:
