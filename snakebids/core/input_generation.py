@@ -7,7 +7,17 @@ import operator as op
 import re
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, Generator, Iterable, List, NamedTuple, Tuple, Union, overload
+from typing import (
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    NamedTuple,
+    Optional,
+    Tuple,
+    Union,
+    overload,
+)
 
 import attr
 import more_itertools as itx
@@ -730,7 +740,7 @@ def _parse_bids_path(path: str, wildcards: Iterable[str]) -> Tuple[str, Dict[str
 
 
 def _get_lists_from_bids(
-    bids_layout, pybids_inputs, limit_to=None, **filters
+    bids_layout: Optional[BIDSLayout], pybids_inputs, limit_to=None, **filters
 ) -> Generator[BidsLists, None, None]:
     """Grabs files using pybids and creates snakemake-friendly lists
 
@@ -774,6 +784,14 @@ def _get_lists_from_bids(
             )
             yield BidsLists(
                 input_name, input_path, input_zip_lists, input_lists, input_wildcards
+            )
+            continue
+
+        if bids_layout is None:
+            _logger.warning(
+                "No valid bids dir given, but %s does not have a custom_path specified "
+                "and will be skipped.",
+                input_name,
             )
             continue
 
