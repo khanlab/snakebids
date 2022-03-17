@@ -3,3 +3,4 @@ sphinx-argparse
 sphinx_rtd_theme
 sphinxcontrib-napoleon
 sphinxcontrib-asciinema
+myst-parser

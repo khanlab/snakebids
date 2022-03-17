@@ -17,5 +17,5 @@ app
 snakemake_io
 ------------
 
-.. automodule:: snakebids.snakemake_io
+.. automodule:: snakebids.utils.snakemake_io
     :members:
