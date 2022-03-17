@@ -1,3 +1,5 @@
+# pylint: disable=all
+# flake8: noqa
 # Configuration file for the Sphinx documentation builder.
 #
 # This file only contains a selection of the most common options. For a full
@@ -15,7 +17,6 @@ import sys
 
 sys.path.insert(0, os.path.abspath("../"))
 import sphinx_rtd_theme
-
 
 # -- Project information -----------------------------------------------------
 
@@ -35,7 +36,8 @@ extensions = [
     "sphinxarg.ext",
     "sphinx.ext.autodoc",
     "sphinxcontrib.napoleon",
-    "sphinxcontrib.asciinema"
+    "sphinxcontrib.asciinema",
+    "myst_parser",
 ]
 
 napoleon_google_docstring = False
