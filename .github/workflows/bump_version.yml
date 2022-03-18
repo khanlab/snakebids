@@ -1,13 +1,16 @@
 name: Bump version
 on:
-  push:
-    branches:
-      - main
+  pull_request:
+    types: [closed]
 jobs:
   build:
+    if: github.event.pull_request.merged == true 
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout master branch
+        uses: actions/checkout@v2
+        with:
+          ref: refs/heads/main
       
       - name: Update changelog
         uses: release-drafter/release-drafter@v5
@@ -60,8 +63,8 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git diff-index --quiet HEAD || git commit -m "Bump version to $SNAKEBIDS_VERSION" -a
 
-      - name: Push changes
-        uses: ad-m/github-push-action@master
+      - name: Push changes 
+        uses: CasperWA/push-protected@v2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          tags: false
+          token: ${{ secrets.BP_PAT_TOKEN }}
+          unprotect_reviews: True 

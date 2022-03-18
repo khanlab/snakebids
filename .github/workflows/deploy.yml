@@ -60,10 +60,11 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git diff-index --quiet HEAD || git commit -m "Bump version to $LATEST_VERSION" -a
 
-      - name: Push changes
-        uses: ad-m/github-push-action@master
+      - name: Push changes 
+        uses: CasperWA/push-protected@v2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.BP_PAT_TOKEN }}
+          unprotect_reviews: True 
 
       - name: Publish change log
         uses: release-drafter/release-drafter@v5
