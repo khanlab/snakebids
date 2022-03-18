@@ -1,15 +1,23 @@
 {
     "subject": "sub",
     "session": "ses",
+    "sample": "sample",
     "task": "task",
+    "tracer": "trc",
     "acquisition": "acq",
+    "stain": "stain",
     "ceagent": "ce",
     "reconstruction": "rec",
     "direction": "dir",
     "run": "run",
-    "proc": "proc",
+    "chunk": "chunk",
+    "processed": "proc",
     "modality": "mod",
     "echo": "echo",
-    "recording": "recording",
-    "space": "space"
+    "flip": "flip",
+    "inv": "inv",
+    "mt": "mt",
+    "space": "space",
+    "split": "split",
+    "recording": "recording"
 }
