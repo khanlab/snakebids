@@ -1,6 +1,8 @@
 from __future__ import absolute_import
 
+import itertools as it
 import os
+from collections import defaultdict
 from pathlib import Path
 
 import pytest
@@ -8,6 +10,72 @@ from bids import BIDSLayout
 
 from snakebids.core.construct_bids import bids
 from snakebids.core.input_generation import _get_lists_from_bids, generate_inputs
+from snakebids.tests.helpers import BidsListCompare
+
+
+class TestAbsentConfigEntries:
+    def get_entities(self, root):
+        # Generate directory
+        entities = {"subject": ["001", "002"], "acq": sorted(["foo", "bar"])}
+        zip_list = defaultdict(list)
+        for e in it.product(*entities.values()):
+            d = dict(zip(entities.keys(), e))
+            for key, val in d.items():
+                zip_list[key].append(val)
+            path = Path(bids(root, datatype="anat", suffix="T1w.nii.gz", **d))
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.touch()
+        return entities, zip_list
+
+    def test_missing_filters(self, tmpdir: Path):
+        entities, zip_list = self.get_entities(tmpdir)
+
+        # create config
+        derivatives = False
+        pybids_inputs = {
+            "t1": {
+                "wildcards": ["acquisition", "subject"],
+            }
+        }
+
+        # Simplest case -- one input type, using pybids
+        config = generate_inputs(
+            pybids_inputs=pybids_inputs,
+            bids_dir=tmpdir,
+            derivatives=derivatives,
+            pybids_config=str(Path(__file__).parent / "data" / "custom_config.json"),
+        )
+        # Order of the subjects is not deterministic
+        assert config["input_lists"] == BidsListCompare({"t1": entities})
+        assert config["input_zip_lists"] == {"t1": zip_list}
+        assert config["input_wildcards"] == {
+            "t1": {"acq": "{acq}", "subject": "{subject}"}
+        }
+        assert config["subj_wildcards"] == {"subject": "{subject}"}
+
+    def test_missing_wildcards(self, tmpdir: Path):
+        entities, zip_list = self.get_entities(tmpdir)
+
+        # create config
+        derivatives = False
+        pybids_inputs = {
+            "t1": {
+                "filters": {"acquisition": "foo", "subject": "001"},
+            }
+        }
+
+        # Simplest case -- one input type, using pybids
+        config = generate_inputs(
+            pybids_inputs=pybids_inputs,
+            bids_dir=tmpdir,
+            derivatives=derivatives,
+            pybids_config=str(Path(__file__).parent / "data" / "custom_config.json"),
+        )
+        result_d = {"acq": ["foo"], "subject": ["001"]}
+        assert config["input_lists"] == {"t1": {}}
+        assert config["input_zip_lists"] == {"t1": {}}
+        assert config["input_wildcards"] == {"t1": {}}
+        assert config["subj_wildcards"] == {"subject": "{subject}"}
 
 
 def test_custom_pybids_config(tmpdir: Path):
@@ -82,16 +150,15 @@ def test_t1w():
         derivatives=derivatives,
     )
     # Order of the subjects is not deterministic
-    assert config["input_lists"] in [
-        {"t1": {"acq": ["mprage"], "subject": ["001", "002"]}},
-        {"t1": {"acq": ["mprage"], "subject": ["002", "001"]}},
-    ]
+    assert config["input_lists"] == BidsListCompare(
+        {"t1": {"acq": ["mprage"], "subject": ["002", "001"]}}
+    )
     assert config["input_zip_lists"] == {
         "t1": {"acq": ["mprage", "mprage"], "subject": ["001", "002"]}
     }
     assert config["input_wildcards"] == {"t1": {"acq": "{acq}", "subject": "{subject}"}}
     # Order of the subjects is not deterministic
-    assert config["subjects"] in [["001", "002"], ["002", "001"]]
+    assert set(config["subjects"]) == {"002", "001"}
     assert config["sessions"] == []
     assert config["subj_wildcards"] == {"subject": "{subject}"}
 
@@ -160,11 +227,12 @@ def test_t1w():
             derivatives=derivatives,
         )
         # Order of the subjects is not deterministic
-        assert config["input_lists"]["t1"] in [
-            {"acq": ["mprage"], "subject": ["001", "002"]},
-            {"acq": ["mprage"], "subject": ["002", "001"]},
-        ]
-        assert config["input_lists"]["t2"] == {"subject": ["002"]}
+        assert config["input_lists"] == BidsListCompare(
+            {
+                "t1": {"acq": ["mprage"], "subject": ["001", "002"]},
+                "t2": {"subject": ["002"]},
+            }
+        )
         assert config["input_zip_lists"]["t1"] in [
             {"acq": ["mprage", "mprage"], "subject": ["001", "002"]},
             {"acq": ["mprage", "mprage"], "subject": ["002", "001"]},
@@ -175,7 +243,7 @@ def test_t1w():
             "t2": {"subject": "{subject}"},
         }
         # Order of the subjects is not deterministic
-        assert config["subjects"] in [["001", "002"], ["002", "001"]]
+        assert set(config["subjects"]) == {"001", "002"}
 
         assert config["sessions"] == []
         assert config["subj_wildcards"] == {"subject": "{subject}"}
@@ -225,16 +293,12 @@ def test_get_lists_from_bids():
         ]
         assert config["input_zip_lists"]["t2"] == {"subject": ["002"]}
         # The order of multiple wildcard values is not deterministic
-        assert config["input_lists"] in [
+        assert config["input_lists"] == BidsListCompare(
             {
                 "t1": {"acq": ["mprage"], "subject": ["001", "002"]},
                 "t2": {"subject": ["002"]},
-            },
-            {
-                "t1": {"acq": ["mprage"], "subject": ["002", "001"]},
-                "t2": {"subject": ["002"]},
-            },
-        ]
+            }
+        )
         assert config["input_wildcards"] == {
             "t1": {"acq": "{acq}", "subject": "{subject}"},
             "t2": {"subject": "{subject}"},

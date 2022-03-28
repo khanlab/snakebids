@@ -459,10 +459,10 @@ def _get_lists_from_bids(bids_layout, pybids_inputs, limit_to=None, **filters):
         else:
             paths = set()
             for img in bids_layout.get(
-                **pybids_inputs[input_name]["filters"], **filters
+                **pybids_inputs[input_name].get("filters", {}), **filters
             ):
                 input_path = img.path
-                for wildcard_name in pybids_inputs[input_name]["wildcards"]:
+                for wildcard_name in pybids_inputs[input_name].get("wildcards", []):
 
                     if wildcard_name not in img.get_entities():
                         continue
