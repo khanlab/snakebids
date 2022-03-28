@@ -1,5 +1,8 @@
 name-template: '$RESOLVED_VERSION'
 tag-template: 'v$RESOLVED_VERSION'
+#header: |
+#[![DOI](https://zenodo.org/badge/309495236.svg)](https://zenodo.org/badge/latestdoi/309495236)
+
 template: |
   ## Changes
 
