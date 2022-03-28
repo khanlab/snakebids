@@ -2,6 +2,7 @@
 snakebids
 =========
 [![Documentation Status](https://readthedocs.org/projects/snakebids/badge/?version=latest)](https://snakebids.readthedocs.io/en/latest/?badge=latest)
+[![DOI](https://zenodo.org/badge/309495236.svg)](https://zenodo.org/badge/latestdoi/309495236)
 
 Snakemake + BIDS
 
