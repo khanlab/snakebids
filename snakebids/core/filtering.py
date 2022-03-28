@@ -8,13 +8,13 @@ from typing_extensions import Literal
 from snakebids.utils.utils import matches_any
 
 # pylint: disable=invalid-name
-T_cov = TypeVar("T_cov", bound=Union[List[str], str], covariant=True)
+T_co = TypeVar("T_co", bound=Union[List[str], str], covariant=True)
 
 
 @overload
 def filter_list(
     zip_list,
-    filters: Dict[str, T_cov],
+    filters: Dict[str, T_co],
     return_indices_only: Literal[False] = ...,
     regex_search: bool = ...,
 ) -> Dict[str, List[str]]:
@@ -24,7 +24,7 @@ def filter_list(
 @overload
 def filter_list(
     zip_list,
-    filters: Dict[str, T_cov],
+    filters: Dict[str, T_co],
     return_indices_only: Literal[True] = ...,
     regex_search: bool = ...,
 ) -> List[int]:
@@ -33,7 +33,7 @@ def filter_list(
 
 def filter_list(
     zip_list: Dict[str, List[str]],
-    filters: Dict[str, T_cov],
+    filters: Dict[str, T_co],
     return_indices_only=False,
     regex_search=False,
 ):
