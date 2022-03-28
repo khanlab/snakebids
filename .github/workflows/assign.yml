@@ -6,6 +6,7 @@ on:
 jobs: 
   assign:
     runs-on: ubuntu-latest
+    if: github.event.pull_request.assignee == null
 
     steps:
       - name: Assign reviewer
