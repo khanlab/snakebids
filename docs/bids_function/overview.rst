@@ -44,7 +44,7 @@ Using the subject and session keywords as wildcards is common enough that snakeb
         acq="{acq}",
         run="{run}",
         suffix="bold.nii.gz",
-        **config["subj_wildcards"]
+        **inputs.subj_wildcards
     )
 
 Now if you want to process all inputs of a given form regardless of how their wildcards resolve, snakebids can provide the necessary arguments to the base Snakemake ``expand`` function based on what's grabbed from the input dataset. The required information is in the ``input_zip_lists`` config variable. As an example, to specify the output of a rule that preprocesses BOLD images (as specified in the example configuration), the following would resolve the subject, session, acquisition, task, and run wildcards by expanding over ``input_zip_lists``::
@@ -57,8 +57,8 @@ Now if you want to process all inputs of a given form regardless of how their wi
             acq="{acq}",
             task="{task}",
             run="{run}",
-            **config["subj_wildcards"]
+            **inputs."subj_wildcards"
         ),
         zip,
-        config["input_zip_lists"]["bold"]
+        inputs.input_zip_lists["bold"]
     )

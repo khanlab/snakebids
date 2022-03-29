@@ -3,34 +3,37 @@ from snakebids import bids
 configfile: 'config.yml'
 
 rule all:
-    input: 
-        expand(bids(root='results',
+    input:
+        expand(
+            bids(
+                root='results',
                 subject='{subject}',
                 task='{task}',
                 run='{run}',
                 fwhm='{fwhm}',
-                suffix='bold.nii.gz'),
-                    subject=config['subjects'],
-                    task=config['tasks'],
-                    run=config['runs'],
-                    fwhm=config['fwhm'])
+                suffix='bold.nii.gz'
+            ),
+            subject=config['subjects'],
+            task=config['tasks'],
+            run=config['runs'],
+            fwhm=config['fwhm'],
+        )
 
 
 def calc_sigma_from_fwhm(wildcards):
     return f'{float(wildcards.fwhm)/2.355:0.2f}'
 
 rule smooth:
-    input: 
+    input:
         config['in_bold']
-    params: 
+    params:
         sigma = calc_sigma_from_fwhm
-    output: 
+    output:
         bids(root='results',
                 subject='{subject}',
                 task='{task}',
                 run='{run}',
                 fwhm='{fwhm}',
                 suffix='bold.nii.gz')
-    shell: 
+    shell:
         'fslmaths {input} -s {params.sigma} {output}'
-

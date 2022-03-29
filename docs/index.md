@@ -51,9 +51,18 @@ running_snakebids/overview
 ```
 
 ```{toctree}
-:caption: Reference
+:caption: Migration
+:name: migration
 :hidden:
 :maxdepth: 2
+
+migration/0.5_to_0.6
+```
+
+```{toctree}
+:caption: Reference
+:hidden:
+:maxdepth: 1
 
 api
 ```
