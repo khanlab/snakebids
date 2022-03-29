@@ -31,7 +31,7 @@ from snakebids.utils.utils import get_match_search_func, read_bids_tags
 _logger = logging.getLogger(__name__)
 
 
-BidsLists = NamedTuple(
+_BidsLists = NamedTuple(
     "BidsLists",
     [
         ("input_name", str),
@@ -41,7 +41,7 @@ BidsLists = NamedTuple(
         ("input_wildcards", Dict[str, str]),
     ],
 )
-"""Bids inputs from a single input descriptor
+_BidsLists.__doc__ = """Bids inputs from a single input descriptor
 
 Attributes
 ----------
@@ -79,7 +79,7 @@ class BidsInputsDict(TypedDict):
 class BidsInputs:
     """Bids input entities and their resolved values
 
-    Parameters
+    Attributes
     ----------
     input_path
         Wildcard-filled path that matches the images for this modality.
@@ -151,7 +151,7 @@ class BidsInputs:
         )
 
     @staticmethod
-    def _get_bids_lists_as_dicts(bids_lists: Iterable[BidsLists]):
+    def _get_bids_lists_as_dicts(bids_lists: Iterable[_BidsLists]):
         """Convert Iterable of Bids lists into dictionaries
 
         The dictionaries will be in a form suitable for use in BidsInputs. In other
@@ -184,7 +184,7 @@ class BidsInputs:
         )
 
     @classmethod
-    def from_bids_lists(cls, bids_lists: Iterable[BidsLists]):
+    def from_bids_lists(cls, bids_lists: Iterable[_BidsLists]):
         """Generate BidsInputs based on an iterable of BidsLists
 
         Parameters
@@ -262,9 +262,9 @@ def generate_inputs(
         Nested `dicts` with the following required keys:
 
         * ``"filters"``: Dictionary of entity: "values" (dict of str -> str or list of
-        str). The entity keywords should the bids tags on which to filter. The values
-        should be an acceptable str value for that entity, or a list of acceptable str
-        values.
+          str). The entity keywords should the bids tags on which to filter. The values
+          should be an acceptable str value for that entity, or a list of acceptable str
+          values.
 
         * ``"wildcards"``: List of (str) bids tags to include as wildcards in
           snakemake. At minimum this should usually include
@@ -274,8 +274,8 @@ def generate_inputs(
           filename will just be ignored.
 
         * ``"custom_path"``: Custom path to be parsed with wildcards wrapped in braces,
-        as in ``/path/to/sub-{subject}/{wildcard_1}-{wildcard_2}. This path will be
-        parsed without pybids, allowing the use of non-bids-compliant paths.
+          as in ``/path/to/sub-{subject}/{wildcard_1}-{wildcard_2}``. This path will be
+          parsed without pybids, allowing the use of non-bids-compliant paths.
 
     derivatives : bool
         Indicates whether pybids should look for derivative datasets under bids_dir.
@@ -306,7 +306,7 @@ def generate_inputs(
 
     Returns
     -------
-    BidsInputs or Dict:
+    BidsInputs or BidsInputsDict:
         Object containing organized information about the bids inputs for consumption
         in snakemake. See the documentation of BidsInputs for details and examples.
 
@@ -743,7 +743,7 @@ def _parse_bids_path(path: str, wildcards: Iterable[str]) -> Tuple[str, Dict[str
 
 def _get_lists_from_bids(
     bids_layout: Optional[BIDSLayout], pybids_inputs, limit_to=None, **filters
-) -> Generator[BidsLists, None, None]:
+) -> Generator[_BidsLists, None, None]:
     """Grabs files using pybids and creates snakemake-friendly lists
 
     Parameters
@@ -784,7 +784,7 @@ def _get_lists_from_bids(
             input_zip_lists, input_lists, input_wildcards = _parse_custom_path(
                 input_path, **pybids_inputs[input_name]["filters"], **filters
             )
-            yield BidsLists(
+            yield _BidsLists(
                 input_name, input_path, input_zip_lists, input_lists, input_wildcards
             )
             continue
@@ -839,7 +839,7 @@ def _get_lists_from_bids(
         # convert sets to lists
         input_lists = {key: list(val) for key, val in input_lists.items()}
 
-        yield BidsLists(
+        yield _BidsLists(
             input_name, input_path, input_zip_lists, input_lists, input_wildcards
         )
 

@@ -20,7 +20,7 @@ from hypothesis import strategies as st
 from snakebids.core.construct_bids import bids
 from snakebids.core.input_generation import (
     BidsInputs,
-    BidsLists,
+    _BidsLists,
     _gen_bids_layout,
     _generate_filters,
     _get_lists_from_bids,
@@ -208,7 +208,7 @@ def test_get_bids_lists_as_dict(elements):
     readable
     """
     elements = [*elements]
-    bids_lists = [BidsLists(*element) for element in elements]
+    bids_lists = [_BidsLists(*element) for element in elements]
     zipped = [*zip(*elements)]
     assert BidsInputs._get_bids_lists_as_dicts(bids_lists) == (
         dict(zip(zipped[0], zipped[1])),
