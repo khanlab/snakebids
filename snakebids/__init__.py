@@ -1,12 +1,10 @@
 __submodules__ = ["core"]
 
-__ignore__ = ["T_cov"]
 
 # <AUTOGEN_INIT>
 from snakebids.core import (
     BidsInputs,
     BidsInputsDict,
-    BidsLists,
     bids,
     filter_list,
     generate_inputs,
@@ -19,7 +17,6 @@ from snakebids.core import (
 __all__ = [
     "BidsInputs",
     "BidsInputsDict",
-    "BidsLists",
     "bids",
     "filter_list",
     "generate_inputs",

@@ -88,7 +88,8 @@ class SnakeBidsApp:
         autocalculates based on snamake_dir
     snakefile_path : str, optional
         Absolute path to the input Snakefile. By default, autocalculates based on
-        snakemake_dir
+        snakemake_dir::
+
             join(snakemake_dir, snakefile_path)
     config : dict, optional
         Contains all the configuration variables parsed from the config file
