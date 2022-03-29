@@ -1,22 +1,23 @@
 rule all:
-    input: 
-        expand('results/sub-{subject}/func/sub-{subject}_task-{task}_run-{run}_fwhm-{fwhm}mm_bold.nii.gz',
-                    subject='001',
-                    task='rest',
-                    run=[1,2],
-                    fwhm=[5,10,15,20])
+    input:
+        expand(
+            'results/sub-{subject}/func/sub-{subject}_task-{task}_run-{run}_fwhm-{fwhm}mm_bold.nii.gz',
+            subject='001',
+            task='rest',
+            run=[1,2],
+            fwhm=[5,10,15,20]
+        )
 
 
 def calc_sigma_from_fwhm(wildcards):
     return f'{float(wildcards.fwhm)/2.355:0.2f}'
 
 rule smooth:
-    input: 
+    input:
         '../bids/sub-{subject}/func/sub-{subject}_task-{task}_run-{run}_bold.nii.gz'
-    params: 
-        sigma = calc_sigma_from_fwhm
-    output: 
+    params:
+        sigma = calc_sigma_from_fwhm,
+    output:
         'results/sub-{subject}/func/sub-{subject}_task-{task}_run-{run}_fwhm-{fwhm}mm_bold.nii.gz'
-    shell: 
+    shell:
         'fslmaths {input} -s {params.sigma} {output}'
-

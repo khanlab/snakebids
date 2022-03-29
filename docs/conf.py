@@ -16,7 +16,6 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath("../"))
-import sphinx_rtd_theme
 
 # -- Project information -----------------------------------------------------
 
@@ -39,6 +38,7 @@ extensions = [
     "sphinxcontrib.asciinema",
     "myst_parser",
 ]
+
 
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
