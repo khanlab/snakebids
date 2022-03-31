@@ -4,11 +4,11 @@ from __future__ import absolute_import
 import copy
 import json
 from pathlib import Path
-from typing import Dict
-from unittest.mock import MagicMock
 
+import hypothesis.strategies as st
 import pytest
 import snakemake
+from hypothesis import HealthCheck, assume, example, given, settings
 from pytest_mock.plugin import MockerFixture
 
 from snakebids.cli import SnakebidsArgs
@@ -34,42 +34,87 @@ def app(mocker: MockerFixture):
     return app
 
 
-def test_update_config(app: SnakeBidsApp, mocker: MockerFixture):
-    pass
-
-
 class TestRunSnakemake:
-    @pytest.fixture
+    valid_chars = st.characters(
+        min_codepoint=48, max_codepoint=122, whitelist_categories=["Ll", "Lu"]
+    )
+
     def io_mocks(self, mocker: MockerFixture):
         return {
             "write_output_mode": mocker.patch.object(sn_app, "write_output_mode"),
-            "prepare_output": mocker.patch.object(sn_app, "prepare_output"),
+            "prepare_output": mocker.patch.object(sn_app, "prepare_bidsapp_output"),
             "write_config": mocker.patch.object(sn_app, "write_config_file"),
             "snakemake": mocker.patch.object(snakemake, "main"),
         }
 
-    def test_runs_in_workflow_mode(
-        self, io_mocks: Dict[str, MagicMock], app: SnakeBidsApp
+    @given(
+        root=st.one_of(st.sampled_from(["app", "app/results"]), valid_chars),
+        tail=valid_chars,
+    )
+    @example(root="app", tail="")
+    @example(root="app/results", tail="")
+    # mocker is function_scoped, but doesn't cause any problems here
+    @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+    def test_runs_in_correct_mode(
+        self,
+        mocker: MockerFixture,
+        root: str,
+        tail: str,
     ):
-        expected_config = copy.deepcopy(app.config)
-        expected_config["output_dir"] = "/tmp/output/results"
-        expected_config["root"] = "results"
-        expected_config["snakemake_dir"] = Path("app").resolve()
-        expected_config["snakefile"] = Path("Snakefile")
-        expected_config["pybids_db_dir"] = Path("/tmp/output/.db")
-        expected_config["pybids_db_reset"] = True
+        # Test any valid path. Whether the paths are bytes is irrelevant, and only
+        # causes problems
+        assume(not isinstance(root, bytes))
+        assume(not isinstance(tail, bytes))
+        # Prevent the case where tail == "."
+        assume(Path(root).resolve() / tail != Path(root).resolve())
 
-        io_mocks["prepare_output"].return_value = Path("/tmp/output/results")
+        # Get mocks for all the io functions
+        io_mocks = self.io_mocks(mocker)
+
+        # Compose outputdir from root and tail
+        outputdir = Path(root) / tail
+
+        # Prepare app and initial config values
+        app = SnakeBidsApp(
+            Path("app"),
+            False,
+            snakefile_path=Path("Snakefile"),
+            configfile_path=Path("mock/config.yaml"),
+            config=copy.deepcopy(config),
+        )
+        app.config["analysis_level"] = "participant"
+        app.config["snakemake_args"] = []
+        mocker.patch.object(
+            sn_app,
+            "update_config",
+            side_effect=lambda config, sn_args: config.update(sn_args.args_dict),
+        )
+
+        # Prepare expected config
+        expected_config = copy.deepcopy(app.config)
+        expected_config.update(
+            {
+                "root": "",
+                "snakemake_dir": Path("app").resolve(),
+                "pybids_db_dir": Path("/tmp/output/.db"),
+                "pybids_db_reset": True,
+                "snakefile": Path("Snakefile"),
+                "output_dir": outputdir.resolve(),
+            }
+        )
+        if root == "app" and tail == "":
+            expected_config["output_dir"] /= "results"
+            expected_config["root"] = "results"
 
         app.args = SnakebidsArgs(
-            workflow_mode=True,
             force=False,
-            outputdir=Path("/tmp/output"),
+            outputdir=outputdir,
+            snakemake_args=[],
+            # This Dict is necessary for updating config, since "update_config" is
+            # patched
+            args_dict={"output_dir": outputdir.resolve()},
             pybidsdb_dir=Path("/tmp/output/.db"),
             reset_db=True,
-            retrofit=False,
-            snakemake_args=[],
-            args_dict={},
         )
 
         try:
@@ -78,119 +123,42 @@ class TestRunSnakemake:
             print("System exited prematurely")
             print(e)
 
-        io_mocks["write_output_mode"].assert_not_called()
-        io_mocks["prepare_output"].assert_called_once_with(
-            Path("app").resolve(), Path("/tmp/output"), "workflow", False
-        )
-        io_mocks["write_config"].assert_called_once_with(
-            config_file=Path("/tmp/output/mock/config.yaml"),
-            data=expected_config,
-            force_overwrite=False,
-        )
+        # First condition: outputdir is an arbitrary path
+        if root not in ["app", "app/results"] or (root == "app" and tail):
+            cwd = outputdir.resolve()
+            new_config = outputdir.resolve() / "mock/config.yaml"
+            io_mocks["write_output_mode"].assert_not_called()
+            io_mocks["prepare_output"].assert_called_once_with(
+                outputdir.resolve(), False
+            )
+            io_mocks["write_config"].assert_called_once_with(
+                config_file=new_config,
+                data=expected_config,
+                force_overwrite=True,
+            )
+
+        # Second condition: outputdir is equal to snakemake_dir, or under
+        # snakemake_dir/results
+        else:
+            new_config = Path("app").resolve() / "mock/config.yaml"
+            cwd = Path("app").resolve()
+            io_mocks["write_output_mode"].assert_called_once_with(
+                Path("app/.snakebids").resolve(), "workflow"
+            )
+            io_mocks["write_config"].assert_called_once_with(
+                config_file=new_config,
+                data=expected_config,
+                force_overwrite=True,
+            )
+
         io_mocks["snakemake"].assert_called_once_with(
             [
                 "--snakefile",
                 str(app.snakefile_path),
                 "--directory",
-                "/tmp/output",
+                str(cwd),
                 "--configfile",
-                "/tmp/output/mock/config.yaml",
-            ]
-        )
-
-    def test_runs_in_bidsapp_mode(
-        self, io_mocks: Dict[str, MagicMock], app: SnakeBidsApp
-    ):
-        expected_config = copy.deepcopy(app.config)
-        expected_config["root"] = ""
-        expected_config["snakemake_dir"] = Path("app").resolve()
-        expected_config["snakefile"] = Path("Snakefile")
-        expected_config["pybids_db_dir"] = Path("/tmp/output/.db")
-        expected_config["pybids_db_reset"] = True
-
-        io_mocks["prepare_output"].return_value = Path("/tmp/output")
-        app.args = SnakebidsArgs(
-            workflow_mode=False,
-            force=False,
-            outputdir=Path("/tmp/output"),
-            pybidsdb_dir=Path("/tmp/output/.db"),
-            reset_db=True,
-            retrofit=False,
-            snakemake_args=[],
-            args_dict={},
-        )
-
-        try:
-            app.run_snakemake()
-        except SystemExit as e:
-            print("System exited prematurely")
-            print(e)
-
-        io_mocks["write_output_mode"].assert_not_called()
-        io_mocks["prepare_output"].assert_called_once_with(
-            Path("app").resolve(), Path("/tmp/output"), "bidsapp", False
-        )
-        io_mocks["write_config"].assert_called_once_with(
-            config_file=Path("/tmp/output/mock/config.yaml"),
-            data=expected_config,
-            force_overwrite=True,
-        )
-        io_mocks["snakemake"].assert_called_once_with(
-            [
-                "--snakefile",
-                str(app.snakefile_path),
-                "--directory",
-                "/tmp/output",
-                "--configfile",
-                "/tmp/output/mock/config.yaml",
-            ]
-        )
-
-    def test_runs_in_workflow_mode_when_output_same_as_snakebids_app(
-        self, io_mocks: Dict[str, MagicMock], app: SnakeBidsApp
-    ):
-        expected_config = copy.deepcopy(app.config)
-        expected_config["output_dir"] = "app/results"
-        expected_config["root"] = "results"
-        expected_config["snakemake_dir"] = Path("app").resolve()
-        expected_config["snakefile"] = Path("Snakefile")
-
-        io_mocks["prepare_output"].return_value = Path("app/results")
-
-        app.args = SnakebidsArgs(
-            workflow_mode=False,
-            force=False,
-            outputdir=Path("app").resolve(),
-            retrofit=False,
-            snakemake_args=[],
-            args_dict={},
-        )
-
-        try:
-            app.run_snakemake()
-        except SystemExit as e:
-            print("System exited prematurely")
-            print(e)
-
-        io_mocks["write_output_mode"].assert_called_once_with(
-            Path("app/.snakebids").resolve(), "workflow"
-        )
-        io_mocks["prepare_output"].assert_called_once_with(
-            Path("app").resolve(), Path("app").resolve(), "workflow", False
-        )
-        io_mocks["write_config"].assert_called_once_with(
-            config_file=Path("app/mock/config.yaml").resolve(),
-            data=expected_config,
-            force_overwrite=True,
-        )
-        io_mocks["snakemake"].assert_called_once_with(
-            [
-                "--snakefile",
-                str(app.snakefile_path),
-                "--directory",
-                str(Path("app").resolve()),
-                "--configfile",
-                str(Path("app/mock/config.yaml").resolve()),
+                str(new_config),
             ]
         )
 

@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Optional
 import attr
 import boutiques.creator as bc
 import snakemake
-from colorama import Fore
 from snakemake.io import load_configfile
 
 from snakebids.cli import (
@@ -20,8 +19,7 @@ from snakebids.cli import (
 )
 from snakebids.exceptions import ConfigError, RunError
 from snakebids.utils.output import (
-    prepare_output,
-    retrofit_output,
+    prepare_bidsapp_output,
     write_config_file,
     write_output_mode,
 )
@@ -133,53 +131,6 @@ class SnakeBidsApp:
             )
             args = parse_snakebids_args(self.parser)
 
-        # If the snakemake_dir is the same as the outputdir, we need to switch into
-        # workflow mode
-        if self.snakemake_dir == args.outputdir:
-            write_output_mode(args.outputdir / ".snakebids", "workflow")
-            mode = "workflow"
-            # The new config file will inevitably have the same path as the old, so we
-            # allow overwriting
-            force_config_overwrite = True
-
-            # Print a friendly warning if the user didn't specify workflow mode
-            if not args.workflow_mode:
-                print(
-                    f"{Fore.YELLOW}You specified your output to be in the snakebids "
-                    "directory, so we're switching automatically to workflow mode!\n"
-                    f"{Fore.RESET}You'll find your results in "
-                    f"`{(self.snakemake_dir/'results').resolve()}`"
-                )
-
-        # Otherwise, both workflow and bidsapp mode are possible
-        else:
-            mode = "workflow" if args.workflow_mode else "bidsapp"
-            # Disable config_overwrite to prevent accidental file modification
-            # This will be set to true in the case of bidsapp mode
-            force_config_overwrite = False
-
-            # If the user asked to retrofit, we attempt it
-            if args.retrofit and not retrofit_output(
-                args.outputdir,
-                # Find all config files in the outputdir
-                (
-                    args.outputdir / p
-                    for p in CONFIGFILE_CHOICES
-                    if (args.outputdir / p).exists()
-                ),
-            ):
-                # If we get here, there was an error in retrofitting
-                print(f"{Fore.YELLOW}Exiting. No conversion performed.{Fore.RESET}")
-                sys.exit(1)
-
-        # Attempt to prepare the output folder. Anything going wrong will raise a
-        # RunError, as described in the docstring
-        try:
-            root = prepare_output(self.snakemake_dir, args.outputdir, mode, args.force)
-        except RunError as err:
-            print(err.msg)
-            sys.exit(1)
-
         # Update our config file:
         # - Add path to snakefile to the config so workflows can grab files relative to
         #    the snakefile folder
@@ -194,19 +145,53 @@ class SnakeBidsApp:
         self.config["pybids_db_reset"] = args.reset_db
 
         update_config(self.config, args)
-        if mode == "workflow":
-            self.config["output_dir"] = str(root)
-            self.config["root"] = "results"
+
+        # First, handle outputs in snakebids_root or results folder
+        try:
+            # py3.9 has the Path.is_relative() function. But as long as we support py38
+            # and lower, this is the easiest way
+            args.outputdir.resolve().relative_to(self.snakemake_dir / "results")
+            relative_to_results = True
+        except ValueError:
+            relative_to_results = False
+
+        if self.snakemake_dir == args.outputdir.resolve() or relative_to_results:
+            write_output_mode(self.snakemake_dir / ".snakebids", "workflow")
+
+            new_config_file = self.snakemake_dir / self.configfile_path
+            cwd = self.snakemake_dir
+
+            if self.config["output_dir"] == self.snakemake_dir.resolve():
+                self.config["output_dir"] /= "results"
+                self.config["root"] = "results"
+                # Print a friendly warning that the output directory will change
+                logger.info(
+                    "You specified your output to be in the snakebids directory, so "
+                    "we're automatically putting your outputs in the results "
+                    "subdirectory.\nYou'll find your results in `%s`",
+                    (self.snakemake_dir / "results").resolve(),
+                )
+            else:
+                self.config["root"] = ""
+
+        # else, we run in bidsapp mode
         else:
-            force_config_overwrite = True
+            # Attempt to prepare the output folder. Anything going wrong will raise a
+            # RunError, as described in the docstring
+            try:
+                prepare_bidsapp_output(args.outputdir, args.force)
+            except RunError as err:
+                print(err.msg)
+                sys.exit(1)
+            cwd = args.outputdir
+            new_config_file = args.outputdir / self.configfile_path
             self.config["root"] = ""
 
         # Write the config file
-        new_config_file = args.outputdir / self.configfile_path
         write_config_file(
             config_file=new_config_file,
             data=self.config,
-            force_overwrite=force_config_overwrite,
+            force_overwrite=True,
         )
 
         # Run snakemake (passing any leftover args from argparse)
@@ -219,7 +204,7 @@ class SnakeBidsApp:
                         "--snakefile",
                         str(self.snakefile_path),
                         "--directory",
-                        str(args.outputdir),
+                        str(cwd),
                         "--configfile",
                         str(new_config_file.resolve()),
                         *self.config["snakemake_args"],

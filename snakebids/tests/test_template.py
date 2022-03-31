@@ -17,10 +17,8 @@ def test_template_dry_runs_successfully(tmp_path):
     app = SnakeBidsApp(
         tmp_path / "my_bids_app",
         args=SnakebidsArgs(
-            workflow_mode=False,
             force=False,
             outputdir=tmp_path / "out",
-            retrofit=False,
             snakemake_args=["-n"],
             args_dict={
                 "bids_dir": Path("snakebids") / "tests" / "data" / "bids_bold",
