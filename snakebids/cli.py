@@ -1,8 +1,9 @@
 import argparse
+import logging
 import os
 import pathlib
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import attr
 import snakemake
@@ -11,6 +12,8 @@ import snakemake
 # This way, users specifying a path type in their config.yaml can indicate
 # either Path or pathlib.Path
 Path = pathlib.Path
+
+logger = logging.Logger(__name__)
 
 
 # pylint: disable=too-few-public-methods,
@@ -46,17 +49,12 @@ class SnakebidsArgs:
 
     Attributes
     ----------
-    workflow_mode : bool
-        Indicates whether to run in workflow mode. False maps to bidsapp mode
     force : bool
-        Force conversion from workflow apps to bidsapp apps, resulting in potential
-        data loss
+        Force output in a directory that already has contents
     outputdir : Path
         Directory to place outputs
     pybidsdb_dir : Path
         Directory to place pybids database
-    retrofit : Path
-        Convert a legacy snakebids app to the new style
     snakemake_args : list of strings
         Arguments to pass on to Snakemake
     args_dict : Dict[str, Any]
@@ -65,13 +63,11 @@ class SnakebidsArgs:
         These will eventually be printed in the new config.
     """
 
-    workflow_mode: bool
     force: bool
-    outputdir: Path
-    retrofit: bool
+    outputdir: Path = attr.ib(converter=lambda p: Path(p).resolve())
     snakemake_args: List[str]
     args_dict: Dict[str, Any]
-    pybidsdb_dir: Path = None
+    pybidsdb_dir: Optional[Path] = None
     reset_db: bool = False
 
 
@@ -108,12 +104,7 @@ def create_parser(include_snakemake=False):
         "--workflow_mode",
         "-W",
         action="store_true",
-        help=(
-            "Run Snakebids in Workflow mode. This will cause the entire Snakebids "
-            "app, except for the results folder, to be copied into your "
-            "output_dir. Snakemake will be run in this new child app, and results "
-            "will be put in output_dir/results."
-        ),
+        help=argparse.SUPPRESS,
     )
 
     # We use -x as the alias because both -f and -F are taken by snakemake
@@ -122,10 +113,7 @@ def create_parser(include_snakemake=False):
         "--force_conversion",
         "-x",
         action="store_true",
-        help=(
-            "Force snakebids to convert a workflow output to a bidsapp output. "
-            "conversion will delete all the files in the workflow snakebids app."
-        ),
+        help=argparse.SUPPRESS,
     )
 
     standard_group.add_argument(
@@ -147,13 +135,16 @@ def create_parser(include_snakemake=False):
     )
 
     standard_group.add_argument(
+        "--force-output",
+        "--force_output",
+        action="store_true",
+        help="Force output in a new directory that already has contents",
+    )
+
+    standard_group.add_argument(
         "--retrofit",
         action="store_true",
-        help=(
-            "Convert a legacy Snakebids output (Snakebids 0.3.x or lower) into "
-            "bidsapp mode. This will delete any config files currently in the "
-            "output."
-        ),
+        help=argparse.SUPPRESS,
     )
 
     # add option for printing out snakemake usage
@@ -254,11 +245,24 @@ def add_dynamic_args(
 
 def parse_snakebids_args(parser: argparse.ArgumentParser):
     all_args = parser.parse_known_args()
+    if all_args[0].workflow_mode:
+        logger.warning(
+            "--workflow-mode is deprecated, and no longer has any effect. Workflow "
+            "mode is automatially activated when choosing the snakemake root "
+            "directory, or a subfolder of root/results, as the output directory."
+        )
+    if all_args[0].retrofit:
+        logger.warning(
+            "--retrofit is deprecated and no longer has any effect. To run this "
+            "snakebids app on an old output (e.g. if snakebids raises an error because "
+            "the directory already has contents, use the --force-output flag."
+        )
+    if all_args[0].force_conversion:
+        logger.warning("--force-conversion is deprecated and no longer has any effect.")
     return SnakebidsArgs(
         snakemake_args=all_args[1],
         # resolve all path items to get absolute paths
         args_dict={k: _resolve_path(v) for k, v in all_args[0].__dict__.items()},
-        workflow_mode=all_args[0].workflow_mode,
         force=all_args[0].force_conversion,
         outputdir=Path(all_args[0].output_dir).resolve(),
         pybidsdb_dir=(
@@ -267,7 +271,6 @@ def parse_snakebids_args(parser: argparse.ArgumentParser):
             else Path(all_args[0].pybidsdb_dir).resolve()
         ),
         reset_db=all_args[0].reset_db,
-        retrofit=all_args[0].retrofit,
     )
 
 

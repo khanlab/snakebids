@@ -946,14 +946,6 @@ toml = "*"
 virtualenv = ">=20.0.8"
 
 [[package]]
-name = "progress"
-version = "1.6"
-description = "Easy to use progress bars"
-category = "main"
-optional = false
-python-versions = "*"
-
-[[package]]
 name = "psutil"
 version = "5.9.0"
 description = "Cross-platform lib for process and system monitoring in Python."
@@ -1544,7 +1536,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.11"
-content-hash = "1485c6869f775a303891e830127f3b0946b76eea941633b034194c270b8e15c5"
+content-hash = "bcc991c1f512115fb0e52fd53da7bd801ee4c28dc12edf1275c7f8355c99005e"
 
 [metadata.files]
 appdirs = [
@@ -2015,9 +2007,6 @@ poyo = [
 pre-commit = [
     {file = "pre_commit-2.19.0-py2.py3-none-any.whl", hash = "sha256:10c62741aa5704faea2ad69cb550ca78082efe5697d6f04e5710c3c229afdd10"},
     {file = "pre_commit-2.19.0.tar.gz", hash = "sha256:4233a1e38621c87d9dda9808c6606d7e7ba0e087cd56d3fe03202a01d2919615"},
-]
-progress = [
-    {file = "progress-1.6.tar.gz", hash = "sha256:c9c86e98b5c03fa1fe11e3b67c1feda4788b8d0fe7336c2ff7d5644ccfba34cd"},
 ]
 psutil = [
     {file = "psutil-5.9.0-cp27-cp27m-manylinux2010_i686.whl", hash = "sha256:55ce319452e3d139e25d6c3f85a1acf12d1607ddedea5e35fb47a552c051161b"},
