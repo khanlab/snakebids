@@ -1,10 +1,13 @@
 
 snakebids
 =========
+[![Tests](https://github.com/akhanf/snakebids/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/akhanf/snakebids/actions/workflows/test.yml?query=branch%3Amain)
 [![Documentation Status](https://readthedocs.org/projects/snakebids/badge/?version=latest)](https://snakebids.readthedocs.io/en/latest/?badge=latest)
+[![Version](https://img.shields.io/github/v/tag/akhanf/snakebids?label=version)](https://pypi.org/project/snakebids/)
+[![Python versions](https://img.shields.io/pypi/pyversions/snakebids)](https://pypi.org/project/snakebids/)
+[![DOI](https://zenodo.org/badge/309495236.svg)](https://zenodo.org/badge/latestdoi/309495236)
 
 Snakemake + BIDS
-
 This package allows you to build BIDS Apps using Snakemake. It offers:
 
 
@@ -17,7 +20,7 @@ This package allows you to build BIDS Apps using Snakemake. It offers:
 Contributing
 ============
 
-Clone the git repository. Snakebids dependencies are managed with Poetry, which you'll need installed on your machine. You can find instructions on the [poetry website](https://python-poetry.org/docs/master/#installation). Then, setup the development environment with the following commands::
+Clone the git repository. Snakebids dependencies are managed with Poetry, which you'll need installed on your machine. You can find instructions on the [poetry website](https://python-poetry.org/docs/master/#installation). Then, setup the development environment with the following commands:
 
 ```bash
 poetry install
