@@ -3,7 +3,7 @@
 import snakebids
 from snakebids import bids
 
-configfile: workflow.source_path('..config/snakebids.yml')
+configfile: workflow.source_path('../config/snakebids.yml')
 
 #writes inputs_config.yml and updates config dict
 config.update(
@@ -29,17 +29,40 @@ wildcard_constraints:  **snakebids.get_wildcard_constraints(\
 
 rule all:
     input: 
-        expand( bids(root=config['root'], datatype='func',suffix='bold.nii.gz', desc='smooth{fwhm}mm', **config['input_wildcards']['bold']), 
-            fwhm = config['smoothing_fwhm'],**config['input_lists']['bold'])
+        expand(
+            expand(
+                bids(
+                    root=config['root'],
+                    datatype='func',
+                    suffix='bold.nii.gz',
+                    desc='smooth{fwhm}mm',
+                    **config['input_wildcards']['bold']
+                ),
+                fwhm = config['smoothing_fwhm'],
+                allow_missing=True,
+            ),
+            zip,
+            **config['input_zip_lists']['bold']
+        )
 
 
 rule smooth:
     input: config['input_path']['bold']
     params: sigma = lambda wildcards: f'{float(wildcards.fwhm)/2.355:0.2f}'
-    output: bids(root=config['root'], datatype='func',\
-                  desc='smooth{fwhm}mm', suffix='bold.nii.gz',\
-                  **config['input_wildcards']['bold'])
+    output:
+        bids(
+            root=config['root'],
+            datatype='func',
+            desc='smooth{fwhm}mm',
+            suffix='bold.nii.gz',
+            **config['input_wildcards']['bold']
+        )
     container: config['singularity']['fsl']
-    log: bids(root='logs',suffix='smooth.log',fwhm='{fwhm}',**config['input_wildcards']['bold'])
+    log:
+        bids(
+            root='logs',
+            suffix='smooth.log',
+            fwhm='{fwhm}',
+            **config['input_wildcards']['bold']
+        )
     shell: 'fslmaths {input} -s {params.sigma} {output}'
-
