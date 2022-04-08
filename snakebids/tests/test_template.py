@@ -8,7 +8,7 @@ from snakebids.app import SnakeBidsApp
 from snakebids.cli import SnakebidsArgs
 
 
-def test_fails_if_no_subcommand(tmp_path):
+def test_template_dry_runs_successfully(tmp_path):
     cookiecutter(
         str(Path(snakebids.__path__[0]) / "project_template"),
         no_input=True,
