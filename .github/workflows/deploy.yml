@@ -45,12 +45,19 @@ jobs:
             echo "NEW_RELEASE=0.1.0" >> $GITHUB_ENV
           fi 
 
-      - name: Update version in files
+      - name: Update version in pyproject.toml
         uses: jacobtomlinson/gha-find-replace@master
         with:
           include: 'pyproject.toml'
           find: 'version = "(?:([0-9]+\.[0-9]+\.[0-9]+.+)|([0-9]+\.[0-9]+\.[0-9]+))"'
           replace: 'version = "${{ env.NEW_RELEASE }}"'
+
+      - name: Update version in cookiecutter template
+        uses: jacobtomlinson/gha-find-replace@master
+        with:
+          include: 'snakebids/project_template/cookiecutter.json'
+          find: '"snakebids_version": "(?:([0-9]+\.[0-9]+\.[0-9]+.+)|([0-9]+\.[0-9]+\.[0-9]+))"'
+          replace: '"snakebids_version": "${{ env.NEW_RELEASE }}"'
 
       - name: Commit updates
         env:
