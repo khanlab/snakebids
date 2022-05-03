@@ -22,6 +22,8 @@ In the following (YAML-formatted) example, the ``bold`` input type is specified.
         - task
         - run
 
+pybids_db: A dictionary that provides a path to save the ``PyBIDS`` layout and whether the layout should be updated. The layout path is defined by ``database_dir``. If a layout should be saved / used, this value can be set to ``''``. If a ``database_dir`` is provided and the layout should be updated, set ``reset_database`` to ``True``. Default behaviour is to use the existing database provided.
+
 analysis_levels: A list of analysis levels in the BIDS app. Typically, this will include participant and/or group. Note that the default (YAML) configuration file expects this mapping to be identified with the anchor ``analysis_levels`` to be aliased by ``parse_args``.
 
 targets_by_analysis_level: A mapping from the name of each ``analysis_level`` to the list of rules or files to be run for that analysis level.
@@ -31,4 +33,3 @@ parse_args: A dictionary of command-line parameters to make available as part of
 debug: A boolean that determines whether debug statements are printed during parsing. Should be disabled (False) if you're generating DAG visualization with snakemake.
 
 derivatives: A boolean (or path(s) to derivatives datasets) that determines whether snakebids will search in the derivatives subdirectory of the input dataset.
-

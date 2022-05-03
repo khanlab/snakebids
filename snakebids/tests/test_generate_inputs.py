@@ -1,7 +1,9 @@
 from __future__ import absolute_import
 
+import filecmp
 import itertools as it
 import os
+import shutil
 from collections import defaultdict
 from pathlib import Path
 
@@ -9,7 +11,11 @@ import pytest
 from bids import BIDSLayout
 
 from snakebids.core.construct_bids import bids
-from snakebids.core.input_generation import _get_lists_from_bids, generate_inputs
+from snakebids.core.input_generation import (
+    _gen_bids_layout,
+    _get_lists_from_bids,
+    generate_inputs,
+)
 from snakebids.tests.helpers import BidsListCompare
 
 
@@ -303,3 +309,80 @@ def test_get_lists_from_bids():
             "t1": {"acq": "{acq}", "subject": "{subject}"},
             "t2": {"subject": "{subject}"},
         }
+
+
+class TestDB:
+    @pytest.fixture(autouse=True)
+    def start(self, tmpdir):
+        self.tmpdir = tmpdir.strpath
+
+        # Copy over test data
+        shutil.copytree("snakebids/tests/data/bids_t1w", f"{self.tmpdir}/data")
+        assert filecmp.dircmp("snakebids/tests/data/bids_t1w", f"{self.tmpdir}/data")
+
+        # Create config
+        self.bids_dir = f"{self.tmpdir}/data"
+        self.pybids_db = {"database_dir": "", "reset_database": False}
+
+    def test_database_dir_blank(self):
+        # Test non-saving (check db does not exist)
+        _gen_bids_layout(
+            bids_dir=self.bids_dir,
+            derivatives=False,
+            pybids_database_dir=self.pybids_db.get("database_dir"),
+            pybids_reset_database=self.pybids_db.get("reset_database"),
+        )
+        assert not os.path.exists(self.pybids_db.get("database_dir"))
+
+    def test_database_dir_relative(self):
+        # Update config
+        self.pybids_db["database_dir"] = "./.db"
+
+        # Check to make sure db exists (relative path)
+        _gen_bids_layout(
+            bids_dir=self.bids_dir,
+            derivatives=False,
+            pybids_database_dir=self.pybids_db.get("database_dir"),
+            pybids_reset_database=self.pybids_db.get("reset_database"),
+        )
+        assert not os.path.exists(f"{self.tmpdir}/data/.db/")
+
+    def test_database_dir_absolute(self):
+        # Update config
+        self.pybids_db["database_dir"] = f"{self.tmpdir}/data/.db/"
+        self.pybids_db["reset_database"] = False
+
+        # Check to make sure db exists (absolute path)
+        _gen_bids_layout(
+            bids_dir=self.bids_dir,
+            derivatives=False,
+            pybids_database_dir=self.pybids_db.get("database_dir"),
+            pybids_reset_database=self.pybids_db.get("reset_database"),
+        )
+        assert os.path.exists(f"{self.tmpdir}/data/.db/")
+
+        # Test reading of old layout when changes occur
+        os.makedirs(f"{self.tmpdir}/data/sub-003/anat")
+        shutil.copy(
+            f"{self.bids_dir}/sub-001/anat/sub-001_acq-mprage_T1w.nii.gz",
+            f"{self.bids_dir}/sub-003/anat/sub-003_acq-mprage_T1w.nii.gz",
+        )
+        # Check to make sure new subject not cached in layout
+        layout = _gen_bids_layout(
+            bids_dir=self.bids_dir,
+            derivatives=False,
+            pybids_database_dir=self.pybids_db.get("database_dir"),
+            pybids_reset_database=self.pybids_db.get("reset_database"),
+        )
+        assert not layout.get(subject="003")
+
+        # Test updating of layout
+        self.pybids_db["reset_database"] = True
+        # Check to see if new subject in updated layout
+        layout = _gen_bids_layout(
+            bids_dir=self.bids_dir,
+            derivatives=False,
+            pybids_database_dir=self.pybids_db.get("database_dir"),
+            pybids_reset_database=self.pybids_db.get("reset_database"),
+        )
+        assert layout.get(subject="003")
