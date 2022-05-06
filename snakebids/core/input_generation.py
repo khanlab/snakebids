@@ -262,9 +262,7 @@ def _gen_bids_layout(
             bids_dir,
             derivatives=derivatives,
             validate=False,
-            # In the next version of pybids, config will accept Paths, so we won't
-            # need this long stringify line
-            config=str(pybids_config) if pybids_config is not None else pybids_config,
+            config=pybids_config,
             database_path=pybids_database_dir,
             reset_database=pybids_reset_database,
             indexer=BIDSLayoutIndexer(validate=False, index_metadata=False),

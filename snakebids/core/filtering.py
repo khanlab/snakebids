@@ -34,7 +34,7 @@ def filter_list(
 def filter_list(
     zip_list: Dict[str, List[str]],
     filters: Dict[str, T_co],
-    return_indices_only=False,
+    return_indices_only: bool = False,
     regex_search=False,
 ):
     """This function is used when you are expanding over some subset of the
