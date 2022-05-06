@@ -109,7 +109,7 @@ def test_custom_pybids_config(tmpdir: Path):
         pybids_inputs=pybids_inputs,
         bids_dir=tmpdir,
         derivatives=derivatives,
-        pybids_config=str(Path(__file__).parent / "data" / "custom_config.json"),
+        pybids_config=(Path(__file__).parent / "data" / "custom_config.json"),
     )
     # Order of the subjects is not deterministic
     assert config["input_lists"] in [
