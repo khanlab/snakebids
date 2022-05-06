@@ -698,7 +698,7 @@ def test_t1w_with_dict():
             {
                 "acq": ["mprage", "mprage"],
                 "subject": ["002", "001"],
-                "suffix": ["T2w", "T2w"],
+                "suffix": ["T1w", "T1w"],
             },
         ]
         assert config["input_zip_lists"]["t2"] == {
