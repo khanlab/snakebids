@@ -473,6 +473,29 @@ def _gen_bids_layout(
 ):
     """Create (or reindex) the BIDSLayout if one doesn't exist,
     which is only saved if a database directory path is provided
+
+     Parameters
+    ----------
+    bids_dir : str
+        Path to bids directory
+
+    derivatives : bool
+        A boolean (or path(s) to derivatives datasets) that
+        determines whether snakebids will search in the
+        derivatives subdirectory of the input dataset.
+
+    pybids_database_dir : str
+        Path to database directory. If None is provided, database
+        is not used
+
+    pybids_reset_database : bool
+        A boolean that determines whether to reset / overwrite
+        existing database.
+
+    Returns
+    -------
+    layout : BIDSLayout
+        Layout from pybids for accessing the BIDS dataset to grab paths
     """
 
     # Set db dir to None (otherwise saves to parent dir)
@@ -487,9 +510,7 @@ def _gen_bids_layout(
             and not Path(pybids_database_dir).is_absolute()
         ):
             pybids_database_dir = None
-            _logger.warning(
-                "Absolute path must be provided, database will " "not be used"
-            )
+            _logger.warning("Absolute path must be provided, database will not be used")
 
         layout = BIDSLayout(
             bids_dir,
