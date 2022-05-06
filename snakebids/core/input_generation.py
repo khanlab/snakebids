@@ -692,11 +692,11 @@ def _parse_bids_path(path: str, wildcards: Iterable[str]) -> Tuple[str, Dict[str
     """
 
     wildcard_values: Dict[str, str] = {}
+    bids_tags = read_bids_tags()
 
     for wildcard in wildcards:
         # Iterate over wildcards, slowly updating the path as each entity is replaced
 
-        bids_tags = read_bids_tags()
         tag = bids_tags[wildcard] if wildcard in bids_tags else wildcard
 
         # this changes e.g. sub-001 to sub-{subject} in the path

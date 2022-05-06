@@ -61,7 +61,7 @@ def get_match_search_func(
         Takes as a single arg a value to be matched. It will be compared to every item
         in match list using match_func
     """
-    match_list = [*match_list]
+    match_list = list(match_list)
 
     def inner(item: Any):
         return matches_any(item, match_list, match_func)
