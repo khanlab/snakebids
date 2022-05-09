@@ -248,7 +248,7 @@ To add this parsing to the workflow, we call the {func}`snakebids.generate_input
     )
 
 ```{note}
-Snakebids is transitioning to a new format for {func}`generate_inputs() <snakebids.generate_inputs()>`. Currently, you need to opt-in to the new features by setting `use_bids_lists=True` in `generate_inputs()`, but it will become the default in an upcoming version. We recommend all new users opt-in to maintain long term support, so the tuturial is written using the new syntax. A tutorial for the old syntax can be found on [the v0.5.0 docs](https://snakebids.readthedocs.io/en/v0.5.0/tutorial/tutorial.html#part-ii-snakebids)
+Snakebids is transitioning to a new format for {func}`generate_inputs() <snakebids.generate_inputs()>`. Currently, you need to opt-in to the new features by setting `use_bids_lists=True` in `generate_inputs()`, but it will become the default in an upcoming version. We recommend all new users opt-in to maintain long term support, so the tuturial is written using the new syntax. A tutorial for the old syntax can be found on [the v0.5.0 docs](https://snakebids.readthedocs.io/en/v0.5.0/tutorial/tutorial.html#part-ii-snakebids).
 ```
 
 
@@ -272,11 +272,10 @@ The config variables we need pre-defined are as follows::
 The ``pybids_inputs`` dict defines what types of inputs the workflow can make use of (i.e. the top-level keys, ``bold`` in this case), and for each input, how to filter for them (i.e. the ``filters`` dict), and what BIDS entities to replace with wildcards in the snakemake workflow (i.e. the ``wildcards`` dict).
 
 ```{note}
-The ``filters`` dict is passed directly to the ``get()`` function in ``pybids``, and thus is quite customizable
+The ``filters`` dict is passed directly to the ``get()`` function in ``pybids``, and thus is quite customizable.
 ```
 
 %  (TODO: add link)
-%  Edit: A link would be nice, but pybids docs are abysmal, so there's not much to link to!
 
 ```{note}
 Entries in the ``wildcards`` list do not have to be in your bids dataset, but if they are, then they will be converted into wildcards (i.e. ``task-{task}``) if they are in the filenames. The names for these also correspond with pybids (e.g. ``acquisition`` maps to ``acq``).
