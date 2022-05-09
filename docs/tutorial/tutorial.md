@@ -248,9 +248,7 @@ To add this parsing to the workflow, we call the {func}`snakebids.generate_input
     )
 
 ```{note}
-Snakebids is transitioning to a new format for {func}`generate_inputs() <snakebids.generate_inputs()>`. Currently, you need to opt-in to the new features by setting `use_bids_lists=True` in `generate_inputs()`, but it will become the default in an upcoming version. We recommend all new users opt-in to maintain long term support, so the tuturial is written using the new syntax.
-% Need a permalink to an old versino
-% A tutorial for the old syntax can be found on [old versions of the docs]()
+Snakebids is transitioning to a new format for {func}`generate_inputs() <snakebids.generate_inputs()>`. Currently, you need to opt-in to the new features by setting `use_bids_lists=True` in `generate_inputs()`, but it will become the default in an upcoming version. We recommend all new users opt-in to maintain long term support, so the tuturial is written using the new syntax. A tutorial for the old syntax can be found on [the v0.5.0 docs](https://snakebids.readthedocs.io/en/v0.5.0/tutorial/tutorial.html#part-ii-snakebids)
 ```
 
 
