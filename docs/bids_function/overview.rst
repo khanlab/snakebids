@@ -57,7 +57,7 @@ Now if you want to process all inputs of a given form regardless of how their wi
             acq="{acq}",
             task="{task}",
             run="{run}",
-            **inputs."subj_wildcards"
+            **inputs.subj_wildcards
         ),
         zip,
         inputs.input_zip_lists["bold"]
