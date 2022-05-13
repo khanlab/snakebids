@@ -13,6 +13,11 @@ on:
         default: "YYYY-MM-DD"
       comments:
         description: "Comments"
+        required: false
+      branch:
+        description: The branch from which to make the release
+        required: true
+        default: main
 
 jobs:
   release_changelog:
@@ -27,23 +32,25 @@ jobs:
 
       - uses: actions/checkout@master
         with:
-          ref: refs/heads/main
+          ref: ${{ github.event.inputs.branch }}
 
       - name: Draft change log
         uses: release-drafter/release-drafter@v5
         id: release-drafter
+        with:
+          commitish: ${{ github.event.inputs.branch }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set new release version
         env:
           RD_RELEASE: ${{ steps.release-drafter.outputs.name }}
-        run: | 
+        run: |
           if [ ! -z "$RD_RELEASE" ]; then
             echo "NEW_RELEASE=$RD_RELEASE" >> $GITHUB_ENV
           else
             echo "NEW_RELEASE=0.1.0" >> $GITHUB_ENV
-          fi 
+          fi
 
       - name: Update version in pyproject.toml
         uses: jacobtomlinson/gha-find-replace@master
@@ -67,15 +74,16 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git diff-index --quiet HEAD || git commit -m "Bump version to $LATEST_VERSION" -a
 
-      - name: Push changes 
+      - name: Push changes
         uses: CasperWA/push-protected@v2
         with:
           token: ${{ secrets.BP_PAT_TOKEN }}
-          unprotect_reviews: True 
+          unprotect_reviews: True
 
       - name: Publish change log
         uses: release-drafter/release-drafter@v5
         with:
+          commitish: ${{ github.event.inputs.branch }}
           publish: true
           name: ${{ env.NEW_RELEASE }}
           tag: "v${{ env.NEW_RELEASE }}"
@@ -89,7 +97,7 @@ jobs:
     steps:
       - uses: actions/checkout@master
         with:
-          ref: refs/heads/main
+          ref: ${{ github.event.inputs.branch }}
 
       - name: Set up Python
         uses: actions/setup-python@v2
