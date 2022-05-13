@@ -277,6 +277,14 @@ def generate_inputs(
           as in ``/path/to/sub-{subject}/{wildcard_1}-{wildcard_2}``. This path will be
           parsed without pybids, allowing the use of non-bids-compliant paths.
 
+    pybids_database_dir : str
+        Path to database directory. If None is provided, database
+        is not used
+
+    pybids_reset_database : bool
+        A boolean that determines whether to reset / overwrite
+        existing database.
+
     derivatives : bool
         Indicates whether pybids should look for derivative datasets under bids_dir.
         These datasets must be properly formatted according to bids specs to be
