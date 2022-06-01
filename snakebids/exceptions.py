@@ -3,12 +3,12 @@ class ConfigError(Exception):
 
     def __init__(self, msg):
         self.msg = msg
-        super().__init__()
+        super().__init__(msg)
 
 
 class RunError(Exception):
     """Exception raised for errors in generating and running the snakemake workflow."""
 
     def __init__(self, msg: str, *args: object) -> None:
-        super().__init__(*args)
+        super().__init__(msg, *args)
         self.msg = msg
