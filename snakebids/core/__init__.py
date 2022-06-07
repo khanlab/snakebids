@@ -7,16 +7,18 @@ __ignore__ = ["T_co"]
 from snakebids.core.construct_bids import bids, print_boilerplate
 from snakebids.core.filtering import filter_list, get_filtered_ziplist_index
 from snakebids.core.input_generation import (
-    BidsInputs,
-    BidsInputsDict,
+    BidsComponent,
+    BidsDataset,
+    BidsDatasetDict,
     generate_inputs,
     get_wildcard_constraints,
     write_derivative_json,
 )
 
 __all__ = [
-    "BidsInputs",
-    "BidsInputsDict",
+    "BidsComponent",
+    "BidsDataset",
+    "BidsDatasetDict",
     "bids",
     "filter_list",
     "generate_inputs",

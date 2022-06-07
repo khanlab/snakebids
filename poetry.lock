@@ -125,6 +125,14 @@ tabulate = "*"
 termcolor = "*"
 
 [[package]]
+name = "cached-property"
+version = "1.5.2"
+description = "A decorator for caching properties in classes."
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "certifi"
 version = "2022.5.18.1"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -1515,7 +1523,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.11"
-content-hash = "69e4056a68ae906c74df44729d01fb1d00281e72b5af5ded4c909d369fb11def"
+content-hash = "06fc6678a1b91fbbdbc9e87f6c07871ce1d060fb16b8cab0b53de292652c4fed"
 
 [metadata.files]
 appdirs = [
@@ -1572,6 +1580,10 @@ black = [
 ]
 boutiques = [
     {file = "boutiques-0.5.25-py2.py3-none-any.whl", hash = "sha256:1a29e5b0e786f1904ebb8d767fbe6189a59865dff120ffe76d141bbea1043b04"},
+]
+cached-property = [
+    {file = "cached-property-1.5.2.tar.gz", hash = "sha256:9fa5755838eecbb2d234c3aa390bd80fbd3ac6b6869109bfc1b499f7bd89a130"},
+    {file = "cached_property-1.5.2-py2.py3-none-any.whl", hash = "sha256:df4f613cf7ad9a588cc381aaf4a512d26265ecebd5eb9e1ba12f1319eb85a6a0"},
 ]
 certifi = [
     {file = "certifi-2022.5.18.1-py3-none-any.whl", hash = "sha256:f1d53542ee8cbedbe2118b5686372fb33c297fcd6379b050cca0ef13a597382a"},

@@ -25,7 +25,7 @@ repos:
   - repo: local
     hooks:
       - id: flake8
-        exclude: snakebids/tests
+        exclude: snakebids/tests|typings
         entry: poetry run flake8
         language: system
         name: flake8

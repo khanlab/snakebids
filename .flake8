@@ -9,3 +9,4 @@ extend-exclude =
     .hypothesis/
     docs/
     snakebids/project_template/*/docs
+    typings/
