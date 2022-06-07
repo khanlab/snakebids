@@ -5,65 +5,36 @@ import json
 import logging
 import operator as op
 import re
-from collections import defaultdict
+from collections import UserDict, defaultdict
 from pathlib import Path
 from typing import (
+    TYPE_CHECKING,
+    Any,
     Dict,
     Generator,
     Iterable,
     List,
-    NamedTuple,
     Optional,
     Tuple,
     Union,
+    cast,
     overload,
 )
 
 import attr
 import more_itertools as itx
 from bids import BIDSLayout, BIDSLayoutIndexer
+from cached_property import cached_property
 from typing_extensions import Literal, TypedDict
 
 from snakebids.core.filtering import filter_list
 from snakebids.utils.snakemake_io import glob_wildcards
-from snakebids.utils.utils import get_match_search_func, read_bids_tags
+from snakebids.utils.utils import read_bids_tags
 
 _logger = logging.getLogger(__name__)
 
 
-_BidsLists = NamedTuple(
-    "BidsLists",
-    [
-        ("input_name", str),
-        ("input_path", str),
-        ("input_zip_lists", Dict[str, List[str]]),
-        ("input_lists", Dict[str, List[str]]),
-        ("input_wildcards", Dict[str, str]),
-    ],
-)
-_BidsLists.__doc__ = """Bids inputs from a single input descriptor
-
-Attributes
-----------
-input_name : str
-    The name of the input descriptor.
-input_path : str
-    Wildcard-filled path that matches the images for this modality.
-input_zip_lists : dict
-    Each key is a wildcard entity and each value is a list of the values found for that
-    entity. Each of these lists has length equal to the number of images matched for
-    this modality, so they can be zipped together to get a list of the wildcard values
-    for each image.
-input_lists : dict
-    Each key is a wildcard entity and each value is a list of the unique values found
-    for that entity. These lists might not be the same length.
-input_wildcards : dict
-    Where each key is the name of a wildcard entity, and each value is the Snakemake
-    wildcard used for that entity.
-"""
-
-
-class BidsInputsDict(TypedDict):
+class BidsDatasetDict(TypedDict):
     """Dict equivalent of BidsInputs, for backwards-compatibility"""
 
     input_path: Dict[str, str]
@@ -75,33 +46,159 @@ class BidsInputsDict(TypedDict):
     subj_wildcards: Dict[str, str]
 
 
-@attr.frozen
-class BidsInputs:
-    """Bids input entities and their resolved values
+@attr.define
+class BidsComponent:
+    """Component of a BidsDataset mapping entities to their resolved values
 
-    Attributes
+    BidsComponents are immutable: their values cannot be altered.
+
+    Properties
     ----------
+    input_name
+        Name of the component
     input_path
-        Wildcard-filled path that matches the images for this modality.
+        Wildcard-filled path that matches the files for this component.
     input_zip_lists
         Dictionary where each key is a wildcard entity and each value is a list of the
         values found for that entity. Each of these lists has length equal to the number
         of images matched for this modality, so they can be zipped together to get a
-        list of the wildcard values for each image.
-    input_lists
-        Dictionary where each key is a wildcard entity and each value is a list of the
-        unique values found for that entity. These lists might not be the same length.
-    input_wildcards
-        Dictionary where each key is the name of a wildcard entity, and each value is
-        the Snakemake wildcard used for that entity.
+        list of the wildcard values for each file.
+
+    Attributes
+    ----------
+    input_name
+    input_path
+    input_zip_lists
     """
 
-    input_path: Dict[str, str]
-    input_zip_lists: Dict[str, Dict[str, List[str]]]
-    input_lists: Dict[str, Dict[str, List[str]]]
-    input_wildcards: Dict[str, Dict[str, str]]
+    input_name: str = attr.field(on_setattr=attr.setters.frozen)
+    input_path: str = attr.field(on_setattr=attr.setters.frozen)
+    input_zip_lists: Dict[str, List[str]] = attr.field(on_setattr=attr.setters.frozen)
+
+    # Note: we can't use cached property here because it's incompatible with slots.
+    _input_lists: Optional[Dict[str, List[str]]] = attr.field(
+        default=None, init=False, eq=False
+    )
+    _input_wildcards: Optional[Dict[str, str]] = attr.field(
+        default=None, init=False, eq=False
+    )
 
     @property
+    def input_lists(self):
+        """Compact list reprentation of values
+
+        Dictionary where each key is a wildcard entity and each value is a list of the
+        unique values found for that entity. These lists might not be the same length.
+        """
+        if self._input_lists is None:
+            self._input_lists = {
+                entity: list(set(values))
+                for entity, values in self.input_zip_lists.items()
+            }
+        return self._input_lists
+
+    @property
+    def input_wildcards(self):
+        """Wildcards in brace-wrapped syntax
+
+        Dictionary where each key is the name of a wildcard entity, and each value is
+        the Snakemake wildcard used for that entity.
+        """
+        if self._input_wildcards is None:
+            self._input_wildcards = {
+                entity: f"{{{entity}}}" for entity in self.input_zip_lists
+            }
+        return self._input_wildcards
+
+    def __eq__(self, other: Union["BidsComponent", object]):
+        if not isinstance(other, BidsComponent):
+            return False
+
+        if self.input_name != other.input_name:
+            return False
+
+        if self.input_path != other.input_path:
+            return False
+
+        def sorted_items(dictionary: Dict[str, List[str]]):
+            return sorted(dictionary.items(), key=op.itemgetter(0))
+
+        if set(self.input_zip_lists) != set(other.input_zip_lists):
+            return False
+
+        if not other.input_zip_lists and not self.input_zip_lists:
+            return True
+
+        other_items = cast(
+            List[List[str]], list(zip(*sorted_items(other.input_zip_lists)))[1]
+        )
+        our_items = cast(
+            List[List[str]], list(zip(*sorted_items(self.input_zip_lists)))[1]
+        )
+
+        return set(zip(*our_items)) == set(zip(*other_items))
+
+
+if TYPE_CHECKING:
+    _BidsComponentsType = UserDict[str, BidsComponent]
+else:
+    # UserDict is not subscriptable in py37
+    _BidsComponentsType = UserDict
+
+
+class BidsDataset(_BidsComponentsType):
+    """A bids dataset parsed by pybids, organized into BidsComponents.
+
+    BidsDatasets are typically generated using `generate_inputs()`, which reads the
+    `pybids_inputs` field in your snakemake config file and, for each entry, creates
+    a BidsComponent using the provided name, wildcards, and filters.
+
+    Individual components can be accessed using bracket-syntax: (e.g.`inputs["t1w"]`).
+    Component access attributes (input_*) along with the component name in brackets can
+    also be used. For example, `BidsComponents.input_lists["t1w"]` and
+    `BidsComponents["t1w"].input_lists` return the same thing.
+
+    Provides access to summarizing information, for instance, the set of all subjects or
+    sessions found in the dataset
+
+    Attributes
+    ----------
+    input_path
+        Dict mapping bids components to their paths.
+    input_zip_lists
+        Dict mapping bids components to their input_zip_lists
+    input_lists
+        Dict mapping bids components to their input_lists
+    input_wildcards
+        Dict mapping bids components to their wildcard dicts
+    """
+
+    # pylint: disable=super-init-not-called
+    def __init__(self, data: Any):
+        self.data = dict(data)
+
+    def __setitem__(self, _: Any, __: Any):
+        raise NotImplementedError(
+            f"Modification of {self.__class__.__name__} is not yet supported"
+        )
+
+    @cached_property
+    def input_path(self):
+        return {key: value.input_path for key, value in self.data.items()}
+
+    @cached_property
+    def input_zip_lists(self):
+        return {key: value.input_zip_lists for key, value in self.data.items()}
+
+    @cached_property
+    def input_lists(self):
+        return {key: value.input_lists for key, value in self.data.items()}
+
+    @cached_property
+    def input_wildcards(self):
+        return {key: value.input_wildcards for key, value in self.data.items()}
+
+    @cached_property
     def subjects(self):
         """A list of the subjects in the dataset."""
         return [
@@ -115,6 +212,7 @@ class BidsInputs:
         ]
 
     @property
+    # @ft.lru_cache(None)
     def sessions(self):
         """A list of the sessions in the dataset."""
         return [
@@ -128,6 +226,7 @@ class BidsInputs:
         ]
 
     @property
+    # @ft.lru_cache(None)
     def subj_wildcards(self):
         """The subject and session wildcards applicable to this dataset.
 
@@ -143,60 +242,38 @@ class BidsInputs:
 
     @property
     def as_dict(self):
-        return BidsInputsDict(
-            **attr.asdict(self),
+        """Get the layout as a legacy dict
+
+        Included primarily for backward compatability with older versions of snakebids,
+        where generate_inputs() returned a dict rather than the `BidsDataset` class
+
+        Returns
+        -------
+        BidsDatasetDict
+        """
+        return BidsDatasetDict(
+            input_path=self.input_path,
+            input_lists=self.input_lists,
+            input_wildcards=self.input_wildcards,
+            input_zip_lists=self.input_zip_lists,
             subjects=self.subjects,
             sessions=self.sessions,
             subj_wildcards=self.subj_wildcards,
         )
 
-    @staticmethod
-    def _get_bids_lists_as_dicts(bids_lists: Iterable[_BidsLists]):
-        """Convert Iterable of Bids lists into dictionaries
-
-        The dictionaries will be in a form suitable for use in BidsInputs. In other
-        words, each list type (input_path, input_zip_lists, etc) will be a dict with
-        input descriptors as keys and the list type as values.
-
-        Parameters
-        ----------
-        bids_lists : Iterable[BidsLists]
-            BidsLists to be converted
-
-        Returns
-        -------
-        Tuple of Dicts
-            Tuple of all the dicts generated from the BidsLists
-        """
-        bids_lists = [*bids_lists]
-
-        def get_as_dict(attr_name):
-            return {
-                bids_list.input_name: getattr(bids_list, attr_name)
-                for bids_list in bids_lists
-            }
-
-        return (
-            get_as_dict("input_path"),
-            get_as_dict("input_zip_lists"),
-            get_as_dict("input_lists"),
-            get_as_dict("input_wildcards"),
-        )
-
     @classmethod
-    def from_bids_lists(cls, bids_lists: Iterable[_BidsLists]):
-        """Generate BidsInputs based on an iterable of BidsLists
+    def from_iterable(cls, iterable: Iterable[BidsComponent]):
+        """Construct Dataset from iterable of BidsComponents
 
         Parameters
         ----------
-        bids_lists : Iterable[BidsLists]
-            Iterable of BidsLists to convert
+        iterable : Iterable[BidsComponent]
 
         Returns
         -------
-        BidsInputs
+        BidsDataset
         """
-        return cls(*cls._get_bids_lists_as_dicts(bids_lists))
+        return cls({bidsinput.input_name: bidsinput for bidsinput in iterable})
 
 
 # pylint: disable=too-many-arguments
@@ -212,7 +289,7 @@ def generate_inputs(
     participant_label=...,
     exclude_participant_label=...,
     use_bids_inputs: Union[Literal[False], None] = ...,
-) -> BidsInputsDict:
+) -> BidsDatasetDict:
     ...
 
 
@@ -229,7 +306,7 @@ def generate_inputs(
     participant_label=...,
     exclude_participant_label=...,
     use_bids_inputs: Literal[True] = ...,
-) -> BidsInputs:
+) -> BidsDataset:
     ...
 
 
@@ -468,8 +545,8 @@ def generate_inputs(
         )
         use_bids_inputs = False
     if use_bids_inputs:
-        return BidsInputs.from_bids_lists(bids_inputs)
-    return BidsInputs.from_bids_lists(bids_inputs).as_dict
+        return BidsDataset.from_iterable(bids_inputs)
+    return BidsDataset.from_iterable(bids_inputs).as_dict
 
 
 def _gen_bids_layout(
@@ -659,45 +736,23 @@ def _parse_custom_path(
         _logger.warning("No wildcards defined in %s", input_path)
 
     # Initialize output values
-    input_wildcards: Dict[str, str] = {}
     input_zip_lists: Dict[str, List[str]] = {}
-    input_lists: Dict[str, List[str]] = {}
 
     # Log an error if no matches found
     # TODO: This will fail to detect filtering correctly as, up till now, it has
     #       only been performed on input_lists
     if len(wildcards[0]) == 0:
         _logger.error("No matching files for %s", input_path)
-        return (input_zip_lists, input_lists, input_wildcards)
+        return input_zip_lists
 
     # Loop through every wildcard name
     for i, wildcard in enumerate(wildcard_names):
         # Check if this wildcard needs to be filtered
-        if wildcard not in filters:
-            # If not, the match_func will always return True
-            match_func = lambda _: True  # noqa: E731
-        elif regex_search:
-            # Otherwise, we use regex matching for regex_search
-            match_func = get_match_search_func(
-                itx.always_iterable(filters[wildcard]), re.match
-            )
-        else:
-            # And a simple equality operator for everything else
-            match_func = get_match_search_func(
-                itx.always_iterable(filters[wildcard]), op.eq
-            )
-
         # Add the wildcard item to each output value, using filtering for input_lists
         input_zip_lists[wildcard] = wildcards[i]
-        input_lists[wildcard] = [*filter(match_func, set(wildcards[i]))]
-        input_wildcards[wildcard] = f"{{{wildcard}}}"
 
     # Return the output values, running filtering on the input_zip_lists
-    return (
-        filter_list(input_zip_lists, filters, regex_search=regex_search),
-        input_lists,
-        input_wildcards,
-    )
+    return filter_list(input_zip_lists, filters, regex_search=regex_search)
 
 
 def _parse_bids_path(path: str, wildcards: Iterable[str]) -> Tuple[str, Dict[str, str]]:
@@ -772,7 +827,7 @@ def _parse_bids_path(path: str, wildcards: Iterable[str]) -> Tuple[str, Dict[str
 
 def _get_lists_from_bids(
     bids_layout: Optional[BIDSLayout], pybids_inputs, limit_to=None, **filters
-) -> Generator[_BidsLists, None, None]:
+) -> Generator[BidsComponent, None, None]:
     """Grabs files using pybids and creates snakemake-friendly lists
 
     Parameters
@@ -809,13 +864,11 @@ def _get_lists_from_bids(
             # get input_zip_lists by using glob_wildcards (but need to modify
             # to deal with multiple wildcards
 
-            input_path = pybids_inputs[input_name]["custom_path"]
-            input_zip_lists, input_lists, input_wildcards = _parse_custom_path(
+            input_path: str = pybids_inputs[input_name]["custom_path"]
+            input_zip_lists = _parse_custom_path(
                 input_path, **pybids_inputs[input_name]["filters"], **filters
             )
-            yield _BidsLists(
-                input_name, input_path, input_zip_lists, input_lists, input_wildcards
-            )
+            yield BidsComponent(input_name, input_path, input_zip_lists)
             continue
 
         if bids_layout is None:
@@ -826,9 +879,7 @@ def _get_lists_from_bids(
             )
             continue
 
-        input_wildcards = {}
         input_zip_lists = defaultdict(list)
-        input_lists = defaultdict(set)
         paths = set()
         for img in bids_layout.get(
             **pybids_inputs[input_name].get("filters", {}), **filters
@@ -844,8 +895,6 @@ def _get_lists_from_bids(
 
             for wildcard_name, value in parsed_wildcards.items():
                 input_zip_lists[wildcard_name].append(value)
-                input_lists[wildcard_name].add(value)
-                input_wildcards[wildcard_name] = f"{{{wildcard_name}}}"
 
             paths.add(input_path)
 
@@ -865,12 +914,7 @@ def _get_lists_from_bids(
 
         input_path = list(paths)[0]
 
-        # convert sets to lists
-        input_lists = {key: list(val) for key, val in input_lists.items()}
-
-        yield _BidsLists(
-            input_name, input_path, input_zip_lists, input_lists, input_wildcards
-        )
+        yield BidsComponent(input_name, input_path, input_zip_lists)
 
 
 def get_wildcard_constraints(image_types):
