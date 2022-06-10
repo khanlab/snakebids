@@ -16,7 +16,7 @@ import more_itertools as itx
 import pytest
 from bids import BIDSLayout
 from bids.layout import Config as BidsConfig
-from hypothesis import assume, given, settings
+from hypothesis import assume, given
 from hypothesis import strategies as st
 
 from snakebids.core.construct_bids import bids
@@ -31,10 +31,7 @@ from snakebids.core.input_generation import (
 )
 from snakebids.tests.helpers import BidsListCompare
 
-
-def dict_select(dict: Dict[Any, Any], *keys: Any):
-    return {key: value for key, value in dict.items() if key in keys}
-
+T = TypeVar("T")
 
 BIDS_ALPHABET = st.characters(whitelist_categories=["Ll", "Lu", "Nd"])
 
@@ -212,14 +209,8 @@ class TestBidsComponentProperties:
         )
 
         wildstr = ".".join(bids_input.input_wildcards.values())
-        try:
-            first = wildstr.format(**bids_input.input_wildcards)
-        except KeyError as err:
-            assert False, err.args[0]
-        try:
-            second = first.format(**bids_entities)
-        except KeyError as err:
-            assert False, err.args[0]
+        first = wildstr.format(**bids_input.input_wildcards)
+        second = first.format(**bids_entities)
         assert set(second.split(".")) == set(bids_entities.values())
 
 
@@ -254,14 +245,14 @@ class TestAbsentConfigEntries:
             bids_dir=tmpdir,
             derivatives=derivatives,
             pybids_config=str(Path(__file__).parent / "data" / "custom_config.json"),
+            use_bids_inputs=True,
+        )
+        template = BidsDataset(
+            {"t1": BidsComponent("t1", config.input_path["t1"], zip_list)}
         )
         # Order of the subjects is not deterministic
-        assert config["input_lists"] == BidsListCompare({"t1": entities})
-        assert config["input_zip_lists"] == {"t1": zip_list}
-        assert config["input_wildcards"] == {
-            "t1": {"acq": "{acq}", "subject": "{subject}"}
-        }
-        assert config["subj_wildcards"] == {"subject": "{subject}"}
+        assert template == config
+        assert config.subj_wildcards == {"subject": "{subject}"}
 
     def test_missing_wildcards(self, tmpdir: Path):
         entities, zip_list = self.get_entities(tmpdir)
@@ -280,19 +271,11 @@ class TestAbsentConfigEntries:
             bids_dir=tmpdir,
             derivatives=derivatives,
             pybids_config=str(Path(__file__).parent / "data" / "custom_config.json"),
+            use_bids_inputs=True,
         )
-        result_d = {"acq": ["foo"], "subject": ["001"]}
-        assert config["input_lists"] == {"t1": {}}
-        assert config["input_zip_lists"] == {"t1": {}}
-        assert config["input_wildcards"] == {"t1": {}}
-        assert config["subj_wildcards"] == {"subject": "{subject}"}
-
-
-T = TypeVar("T")
-
-
-def tuple_to_list(dictionary):
-    return {key: list(value) for key, value in dictionary.items()}
+        template = BidsDataset({"t1": BidsComponent("t1", config.input_path["t1"], {})})
+        assert template == config
+        assert config.subj_wildcards == {"subject": "{subject}"}
 
 
 class TestGenerateFilter:
@@ -353,28 +336,6 @@ PathEntities = NamedTuple(
         ("filters", Dict[str, List[str]]),
     ],
 )
-
-
-@st.composite
-def st_bids_input(draw: st.DrawFn):
-    """Generate the elements of BidsLists for use in test_get_bids_lists_as_dict"""
-    # We restrict the character range and size of text generation in an effort to
-    # improve speed.
-    bids_text = st.text(max_size=5, min_size=1)
-    for _ in range(draw(st.sampled_from(range(1, 3)))):
-        num_entities = draw(st.sampled_from(range(1, 3)))
-        wildcards = draw(st.lists(st.text(), min_size=num_entities, unique=True))
-        yield BidsInput(
-            input_name=draw(bids_text),
-            input_path=draw(bids_text),
-            input_zip_lists=draw(
-                st.dictionaries(
-                    st.sampled_from(wildcards),
-                    st.lists(bids_text, max_size=5),
-                    max_size=num_entities,
-                )
-            ),
-        )
 
 
 PathEntities = NamedTuple(
@@ -460,9 +421,6 @@ class TestCustomPaths:
     @pytest.fixture(scope="class")
     def temp_dir(self, tmp_path_factory: pytest.TempPathFactory):
         return tmp_path_factory.mktemp("test-custom-paths-")
-
-    def as_sets(self, dictionary):
-        return {key: set(values) for key, values in dictionary.items()}
 
     def generate_test_directory(
         self, entities: Dict[str, List[str]], template: Path, tmpdir: Path
@@ -575,23 +533,33 @@ def test_custom_pybids_config(tmpdir: Path):
     }
 
     # Simplest case -- one input type, using pybids
-    config = generate_inputs(
+    result = generate_inputs(
         pybids_inputs=pybids_inputs,
         bids_dir=tmpdir,
         derivatives=derivatives,
         pybids_config=(Path(__file__).parent / "data" / "custom_config.json"),
+        use_bids_inputs=True,
     )
     # Order of the subjects is not deterministic
-    assert config["input_lists"] in [
-        {"t1": {"foo": ["0", "1"], "subject": ["001"]}},
-        {"t1": {"foo": ["1", "0"], "subject": ["001"]}},
-    ]
-    assert config["input_zip_lists"] == {
-        "t1": {"foo": ["0", "1"], "subject": ["001", "001"]}
-    }
-    assert config["input_wildcards"] == {"t1": {"foo": "{foo}", "subject": "{subject}"}}
+    template = BidsDataset(
+        {
+            "t1": BidsComponent(
+                "t1",
+                bids(
+                    tmpdir,
+                    datatype="anat",
+                    subject="{subject}",
+                    foo="{foo}",
+                    suffix="T1w.nii.gz",
+                ),
+                {"foo": ["0", "1"], "subject": ["001", "001"]},
+            )
+        }
+    )
+    assert template == result
+    assert result.input_wildcards == {"t1": {"foo": "{foo}", "subject": "{subject}"}}
     # Order of the subjects is not deterministic
-    assert config["subj_wildcards"] == {"subject": "{subject}"}
+    assert result.subj_wildcards == {"subject": "{subject}"}
 
 
 def test_t1w():
@@ -614,10 +582,10 @@ def test_t1w():
             participant_label="001",
             exclude_participant_label="002",
         )
-        assert v_error.msg == (  # type: ignore
-            "Cannot define both participant_label and "
-            "exclude_participant_label at the same time"
-        )
+    assert v_error.value.args[0] == (
+        "Cannot define both participant_label and "
+        "exclude_participant_label at the same time"
+    )
 
     # Simplest case -- one input type, using pybids
     result = generate_inputs(
@@ -626,15 +594,17 @@ def test_t1w():
         derivatives=derivatives,
         use_bids_inputs=True,
     )
-    # Order of the subjects is not deterministic
-    assert result.input_lists in [
-        {"t1": {"acq": ["mprage"], "subject": ["001", "002"]}},
-        {"t1": {"acq": ["mprage"], "subject": ["002", "001"]}},
-    ]
-    assert result.input_zip_lists == {
-        "t1": {"acq": ["mprage", "mprage"], "subject": ["001", "002"]}
-    }
-    assert result.input_wildcards == {"t1": {"acq": "{acq}", "subject": "{subject}"}}
+    template = BidsDataset(
+        {
+            "t1": BidsComponent(
+                "t1",
+                result.input_path["t1"],
+                {"acq": ["mprage", "mprage"], "subject": ["001", "002"]},
+            )
+        }
+    )
+    assert template == result
+
     # Order of the subjects is not deterministic
     assert result.subjects in [["001", "002"], ["002", "001"]]
     assert result.sessions == []
@@ -662,22 +632,27 @@ def test_t1w():
     assert result.input_lists == {
         "scan": {"acq": ["mprage"], "subject": ["001"], "suffix": ["T1w"]}
     }
-    assert result.input_zip_lists == {
-        "scan": {
-            "acq": [
-                "mprage",
-            ],
-            "subject": [
-                "001",
-            ],
-            "suffix": [
-                "T1w",
-            ],
+    template = BidsDataset(
+        {
+            "scan": BidsComponent(
+                "scan",
+                result.input_path["scan"],
+                {
+                    "acq": [
+                        "mprage",
+                    ],
+                    "subject": [
+                        "001",
+                    ],
+                    "suffix": [
+                        "T1w",
+                    ],
+                },
+            )
         }
-    }
-    assert result.input_wildcards == {
-        "scan": {"acq": "{acq}", "subject": "{subject}", "suffix": "{suffix}"}
-    }
+    )
+    assert template == result
+
     assert result.subjects == ["001"]
     assert result.sessions == []
     assert result.subj_wildcards == {"subject": "{subject}"}
@@ -705,33 +680,39 @@ def test_t1w():
     }
     bids_dir = real_bids_dir
 
-    for idx in range(2):
+    # Want to test both inputs from layout, both inputs from custom path, and
+    # one of each. This setup should produce the same results every time.
+    for idx in range(4):
         if idx == 1:
             pybids_inputs["t1"]["custom_path"] = wildcard_path_t1
-        if idx == 2:
+        elif idx == 2:
             pybids_inputs["t2"]["custom_path"] = wildcard_path_t2
-            bids_dir = "-"
+        elif idx == 3:
+            pybids_inputs["t1"]["custom_path"] = wildcard_path_t1
+            pybids_inputs["t2"]["custom_path"] = wildcard_path_t2
+            # TODO: Allow arbitrary paths to work when all custom paths are used
+            # bids_dir = "-"
         result = generate_inputs(
             pybids_inputs=pybids_inputs,
             bids_dir=bids_dir,
             derivatives=derivatives,
             use_bids_inputs=True,
         )
-        # Order of the subjects is not deterministic
-        assert result.input_lists["t1"] in [
-            {"acq": ["mprage"], "subject": ["001", "002"]},
-            {"acq": ["mprage"], "subject": ["002", "001"]},
-        ]
-        assert result.input_lists["t2"] == {"subject": ["002"]}
-        assert tuple_to_list(result.input_zip_lists["t1"]) in [
-            {"acq": ["mprage", "mprage"], "subject": ["001", "002"]},
-            {"acq": ["mprage", "mprage"], "subject": ["002", "001"]},
-        ]
-        assert tuple_to_list(result.input_zip_lists["t2"]) == {"subject": ["002"]}
-        assert result.input_wildcards == {
-            "t1": {"acq": "{acq}", "subject": "{subject}"},
-            "t2": {"subject": "{subject}"},
-        }
+        template = BidsDataset(
+            {
+                "t1": BidsComponent(
+                    "t1",
+                    result.input_path["t1"],
+                    {
+                        "acq": ["mprage", "mprage"],
+                        "subject": ["001", "002"],
+                    },
+                ),
+                "t2": BidsComponent(
+                    "t2", result.input_path["t2"], {"subject": ["002"]}
+                ),
+            }
+        )
         # Order of the subjects is not deterministic
         assert result.subjects in [["001", "002"], ["002", "001"]]
 
@@ -749,20 +730,6 @@ def test_t1w_with_dict():
             "wildcards": ["acquisition", "subject", "session", "run"],
         }
     }
-
-    # Can't define particpant_label and exclude_participant_label
-    with pytest.raises(ValueError) as v_error:
-        config = generate_inputs(
-            pybids_inputs=pybids_inputs,
-            bids_dir=real_bids_dir,
-            derivatives=derivatives,
-            participant_label="001",
-            exclude_participant_label="002",
-        )
-        assert v_error.msg == (  # type: ignore
-            "Cannot define both participant_label and "
-            "exclude_participant_label at the same time"
-        )
 
     # Simplest case -- one input type, using pybids
     config = generate_inputs(
@@ -814,72 +781,6 @@ def test_t1w_with_dict():
     assert config["sessions"] == []
     assert config["subj_wildcards"] == {"subject": "{subject}"}
 
-    # Two input types, specified by pybids or path override
-    wildcard_path_t1 = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "data/bids_t1w",
-        "sub-{subject}/anat/sub-{subject}_acq-{acq}_{suffix}.nii.gz",
-    )
-    wildcard_path_t2 = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "data/bids_t1w",
-        "sub-{subject}/anat/sub-{subject}_{suffix}.nii.gz",
-    )
-    pybids_inputs = {
-        "t1": {
-            "filters": {"suffix": "T1w"},
-            "wildcards": ["acquisition", "subject", "session", "run", "suffix"],
-        },
-        "t2": {
-            "filters": {"suffix": "T2w"},
-            "wildcards": ["acquisition", "subject", "session", "run", "suffix"],
-        },
-    }
-    bids_dir = real_bids_dir
-    for idx in range(2):
-        if idx == 1:
-            pybids_inputs["t1"]["custom_path"] = wildcard_path_t1
-        if idx == 2:
-            pybids_inputs["t2"]["custom_path"] = wildcard_path_t2
-            bids_dir = "-"
-        config = generate_inputs(
-            pybids_inputs=pybids_inputs,
-            bids_dir=bids_dir,
-            derivatives=derivatives,
-        )
-        # Order of the subjects is not deterministic
-        assert config["input_lists"] == BidsListCompare(
-            {
-                "t1": {"acq": ["mprage"], "subject": ["001", "002"], "suffix": ["T1w"]},
-                "t2": {"subject": ["002"], "suffix": ["T2w"]},
-            }
-        )
-        assert config["input_zip_lists"]["t1"] in [
-            {
-                "acq": ["mprage", "mprage"],
-                "subject": ["001", "002"],
-                "suffix": ["T1w", "T1w"],
-            },
-            {
-                "acq": ["mprage", "mprage"],
-                "subject": ["002", "001"],
-                "suffix": ["T1w", "T1w"],
-            },
-        ]
-        assert config["input_zip_lists"]["t2"] == {
-            "subject": ["002"],
-            "suffix": ["T2w"],
-        }
-        assert config["input_wildcards"] == {
-            "t1": {"acq": "{acq}", "subject": "{subject}", "suffix": "{suffix}"},
-            "t2": {"subject": "{subject}", "suffix": "{suffix}"},
-        }
-        # Order of the subjects is not deterministic
-        assert set(config["subjects"]) == {"001", "002"}
-
-        assert config["sessions"] == []
-        assert config["subj_wildcards"] == {"subject": "{subject}"}
-
 
 def test_get_lists_from_bids():
     bids_dir = "snakebids/tests/data/bids_t1w"
@@ -908,50 +809,37 @@ def test_get_lists_from_bids():
 
     # Want to test both inputs from layout, both inputs from custom path, and
     # one of each. This setup should produce the same results every time.
-    for idx in range(2):
+    for idx in range(4):
         if idx == 1:
             pybids_inputs["t1"]["custom_path"] = wildcard_path_t1
         elif idx == 2:
+            pybids_inputs["t2"]["custom_path"] = wildcard_path_t2
+        elif idx == 3:
+            pybids_inputs["t1"]["custom_path"] = wildcard_path_t1
             pybids_inputs["t2"]["custom_path"] = wildcard_path_t2
 
         result = _get_lists_from_bids(layout, pybids_inputs)
         for bids_lists in result:
             if bids_lists.input_name == "t1":
-                assert bids_lists.input_path == wildcard_path_t1
-                assert tuple_to_list(bids_lists.input_zip_lists) in [
-                    {"acq": ["mprage", "mprage"], "subject": ["001", "002"]},
-                    {"acq": ["mprage", "mprage"], "subject": ["002", "001"]},
-                ]
-                # The order of multiple wildcard values is not deterministic
-                assert {"key": bids_lists.input_lists} == BidsListCompare(
+                template = BidsComponent(
+                    "t1",
+                    wildcard_path_t1,
                     {
-                        "key": {"acq": ["mprage"], "subject": ["001", "002"]},
-                    }
+                        "acq": ["mprage", "mprage"],
+                        "subject": ["001", "002"],
+                    },
                 )
-                assert bids_lists.input_lists in [
-                    {"acq": ["mprage"], "subject": ["001", "002"]},
-                    {"acq": ["mprage"], "subject": ["002", "001"]},
-                ]
-                assert bids_lists.input_wildcards == {
-                    "acq": "{acq}",
-                    "subject": "{subject}",
-                }
+                assert template == bids_lists
             elif bids_lists.input_name == "t2":
                 assert bids_lists.input_path == wildcard_path_t2
-                assert tuple_to_list(bids_lists.input_zip_lists) == {"subject": ["002"]}
-                # The order of multiple wildcard values is not deterministic
-                assert {"key": bids_lists.input_lists} == BidsListCompare(
+                template = BidsComponent(
+                    "t2",
+                    wildcard_path_t2,
                     {
-                        "key": {"subject": ["002"]},
-                    }
+                        "subject": ["002"],
+                    },
                 )
-                assert bids_lists.input_lists in [
-                    {"subject": ["002"]},
-                    {"subject": ["002"]},
-                ]
-                assert bids_lists.input_wildcards == {"subject": "{subject}"}
-            else:
-                assert False, f"Unexpected input name: {bids_lists.input_name}"
+                assert template == bids_lists
 
 
 class TestDB:
