@@ -201,21 +201,20 @@ python-versions = "*"
 
 [[package]]
 name = "cookiecutter"
-version = "1.7.3"
+version = "2.1.1"
 description = "A command-line utility that creates projects from project templates, e.g. creating a Python package project from a Python package project template."
 category = "main"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+python-versions = ">=3.7"
 
 [package.dependencies]
 binaryornot = ">=0.4.4"
-click = ">=7.0"
+click = ">=7.0,<9.0.0"
 Jinja2 = ">=2.7,<4.0.0"
 jinja2-time = ">=0.2.0"
-poyo = ">=0.5.0"
 python-slugify = ">=4.0.0"
+pyyaml = ">=5.3.1"
 requests = ">=2.23.0"
-six = ">=1.10"
 
 [[package]]
 name = "datrie"
@@ -921,14 +920,6 @@ tomli = ">=1.2.2"
 poetry_plugin = ["poetry (>=1.0,<2.0)"]
 
 [[package]]
-name = "poyo"
-version = "0.5.0"
-description = "A lightweight YAML Parser for Python. 🐓"
-category = "main"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
-
-[[package]]
 name = "pre-commit"
 version = "2.19.0"
 description = "A framework for managing and maintaining multi-language pre-commit hooks."
@@ -1536,7 +1527,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.11"
-content-hash = "bcc991c1f512115fb0e52fd53da7bd801ee4c28dc12edf1275c7f8355c99005e"
+content-hash = "69e4056a68ae906c74df44729d01fb1d00281e72b5af5ded4c909d369fb11def"
 
 [metadata.files]
 appdirs = [
@@ -1626,8 +1617,8 @@ connection-pool = [
     {file = "connection_pool-0.0.3.tar.gz", hash = "sha256:bf429e7aef65921c69b4ed48f3d48d3eac1383b05d2df91884705842d974d0dc"},
 ]
 cookiecutter = [
-    {file = "cookiecutter-1.7.3-py2.py3-none-any.whl", hash = "sha256:f8671531fa96ab14339d0c59b4f662a4f12a2ecacd94a0f70a3500843da588e2"},
-    {file = "cookiecutter-1.7.3.tar.gz", hash = "sha256:6b9a4d72882e243be077a7397d0f1f76fe66cf3df91f3115dbb5330e214fa457"},
+    {file = "cookiecutter-2.1.1-py2.py3-none-any.whl", hash = "sha256:9f3ab027cec4f70916e28f03470bdb41e637a3ad354b4d65c765d93aad160022"},
+    {file = "cookiecutter-2.1.1.tar.gz", hash = "sha256:f3982be8d9c53dac1261864013fdec7f83afd2e42ede6f6dd069c5e149c540d5"},
 ]
 datrie = [
     {file = "datrie-0.8.2-cp27-cp27m-macosx_10_7_x86_64.whl", hash = "sha256:53969643e2794c37f024d5edaa42d5e6e2627d9937ddcc18d99128e9df700e4c"},
@@ -1999,10 +1990,6 @@ pluggy = [
 poethepoet = [
     {file = "poethepoet-0.13.1-py3-none-any.whl", hash = "sha256:47e7b38c8b5412f840447f7612a9330697e8633e7500a7340b6734f50e26e380"},
     {file = "poethepoet-0.13.1.tar.gz", hash = "sha256:4f6962f17f5d5a453fd7fa66e3e7897e9191d4289148433efe441c81f2451a46"},
-]
-poyo = [
-    {file = "poyo-0.5.0-py2.py3-none-any.whl", hash = "sha256:3e2ca8e33fdc3c411cd101ca395668395dd5dc7ac775b8e809e3def9f9fe041a"},
-    {file = "poyo-0.5.0.tar.gz", hash = "sha256:e26956aa780c45f011ca9886f044590e2d8fd8b61db7b1c1cf4e0869f48ed4dd"},
 ]
 pre-commit = [
     {file = "pre_commit-2.19.0-py2.py3-none-any.whl", hash = "sha256:10c62741aa5704faea2ad69cb550ca78082efe5697d6f04e5710c3c229afdd10"},
