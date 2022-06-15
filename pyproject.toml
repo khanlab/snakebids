@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "snakebids"
-version = "0.6.1-pre.1"
+version = "0.6.1"
 description = "BIDS integration into snakemake workflows"
 readme = "README.md"
 repository = "https://github.com/akhanf/snakebids"
