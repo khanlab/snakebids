@@ -10,12 +10,11 @@ import shutil
 import tempfile
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, NamedTuple, Tuple, Type, TypeVar, cast
+from typing import Any, Dict, Iterable, List, NamedTuple, TypeVar
 
 import more_itertools as itx
 import pytest
 from bids import BIDSLayout
-from bids.layout import Config as BidsConfig
 from hypothesis import assume, given
 from hypothesis import strategies as st
 
@@ -29,105 +28,14 @@ from snakebids.core.input_generation import (
     _parse_custom_path,
     generate_inputs,
 )
-from snakebids.tests.helpers import BidsListCompare
+from snakebids.tests import strategies as sb_st
+from snakebids.tests.helpers import BidsListCompare, get_zip_list, setify
 
 T = TypeVar("T")
 
-BIDS_ALPHABET = st.characters(whitelist_categories=["Ll", "Lu", "Nd"])
-
-
-def setify(dic: Dict[Any, List[Any]]):
-    return {key: set(val) for key, val in dic.items()}
-
-
-def get_zip_list(entities: Iterable[str], combinations: Iterable[Tuple[str, ...]]):
-    return {entity: list(combs) for entity, combs in zip(entities, zip(*combinations))}
-
-
-def bids_entity():
-    bidsconfig = BidsConfig.load("bids")
-    return st.sampled_from(cast(str, list(bidsconfig.entities.keys())))
-
-
-def get_bids_entities(draw: st.DrawFn, min_size: int = 1):
-    return draw(
-        st.lists(
-            bids_entity(),
-            min_size=min_size,
-            max_size=5,
-            unique=True,
-        ),
-    )
-
-
-def get_bids_path(zip_lists: Dict[str, List[str]]):
-    return bids(root=".", **{entity: f"{{{entity}}}" for entity in zip_lists})
-
-
-@st.composite
-def bids_input(draw: st.DrawFn):
-    alphabet = st.characters(whitelist_categories=["Ll", "Lu", "Nd"])
-    # Generate multiple entity sets for different "file types"
-
-    entities = get_bids_entities(draw)
-
-    values = {
-        key: draw(
-            st.lists(
-                st.text(alphabet, min_size=1, max_size=10), min_size=1, unique=True
-            )
-        )
-        for key in entities
-    }
-
-    combinations = list(it.product(*values.values()))
-    used_combinations = draw(
-        st.lists(
-            st.sampled_from(combinations),
-            min_size=1,
-            max_size=len(combinations),
-            unique=True,
-        )
-    )
-    zip_lists = get_zip_list(values, used_combinations)
-
-    path = get_bids_path(zip_lists)
-
-    return BidsComponent(
-        input_name=draw(st.text(alphabet, min_size=1)),
-        input_path=path,
-        input_zip_lists=zip_lists,
-    )
-
-
-@st.composite
-def bids_input_lists(draw: st.DrawFn, min_size: int = 1):
-    alphabet = BIDS_ALPHABET
-    # Generate multiple entity sets for different "file types"
-    entities = get_bids_entities(draw, min_size)
-
-    return {
-        key: draw(
-            st.lists(
-                st.text(alphabet, min_size=1, max_size=10),
-                min_size=min_size,
-                unique=True,
-            )
-        )
-        for key in entities
-    }
-
-
-def everything_except(*excluded_types: Type[Any]):
-    return (
-        st.from_type(type)
-        .flatmap(st.from_type)
-        .filter(lambda s: not isinstance(s, excluded_types))
-    )
-
 
 class TestBidsInputEq:
-    @given(bids_input(), everything_except(BidsComponent))
+    @given(sb_st.bids_input(), sb_st.everything_except(BidsComponent))
     def test_other_types_are_unequal(self, input: BidsComponent, other: Any):
         assert input != other
 
@@ -137,39 +45,37 @@ class TestBidsInputEq:
             "", "", {"foo": [], "bar": []}
         )
 
-    @given(bids_input())
+    @given(sb_st.bids_input())
     def test_copies_are_equal(self, input: BidsComponent):
         cp = copy.deepcopy(input)
         assert cp == input
 
-    @given(bids_input())
+    @given(sb_st.bids_input())
     def test_mutation_makes_unequal(self, input: BidsComponent):
         cp = copy.deepcopy(input)
         next(iter(cp.input_zip_lists.values()))[0] += "foo"
         assert cp != input
 
-    @given(bids_input(), st.data())
+    @given(sb_st.bids_input(), st.data())
     def test_extra_entities_makes_unequal(
         self, input: BidsComponent, data: st.DataObject
     ):
         cp = copy.deepcopy(input)
         new_entity = data.draw(
-            st.text(BIDS_ALPHABET, min_size=1).filter(
-                lambda s: s not in input.input_zip_lists
-            )
+            sb_st.bids_value().filter(lambda s: s not in input.input_zip_lists)
         )
         cp.input_zip_lists[new_entity] = []
         next(iter(cp.input_zip_lists.values()))[0] += "foo"
         assert cp != input
 
-    @given(bids_input())
+    @given(sb_st.bids_input())
     def test_order_doesnt_affect_equality(self, input: BidsComponent):
         cp = copy.deepcopy(input)
         for l in cp.input_zip_lists:
             cp.input_zip_lists[l].reverse()
         assert cp == input
 
-    @given(bids_input())
+    @given(sb_st.bids_input())
     def test_paths_must_be_identical(self, input: BidsComponent):
         cp = BidsComponent(
             input.input_name, input.input_path + "foo", input.input_zip_lists
@@ -182,13 +88,15 @@ class TestBidsComponentProperties:
     def test_input_lists_derives_from_zip_lists(
         self, data: st.DataObject, min_size: int
     ):
-        input_lists: Dict[str, List[str]] = data.draw(bids_input_lists(min_size))
+        input_lists: Dict[str, List[str]] = data.draw(
+            sb_st.bids_input_lists(min_size, max_size=5)
+        )
 
         # Due to the product, we can delete some of the combinations and still
         # regenerate our input_lists
         combs = list(it.product(*input_lists.values()))[min_size - 1 :]
         zip_lists = get_zip_list(input_lists, combs)
-        path = get_bids_path(zip_lists)
+        path = sb_st.get_bids_path(zip_lists)
 
         assert setify(
             BidsComponent(
@@ -196,9 +104,7 @@ class TestBidsComponentProperties:
             ).input_lists
         ) == setify(input_lists)
 
-    @given(
-        st.dictionaries(bids_entity(), st.text(BIDS_ALPHABET, min_size=1), min_size=1)
-    )
+    @given(st.dictionaries(sb_st.bids_entity(), sb_st.bids_value(), min_size=1))
     def test_input_wildcards_derives_from_zip_lists(
         self,
         bids_entities: Dict[str, str],
@@ -326,16 +232,6 @@ class TestGenerateFilter:
             assert re.match(result[0][0], padding + exclude)
             assert re.match(result[0][0], exclude + padding)
             assert re.match(result[0][0], padding + exclude + padding)
-
-
-PathEntities = NamedTuple(
-    "PathEntities",
-    [
-        ("entities", Dict[str, List[str]]),
-        ("template", Path),
-        ("filters", Dict[str, List[str]]),
-    ],
-)
 
 
 PathEntities = NamedTuple(
@@ -540,7 +436,6 @@ def test_custom_pybids_config(tmpdir: Path):
         pybids_config=(Path(__file__).parent / "data" / "custom_config.json"),
         use_bids_inputs=True,
     )
-    # Order of the subjects is not deterministic
     template = BidsDataset(
         {
             "t1": BidsComponent(
