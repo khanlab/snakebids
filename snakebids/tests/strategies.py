@@ -1,11 +1,11 @@
 import itertools as it
-from typing import Any, Dict, List, Type, cast
+from typing import Any, Type, cast
 
 import hypothesis.strategies as st
 from bids.layout import Config as BidsConfig
 
-from snakebids import BidsComponent, bids
-from snakebids.tests.helpers import get_zip_list
+from snakebids import BidsComponent
+from snakebids.tests import helpers
 
 
 def bids_entity():
@@ -24,15 +24,12 @@ def bids_entity_list(min_size: int = 1):
         min_size=min_size,
         max_size=5,
         unique=True,
-    )
-
-
-def get_bids_path(zip_lists: Dict[str, List[str]]):
-    return bids(root=".", **{entity: f"{{{entity}}}" for entity in zip_lists})
+        # bids_paths aren't formed correctly if only datatype is provided
+    ).filter(lambda v: v != ["datatype"])
 
 
 @st.composite
-def bids_input(draw: st.DrawFn):
+def input_zip_lists(draw: st.DrawFn):
     # Generate multiple entity sets for different "file types"
 
     entities = draw(bids_entity_list())
@@ -50,9 +47,14 @@ def bids_input(draw: st.DrawFn):
             unique=True,
         )
     )
-    zip_lists = get_zip_list(values, used_combinations)
+    return helpers.get_zip_list(values, used_combinations)
 
-    path = get_bids_path(zip_lists)
+
+@st.composite
+def bids_input(draw: st.DrawFn):
+    zip_lists = draw(input_zip_lists())
+
+    path = helpers.get_bids_path(zip_lists)
 
     return BidsComponent(
         input_name=draw(bids_value()),

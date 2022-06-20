@@ -7,6 +7,7 @@ import operator as op
 import re
 from collections import UserDict, defaultdict
 from pathlib import Path
+from string import Formatter
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -27,6 +28,7 @@ from bids import BIDSLayout, BIDSLayoutIndexer
 from cached_property import cached_property
 from typing_extensions import Literal, TypedDict
 
+import snakebids.utils.sb_itertools as sb_it
 from snakebids.core.filtering import filter_list
 from snakebids.utils.snakemake_io import glob_wildcards
 from snakebids.utils.utils import read_bids_tags
@@ -74,6 +76,20 @@ class BidsComponent:
     input_name: str = attr.field(on_setattr=attr.setters.frozen)
     input_path: str = attr.field(on_setattr=attr.setters.frozen)
     input_zip_lists: Dict[str, List[str]] = attr.field(on_setattr=attr.setters.frozen)
+
+    @input_zip_lists.validator  # type: ignore
+    def _validate_input_zip_lists(self, _, value: Dict[str, List[str]]):
+        lengths = {len(val) for val in value.values()}
+        if len(lengths) > 1:
+            raise ValueError("input_zip_lists must all be of equal length")
+        _, raw_fields, *_ = sb_it.unpack(
+            zip(*Formatter().parse(self.input_path)), [[], [], []]
+        )
+        fields = filter(None, raw_fields)
+        if set(fields) != set(value):
+            raise ValueError(
+                "input_zip_lists entries must match the wildcards in input_path"
+            )
 
     # Note: we can't use cached property here because it's incompatible with slots.
     _input_lists: Optional[Dict[str, List[str]]] = attr.field(
