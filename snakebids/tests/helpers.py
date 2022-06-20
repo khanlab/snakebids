@@ -4,6 +4,8 @@
 from collections import UserDict
 from typing import Any, Dict, Iterable, List, Tuple
 
+from snakebids import bids
+
 
 def get_zip_list(entities: Iterable[str], combinations: Iterable[Tuple[str, ...]]):
     """Return a zip list from iterables of entities and value combinations
@@ -38,6 +40,22 @@ def setify(dic: Dict[Any, List[Any]]):
         Dict of sets
     """
     return {key: set(val) for key, val in dic.items()}
+
+
+def get_bids_path(entities: Iterable[str]):
+    """Get consistently ordered bids path for a group of entities
+
+    Parameters
+    ----------
+    entities : Iterable[str]
+        Entities to convert into a bids path
+
+    Returns
+    -------
+    str
+        bids path
+    """
+    return bids(root=".", **{entity: f"{{{entity}}}" for entity in sorted(entities)})
 
 
 class BidsListCompare(UserDict):

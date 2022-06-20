@@ -29,20 +29,53 @@ from snakebids.core.input_generation import (
     generate_inputs,
 )
 from snakebids.tests import strategies as sb_st
-from snakebids.tests.helpers import BidsListCompare, get_zip_list, setify
+from snakebids.tests.helpers import BidsListCompare, get_bids_path, get_zip_list, setify
+from snakebids.utils import sb_itertools as sb_it
 
 T = TypeVar("T")
 
 
-class TestBidsInputEq:
+class TestBidsComponentValidation:
+    @given(sb_st.input_zip_lists().filter(lambda v: len(v) > 1))
+    def test_zip_lists_must_be_same_length(self, zip_lists: Dict[str, List[str]]):
+        itx.first(zip_lists.values()).append("foo")
+        with pytest.raises(ValueError) as err:
+            BidsComponent("foo", get_bids_path(zip_lists), zip_lists)
+        assert err.value.args[0] == "input_zip_lists must all be of equal length"
+
+    @given(sb_st.input_zip_lists(), sb_st.bids_entity())
+    def test_path_cannot_have_extra_entities(
+        self, zip_lists: Dict[str, List[str]], entity: str
+    ):
+        assume(entity not in zip_lists)
+        path = get_bids_path(it.chain(zip_lists, [entity]))
+        with pytest.raises(ValueError) as err:
+            BidsComponent("foo", path, zip_lists)
+        assert (
+            err.value.args[0]
+            == "input_zip_lists entries must match the wildcards in input_path"
+        )
+
+    @given(sb_st.input_zip_lists().filter(lambda v: len(v) > 1))
+    def test_path_cannot_have_missing_entities(self, zip_lists: Dict[str, List[str]]):
+        path = get_bids_path(sb_it.drop(1, zip_lists))
+        with pytest.raises(ValueError) as err:
+            BidsComponent("foo", path, zip_lists)
+        assert (
+            err.value.args[0]
+            == "input_zip_lists entries must match the wildcards in input_path"
+        )
+
+
+class TestBidsComponentEq:
     @given(sb_st.bids_input(), sb_st.everything_except(BidsComponent))
     def test_other_types_are_unequal(self, input: BidsComponent, other: Any):
         assert input != other
 
     def test_empty_BidsInput_are_equal(self):
         assert BidsComponent("", "", {}) == BidsComponent("", "", {})
-        assert BidsComponent("", "", {"foo": [], "bar": []}) == BidsComponent(
-            "", "", {"foo": [], "bar": []}
+        assert BidsComponent("", "{foo}{bar}", {"foo": [], "bar": []}) == BidsComponent(
+            "", "{foo}{bar}", {"foo": [], "bar": []}
         )
 
     @given(sb_st.bids_input())
@@ -53,7 +86,7 @@ class TestBidsInputEq:
     @given(sb_st.bids_input())
     def test_mutation_makes_unequal(self, input: BidsComponent):
         cp = copy.deepcopy(input)
-        next(iter(cp.input_zip_lists.values()))[0] += "foo"
+        itx.first(cp.input_zip_lists.values())[0] += "foo"
         assert cp != input
 
     @given(sb_st.bids_input(), st.data())
@@ -65,7 +98,7 @@ class TestBidsInputEq:
             sb_st.bids_value().filter(lambda s: s not in input.input_zip_lists)
         )
         cp.input_zip_lists[new_entity] = []
-        next(iter(cp.input_zip_lists.values()))[0] += "foo"
+        itx.first(cp.input_zip_lists.values())[0] += "foo"
         assert cp != input
 
     @given(sb_st.bids_input())
@@ -96,7 +129,7 @@ class TestBidsComponentProperties:
         # regenerate our input_lists
         combs = list(it.product(*input_lists.values()))[min_size - 1 :]
         zip_lists = get_zip_list(input_lists, combs)
-        path = sb_st.get_bids_path(zip_lists)
+        path = get_bids_path(zip_lists)
 
         assert setify(
             BidsComponent(
@@ -104,14 +137,22 @@ class TestBidsComponentProperties:
             ).input_lists
         ) == setify(input_lists)
 
-    @given(st.dictionaries(sb_st.bids_entity(), sb_st.bids_value(), min_size=1))
+    @given(
+        st.dictionaries(
+            sb_st.bids_entity(),
+            sb_st.bids_value(),
+            min_size=1,
+        ).filter(lambda v: list(v) != ["datatype"])
+    )
     def test_input_wildcards_derives_from_zip_lists(
         self,
         bids_entities: Dict[str, str],
     ):
         zip_lists = {entity: [val] for entity, val in bids_entities.items()}
         bids_input = BidsComponent(
-            input_name="foo", input_path="foo", input_zip_lists=zip_lists
+            input_name="foo",
+            input_path=get_bids_path(zip_lists),
+            input_zip_lists=zip_lists,
         )
 
         wildstr = ".".join(bids_input.input_wildcards.values())
@@ -348,9 +389,9 @@ class TestCustomPaths:
         # Test without any filters
         result = _parse_custom_path(test_path)
         zip_lists = get_zip_list(entities, it.product(*entities.values()))
-        assert BidsComponent("foo", "foo", zip_lists) == BidsComponent(
-            "foo", "foo", result
-        )
+        assert BidsComponent(
+            "foo", get_bids_path(zip_lists), zip_lists
+        ) == BidsComponent("foo", get_bids_path(result), result)
 
     @given(path_entities=path_entities())
     def test_collects_only_filtered_entities(
@@ -369,9 +410,9 @@ class TestCustomPaths:
             # Override entities with relevant filters before making zip lists
             **get_zip_list(entities, it.product(*{**entities, **filters}.values())),
         }
-        assert BidsComponent("foo", "foo", zip_lists) == BidsComponent(
-            "foo", "foo", result_filtered
-        )
+        assert BidsComponent(
+            "foo", get_bids_path(zip_lists), zip_lists
+        ) == BidsComponent("foo", get_bids_path(result_filtered), result_filtered)
 
     @given(path_entities=path_entities())
     def test_collect_all_but_filters_when_exclusion_filters_used(
@@ -403,9 +444,9 @@ class TestCustomPaths:
             **get_zip_list(entities, it.product(*entities_excluded.values())),
         }
 
-        assert BidsComponent("foo", "foo", zip_lists) == BidsComponent(
-            "foo", "foo", result_excluded
-        )
+        assert BidsComponent(
+            "foo", get_bids_path(zip_lists), zip_lists
+        ) == BidsComponent("foo", get_bids_path(result_excluded), result_excluded)
 
 
 def test_custom_pybids_config(tmpdir: Path):
