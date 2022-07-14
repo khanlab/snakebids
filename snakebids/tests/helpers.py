@@ -2,12 +2,15 @@
 """
 
 from collections import UserDict
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterable, List, Tuple, Union
 
 from snakebids import bids
+from snakebids.utils.utils import BidsEntity
 
 
-def get_zip_list(entities: Iterable[str], combinations: Iterable[Tuple[str, ...]]):
+def get_zip_list(
+    entities: Iterable[Union[BidsEntity, str]], combinations: Iterable[Tuple[str, ...]]
+):
     """Return a zip list from iterables of entities and value combinations
 
     Parameters
@@ -23,7 +26,10 @@ def get_zip_list(entities: Iterable[str], combinations: Iterable[Tuple[str, ...]
     Dict[str, List[str]]
         zip_list representation of entity-value combinations
     """
-    return {entity: list(combs) for entity, combs in zip(entities, zip(*combinations))}
+    return {
+        BidsEntity(entity).wildcard: list(combs)  # type: ignore
+        for entity, combs in zip(entities, zip(*combinations))
+    }
 
 
 def setify(dic: Dict[Any, List[Any]]):
@@ -55,7 +61,17 @@ def get_bids_path(entities: Iterable[str]):
     str
         bids path
     """
-    return bids(root=".", **{entity: f"{{{entity}}}" for entity in sorted(entities)})
+
+    def get_tag(entity: BidsEntity):
+        # For pybids, suffixes MUST be followed by extensions, but we don't yet support
+        # seperate indexing of extensions, so add a dummy extension any time there's a
+        # suffix
+        extension = ".foo" if entity == "suffix" else ""
+        return entity.wildcard, f"{{{entity.wildcard}}}{extension}"
+
+    return bids(
+        root=".", **dict(get_tag(BidsEntity(entity)) for entity in sorted(entities))
+    )
 
 
 class BidsListCompare(UserDict):
