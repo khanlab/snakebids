@@ -85,18 +85,22 @@ class BidsComponent:
         _, raw_fields, *_ = sb_it.unpack(
             zip(*Formatter().parse(self.input_path)), [[], [], []]
         )
-        fields = filter(None, raw_fields)
-        if set(fields) != set(value):
+        fields = set(filter(None, raw_fields))
+        if fields != set(value):
             raise ValueError(
-                "input_zip_lists entries must match the wildcards in input_path"
+                "input_zip_lists entries must match the wildcards in input_path: "
+                f"Path: {fields} != zip_lists: {set(value)}"
             )
 
     # Note: we can't use cached property here because it's incompatible with slots.
     _input_lists: Optional[Dict[str, List[str]]] = attr.field(
-        default=None, init=False, eq=False
+        default=None, init=False, eq=False, repr=False
     )
     _input_wildcards: Optional[Dict[str, str]] = attr.field(
-        default=None, init=False, eq=False
+        default=None, init=False, eq=False, repr=False
+    )
+    _entities: Optional[List[str]] = attr.field(
+        default=None, init=False, eq=False, repr=False
     )
 
     @property
@@ -125,6 +129,16 @@ class BidsComponent:
                 entity: f"{{{entity}}}" for entity in self.input_zip_lists
             }
         return self._input_wildcards
+
+    @property
+    def entities(self):
+        """List of wildcard entities
+
+        Only lists the entities being used as wildcards.
+        """
+        if self._entities is None:
+            self._entities = list(self.input_zip_lists.keys())
+        return self._entities
 
     def __eq__(self, other: Union["BidsComponent", object]):
         if not isinstance(other, BidsComponent):
