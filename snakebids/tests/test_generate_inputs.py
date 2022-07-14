@@ -52,8 +52,8 @@ class TestBidsComponentValidation:
         with pytest.raises(ValueError) as err:
             BidsComponent("foo", path, zip_lists)
         assert (
-            err.value.args[0]
-            == "input_zip_lists entries must match the wildcards in input_path"
+            "input_zip_lists entries must match the wildcards in input_path"
+            in err.value.args[0]
         )
 
     @given(sb_st.input_zip_lists().filter(lambda v: len(v) > 1))
@@ -62,8 +62,8 @@ class TestBidsComponentValidation:
         with pytest.raises(ValueError) as err:
             BidsComponent("foo", path, zip_lists)
         assert (
-            err.value.args[0]
-            == "input_zip_lists entries must match the wildcards in input_path"
+            "input_zip_lists entries must match the wildcards in input_path"
+            in err.value.args[0]
         )
 
 
