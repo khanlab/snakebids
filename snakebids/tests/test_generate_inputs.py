@@ -31,6 +31,7 @@ from snakebids.core.input_generation import (
 from snakebids.tests import strategies as sb_st
 from snakebids.tests.helpers import BidsListCompare, get_bids_path, get_zip_list, setify
 from snakebids.utils import sb_itertools as sb_it
+from snakebids.utils.utils import BidsEntity
 
 T = TypeVar("T")
 
@@ -45,10 +46,10 @@ class TestBidsComponentValidation:
 
     @given(sb_st.input_zip_lists(), sb_st.bids_entity())
     def test_path_cannot_have_extra_entities(
-        self, zip_lists: Dict[str, List[str]], entity: str
+        self, zip_lists: Dict[str, List[str]], entity: BidsEntity
     ):
-        assume(entity not in zip_lists)
-        path = get_bids_path(it.chain(zip_lists, [entity]))
+        assume(entity.wildcard not in zip_lists)
+        path = get_bids_path(it.chain(zip_lists, [entity.entity]))
         with pytest.raises(ValueError) as err:
             BidsComponent("foo", path, zip_lists)
         assert (
@@ -68,7 +69,7 @@ class TestBidsComponentValidation:
 
 
 class TestBidsComponentEq:
-    @given(sb_st.bids_input(), sb_st.everything_except(BidsComponent))
+    @given(sb_st.bids_components(), sb_st.everything_except(BidsComponent))
     def test_other_types_are_unequal(self, input: BidsComponent, other: Any):
         assert input != other
 
@@ -78,18 +79,18 @@ class TestBidsComponentEq:
             "", "{foo}{bar}", {"foo": [], "bar": []}
         )
 
-    @given(sb_st.bids_input())
+    @given(sb_st.bids_components())
     def test_copies_are_equal(self, input: BidsComponent):
         cp = copy.deepcopy(input)
         assert cp == input
 
-    @given(sb_st.bids_input())
+    @given(sb_st.bids_components())
     def test_mutation_makes_unequal(self, input: BidsComponent):
         cp = copy.deepcopy(input)
         itx.first(cp.input_zip_lists.values())[0] += "foo"
         assert cp != input
 
-    @given(sb_st.bids_input(), st.data())
+    @given(sb_st.bids_components(), st.data())
     def test_extra_entities_makes_unequal(
         self, input: BidsComponent, data: st.DataObject
     ):
@@ -101,14 +102,14 @@ class TestBidsComponentEq:
         itx.first(cp.input_zip_lists.values())[0] += "foo"
         assert cp != input
 
-    @given(sb_st.bids_input())
+    @given(sb_st.bids_components())
     def test_order_doesnt_affect_equality(self, input: BidsComponent):
         cp = copy.deepcopy(input)
         for l in cp.input_zip_lists:
             cp.input_zip_lists[l].reverse()
         assert cp == input
 
-    @given(sb_st.bids_input())
+    @given(sb_st.bids_components())
     def test_paths_must_be_identical(self, input: BidsComponent):
         cp = BidsComponent(
             input.input_name, input.input_path + "foo", input.input_zip_lists
@@ -121,9 +122,7 @@ class TestBidsComponentProperties:
     def test_input_lists_derives_from_zip_lists(
         self, data: st.DataObject, min_size: int
     ):
-        input_lists: Dict[str, List[str]] = data.draw(
-            sb_st.bids_input_lists(min_size, max_size=5)
-        )
+        input_lists = data.draw(sb_st.bids_input_lists(min_size, max_size=5))
 
         # Due to the product, we can delete some of the combinations and still
         # regenerate our input_lists
@@ -139,8 +138,8 @@ class TestBidsComponentProperties:
 
     @given(
         st.dictionaries(
-            sb_st.bids_entity(),
-            sb_st.bids_value(),
+            sb_st.bids_entity().map(lambda e: e.wildcard),
+            sb_st.bids_value("[^.]*"),
             min_size=1,
         ).filter(lambda v: list(v) != ["datatype"])
     )

@@ -1,41 +1,63 @@
 import itertools as it
-from typing import Any, Type, cast
+from typing import Any, List, Optional, Type
 
 import hypothesis.strategies as st
 from bids.layout import Config as BidsConfig
 
 from snakebids import BidsComponent
 from snakebids.tests import helpers
+from snakebids.utils.utils import BidsEntity
 
 
 def bids_entity():
     bidsconfig = BidsConfig.load("bids")
-    return st.sampled_from(cast(str, list(bidsconfig.entities.keys())))
+    # Generate inputs and bids does not properly handle 'extension', so exclude it
+    return st.sampled_from(
+        [
+            BidsEntity(key)
+            for key in bidsconfig.entities.keys()
+            if key not in ["extension", "fmap", "scans"]
+        ],
+    )
 
 
-def bids_value():
-    bids_alphabet = st.characters(whitelist_categories=["Ll", "Lu", "Nd"])
-    return st.text(bids_alphabet, min_size=1, max_size=10)
+def bids_value(pattern: str = ".*"):
+    return st.from_regex(pattern, fullmatch=True).filter(len)
 
 
-def bids_entity_list(min_size: int = 1):
+def bids_entity_lists(min_size: int = 1, max_size: int = 5):
     return st.lists(
         bids_entity(),
         min_size=min_size,
-        max_size=5,
+        max_size=max_size,
         unique=True,
         # bids_paths aren't formed correctly if only datatype is provided
     ).filter(lambda v: v != ["datatype"])
 
 
 @st.composite
-def input_zip_lists(draw: st.DrawFn):
+def input_zip_lists(
+    draw: st.DrawFn,
+    min_size: int = 1,
+    max_size: int = 5,
+    entities: Optional[List[BidsEntity]] = None,
+    restrict_patterns: bool = False,
+):
     # Generate multiple entity sets for different "file types"
 
-    entities = draw(bids_entity_list())
+    if entities is None:
+        entities = draw(bids_entity_lists(min_size=min_size, max_size=max_size))
 
     values = {
-        key: draw(st.lists(bids_value(), min_size=1, unique=True)) for key in entities
+        entity: draw(
+            st.lists(
+                bids_value(entity.pattern if restrict_patterns else ".*"),
+                min_size=1,
+                max_size=5,
+                unique=True,
+            )
+        )
+        for entity in entities
     }
 
     combinations = list(it.product(*values.values()))
@@ -51,8 +73,21 @@ def input_zip_lists(draw: st.DrawFn):
 
 
 @st.composite
-def bids_input(draw: st.DrawFn):
-    zip_lists = draw(input_zip_lists())
+def bids_components(
+    draw: st.DrawFn,
+    min_size: int = 1,
+    max_size: int = 5,
+    entities: Optional[List[BidsEntity]] = None,
+    restricted_chars: bool = False,
+):
+    zip_lists = draw(
+        input_zip_lists(
+            min_size=min_size,
+            max_size=max_size,
+            entities=entities,
+            restrict_patterns=restricted_chars,
+        )
+    )
 
     path = helpers.get_bids_path(zip_lists)
 
@@ -64,15 +99,21 @@ def bids_input(draw: st.DrawFn):
 
 
 @st.composite
-def bids_input_lists(draw: st.DrawFn, min_size: int = 1, max_size: int = 5):
+def bids_input_lists(
+    draw: st.DrawFn,
+    min_size: int = 1,
+    max_size: int = 5,
+    entities: Optional[List[BidsEntity]] = None,
+):
     # Generate multiple entity sets for different "file types"
-    entities = draw(bids_entity_list(min_size))
+    if entities is None:
+        entities = draw(bids_entity_lists(min_size))
 
     return {
-        key: draw(
+        entity.wildcard: draw(
             st.lists(bids_value(), min_size=min_size, max_size=max_size, unique=True)
         )
-        for key in entities
+        for entity in entities
     }
 
 
