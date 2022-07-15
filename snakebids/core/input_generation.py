@@ -30,6 +30,7 @@ from typing_extensions import Literal, TypedDict
 
 import snakebids.utils.sb_itertools as sb_it
 from snakebids.core.filtering import filter_list
+from snakebids.exceptions import ConfigError
 from snakebids.utils.snakemake_io import glob_wildcards
 from snakebids.utils.utils import BidsEntity
 
@@ -846,7 +847,11 @@ def _parse_bids_path(path: str, entities: Iterable[str]) -> Tuple[str, Dict[str,
 
 
 def _get_lists_from_bids(
-    bids_layout: Optional[BIDSLayout], pybids_inputs, limit_to=None, **filters
+    bids_layout: Optional[BIDSLayout],
+    pybids_inputs,
+    *,
+    limit_to=None,
+    **filters,
 ) -> Generator[BidsComponent, None, None]:
     """Grabs files using pybids and creates snakemake-friendly lists
 
@@ -923,13 +928,10 @@ def _get_lists_from_bids(
             _logger.warning("No images found for %s", input_name)
             continue
         if len(paths) > 1:
-            _logger.warning(
-                "More than one snakemake filename for %s, taking the "
-                "first. To correct this, use the --filter_%s option to "
-                "narrow the search. Found filenames: %s",
-                input_name,
-                input_name,
-                paths,
+            raise ConfigError(
+                f"More than one snakemake filename for {input_name}, taking the "
+                f"first. To correct this, use the --filter_{input_name} option to "
+                f"narrow the search. Found filenames: {paths}"
             )
 
         input_path = list(paths)[0]
