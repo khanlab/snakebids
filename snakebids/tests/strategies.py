@@ -53,7 +53,7 @@ def input_zip_lists(
             st.lists(
                 bids_value(entity.pattern if restrict_patterns else ".*"),
                 min_size=1,
-                max_size=5,
+                max_size=3,
                 unique=True,
             )
         )

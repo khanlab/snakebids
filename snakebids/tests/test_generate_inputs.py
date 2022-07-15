@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import copy
 import filecmp
+import functools as ft
 import itertools as it
 import keyword
 import os
@@ -10,13 +11,15 @@ import shutil
 import tempfile
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, NamedTuple, TypeVar
+from typing import Any, Dict, Iterable, List, NamedTuple, Optional, TypeVar
 
+import attrs
 import more_itertools as itx
 import pytest
 from bids import BIDSLayout
-from hypothesis import assume, given
+from hypothesis import HealthCheck, assume, given, settings
 from hypothesis import strategies as st
+from pyfakefs.fake_filesystem import FakeFilesystem
 
 from snakebids.core.construct_bids import bids
 from snakebids.core.input_generation import (
@@ -28,8 +31,15 @@ from snakebids.core.input_generation import (
     _parse_custom_path,
     generate_inputs,
 )
+from snakebids.exceptions import ConfigError
 from snakebids.tests import strategies as sb_st
-from snakebids.tests.helpers import BidsListCompare, get_bids_path, get_zip_list, setify
+from snakebids.tests.helpers import (
+    BidsListCompare,
+    debug,
+    get_bids_path,
+    get_zip_list,
+    setify,
+)
 from snakebids.utils import sb_itertools as sb_it
 from snakebids.utils.utils import BidsEntity
 
@@ -158,6 +168,185 @@ class TestBidsComponentProperties:
         first = wildstr.format(**bids_input.input_wildcards)
         second = first.format(**bids_entities)
         assert set(second.split(".")) == set(bids_entities.values())
+
+
+@st.composite
+def dataset(draw: st.DrawFn):
+    ent1 = draw(sb_st.bids_entity_lists(min_size=2, max_size=3))
+    assume("datatype" not in ent1)
+    # Currently, space and ce cannot coexist because ce is a substr of space (see
+    # snakebids.core.input_generation:_parse_bids_path)
+    assume(not ("space" in ent1 and "ceagent" in ent1))
+    ent2 = copy.copy(ent1)
+    ent2.pop()
+    # BUG: snakebids currently doesn't properly parse paths with just suffix
+    assume(ent2 != ["suffix"])
+    comp1 = draw(sb_st.bids_components(entities=ent1, restricted_chars=True))
+    comp2 = draw(sb_st.bids_components(entities=ent2, restricted_chars=True))
+    assume(comp1.input_name != comp2.input_name)
+    return BidsDataset.from_iterable([comp1, comp2])
+
+
+class TestFilterBools:
+    def create_dataset(self, root: str, dataset: BidsDataset):
+        for component in dataset.values():
+            entities = list(component.input_zip_lists.keys())
+            for values in zip(*component.input_zip_lists.values()):
+                path = Path(
+                    root, component.input_path.format(**dict(zip(entities, values)))
+                )
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.touch()
+
+    @pytest.fixture(autouse=True)
+    def bids_fs(self, fakefs: Optional[FakeFilesystem]):
+        if fakefs:
+            import bids.layout
+
+            f = Path(*bids.layout.__path__, "config")
+            fakefs.add_real_file(f / "bids.json")
+            fakefs.add_real_file(f / "derivatives.json")
+        return fakefs
+
+    @pytest.fixture
+    def tmpdir(self, fakefs_tmpdir: Path):
+        return fakefs_tmpdir
+
+    def disambiguate_components(self, dataset: BidsDataset):
+        assert len(dataset) == 2
+        comp1, comp2 = dataset.values()
+        return sorted([comp1, comp2], key=lambda comp: len(comp.entities))
+
+    def get_extra_entity(self, dataset: BidsDataset) -> str:
+        return itx.one(
+            ft.reduce(
+                lambda set_, comp: set_.symmetric_difference(comp.entities),
+                dataset.values(),
+                set(),
+            )
+        )
+
+    @settings(
+        deadline=800,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+            HealthCheck.too_slow,
+        ],
+    )
+    @given(dataset=dataset())
+    def test_ambiguous_paths_with_extra_entities_leads_to_error(
+        self, tmpdir: Path, dataset: BidsDataset
+    ):
+        root = tempfile.mkdtemp(dir=tmpdir)
+        self.create_dataset(root, dataset)
+        shorter, _ = self.disambiguate_components(dataset)
+        pybids_inputs: Dict[str, Dict[str, Any]] = {
+            shorter.input_name: {
+                "wildcards": [
+                    BidsEntity.from_tag(wildcard).entity
+                    for wildcard in shorter.input_wildcards.keys()
+                ],
+            }
+        }
+
+        with pytest.raises(ConfigError):
+            generate_inputs(root, pybids_inputs, use_bids_inputs=True)
+
+    @settings(
+        deadline=800,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+            HealthCheck.too_slow,
+        ],
+    )
+    @given(dataset=dataset())
+    def test_ambiguous_paths_with_missing_entity_leads_to_error(
+        self, tmpdir: Path, dataset: BidsDataset
+    ):
+        root = tempfile.mkdtemp(dir=tmpdir)
+        self.create_dataset(root, dataset)
+        _, longer = self.disambiguate_components(dataset)
+        pybids_inputs: Dict[str, Dict[str, Any]] = {
+            longer.input_name: {
+                "wildcards": [
+                    BidsEntity.from_tag(wildcard).entity
+                    for wildcard in longer.input_wildcards.keys()
+                ],
+            }
+        }
+
+        with pytest.raises(ConfigError):
+            generate_inputs(root, pybids_inputs, use_bids_inputs=True)
+
+    @settings(
+        deadline=800,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+            HealthCheck.too_slow,
+        ],
+    )
+    @given(dataset=dataset())
+    def test_entity_excluded_when_filter_false(
+        self, tmpdir: Path, dataset: BidsDataset
+    ):
+        root = tempfile.mkdtemp(dir=tmpdir)
+        self.create_dataset(root, dataset)
+        shorter, _ = self.disambiguate_components(dataset)
+        extra_entity = self.get_extra_entity(dataset)
+        pybids_inputs: Dict[str, Dict[str, Any]] = {
+            shorter.input_name: {
+                "wildcards": [
+                    BidsEntity.from_tag(wildcard).entity
+                    for wildcard in shorter.input_wildcards.keys()
+                ],
+                "filters": {BidsEntity.from_tag(extra_entity).entity: False},
+            }
+        }
+
+        expected = BidsDataset(
+            {
+                shorter.input_name: attrs.evolve(
+                    shorter, input_path=os.path.join(root, shorter.input_path)
+                )
+            }
+        )
+
+        data = generate_inputs(root, pybids_inputs, use_bids_inputs=True)
+        assert data == expected
+
+    @settings(
+        deadline=800,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+            HealthCheck.too_slow,
+        ],
+    )
+    @given(dataset=dataset())
+    def test_entity_excluded_when_filter_true(self, tmpdir: Path, dataset: BidsDataset):
+        root = tempfile.mkdtemp(dir=tmpdir)
+        self.create_dataset(root, dataset)
+        _, longer = self.disambiguate_components(dataset)
+        extra_entity = self.get_extra_entity(dataset)
+        pybids_inputs: Dict[str, Dict[str, Any]] = {
+            longer.input_name: {
+                "wildcards": [
+                    BidsEntity.from_tag(wildcard).entity
+                    for wildcard in longer.input_wildcards.keys()
+                ],
+                "filters": {BidsEntity.from_tag(extra_entity).entity: True},
+            }
+        }
+
+        expected = BidsDataset(
+            {
+                longer.input_name: attrs.evolve(
+                    longer, input_path=os.path.join(root, longer.input_path)
+                )
+            }
+        )
+
+        data = generate_inputs(root, pybids_inputs, use_bids_inputs=True)
+        assert data == expected
 
 
 class TestAbsentConfigEntries:
