@@ -1,14 +1,18 @@
 """Script to generate a Snakebids project."""
 
 import argparse
+import logging
 import os
 from pathlib import Path
 
 from cookiecutter.main import cookiecutter
 
 import snakebids
+from snakebids._logging import setup_logging
 from snakebids.app import SnakeBidsApp
 from snakebids.cli import add_dynamic_args
+
+logger = logging.getLogger(__name__)
 
 
 def create_app(_):
@@ -20,7 +24,7 @@ def create_descriptor(args):
     app = SnakeBidsApp(args.app_dir.resolve())
     add_dynamic_args(app.parser, app.config["parse_args"], app.config["pybids_inputs"])
     app.create_descriptor(args.out_path)
-    print(f"Boutiques descriptor created at {args.out_path}")
+    logger.info("Boutiques descriptor created at %s", args.out_path)
 
 
 def gen_parser():
@@ -53,7 +57,7 @@ def gen_parser():
 
 def main():
     """Invoke Cookiecutter on the Snakebids project template."""
-
+    setup_logging()
     parser = gen_parser()
     args = parser.parse_args()
     args.func(args)
