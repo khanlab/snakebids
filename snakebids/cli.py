@@ -13,7 +13,7 @@ import snakemake
 # either Path or pathlib.Path
 Path = pathlib.Path
 
-logger = logging.Logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 # pylint: disable=too-few-public-methods,

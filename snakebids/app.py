@@ -11,6 +11,7 @@ import boutiques.creator as bc
 import snakemake
 from snakemake.io import load_configfile
 
+from snakebids._logging import setup_logging
 from snakebids.cli import (
     SnakebidsArgs,
     add_dynamic_args,
@@ -24,7 +25,7 @@ from snakebids.utils.output import (
     write_output_mode,
 )
 
-logger = logging.Logger(__name__)
+_logger = logging.getLogger(__name__)
 
 
 SNAKEFILE_CHOICES = [
@@ -61,7 +62,8 @@ def _get_file_paths(choices: List[str], file_name: str):
                 return Path(self.snakemake_dir, path)
 
         raise ConfigError(
-            f"Error: no {file_name} file found, tried {', '.join(choices)}."
+            f"Error: no {file_name} file found under {self.snakemake_dir}, tried "
+            f"{', '.join(choices)}."
         )
 
     return wrapper
@@ -111,6 +113,14 @@ class SnakeBidsApp:
         takes_self=True,
     )
     args: Optional[SnakebidsArgs] = None
+
+    # pylint: disable=no-self-use
+    def __attrs_post_init__(self):
+        setup_logging()
+
+    @property
+    def logger(self):
+        return _logger
 
     def run_snakemake(self):
         """Run snakemake with that config.
@@ -165,10 +175,10 @@ class SnakeBidsApp:
                 self.config["output_dir"] /= "results"
                 self.config["root"] = "results"
                 # Print a friendly warning that the output directory will change
-                logger.info(
+                _logger.info(
                     "You specified your output to be in the snakebids directory, so "
                     "we're automatically putting your outputs in the results "
-                    "subdirectory.\nYou'll find your results in `%s`",
+                    "subdirectory. You'll find your results in `%s`",
                     (self.snakemake_dir / "results").resolve(),
                 )
             else:
@@ -181,7 +191,7 @@ class SnakeBidsApp:
             try:
                 prepare_bidsapp_output(args.outputdir, args.force)
             except RunError as err:
-                print(err.msg)
+                _logger.error(err.msg)
                 sys.exit(1)
             cwd = args.outputdir
             new_config_file = args.outputdir / self.configfile_path
