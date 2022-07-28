@@ -263,7 +263,7 @@ def parse_snakebids_args(parser: argparse.ArgumentParser):
         snakemake_args=all_args[1],
         # resolve all path items to get absolute paths
         args_dict={k: _resolve_path(v) for k, v in all_args[0].__dict__.items()},
-        force=all_args[0].force_conversion,
+        force=all_args[0].force_output,
         outputdir=Path(all_args[0].output_dir).resolve(),
         pybidsdb_dir=(
             None

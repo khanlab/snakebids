@@ -112,7 +112,7 @@ def _get_snakebids_file(outputdir: Path):
     # If it's not empty, is there a .snakebids file?
     if (outputdir / ".snakebids").exists():
         malformed_err = RunError(
-            f"Found malformed .snakebids file in `{outputdir.resolve()}. Please"
+            f"Found malformed .snakebids file in `{outputdir.resolve()}. Please "
             "remove this file and check the integrity of previous outputs."
         )
         with (outputdir / ".snakebids").open("r") as f:
@@ -128,9 +128,9 @@ def _get_snakebids_file(outputdir: Path):
     # We have an occupied directory without a .snakebids file, so we have no idea
     # what's there.
     raise RunError(
-        f"Output dir `{outputdir.resolve()}` exists, but `.snakebids` file "
-        "not found. Please specify either a new directory, or a ",
-        "directory where you've previously run this Snakebids app.",
+        f"Output dir `{outputdir.resolve()}` exists, but it doesn't look like this "
+        "app has been run there before. If you're sure you got the directory correct, "
+        "run the app again using `--force-output`",
     )
 
 
