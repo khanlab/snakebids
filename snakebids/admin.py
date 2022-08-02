@@ -1,7 +1,6 @@
 """Script to generate a Snakebids project."""
 
 import argparse
-import os
 from pathlib import Path
 
 from cookiecutter.main import cookiecutter
@@ -11,8 +10,11 @@ from snakebids.app import SnakeBidsApp
 from snakebids.cli import add_dynamic_args
 
 
-def create_app(_):
-    cookiecutter(os.path.join(snakebids.__path__[0], "project_template"))
+def create_app(args):
+    cookiecutter(
+        str(Path(snakebids.__path__[0]) / "project_template"),
+        output_dir=args.output_dir,
+    )
 
 
 def create_descriptor(args):
@@ -30,6 +32,7 @@ def gen_parser():
     subparsers = parser.add_subparsers(required=True, dest="command")
 
     parser_create = subparsers.add_parser("create", help="Create a new Snakebids app.")
+    parser_create.add_argument("output_dir", nargs="?", default=".")
     parser_create.set_defaults(func=create_app)
 
     parser_boutiques = subparsers.add_parser(
