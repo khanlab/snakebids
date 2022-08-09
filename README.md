@@ -38,7 +38,7 @@ If you wish, you can also run `poe [command]` directly by installing `poethepoet
 Tests are done with `pytest` and can be run via:
 
 ```bash
-poetry run pytest
+poetry run poe test
 ```
 
 Snakebids uses pre-commit hooks (installed via the `poe setup` command above) to lint and format code (we use [black](https://github.com/psf/black), [isort](https://github.com/PyCQA/isort), [pylint](https://pylint.org/) and [flake8](https://flake8.pycqa.org/en/latest/)). By default, these hooks are run on every commit. Please be sure they all pass before making a PR.
