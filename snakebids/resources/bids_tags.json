@@ -1,23 +1,96 @@
 {
-    "subject": "sub",
-    "session": "ses",
-    "sample": "sample",
-    "task": "task",
-    "tracer": "trc",
-    "acquisition": "acq",
-    "stain": "stain",
-    "ceagent": "ce",
-    "reconstruction": "rec",
-    "direction": "dir",
-    "run": "run",
-    "chunk": "chunk",
-    "processed": "proc",
-    "modality": "mod",
-    "echo": "echo",
-    "flip": "flip",
-    "inv": "inv",
-    "mt": "mt",
-    "space": "space",
-    "split": "split",
-    "recording": "recording"
+    "subject": {
+        "tag": "sub",
+        "pattern": "[a-zA-Z0-9]+"
+    },
+    "session": {
+        "tag": "ses",
+        "pattern": "[a-zA-Z0-9]+"
+    },
+    "sample": {
+        "tag": "sample",
+        "pattern": "[a-zA-Z0-9]+"
+    },
+    "task": {
+        "tag": "task",
+        "pattern": "[a-zA-Z0-9]+"
+    },
+    "tracer": {
+        "tag": "trc",
+        "pattern": "[a-zA-Z0-9]+"
+    },
+    "acquisition": {
+        "tag": "acq",
+        "pattern": "[a-zA-Z0-9]+"
+    },
+    "staining": {
+        "tag": "stain",
+        "pattern": "[a-zA-Z0-9]+"
+    },
+    "ceagent": {
+        "tag": "ce",
+        "pattern": "[a-zA-Z0-9]+"
+    },
+    "reconstruction": {
+        "tag": "rec",
+        "pattern": "[a-zA-Z0-9]+"
+    },
+    "direction": {
+        "tag": "dir",
+        "pattern": "[a-zA-Z0-9]+"
+    },
+    "run": {
+        "tag": "run",
+        "pattern": "[0-9]+"
+    },
+    "chunk": {
+        "tag": "chunk",
+        "pattern": "[0-9]+"
+    },
+    "proc": {
+        "tag": "proc",
+        "pattern": "[a-zA-Z0-9]+"
+    },
+    "modality": {
+        "tag": "mod",
+        "pattern": "[a-zA-Z0-9]+"
+    },
+    "echo": {
+        "tag": "echo",
+        "pattern": "[0-9]+"
+    },
+    "flip": {
+        "tag": "flip",
+        "pattern": "[0-9]+"
+    },
+    "inv": {
+        "tag": "inv",
+        "pattern": "[0-9]+"
+    },
+    "mt": {
+        "tag": "mt",
+        "pattern": "(on|off)"
+    },
+    "space": {
+        "tag": "space",
+        "pattern": "[a-zA-Z0-9]+"
+    },
+    "split": {
+        "tag": "split",
+        "pattern": "[a-zA-Z0-9]+"
+    },
+    "recording": {
+        "tag": "recording",
+        "pattern": "[a-zA-Z0-9]+"
+    },
+    "datatype": {
+        "pattern": "anat|beh|dwi|eeg|fmap|func|ieeg|meg|micr|perf|pet"
+    },
+    "suffix": {
+        "pattern": "[a-zA-Z0-9]*?"
+    },
+    "part": {
+        "tag": "part",
+        "pattern": "imag|mag|phase|real"
+    }
 }
