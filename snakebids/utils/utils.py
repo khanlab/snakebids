@@ -3,12 +3,15 @@ import importlib.resources
 import json
 from typing import Any, Callable, Dict, Iterable
 
+import attrs
+
 
 @ft.lru_cache(None)
-def read_bids_tags(bids_json=None) -> Dict[str, str]:
-    """Read the bids tags we are aware of from a JSON file. This is used
-    specifically for compatibility with pybids, since some tag keys are
-    different from how they appear in the file name, e.g. ``subject`` for
+def read_bids_tags(bids_json=None) -> Dict[str, Dict[str, str]]:
+    """Read the bids tags we are aware of from a JSON file.
+
+    This is used specifically for compatibility with pybids, since some tag keys
+    are different from how they appear in the file name, e.g. ``subject`` for
     ``sub``, and ``acquisition`` for ``acq``.
 
     Parameters
@@ -20,7 +23,8 @@ def read_bids_tags(bids_json=None) -> Dict[str, str]:
     Returns
     -------
     dict:
-        Dictionary of bids tags"""
+        Dictionary of bids tags
+    """
     if bids_json:
         with bids_json.open("r") as infile:
             bids_tags = json.load(infile)
@@ -28,6 +32,100 @@ def read_bids_tags(bids_json=None) -> Dict[str, str]:
     with importlib.resources.open_text("snakebids.resources", "bids_tags.json") as file:
         bids_tags = json.load(file)
     return bids_tags
+
+
+@attrs.frozen(hash=True)
+class BidsEntity:
+    """Bids entities with tag and wildcard representations"""
+
+    entity: str = attrs.field(converter=str)
+
+    def __str__(self):
+        return self.entity
+
+    def __eq__(self, other: Any):
+        if isinstance(other, str):
+            return self.entity == other
+        if isinstance(other, BidsEntity):
+            return self.entity == other.entity
+        return False
+
+    @property
+    def tag(self):
+        """Get the bids tag version of the entity
+
+        For entities in the bids spec, the tag is the short version of the entity
+        name. Otherwise, the tag is equal to the entity.
+
+        Returns
+        -------
+        str
+        """
+        tags = read_bids_tags()
+        return (
+            tags[self.entity]["tag"]
+            if self.entity in tags and "tag" in tags[self.entity]
+            else self.entity
+        )
+
+    @property
+    def pattern(self):
+        """Get regex of acceptable patterns
+
+        If no pattern is associated with the entity, the default pattern is a word with
+        letters and numbers
+
+        Returns
+        -------
+        str
+        """
+        tags = read_bids_tags()
+        return (
+            tags[self.entity]["pattern"]
+            if self.entity in tags and "pattern" in tags[self.entity]
+            else "[a-zA-Z0-9]+"
+        )
+
+    @property
+    def wildcard(self):
+        """Get the snakebids {wildcard}
+
+        The wildcard is generally equal to the tag, i.e. the short version of the entity
+        name, except for subject and session, which use the full name name. This is to
+        ensure compatibility with the bids function
+
+        Returns
+        -------
+        str
+        """
+        # HACK FIX FOR acq vs acquisition etc -- should
+        # eventually update the bids() function to also use
+        # bids_tags.json, where e.g. acquisition -> acq is
+        # defined.. -- then, can use wildcard_name instead
+        # of out_name..
+        if self.entity in ["subject", "session"]:
+            return self.entity
+        return self.tag
+
+    @classmethod
+    def from_tag(cls, tag: str):
+        """Return the entity associated with the given tag, if found
+
+        If not associated entity is found, the tag itself is used as the entity name
+
+        Parameters
+        ----------
+        tag : str
+            tag to search
+
+        Returns
+        -------
+        BidsEntity
+        """
+        for entity, props in read_bids_tags().items():
+            if props.get("tag", None) == tag:
+                return cls(entity)
+        return cls(tag)
 
 
 def matches_any(

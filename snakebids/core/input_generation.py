@@ -31,7 +31,7 @@ from typing_extensions import Literal, TypedDict
 import snakebids.utils.sb_itertools as sb_it
 from snakebids.core.filtering import filter_list
 from snakebids.utils.snakemake_io import glob_wildcards
-from snakebids.utils.utils import read_bids_tags
+from snakebids.utils.utils import BidsEntity
 
 _logger = logging.getLogger(__name__)
 
@@ -75,7 +75,9 @@ class BidsComponent:
 
     input_name: str = attr.field(on_setattr=attr.setters.frozen)
     input_path: str = attr.field(on_setattr=attr.setters.frozen)
-    input_zip_lists: Dict[str, List[str]] = attr.field(on_setattr=attr.setters.frozen)
+    input_zip_lists: Dict[str, List[str]] = attr.field(
+        on_setattr=attr.setters.frozen, converter=dict
+    )
 
     @input_zip_lists.validator  # type: ignore
     def _validate_input_zip_lists(self, _, value: Dict[str, List[str]]):
@@ -785,7 +787,7 @@ def _parse_custom_path(
     return filter_list(input_zip_lists, filters, regex_search=regex_search)
 
 
-def _parse_bids_path(path: str, wildcards: Iterable[str]) -> Tuple[str, Dict[str, str]]:
+def _parse_bids_path(path: str, entities: Iterable[str]) -> Tuple[str, Dict[str, str]]:
     """Replace parameters in an bids path with the given wildcard {tags}.
 
     Parameters
@@ -806,43 +808,31 @@ def _parse_bids_path(path: str, wildcards: Iterable[str]) -> Tuple[str, Dict[str
     """
 
     wildcard_values: Dict[str, str] = {}
-    bids_tags = read_bids_tags()
 
-    for wildcard in wildcards:
+    for entity in map(BidsEntity, entities):
         # Iterate over wildcards, slowly updating the path as each entity is replaced
 
-        tag = bids_tags[wildcard] if wildcard in bids_tags else wildcard
+        tag = entity.tag
+        wildcard = entity.wildcard
 
-        # this changes e.g. sub-001 to sub-{subject} in the path
-        # (so snakemake can use the wildcards)
-        # HACK FIX FOR acq vs acquisition etc -- should
-        # eventually update the bids() function to also use
-        # bids_tags.json, where e.g. acquisition -> acq is
-        # defined.. -- then, can use wildcard_name instead
-        # of out_name..
-        if wildcard not in ["subject", "session"]:
-            out_name = tag
-        else:
-            out_name = wildcard
-
-        if wildcard == "suffix":
+        if entity == "suffix":
             # capture suffix
             match = re.search(r".*_([a-zA-Z0-9]+).*$", path)
 
             # capture "(before)suffix(after)" and replace with "before{suffix}after"
-            new_path = re.sub(r"(.*_)[a-zA-Z0-9]+(.*)$", rf"\1{{{out_name}}}\2", path)
+            new_path = re.sub(r"(.*_)[a-zA-Z0-9]+(.*)$", rf"\1{{{wildcard}}}\2", path)
 
         else:
             pattern = f"{tag}-([a-zA-Z0-9]+)"
-            replace = f"{tag}-{{{out_name}}}"
+            replace = f"{tag}-{{{wildcard}}}"
 
             match = re.search(pattern, path)
             new_path = re.sub(pattern, replace, path)
 
         if match and match.group(1):
-            entity = match.group(1)
+            value = match.group(1)
         else:
-            entity = ""
+            value = ""
 
         # update the path with the {wildcards} -- uses the
         # value from the string (not from the pybids
@@ -850,7 +840,7 @@ def _parse_bids_path(path: str, wildcards: Iterable[str]) -> Tuple[str, Dict[str
         # formatting (e.g. for run=01)
 
         path = new_path
-        wildcard_values[out_name] = entity
+        wildcard_values[wildcard] = value
 
     return path, wildcard_values
 
