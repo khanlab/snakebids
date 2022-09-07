@@ -25,6 +25,7 @@ from typing import (
 import attr
 import more_itertools as itx
 from bids import BIDSLayout, BIDSLayoutIndexer
+from bids.layout import Query
 from cached_property import cached_property
 from typing_extensions import Literal, TypedDict
 
@@ -906,9 +907,11 @@ def _get_lists_from_bids(
 
         input_zip_lists = defaultdict(list)
         paths = set()
-        for img in bids_layout.get(
-            **pybids_inputs[input_name].get("filters", {}), **filters
-        ):
+        pybids_filters = {
+            key: Query.ANY if val is True else Query.NONE if val is False else val
+            for key, val in pybids_inputs[input_name].get("filters", {}).items()
+        }
+        for img in bids_layout.get(**pybids_filters, **filters):
             wildcards: List[str] = [
                 wildcard
                 for wildcard in pybids_inputs[input_name].get("wildcards", [])
