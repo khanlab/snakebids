@@ -127,6 +127,7 @@ def bids(
     * Some code adapted from mne-bids, specifically
       https://mne.tools/mne-bids/stable/_modules/mne_bids/utils.html
     """
+    # BUG: Datatype as the only arg is ill-defined, but no error is raised
 
     # replace underscores in keys (needed so that users can use reserved
     # keywords by appending a _)
