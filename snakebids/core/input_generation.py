@@ -811,6 +811,7 @@ def _parse_bids_path(path: str, entities: Iterable[str]) -> Tuple[str, Dict[str,
 
     wildcard_values: Dict[str, str] = {}
 
+    # BUG: No support for "datatype"
     for entity in map(BidsEntity, entities):
         # Iterate over wildcards, slowly updating the path as each entity is replaced
 
@@ -825,6 +826,8 @@ def _parse_bids_path(path: str, entities: Iterable[str]) -> Tuple[str, Dict[str,
             new_path = re.sub(r"(.*_)[a-zA-Z0-9]+(.*)$", rf"\1{{{wildcard}}}\2", path)
 
         else:
+            # BUG: tags cannot be a substr of another tag in the same path (e.g. space
+            #      and ce)
             pattern = f"{tag}-([a-zA-Z0-9]+)"
             replace = f"{tag}-{{{wildcard}}}"
 
