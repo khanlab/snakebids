@@ -1,8 +1,11 @@
 """Helper functions and classes for tests
 """
 
+import functools as ft
 from collections import UserDict
-from typing import Any, Dict, Iterable, List, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
+
+import pytest
 
 from snakebids import bids
 from snakebids.utils.utils import BidsEntity
@@ -93,3 +96,26 @@ class BidsListCompare(UserDict):
                 ):
                     return False
         return True
+
+
+def debug(**overrides: Any):
+    """Disable a hypothesis decorated test with specific parameter examples
+
+    Should be used as a decorator, placed *before* @hypothesis.given(). Adds the "debug"
+    mark to the test, which can be detected by other constructs (e.g. to disable fakefs
+    when hypothesis is not being used)
+    """
+
+    def inner(func: Callable[..., Any]):
+        test = getattr(func, "hypothesis").inner_test
+
+        @pytest.mark.disable_fakefs(True)
+        @ft.wraps(func)
+        def inner_test(*args, **kwargs):
+            return test(*args, **{**kwargs, **overrides})
+
+        if not hasattr(func, "hypothesis"):
+            raise TypeError(f"{func} is not decorated with hypothesis.given")
+        return inner_test
+
+    return inner
