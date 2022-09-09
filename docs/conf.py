@@ -37,6 +37,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinxcontrib.napoleon",
     "sphinxcontrib.asciinema",
+    "sphinx.ext.intersphinx",
     "myst_parser",
 ]
 
@@ -55,6 +56,11 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 
 master_doc = "index"
+
+intersphinx_mapping = {
+    "pybids": ("https://bids-standard.github.io/pybids/", None),
+    "python": ("https://docs.python.org/3", None),
+}
 
 
 # -- Options for HTML output -------------------------------------------------
