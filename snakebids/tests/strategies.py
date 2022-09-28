@@ -48,6 +48,8 @@ def input_zip_lists(
     if entities is None:
         entities = draw(bids_entity_lists(min_size=min_size, max_size=max_size))
 
+    # TODO: min_size and max_size shouldn't be hard-coded, but we need a good way of
+    # doing this.
     values = {
         entity: draw(
             st.lists(
