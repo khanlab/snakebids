@@ -20,7 +20,7 @@ This package allows you to build BIDS Apps using Snakemake. It offers:
 Contributing
 ============
 
-Clone the git repository. Snakebids dependencies are managed with Poetry, which you'll need installed on your machine. You can find instructions on the [poetry website](https://python-poetry.org/docs/master/#installation). Then, setup the development environment with the following commands:
+Clone the git repository. Snakebids dependencies are managed with Poetry (vesion 1.2 or higher), which you'll need installed on your machine. You can find instructions on the [poetry website](https://python-poetry.org/docs/master/#installation). Then, setup the development environment with the following commands:
 
 ```bash
 poetry install
