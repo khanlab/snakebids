@@ -10,6 +10,8 @@ snakebids
 Snakemake + BIDS
 This package allows you to build BIDS Apps using Snakemake. It offers:
 
+## Dev Lunch Heading
+Hello world!
 
 * Flexible data grabbing with PyBIDS, configurable solely by config file entries
 * Helper function for creating BIDS paths inside Snakemake workflows/rules
