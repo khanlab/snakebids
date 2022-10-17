@@ -16,10 +16,10 @@ rule all:
                 root='results',
                 fwhm='{fwhm}',
                 suffix='bold.nii.gz',
-                **inputs.input_wildcards['bold']
+                **inputs.wildcards['bold']
             ),
             fwhm=config['fwhm'],
-            **inputs.input_lists['bold']
+            **inputs.lists['bold']
         )
 
 
@@ -29,7 +29,7 @@ def calc_sigma_from_fwhm(wildcards):
 
 rule smooth:
     input:
-        inputs.input_path['bold']
+        inputs.path['bold']
     params:
         sigma = calc_sigma_from_fwhm
     output:
@@ -37,7 +37,7 @@ rule smooth:
             root='results',
             fwhm='{fwhm}',
             suffix='bold.nii.gz',
-            **inputs.input_wildcards['bold']
+            **inputs.wildcards['bold']
         )
     shell:
         'fslmaths {input} -s {params.sigma} {output}'
