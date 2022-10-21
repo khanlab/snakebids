@@ -46,13 +46,31 @@ from snakebids.utils.utils import BidsEntity
 T = TypeVar("T")
 
 
+class TestBidsComponentAliases:
+    @given(sb_st.bids_components())
+    def test_bids_component_aliases_are_correctly_set(self, component: BidsComponent):
+        assert component.input_entities is component.entities
+        assert component.input_path is component.path
+        assert component.input_zip_lists is component.zip_lists
+        assert component.input_lists is component.input_lists
+        assert component.input_wildcards is component.wildcards
+
+    @given(sb_st.bids_components())
+    def test_bids_dataset_aliases_are_correctly_set(self, component: BidsComponent):
+        dataset = BidsDataset.from_iterable([component])
+        assert dataset.input_path == dataset.path
+        assert dataset.input_zip_lists == dataset.zip_lists
+        assert dataset.input_lists == dataset.input_lists
+        assert dataset.input_wildcards == dataset.wildcards
+
+
 class TestBidsComponentValidation:
     @given(sb_st.input_zip_lists().filter(lambda v: len(v) > 1))
     def test_zip_lists_must_be_same_length(self, zip_lists: Dict[str, List[str]]):
         itx.first(zip_lists.values()).append("foo")
         with pytest.raises(ValueError) as err:
             BidsComponent("foo", get_bids_path(zip_lists), zip_lists)
-        assert err.value.args[0] == "input_zip_lists must all be of equal length"
+        assert err.value.args[0] == "zip_lists must all be of equal length"
 
     @given(sb_st.input_zip_lists(), sb_st.bids_entity())
     def test_path_cannot_have_extra_entities(
@@ -63,7 +81,7 @@ class TestBidsComponentValidation:
         with pytest.raises(ValueError) as err:
             BidsComponent("foo", path, zip_lists)
         assert (
-            "input_zip_lists entries must match the wildcards in input_path"
+            "zip_lists entries must match the wildcards in input_path"
             in err.value.args[0]
         )
 
@@ -73,7 +91,7 @@ class TestBidsComponentValidation:
         with pytest.raises(ValueError) as err:
             BidsComponent("foo", path, zip_lists)
         assert (
-            "input_zip_lists entries must match the wildcards in input_path"
+            "zip_lists entries must match the wildcards in input_path"
             in err.value.args[0]
         )
 
@@ -97,7 +115,7 @@ class TestBidsComponentEq:
     @given(sb_st.bids_components())
     def test_mutation_makes_unequal(self, input: BidsComponent):
         cp = copy.deepcopy(input)
-        itx.first(cp.input_zip_lists.values())[0] += "foo"
+        itx.first(cp.zip_lists.values())[0] += "foo"
         assert cp != input
 
     @given(sb_st.bids_components(), st.data())
@@ -106,24 +124,22 @@ class TestBidsComponentEq:
     ):
         cp = copy.deepcopy(input)
         new_entity = data.draw(
-            sb_st.bids_value().filter(lambda s: s not in input.input_zip_lists)
+            sb_st.bids_value().filter(lambda s: s not in input.zip_lists)
         )
-        cp.input_zip_lists[new_entity] = []
-        itx.first(cp.input_zip_lists.values())[0] += "foo"
+        cp.zip_lists[new_entity] = []
+        itx.first(cp.zip_lists.values())[0] += "foo"
         assert cp != input
 
     @given(sb_st.bids_components())
     def test_order_doesnt_affect_equality(self, input: BidsComponent):
         cp = copy.deepcopy(input)
-        for l in cp.input_zip_lists:
-            cp.input_zip_lists[l].reverse()
+        for l in cp.zip_lists:
+            cp.zip_lists[l].reverse()
         assert cp == input
 
     @given(sb_st.bids_components())
     def test_paths_must_be_identical(self, input: BidsComponent):
-        cp = BidsComponent(
-            input.input_name, input.input_path + "foo", input.input_zip_lists
-        )
+        cp = BidsComponent(input.input_name, input.input_path + "foo", input.zip_lists)
         assert cp != input
 
 
@@ -141,9 +157,7 @@ class TestBidsComponentProperties:
         path = get_bids_path(zip_lists)
 
         assert setify(
-            BidsComponent(
-                input_name="foo", input_path=path, input_zip_lists=zip_lists
-            ).input_lists
+            BidsComponent(name="foo", path=path, zip_lists=zip_lists).input_lists
         ) == setify(input_lists)
 
     @given(
@@ -159,9 +173,9 @@ class TestBidsComponentProperties:
     ):
         zip_lists = {entity: [val] for entity, val in bids_entities.items()}
         bids_input = BidsComponent(
-            input_name="foo",
-            input_path=get_bids_path(zip_lists),
-            input_zip_lists=zip_lists,
+            name="foo",
+            path=get_bids_path(zip_lists),
+            zip_lists=zip_lists,
         )
 
         wildstr = ".".join(bids_input.input_wildcards.values())
@@ -190,8 +204,8 @@ def dataset(draw: st.DrawFn):
 class TestFilterBools:
     def create_dataset(self, root: str, dataset: BidsDataset):
         for component in dataset.values():
-            entities = list(component.input_zip_lists.keys())
-            for values in zip(*component.input_zip_lists.values()):
+            entities = list(component.zip_lists.keys())
+            for values in zip(*component.zip_lists.values()):
                 path = Path(
                     root, component.input_path.format(**dict(zip(entities, values)))
                 )
@@ -214,6 +228,7 @@ class TestFilterBools:
 
     def disambiguate_components(self, dataset: BidsDataset):
         assert len(dataset) == 2
+        dataset.zip_lists
         comp1, comp2 = dataset.values()
         return sorted([comp1, comp2], key=lambda comp: len(comp.entities))
 
@@ -306,7 +321,7 @@ class TestFilterBools:
         expected = BidsDataset(
             {
                 shorter.input_name: attrs.evolve(
-                    shorter, input_path=os.path.join(root, shorter.input_path)
+                    shorter, path=os.path.join(root, shorter.input_path)
                 )
             }
         )
@@ -340,7 +355,7 @@ class TestFilterBools:
         expected = BidsDataset(
             {
                 longer.input_name: attrs.evolve(
-                    longer, input_path=os.path.join(root, longer.input_path)
+                    longer, path=os.path.join(root, longer.input_path)
                 )
             }
         )
@@ -753,7 +768,7 @@ def test_t1w():
         participant_label="001",
         use_bids_inputs=True,
     )
-    assert result.input_lists == {
+    assert result.lists == {
         "scan": {"acq": ["mprage"], "subject": ["001"], "suffix": ["T1w"]}
     }
     template = BidsDataset(
