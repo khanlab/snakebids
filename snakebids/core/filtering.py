@@ -39,7 +39,7 @@ def filter_list(
 ):
     """This function is used when you are expanding over some subset of the
     wildcards i.e. if your output file doesn't contain all the wildcards in
-    input_wildcards
+    :attr:`BidsComponent.wildcards <snakebids.BidsComponent.wildcards>`
 
     Parameters
     ----------

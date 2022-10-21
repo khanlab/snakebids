@@ -94,9 +94,9 @@ def bids_components(
     path = helpers.get_bids_path(zip_lists)
 
     return BidsComponent(
-        input_name=draw(bids_value()),
-        input_path=path,
-        input_zip_lists=zip_lists,
+        name=draw(bids_value()),
+        path=path,
+        zip_lists=zip_lists,
     )
 
 

@@ -194,7 +194,7 @@ def property_alias(prop: _Documented, label: str | None = None, ref: str | None 
     property
     """
 
-    def inner(__func: Callable[[Any], T]):
+    def inner(__func: Callable[[Any], T]) -> "UserProperty[T]":
         alias = UserProperty(__func)
         if label:
             link = f":attr:`{label} <{ref}>`" if ref else label
