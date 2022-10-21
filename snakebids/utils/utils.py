@@ -1,9 +1,16 @@
+from __future__ import annotations
+
 import functools as ft
 import importlib.resources
 import json
-from typing import Any, Callable, Dict, Iterable
+from typing import Any, Callable, Dict, Iterable, TypeVar
 
 import attrs
+from typing_extensions import Protocol
+
+from snakebids.utils.sb_typing import UserProperty
+
+T = TypeVar("T")
 
 
 @ft.lru_cache(None)
@@ -132,7 +139,7 @@ def matches_any(
     item: Any,
     match_list: Iterable[Any],
     match_func: Callable[[Any, Any], Any],
-    *args: Any
+    *args: Any,
 ):
     for match in match_list:
         if match_func(match, item, *args):
@@ -163,5 +170,38 @@ def get_match_search_func(
 
     def inner(item: Any):
         return matches_any(item, match_list, match_func)
+
+    return inner
+
+
+# pylint: disable=too-few-public-methods
+class _Documented(Protocol):
+    __doc__: str
+
+
+def property_alias(prop: _Documented, label: str | None = None, ref: str | None = None):
+    """Set property as an alias for another property
+
+    Copies the docstring from the aliased property to the alias
+
+    Parameters
+    ----------
+    prop : property
+        Property to alias
+
+    Returns
+    -------
+    property
+    """
+
+    def inner(__func: Callable[[Any], T]):
+        alias = UserProperty(__func)
+        if label:
+            link = f":attr:`{label} <{ref}>`" if ref else label
+        else:
+            link = f":attr:`{ref}`" if ref else None
+        labeltxt = f"Alias of {link}\n\n" if link else ""
+        alias.__doc__ = f"{labeltxt}{prop.__doc__}"
+        return alias
 
     return inner

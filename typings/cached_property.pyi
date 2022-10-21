@@ -1,5 +1,7 @@
-from typing import Callable, TypeVar
+from typing import TypeVar
+
+from snakebids.utils.sb_typing import UserProperty
 
 T = TypeVar("T")
 
-def cached_property(func: Callable[..., T]) -> T: ...
+class cached_property(UserProperty[T]): ...

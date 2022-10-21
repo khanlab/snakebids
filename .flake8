@@ -10,3 +10,4 @@ extend-exclude =
     docs/
     snakebids/project_template/*/docs
     typings/
+    **/*.pyi
