@@ -19,7 +19,7 @@ rule all:
                 **inputs.wildcards['bold']
             ),
             fwhm=config['fwhm'],
-            **inputs.lists['bold']
+            **inputs.entities['bold']
         )
 
 

@@ -129,10 +129,10 @@ class BidsComponent:
     )
 
     @property
-    def lists(self):
-        """Compact list reprentation of values
+    def entities(self):
+        """Component entities and their associated values
 
-        Dictionary where each key is a wildcard entity and each value is a list of the
+        Dictionary where each key is an entity and each value is a list of the
         unique values found for that entity. These lists might not be the same length.
         """
         if self._input_lists is None:
@@ -141,9 +141,9 @@ class BidsComponent:
             }
         return self._input_lists
 
-    @property_alias(lists, "lists", "snakebids.BidsComponent.lists")
+    @property_alias(entities, "entities", "snakebids.BidsComponent.entities")
     def input_lists(self):
-        return self.lists
+        return self.entities
 
     @property
     def wildcards(self):
@@ -161,20 +161,6 @@ class BidsComponent:
     @property_alias(wildcards, "wildcards", "snakebids.BidsComponent.wildcards")
     def input_wildcards(self):
         return self.wildcards
-
-    @property
-    def entities(self):
-        """List of wildcard entities
-
-        Only lists the entities being used as wildcards.
-        """
-        if self._entities is None:
-            self._entities = list(self.zip_lists.keys())
-        return self._entities
-
-    @property_alias(entities, "entities", "snakebids.BidsComponent.entities")
-    def input_entities(self):
-        return self.entities
 
     def __eq__(self, other: Union["BidsComponent", object]):
         if not isinstance(other, BidsComponent):
@@ -220,8 +206,8 @@ class BidsDataset(_BidsComponentsType):
 
     Individual components can be accessed using bracket-syntax: (e.g.
     ``inputs["t1w"]``). Component access attributes along with the component name in
-    brackets can also be used. For example, ``BidsDataset.lists["t1w"]`` and
-    ``BidsDataset["t1w"].input_lists`` return the same thing.
+    brackets can also be used. For example, ``BidsDataset.entities["t1w"]`` and
+    ``BidsDataset["t1w"].entities`` return the same thing.
 
     Provides access to summarizing information, for instance, the set of all subjects or
     sessions found in the dataset
@@ -259,15 +245,15 @@ class BidsDataset(_BidsComponentsType):
         return self.zip_lists
 
     @cached_property
-    def lists(self):
+    def entities(self):
         """Dict mapping :class:`BidsComponents <snakebids.BidsComponent>` names to \
-        to their :attr:`lists <snakebids.BidsComponent.lists>`
+        to their :attr:`entities <snakebids.BidsComponent.entities>`
         """
-        return {key: value.input_lists for key, value in self.data.items()}
+        return {key: value.entities for key, value in self.data.items()}
 
-    @property_alias(lists, "lists", "snakebids.BidsDataset.lists")
+    @property_alias(entities, "entities", "snakebids.BidsDataset.entities")
     def input_lists(self):
-        return self.lists
+        return self.entities
 
     @cached_property
     def wildcards(self):
@@ -287,7 +273,7 @@ class BidsDataset(_BidsComponentsType):
             *{
                 *it.chain.from_iterable(
                     input_list["subject"]
-                    for input_list in self.lists.values()
+                    for input_list in self.entities.values()
                     if "subject" in input_list
                 )
             }
@@ -301,7 +287,7 @@ class BidsDataset(_BidsComponentsType):
             *{
                 *it.chain.from_iterable(
                     input_list["session"]
-                    for input_list in self.lists.values()
+                    for input_list in self.entities.values()
                     if "session" in input_list
                 )
             }
@@ -335,7 +321,7 @@ class BidsDataset(_BidsComponentsType):
         """
         return BidsDatasetDict(
             input_path=self.input_path,
-            input_lists=self.lists,
+            input_lists=self.entities,
             input_wildcards=self.input_wildcards,
             input_zip_lists=self.input_zip_lists,
             subjects=self.subjects,
@@ -571,7 +557,7 @@ def generate_inputs(
                     "task": ["nback", "rest"]
                 }
             }
-            lists: {
+            entities: {
                 "bold": {
                     "subject": ["control01"],
                     "task": ["nback", "rest"]
@@ -819,16 +805,12 @@ def _parse_custom_path(
     zip_lists: Dict[str, List[str]] = {}
 
     # Log an error if no matches found
-    # TODO: This will fail to detect filtering correctly as, up till now, it has
-    #       only been performed on input_lists
     if len(wildcards[0]) == 0:
         _logger.error("No matching files for %s", input_path)
         return zip_lists
 
     # Loop through every wildcard name
     for i, wildcard in enumerate(wildcard_names):
-        # Check if this wildcard needs to be filtered
-        # Add the wildcard item to each output value, using filtering for input_lists
         zip_lists[wildcard] = wildcards[i]
 
     # Return the output values, running filtering on the zip_lists
