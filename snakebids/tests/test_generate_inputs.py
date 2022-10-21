@@ -49,7 +49,6 @@ T = TypeVar("T")
 class TestBidsComponentAliases:
     @given(sb_st.bids_components())
     def test_bids_component_aliases_are_correctly_set(self, component: BidsComponent):
-        assert component.input_entities is component.entities
         assert component.input_path is component.path
         assert component.input_zip_lists is component.zip_lists
         assert component.input_lists is component.input_lists
@@ -157,7 +156,7 @@ class TestBidsComponentProperties:
         path = get_bids_path(zip_lists)
 
         assert setify(
-            BidsComponent(name="foo", path=path, zip_lists=zip_lists).input_lists
+            BidsComponent(name="foo", path=path, zip_lists=zip_lists).entities
         ) == setify(input_lists)
 
     @given(
@@ -230,12 +229,12 @@ class TestFilterBools:
         assert len(dataset) == 2
         dataset.zip_lists
         comp1, comp2 = dataset.values()
-        return sorted([comp1, comp2], key=lambda comp: len(comp.entities))
+        return sorted([comp1, comp2], key=lambda comp: len(comp.entities.keys()))
 
     def get_extra_entity(self, dataset: BidsDataset) -> str:
         return itx.one(
             ft.reduce(
-                lambda set_, comp: set_.symmetric_difference(comp.entities),
+                lambda set_, comp: set_.symmetric_difference(comp.entities.keys()),
                 dataset.values(),
                 set(),
             )
@@ -768,7 +767,7 @@ def test_t1w():
         participant_label="001",
         use_bids_inputs=True,
     )
-    assert result.lists == {
+    assert result.entities == {
         "scan": {"acq": ["mprage"], "subject": ["001"], "suffix": ["T1w"]}
     }
     template = BidsDataset(

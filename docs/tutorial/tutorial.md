@@ -345,10 +345,10 @@ with this:
 
 This effectively ensures that any bids entities from the input filenames (that are listed as pybids wildcards) get carried over to the output filenames. Note that we still have the ability to add on additional entities, such as ``fwhm`` here, and set the root directory and suffix.
 
-Another useful config variable is {attr}`lists <snakebids.BidsDataset.lists>`. This is indexed by the pybids input type (e.g. `bold`) and has the list of values that each wildcard can take:
+Another useful config variable is {attr}`entities <snakebids.BidsDataset.entities>`. This is indexed by the pybids input type (e.g. `bold`) and has the list of values that each wildcard can take:
 
 ```py
-inputs.lists == {
+inputs.entities == {
     'bold': {
             'subject': ['001'],
             'task': ['rest'],
@@ -370,7 +370,7 @@ rule all:
                 **config['wildcards']['bold']
             ),
             fwhm=config['fwhm'],
-            **config['lists']['bold']
+            **inputs.entities['bold']
         )
 ```
 
