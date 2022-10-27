@@ -18,11 +18,10 @@ pybids = "^0.15.0"
 snakemake = ">=5.28.0"
 PyYAML = "^6"
 cookiecutter = "^2.1.1"
-colorama = "^0.4.4"
 typing-extensions = ">=3.10.0"
 attrs = ">=21.2.0,<23"
 boutiques = "^0.5.25"
-more-itertools = "^8.12.0"
+more-itertools = ">=8,<10"
 cached-property = "^1.5.2"
 # snakebids doesn't directly depend on pandas, but its dependencies do.
 # python 3.7.0 is limited to pandas < 1.1.x, but this version is not pre-built
@@ -41,7 +40,7 @@ poethepoet = "^0.16.2"
 pre-commit = "^2.17.0"
 mkinit = "^0.3.3"
 hypothesis = "^6.34.1"
-pytest-benchmark = "^3.4.1"
+pytest-benchmark = "^4.0.0"
 pyfakefs = "^4.6.1"
 
 [tool.poetry.scripts]
