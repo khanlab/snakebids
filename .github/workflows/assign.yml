@@ -1,15 +1,15 @@
-name: Assign reviewer 
+name: Assign reviewer
 
 on:
-  pull_request_target: 
+  pull_request_target:
 
-jobs: 
+jobs:
   assign:
     runs-on: ubuntu-latest
     if: github.event.pull_request.assignee == null
 
     steps:
       - name: Assign reviewer
-        uses: kentaro-m/auto-assign-action@v1.1.2
+        uses: kentaro-m/auto-assign-action@v1
         with:
-          repo-token: "${{ secrets.GITHUB_TOKEN }}" 
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
