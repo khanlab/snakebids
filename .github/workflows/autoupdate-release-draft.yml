@@ -1,0 +1,21 @@
+name: Update Release Draft
+on:
+  pull_request_target:
+    types: [closed]
+jobs:
+  build:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout master branch
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+
+      - name: Update changelog
+        uses: release-drafter/release-drafter@v5
+        id: release-drafter
+        with:
+          commitish: ${{ github.event.pull_request.base.ref }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.BP_PAT_TOKEN }}
