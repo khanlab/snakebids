@@ -3,18 +3,6 @@ name: Manual release-drafter update
 on:
   workflow_dispatch:
     inputs:
-      author:
-        description: "Author"
-        required: true
-        default: "github-actions[bot] (user publishing release)"
-      date:
-        description: "Date"
-        required: true
-        default: "YYYY-MM-DD"
-      commitish:
-        description: "Target commit / branch"
-        required: true
-        default: "main"
       comments:
         description: "Update release drafter notes"
 
@@ -22,13 +10,18 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Extract branch name
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+
       - name: Print workflow information
         run: |
-          echo "Author: ${{ github.event.inputs.author }}"
-          echo "Date: ${{ github.event.inputs.date }}"
+          echo "Author: ${{ github.triggering_actor }}"
           echo "Comments: ${{ github.event.inputs.comments }}"
 
       - uses: actions/checkout@v3
+        with: ${{ steps.extract_branch.outputs.branch }}
 
       - name: Update changelog
         uses: release-drafter/release-drafter@v5
@@ -36,4 +29,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          commitish: ${{ github.event.inputs.commitish }}
+          commitish: ${{ steps.extract_branch.outputs.branch }}
