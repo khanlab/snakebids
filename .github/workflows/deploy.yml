@@ -34,6 +34,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+
       - name: Set new release version
         env:
           RD_RELEASE: ${{ steps.release-drafter.outputs.name }}
@@ -43,34 +44,6 @@ jobs:
           else
             echo "NEW_RELEASE=0.1.0" >> $GITHUB_ENV
           fi
-
-      - name: Update version in pyproject.toml
-        uses: jacobtomlinson/gha-find-replace@master
-        with:
-          include: 'pyproject.toml'
-          find: 'version = "(?:([0-9]+\.[0-9]+\.[0-9]+.+)|([0-9]+\.[0-9]+\.[0-9]+))"'
-          replace: 'version = "${{ env.NEW_RELEASE }}"'
-
-      - name: Update version in cookiecutter template
-        uses: jacobtomlinson/gha-find-replace@master
-        with:
-          include: 'snakebids/project_template/cookiecutter.json'
-          find: '"snakebids_version": "(?:([0-9]+\.[0-9]+\.[0-9]+.+)|([0-9]+\.[0-9]+\.[0-9]+))"'
-          replace: '"snakebids_version": "${{ env.NEW_RELEASE }}"'
-
-      - name: Commit updates
-        env:
-          LATEST_VERSION: ${{ env.NEW_RELEASE }}
-        run: |
-          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git diff-index --quiet HEAD || git commit -m "Bump version to $LATEST_VERSION" -a
-
-      - name: Push changes
-        uses: CasperWA/push-protected@v2
-        with:
-          token: ${{ secrets.BP_PAT_TOKEN }}
-          unprotect_reviews: True
 
       - name: Publish change log
         uses: release-drafter/release-drafter@v5
@@ -91,6 +64,10 @@ jobs:
         with:
           ref: ${{ steps.extract_branch.outputs.branch }}
 
+      - name: Fetch tags
+        run: |
+          git fetch --tags
+
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
@@ -104,6 +81,10 @@ jobs:
         with:
           virtualenvs-create: true
           virtualenvs-in-project: true
+
+      - name: Install Poetry Dynamic Version
+        run: |
+          poetry self add "poetry-dynamic-versioning[plugin]"
 
       - name: Build and publish
         env:

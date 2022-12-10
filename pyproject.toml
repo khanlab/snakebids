@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "snakebids"
-version = "0.7.2-pre.3"
+version = "0.0.0"
 description = "BIDS integration into snakemake workflows"
 readme = "README.md"
 repository = "https://github.com/akhanf/snakebids"
@@ -11,6 +11,17 @@ packages = [
     { include = "snakebids" }
 ]
 exclude = ["snakebids/tests/**"]
+
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+dirty = true
+style = "pep440"
+bump = true
+
+[tool.poetry-dynamic-versioning.substitution]
+files = ['snakebids/project_template/cookiecutter.json']
+patterns = ["(^\\s+\"snakebids_version\":\\s*\")[^'\"](\")"]
 
 [tool.poetry.dependencies]
 python = ">=3.7,<3.12"
@@ -62,8 +73,8 @@ pyfakefs = "^4.6.1"
 snakebids = "snakebids.admin:main"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
+build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poe.tasks]
 setup = "pre-commit install"
