@@ -3,21 +3,9 @@ name: Deploy workflow
 on:
   workflow_dispatch:
     inputs:
-      author:
-        description: "Author"
-        required: true
-        default: "github-actions[bot] (user publishing release)"
-      date:
-        description: "Date"
-        required: true
-        default: "YYYY-MM-DD"
       comments:
         description: "Comments"
         required: false
-      branch:
-        description: The branch from which to make the release
-        required: true
-        default: main
 
 jobs:
   release_changelog:
@@ -26,19 +14,23 @@ jobs:
     steps:
       - name: Print author
         run: |
-          echo "Author: ${{ github.event.inputs.author }}"
-          echo "Date: ${{ github.event.inputs.date }}"
+          echo "Author: ${{ github.triggering_actor }}"
           echo "Comments: ${{ github.event.inputs.comments }}"
+
+      - name: Extract branch name
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
 
       - uses: actions/checkout@master
         with:
-          ref: ${{ github.event.inputs.branch }}
+          ref: ${{ steps.extract_branch.outputs.branch }}
 
       - name: Draft change log
         uses: release-drafter/release-drafter@v5
         id: release-drafter
         with:
-          commitish: ${{ github.event.inputs.branch }}
+          commitish: ${{ steps.extract_branch.outputs.branch }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -83,7 +75,7 @@ jobs:
       - name: Publish change log
         uses: release-drafter/release-drafter@v5
         with:
-          commitish: ${{ github.event.inputs.branch }}
+          commitish: ${{ steps.extract_branch.outputs.branch }}
           publish: true
           name: ${{ env.NEW_RELEASE }}
           tag: "v${{ env.NEW_RELEASE }}"
@@ -97,7 +89,7 @@ jobs:
     steps:
       - uses: actions/checkout@master
         with:
-          ref: ${{ github.event.inputs.branch }}
+          ref: ${{ steps.extract_branch.outputs.branch }}
 
       - name: Set up Python
         uses: actions/setup-python@v2
