@@ -905,8 +905,8 @@ def _get_lists_from_bids(
 
     Yields
     ------
-    BidsLists:
-        One BidsLists is yielded for each modality described by ``pybids_inputs``.
+    BidsComponent:
+        One BidsComponent is yielded for each modality described by ``pybids_inputs``.
     """
     if limit_to is None:
         limit_to = pybids_inputs.keys()
