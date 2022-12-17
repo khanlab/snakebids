@@ -650,7 +650,7 @@ def _gen_bids_layout(
     """
 
     # Set db dir to None (otherwise saves to parent dir)
-    if Path(bids_dir):
+    if Path(bids_dir).exists():
         # Check for database_dir
         # If blank, assume db not to be used
         if pybids_database_dir == "":
