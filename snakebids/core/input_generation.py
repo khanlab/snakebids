@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 """Utilities for converting Snakemake apps to BIDS apps."""
 
 import json
@@ -15,6 +16,7 @@ from typing_extensions import Literal
 from snakebids.core.datasets import BidsComponent, BidsDataset, BidsDatasetDict
 from snakebids.core.filtering import filter_list
 from snakebids.exceptions import ConfigError
+from snakebids.types import InputsConfig
 from snakebids.utils.snakemake_io import glob_wildcards
 from snakebids.utils.utils import BidsEntity
 
@@ -25,7 +27,7 @@ _logger = logging.getLogger(__name__)
 @overload
 def generate_inputs(
     bids_dir,
-    pybids_inputs,
+    pybids_inputs: InputsConfig,
     pybids_database_dir=...,
     pybids_reset_database=...,
     derivatives=...,
@@ -42,7 +44,7 @@ def generate_inputs(
 @overload
 def generate_inputs(
     bids_dir,
-    pybids_inputs,
+    pybids_inputs: InputsConfig,
     pybids_database_dir=...,
     pybids_reset_database=...,
     derivatives=...,
@@ -58,7 +60,7 @@ def generate_inputs(
 # pylint: disable=too-many-arguments
 def generate_inputs(
     bids_dir,
-    pybids_inputs,
+    pybids_inputs: InputsConfig,
     pybids_database_dir=None,
     pybids_reset_database=False,
     derivatives=False,
@@ -294,11 +296,11 @@ def generate_inputs(
 
 
 def _gen_bids_layout(
-    bids_dir,
-    derivatives,
-    pybids_database_dir,
-    pybids_reset_database,
-    pybids_config=None,
+    bids_dir: Union[Path, str],
+    derivatives: bool,
+    pybids_database_dir: Union[Path, str, None],
+    pybids_reset_database: bool,
+    pybids_config: Union[Path, str, None] = None,
 ):
     """Create (or reindex) the BIDSLayout if one doesn't exist,
     which is only saved if a database directory path is provided

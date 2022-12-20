@@ -31,6 +31,8 @@ from snakebids.core.input_generation import (
 from snakebids.exceptions import ConfigError
 from snakebids.tests import strategies as sb_st
 from snakebids.tests.helpers import BidsListCompare, debug, get_bids_path, get_zip_list
+from snakebids.types import InputsConfig
+from snakebids.utils import sb_itertools as sb_it
 from snakebids.utils.utils import BidsEntity
 
 T = TypeVar("T")
@@ -107,7 +109,7 @@ class TestFilterBools:
         root = tempfile.mkdtemp(dir=tmpdir)
         self.create_dataset(root, dataset)
         shorter, _ = self.disambiguate_components(dataset)
-        pybids_inputs: Dict[str, Dict[str, Any]] = {
+        pybids_inputs: InputsConfig = {
             shorter.input_name: {
                 "wildcards": [
                     BidsEntity.from_tag(wildcard).entity
@@ -133,7 +135,7 @@ class TestFilterBools:
         root = tempfile.mkdtemp(dir=tmpdir)
         self.create_dataset(root, dataset)
         _, longer = self.disambiguate_components(dataset)
-        pybids_inputs: Dict[str, Dict[str, Any]] = {
+        pybids_inputs: InputsConfig = {
             longer.input_name: {
                 "wildcards": [
                     BidsEntity.from_tag(wildcard).entity
@@ -160,7 +162,7 @@ class TestFilterBools:
         self.create_dataset(root, dataset)
         shorter, _ = self.disambiguate_components(dataset)
         extra_entity = self.get_extra_entity(dataset)
-        pybids_inputs: Dict[str, Dict[str, Any]] = {
+        pybids_inputs: InputsConfig = {
             shorter.input_name: {
                 "wildcards": [
                     BidsEntity.from_tag(wildcard).entity
@@ -194,7 +196,7 @@ class TestFilterBools:
         self.create_dataset(root, dataset)
         _, longer = self.disambiguate_components(dataset)
         extra_entity = self.get_extra_entity(dataset)
-        pybids_inputs: Dict[str, Dict[str, Any]] = {
+        pybids_inputs: InputsConfig = {
             longer.input_name: {
                 "wildcards": [
                     BidsEntity.from_tag(wildcard).entity
@@ -235,7 +237,7 @@ class TestAbsentConfigEntries:
 
         # create config
         derivatives = False
-        pybids_inputs = {
+        pybids_inputs: InputsConfig = {
             "t1": {
                 "wildcards": ["acquisition", "subject"],
             }
@@ -261,7 +263,7 @@ class TestAbsentConfigEntries:
 
         # create config
         derivatives = False
-        pybids_inputs = {
+        pybids_inputs: InputsConfig = {
             "t1": {
                 "filters": {"acquisition": "foo", "subject": "001"},
             }
@@ -517,7 +519,7 @@ def test_custom_pybids_config(tmpdir: Path):
 
     # create config
     derivatives = False
-    pybids_inputs = {
+    pybids_inputs: InputsConfig = {
         "t1": {
             "filters": {"suffix": "T1w"},
             "wildcards": ["acquisition", "subject", "foo"],
@@ -557,7 +559,7 @@ def test_t1w():
     # create config
     real_bids_dir = "snakebids/tests/data/bids_t1w"
     derivatives = False
-    pybids_inputs = {
+    pybids_inputs: InputsConfig = {
         "t1": {
             "filters": {"suffix": "T1w"},
             "wildcards": ["acquisition", "subject", "session", "run"],
@@ -601,7 +603,7 @@ def test_t1w():
     assert result.sessions == []
     assert result.subj_wildcards == {"subject": "{subject}"}
 
-    pybids_inputs_suffix = {
+    pybids_inputs_suffix: InputsConfig = {
         "scan": {
             "filters": {},
             "wildcards": [
@@ -715,7 +717,7 @@ def test_t1w_with_dict():
     # create config
     real_bids_dir = "snakebids/tests/data/bids_t1w"
     derivatives = False
-    pybids_inputs = {
+    pybids_inputs: InputsConfig = {
         "t1": {
             "filters": {"suffix": "T1w"},
             "wildcards": ["acquisition", "subject", "session", "run"],
@@ -741,7 +743,7 @@ def test_t1w_with_dict():
     assert config["sessions"] == []
     assert config["subj_wildcards"] == {"subject": "{subject}"}
 
-    pybids_inputs_suffix = {
+    pybids_inputs_suffix: InputsConfig = {
         "scan": {
             "filters": {},
             "wildcards": [
