@@ -1,4 +1,3 @@
-# pylint: disable=too-many-lines
 """Utilities for converting Snakemake apps to BIDS apps."""
 
 import json
@@ -259,12 +258,16 @@ def generate_inputs(
     )
 
     # Generates a BIDSLayout
-    layout = _gen_bids_layout(
-        bids_dir=bids_dir,
-        derivatives=derivatives,
-        pybids_config=pybids_config,
-        pybids_database_dir=pybids_database_dir,
-        pybids_reset_database=pybids_reset_database,
+    layout = (
+        _gen_bids_layout(
+            bids_dir=bids_dir,
+            derivatives=derivatives,
+            pybids_config=pybids_config,
+            pybids_database_dir=pybids_database_dir,
+            pybids_reset_database=pybids_reset_database,
+        )
+        if not _all_custom_paths(pybids_inputs)
+        else None
     )
 
     filters = {"subject": subject_filter} if subject_filter else {}
@@ -293,6 +296,11 @@ def generate_inputs(
     if use_bids_inputs:
         return BidsDataset.from_iterable(bids_inputs)
     return BidsDataset.from_iterable(bids_inputs).as_dict
+
+
+def _all_custom_paths(config: InputsConfig):
+    """Check that all input components have a custom path"""
+    return all(comp.get("custom_path") for comp in config.values())
 
 
 def _gen_bids_layout(
@@ -329,37 +337,26 @@ def _gen_bids_layout(
         Layout from pybids for accessing the BIDS dataset to grab paths
     """
 
-    # Set db dir to None (otherwise saves to parent dir)
-    if Path(bids_dir).exists():
-        # Check for database_dir
-        # If blank, assume db not to be used
-        if pybids_database_dir == "":
-            pybids_database_dir = None
-        # Otherwise check for relative path and update
-        elif (
-            pybids_database_dir is not None
-            and not Path(pybids_database_dir).is_absolute()
-        ):
-            pybids_database_dir = None
-            _logger.warning("Absolute path must be provided, database will not be used")
+    # Check for database_dir
+    # If blank, assume db not to be used
+    if pybids_database_dir == "":
+        pybids_database_dir = None
+    # Otherwise check for relative path and update
+    elif (
+        pybids_database_dir is not None and not Path(pybids_database_dir).is_absolute()
+    ):
+        pybids_database_dir = None
+        _logger.warning("Absolute path must be provided, database will not be used")
 
-        layout = BIDSLayout(
-            bids_dir,
-            derivatives=derivatives,
-            validate=False,
-            config=pybids_config,
-            database_path=pybids_database_dir,
-            reset_database=pybids_reset_database,
-            indexer=BIDSLayoutIndexer(validate=False, index_metadata=False),
-        )
-    else:
-        _logger.info(
-            "bids_dir does not exist, skipping PyBIDS and using "
-            "custom file paths only"
-        )
-        layout = None
-
-    return layout
+    return BIDSLayout(
+        bids_dir,
+        derivatives=derivatives,
+        validate=False,
+        config=pybids_config,
+        database_path=pybids_database_dir,
+        reset_database=pybids_reset_database,
+        indexer=BIDSLayoutIndexer(validate=False, index_metadata=False),
+    )
 
 
 def write_derivative_json(snakemake, **kwargs):
