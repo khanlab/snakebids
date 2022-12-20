@@ -17,10 +17,12 @@ from bids import BIDSLayout
 from hypothesis import HealthCheck, assume, given, settings
 from hypothesis import strategies as st
 from pyfakefs.fake_filesystem import FakeFilesystem
+from pytest_mock import MockerFixture
 
 from snakebids.core.construct_bids import bids
 from snakebids.core.datasets import BidsComponent, BidsDataset
 from snakebids.core.input_generation import (
+    _all_custom_paths,
     _gen_bids_layout,
     _generate_filters,
     _get_lists_from_bids,
@@ -36,6 +38,7 @@ from snakebids.tests.helpers import (
     debug,
     get_bids_path,
     get_zip_list,
+    reindex_dataset,
 )
 from snakebids.types import InputsConfig
 from snakebids.utils import sb_itertools as sb_it
@@ -809,6 +812,67 @@ def test_get_lists_from_bids():
                     },
                 )
                 assert template == bids_lists
+
+
+class TestGenBidsLayout:
+    @pytest.fixture
+    def tmpdir(self, fakefs_tmpdir: Path):
+        return fakefs_tmpdir
+
+    @pytest.fixture(autouse=True)
+    def bids_fs(self, bids_fs: Optional[FakeFilesystem]):
+        return bids_fs
+
+    def test_gen_layout_returns_valid_dataset(self, tmpdir: Path):
+        dataset = sb_st.datasets().example()
+        create_dataset(tmpdir, dataset)
+        assert _gen_bids_layout(tmpdir, False, None, False, None)
+
+    def test_invalid_path_raises_error(self, tmpdir: Path):
+        with pytest.raises(ValueError):
+            _gen_bids_layout(tmpdir / "foo", False, None, False)
+
+
+@pytest.mark.parametrize("count", tuple(range(6)))
+def test_all_custom_paths(count: int):
+    config: InputsConfig = {}
+    for i in range(count):
+        config[str(i)] = {"wildcards": [], "filters": {}, "custom_path": "foo"}
+    for i in range(count, 5):
+        config[str(i)] = {
+            "wildcards": [],
+            "filters": {},
+        }
+    if count == 5:
+        assert _all_custom_paths(config)
+    else:
+        assert not _all_custom_paths(config)
+
+
+@settings(
+    deadline=800,
+    suppress_health_check=[
+        HealthCheck.function_scoped_fixture,
+        HealthCheck.too_slow,
+    ],
+)
+@given(data=st.data())
+def test_generate_inputs(data: st.DataObject, bids_fs: Path, fakefs_tmpdir: Path):
+    root = tempfile.mkdtemp(dir=fakefs_tmpdir)
+    dataset = data.draw(sb_st.datasets(root=Path(root)))
+    assert reindex_dataset(root, dataset) == dataset
+
+
+def test_when_all_custom_paths_no_layout_indexed(
+    bids_fs: Path, fakefs_tmpdir: Path, mocker: MockerFixture
+):
+    root = tempfile.mkdtemp(dir=fakefs_tmpdir)
+    # The content of the dataset is irrelevant to this test, so one example suffices
+    dataset = sb_st.datasets_one_comp(root=Path(root)).example()
+
+    spy = mocker.spy(BIDSLayout, "__init__")
+    assert reindex_dataset(root, dataset, use_custom_paths=True) == dataset
+    spy.assert_not_called()
 
 
 class TestDB:
