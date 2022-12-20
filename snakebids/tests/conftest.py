@@ -3,6 +3,7 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 
+import bids.layout
 import pytest
 from pyfakefs.fake_filesystem import FakeFilesystem
 
@@ -40,3 +41,12 @@ def fakefs_tmpdir(request: pytest.FixtureRequest, fakefs: Optional[FakeFilesyste
     if not fakefs:
         return request.getfixturevalue("tmpdir")
     return Path(tempfile.mkdtemp())
+
+
+@pytest.fixture
+def bids_fs(fakefs: Optional[FakeFilesystem]):
+    if fakefs:
+        f = Path(*bids.layout.__path__, "config")
+        fakefs.add_real_file(f / "bids.json")
+        fakefs.add_real_file(f / "derivatives.json")
+    return fakefs

@@ -1,4 +1,3 @@
-import copy
 import filecmp
 import functools as ft
 import itertools as it
@@ -9,7 +8,7 @@ import shutil
 import tempfile
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, NamedTuple, Optional, TypeVar
+from typing import Dict, Iterable, List, NamedTuple, Optional, TypeVar
 
 import attrs
 import more_itertools as itx
@@ -30,7 +29,14 @@ from snakebids.core.input_generation import (
 )
 from snakebids.exceptions import ConfigError
 from snakebids.tests import strategies as sb_st
-from snakebids.tests.helpers import BidsListCompare, debug, get_bids_path, get_zip_list
+from snakebids.tests.helpers import (
+    BidsListCompare,
+    allow_tmpdir,
+    create_dataset,
+    debug,
+    get_bids_path,
+    get_zip_list,
+)
 from snakebids.types import InputsConfig
 from snakebids.utils import sb_itertools as sb_it
 from snakebids.utils.utils import BidsEntity
@@ -38,43 +44,10 @@ from snakebids.utils.utils import BidsEntity
 T = TypeVar("T")
 
 
-@st.composite
-def dataset(draw: st.DrawFn):
-    ent1 = draw(sb_st.bids_entity_lists(min_size=2, max_size=3))
-    assume("datatype" not in ent1)
-    # Currently, space and ce cannot coexist because ce is a substr of space (see
-    # snakebids.core.input_generation:_parse_bids_path)
-    assume(not ("space" in ent1 and "ceagent" in ent1))
-    ent2 = copy.copy(ent1)
-    ent2.pop()
-    # BUG: snakebids currently doesn't properly parse paths with just suffix
-    assume(ent2 != ["suffix"])
-    comp1 = draw(sb_st.bids_components(entities=ent1, restricted_chars=True))
-    comp2 = draw(sb_st.bids_components(entities=ent2, restricted_chars=True))
-    assume(comp1.input_name != comp2.input_name)
-    return BidsDataset.from_iterable([comp1, comp2])
-
-
 class TestFilterBools:
-    def create_dataset(self, root: str, dataset: BidsDataset):
-        for component in dataset.values():
-            entities = list(component.zip_lists.keys())
-            for values in zip(*component.zip_lists.values()):
-                path = Path(
-                    root, component.input_path.format(**dict(zip(entities, values)))
-                )
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.touch()
-
     @pytest.fixture(autouse=True)
-    def bids_fs(self, fakefs: Optional[FakeFilesystem]):
-        if fakefs:
-            import bids.layout
-
-            f = Path(*bids.layout.__path__, "config")
-            fakefs.add_real_file(f / "bids.json")
-            fakefs.add_real_file(f / "derivatives.json")
-        return fakefs
+    def bids_fs(self, bids_fs: Optional[FakeFilesystem]):
+        return bids_fs
 
     @pytest.fixture
     def tmpdir(self, fakefs_tmpdir: Path):
@@ -102,12 +75,12 @@ class TestFilterBools:
             HealthCheck.too_slow,
         ],
     )
-    @given(dataset=dataset())
+    @given(dataset=sb_st.datasets())
     def test_ambiguous_paths_with_extra_entities_leads_to_error(
         self, tmpdir: Path, dataset: BidsDataset
     ):
         root = tempfile.mkdtemp(dir=tmpdir)
-        self.create_dataset(root, dataset)
+        create_dataset(root, dataset)
         shorter, _ = self.disambiguate_components(dataset)
         pybids_inputs: InputsConfig = {
             shorter.input_name: {
@@ -128,12 +101,12 @@ class TestFilterBools:
             HealthCheck.too_slow,
         ],
     )
-    @given(dataset=dataset())
+    @given(dataset=sb_st.datasets())
     def test_ambiguous_paths_with_missing_entity_leads_to_error(
         self, tmpdir: Path, dataset: BidsDataset
     ):
         root = tempfile.mkdtemp(dir=tmpdir)
-        self.create_dataset(root, dataset)
+        create_dataset(root, dataset)
         _, longer = self.disambiguate_components(dataset)
         pybids_inputs: InputsConfig = {
             longer.input_name: {
@@ -154,12 +127,12 @@ class TestFilterBools:
             HealthCheck.too_slow,
         ],
     )
-    @given(dataset=dataset())
+    @given(dataset=sb_st.datasets())
     def test_entity_excluded_when_filter_false(
         self, tmpdir: Path, dataset: BidsDataset
     ):
         root = tempfile.mkdtemp(dir=tmpdir)
-        self.create_dataset(root, dataset)
+        create_dataset(root, dataset)
         shorter, _ = self.disambiguate_components(dataset)
         extra_entity = self.get_extra_entity(dataset)
         pybids_inputs: InputsConfig = {
@@ -190,10 +163,10 @@ class TestFilterBools:
             HealthCheck.too_slow,
         ],
     )
-    @given(dataset=dataset())
+    @given(dataset=sb_st.datasets())
     def test_entity_excluded_when_filter_true(self, tmpdir: Path, dataset: BidsDataset):
         root = tempfile.mkdtemp(dir=tmpdir)
-        self.create_dataset(root, dataset)
+        create_dataset(root, dataset)
         _, longer = self.disambiguate_components(dataset)
         extra_entity = self.get_extra_entity(dataset)
         pybids_inputs: InputsConfig = {
@@ -412,9 +385,9 @@ def path_entities(draw: st.DrawFn):
 
 
 class TestCustomPaths:
-    @pytest.fixture(scope="class")
-    def temp_dir(self, tmp_path_factory: pytest.TempPathFactory):
-        return tmp_path_factory.mktemp("test-custom-paths-")
+    @pytest.fixture()
+    def temp_dir(self, fakefs_tmpdir: Path):
+        return fakefs_tmpdir
 
     def generate_test_directory(
         self, entities: Dict[str, List[str]], template: Path, tmpdir: Path
@@ -434,6 +407,7 @@ class TestCustomPaths:
         test_path = self.generate_test_directory(entities, template, tmp_path)
         benchmark(_parse_custom_path, test_path)
 
+    @allow_tmpdir
     @given(path_entities=path_entities())
     def test_collects_all_paths_when_no_filters(
         self,
@@ -450,6 +424,7 @@ class TestCustomPaths:
             "foo", get_bids_path(zip_lists), zip_lists
         ) == BidsComponent("foo", get_bids_path(result), result)
 
+    @allow_tmpdir
     @given(path_entities=path_entities())
     def test_collects_only_filtered_entities(
         self,
@@ -471,6 +446,7 @@ class TestCustomPaths:
             "foo", get_bids_path(zip_lists), zip_lists
         ) == BidsComponent("foo", get_bids_path(result_filtered), result_filtered)
 
+    @allow_tmpdir
     @given(path_entities=path_entities())
     def test_collect_all_but_filters_when_exclusion_filters_used(
         self,

@@ -2,13 +2,20 @@
 """
 
 import functools as ft
+import itertools as it
 from collections import UserDict
-from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
+from pathlib import Path
+from typing import Any, Callable, Dict, Iterable, List, Tuple, TypeVar, Union
 
 import pytest
+from hypothesis import HealthCheck, settings
 
 from snakebids import bids
+from snakebids.core.input_generation import BidsDataset, generate_inputs
+from snakebids.types import InputsConfig
 from snakebids.utils.utils import BidsEntity
+
+T = TypeVar("T")
 
 
 def get_zip_list(
@@ -119,3 +126,63 @@ def debug(**overrides: Any):
         return inner_test
 
     return inner
+
+
+def create_dataset(root: Union[str, Path], dataset: BidsDataset):
+    """Create an empty BidsDataset on the filesystem
+
+    Creates the directory structure and files represented by a BidsDataset. Files are
+    touched: they will have no contents.
+    """
+    for component in dataset.values():
+        entities = list(component.zip_lists.keys())
+        for values in zip(*component.zip_lists.values()):
+            path = Path(root, component.path.format(**dict(zip(entities, values))))
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.touch()
+
+
+def create_snakebids_config(dataset: BidsDataset) -> InputsConfig:
+    """Generate a basic snakebids config dict from a dataset"""
+    all_entities = set(
+        it.chain.from_iterable(comp.entities for comp in dataset.values())
+    )
+    return {
+        comp.name: {
+            "filters": {
+                BidsEntity.from_tag(entity).entity: comp.entities[entity]
+                if entity in comp.entities
+                else False
+                for entity in all_entities
+            },
+            "wildcards": [
+                BidsEntity.from_tag(entity).entity for entity in comp.entities
+            ],
+        }
+        for comp in dataset.values()
+    }
+
+
+def reindex_dataset(root: str, dataset: BidsDataset, use_custom_paths: bool = False):
+    """Create BidsDataset on the filesystem and reindex
+
+    Paths within the dataset must be absolute
+    """
+    create_dataset(Path("/"), dataset)
+    config = create_snakebids_config(dataset)
+    if use_custom_paths:
+        for comp in config:
+            config[comp]["custom_path"] = dataset[comp].path
+    return generate_inputs(root, config, use_bids_inputs=True)
+
+
+def allow_tmpdir(__callable: T) -> T:
+    """Allow function_scoped fixtures in hypothesis tests
+
+    This is primarily useful for using tmpdirs, hence, the name
+    """
+    return settings(
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+        ],
+    )(__callable)
