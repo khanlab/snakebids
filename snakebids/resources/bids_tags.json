@@ -41,11 +41,11 @@
     },
     "run": {
         "tag": "run",
-        "pattern": "[0-9]+"
+        "pattern": "[0-9]{1,5}"
     },
     "chunk": {
         "tag": "chunk",
-        "pattern": "[0-9]+"
+        "pattern": "[0-9]{1,5}"
     },
     "proc": {
         "tag": "proc",
@@ -57,15 +57,15 @@
     },
     "echo": {
         "tag": "echo",
-        "pattern": "[0-9]+"
+        "pattern": "[0-9]{1,5}"
     },
     "flip": {
         "tag": "flip",
-        "pattern": "[0-9]+"
+        "pattern": "[0-9]{1,5}"
     },
     "inv": {
         "tag": "inv",
-        "pattern": "[0-9]+"
+        "pattern": "[0-9]{1,5}"
     },
     "mt": {
         "tag": "mt",
