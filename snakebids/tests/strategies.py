@@ -4,7 +4,7 @@ from typing import Any, List, Optional, Type
 import hypothesis.strategies as st
 from bids.layout import Config as BidsConfig
 
-from snakebids import BidsComponent
+from snakebids.core.datasets import BidsComponent
 from snakebids.tests import helpers
 from snakebids.utils.utils import BidsEntity
 
