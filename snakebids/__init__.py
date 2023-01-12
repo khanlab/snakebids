@@ -3,6 +3,9 @@ __submodules__ = ["core"]
 
 # <AUTOGEN_INIT>
 from snakebids.core import (
+    BidsComponent,
+    BidsDataset,
+    BidsDatasetDict,
     bids,
     filter_list,
     generate_inputs,
@@ -13,6 +16,9 @@ from snakebids.core import (
 )
 
 __all__ = [
+    "BidsComponent",
+    "BidsDataset",
+    "BidsDatasetDict",
     "bids",
     "filter_list",
     "generate_inputs",
