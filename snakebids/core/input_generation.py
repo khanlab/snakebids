@@ -56,7 +56,7 @@ def generate_inputs(
     ...
 
 
-# pylint: disable=too-many-arguments
+# pylint: disable=too-many-arguments, too-many-locals
 def generate_inputs(
     bids_dir,
     pybids_inputs: InputsConfig,
@@ -293,9 +293,15 @@ def generate_inputs(
             "silence this warning."
         )
         use_bids_inputs = False
+
+    try:
+        dataset = BidsDataset.from_iterable(bids_inputs)
+    except ValueError as err:
+        raise ConfigError(err.args[0]) from err
+
     if use_bids_inputs:
-        return BidsDataset.from_iterable(bids_inputs)
-    return BidsDataset.from_iterable(bids_inputs).as_dict
+        return dataset
+    return dataset.as_dict
 
 
 def _all_custom_paths(config: InputsConfig):

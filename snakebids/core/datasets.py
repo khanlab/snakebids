@@ -191,7 +191,7 @@ class BidsDataset(_BidsComponentsType):
 
     # pylint: disable=super-init-not-called
     def __init__(self, data: Any):
-        self.data = dict(data)
+        self.data = dict(data)  # type: ignore
 
     def __setitem__(self, _: Any, __: Any):
         raise NotImplementedError(
@@ -255,8 +255,7 @@ class BidsDataset(_BidsComponentsType):
             }
         ]
 
-    @property
-    # @ft.lru_cache(None)
+    @cached_property
     def sessions(self):
         """A list of the sessions in the dataset."""
         return [
@@ -269,8 +268,7 @@ class BidsDataset(_BidsComponentsType):
             }
         ]
 
-    @property
-    # @ft.lru_cache(None)
+    @cached_property
     def subj_wildcards(self):
         """The subject and session wildcards applicable to this dataset.
 
@@ -317,4 +315,8 @@ class BidsDataset(_BidsComponentsType):
         -------
         BidsDataset
         """
-        return cls({bidsinput.name: bidsinput for bidsinput in iterable})
+        components = list(iterable)
+        indexed = {bidsinput.name: bidsinput for bidsinput in components}
+        if not len(components) == len(indexed):
+            raise ValueError("All BidsComponents must have different names")
+        return cls(indexed)

@@ -14,6 +14,13 @@ from snakebids.utils import sb_itertools as sb_it
 from snakebids.utils.utils import BidsEntity
 
 
+def test_multiple_components_cannot_have_same_name():
+    comp1 = BidsComponent("foo", path=".", zip_lists={})
+    comp2 = BidsComponent("foo", path=".", zip_lists={})
+    with pytest.raises(ValueError):
+        BidsDataset.from_iterable([comp1, comp2])
+
+
 class TestBidsComponentAliases:
     @given(sb_st.bids_components())
     def test_bids_component_aliases_are_correctly_set(self, component: BidsComponent):
