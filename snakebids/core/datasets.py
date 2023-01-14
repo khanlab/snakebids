@@ -63,7 +63,7 @@ class BidsComponent:
         if fields != set(value):
             raise ValueError(
                 "zip_lists entries must match the wildcards in input_path: "
-                f"Path: {fields} != zip_lists: {set(value)}"
+                f"{self.path}: {fields} != zip_lists: {set(value)}"
             )
 
     @property
