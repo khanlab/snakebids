@@ -14,7 +14,7 @@ import attrs
 import more_itertools as itx
 import pytest
 from bids import BIDSLayout
-from hypothesis import HealthCheck, assume, given, settings
+from hypothesis import HealthCheck, assume, example, given, settings
 from hypothesis import strategies as st
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
@@ -159,6 +159,34 @@ class TestFilterBools:
         data = generate_inputs(root, pybids_inputs, use_bids_inputs=True)
         assert data == expected
 
+    @example(
+        dataset=BidsDataset(
+            {
+                "0": BidsComponent(
+                    name="0",
+                    path="ce-{ce}_space-{space}",
+                    zip_lists={"ce": ["0"], "space": ["0"]},
+                ),
+                "1": BidsComponent(name="1", path="ce-{ce}", zip_lists={"ce": ["0"]}),
+            }
+        )
+    )
+    @example(
+        dataset=BidsDataset(
+            {
+                "1": BidsComponent(
+                    name="1",
+                    path="sub-{subject}/{datatype}/sub-{subject}",
+                    zip_lists={"subject": ["0"], "datatype": ["anat"]},
+                ),
+                "0": BidsComponent(
+                    name="0",
+                    path="sub-{subject}/sub-{subject}",
+                    zip_lists={"subject": ["0"]},
+                ),
+            }
+        )
+    )
     @settings(
         deadline=800,
         suppress_health_check=[
@@ -532,6 +560,39 @@ def test_custom_pybids_config(tmpdir: Path):
     assert result.input_wildcards == {"t1": {"foo": "{foo}", "subject": "{subject}"}}
     # Order of the subjects is not deterministic
     assert result.subj_wildcards == {"subject": "{subject}"}
+
+
+def test_nonstandard_custom_pybids_config(tmpdir: Path):
+    # Generate directory
+    for i in range(2):
+        path = Path(
+            bids(
+                tmpdir, datatype="anat", subject="001", foo=str(i), suffix="T1w.nii.gz"
+            )
+        )
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
+
+    # create config
+    derivatives = False
+    pybids_inputs: InputsConfig = {
+        "t1": {
+            "filters": {"suffix": "T1w"},
+            "wildcards": ["acquisition", "subject", "foobar"],
+        }
+    }
+
+    # Simplest case -- one input type, using pybids
+    with pytest.raises(ConfigError):
+        generate_inputs(
+            pybids_inputs=pybids_inputs,
+            bids_dir=tmpdir,
+            derivatives=derivatives,
+            pybids_config=(
+                Path(__file__).parent / "data" / "custom_config_nonstandard.json"
+            ),
+            use_bids_inputs=True,
+        )
 
 
 def test_t1w():
