@@ -3,6 +3,7 @@ from __future__ import annotations
 import functools as ft
 import importlib.resources
 import json
+import re
 from typing import Any, Callable, Dict, Iterable, TypeVar
 
 import attrs
@@ -76,8 +77,8 @@ class BidsEntity:
         )
 
     @property
-    def pattern(self):
-        """Get regex of acceptable patterns
+    def match(self):
+        """Get regex of acceptable value matches
 
         If no pattern is associated with the entity, the default pattern is a word with
         letters and numbers
@@ -88,10 +89,52 @@ class BidsEntity:
         """
         tags = read_bids_tags()
         return (
-            tags[self.entity]["pattern"]
-            if self.entity in tags and "pattern" in tags[self.entity]
+            tags[self.entity]["match"]
+            if self.entity in tags and "match" in tags[self.entity]
             else "[a-zA-Z0-9]+"
         )
+
+    @property
+    def before(self):
+        """regex str to search before value in paths
+
+        Returns
+        -------
+        str
+        """
+        tags = read_bids_tags()
+        return (
+            tags[self.entity]["before"]
+            if self.entity in tags and "before" in tags[self.entity]
+            else f"{self.tag}-"
+        )
+
+    @property
+    def after(self):
+        """regex str to search after value in paths
+
+        Returns
+        -------
+        str
+        """
+        tags = read_bids_tags()
+        return (
+            tags[self.entity]["after"]
+            if self.entity in tags and "after" in tags[self.entity]
+            else ""
+        )
+
+    @property
+    def regex(self):
+        """Complete pattern to match when searching in paths
+
+        Contains three capture groups, the first corresponding to "before", the second
+        to "value", and the third to "after"
+        Returns
+        -------
+        str
+        """
+        return re.compile(f"({self.before})({self.match})({self.after})")
 
     @property
     def wildcard(self):
