@@ -557,9 +557,9 @@ def _parse_bids_path(path: str, entities: Iterable[str]) -> Tuple[str, Dict[str,
 
 def _get_lists_from_bids(
     bids_layout: Optional[BIDSLayout],
-    pybids_inputs,
+    pybids_inputs: InputsConfig,
     *,
-    limit_to=None,
+    limit_to: "list[str] | None" = None,
     **filters,
 ) -> Generator[BidsComponent, None, None]:
     """Grabs files using pybids and creates snakemake-friendly lists
@@ -586,21 +586,22 @@ def _get_lists_from_bids(
         One BidsComponent is yielded for each modality described by ``pybids_inputs``.
     """
     if limit_to is None:
-        limit_to = pybids_inputs.keys()
+        limit_to = list(pybids_inputs)
 
     for input_name in limit_to:
         _logger.debug("Grabbing inputs for %s...", input_name)
+        component = pybids_inputs[input_name]
 
-        if "custom_path" in pybids_inputs[input_name].keys():
+        if "custom_path" in component:
             # a custom path was specified for this input, skip pybids:
             # get input_wildcards by parsing path for {} entries (using a set
             # to get unique only)
             # get zip_lists by using glob_wildcards (but need to modify
             # to deal with multiple wildcards
 
-            path: str = pybids_inputs[input_name]["custom_path"]
+            path = component["custom_path"]
             zip_lists = _parse_custom_path(
-                path, **pybids_inputs[input_name]["filters"], **filters
+                path, **pybids_inputs[input_name].get("filters", {}), **filters
             )
             yield BidsComponent(input_name, path, zip_lists)
             continue
@@ -617,13 +618,13 @@ def _get_lists_from_bids(
         paths = set()
         pybids_filters = {
             key: Query.ANY if val is True else Query.NONE if val is False else val
-            for key, val in pybids_inputs[input_name].get("filters", {}).items()
+            for key, val in component.get("filters", {}).items()
         }
         for img in bids_layout.get(**pybids_filters, **filters):
             wildcards: List[str] = [
                 wildcard
-                for wildcard in pybids_inputs[input_name].get("wildcards", [])
-                if wildcard in img.get_entities()
+                for wildcard in component.get("wildcards", [])
+                if wildcard in img.entities
             ]
             _logger.debug("Wildcards %s found entities for %s", wildcards, img.path)
 
