@@ -217,6 +217,15 @@ def get_match_search_func(
     return inner
 
 
+class BidsParseError(Exception):
+    """Exception raised for errors encountered in the parsing of Bids paths"""
+
+    def __init__(self, path: str, entity: BidsEntity):
+        self.path = path
+        self.entity = entity
+        super().__init__(path, entity)
+
+
 # pylint: disable=too-few-public-methods
 class _Documented(Protocol):
     __doc__: str

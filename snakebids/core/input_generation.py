@@ -17,7 +17,7 @@ from snakebids.core.filtering import filter_list
 from snakebids.exceptions import ConfigError
 from snakebids.types import InputsConfig
 from snakebids.utils.snakemake_io import glob_wildcards
-from snakebids.utils.utils import BidsEntity
+from snakebids.utils.utils import BidsEntity, BidsParseError
 
 _logger = logging.getLogger(__name__)
 
@@ -520,41 +520,20 @@ def _parse_bids_path(path: str, entities: Iterable[str]) -> Tuple[str, Dict[str,
     for entity in map(BidsEntity, entities):
         # Iterate over wildcards, slowly updating the path as each entity is replaced
 
-        tag = entity.tag
         wildcard = entity.wildcard
+        match = re.search(entity.regex, path)
+        if not match or not match.group(2):
+            raise BidsParseError(path=path, entity=entity)
 
-        if entity == "suffix":
-            # capture suffix
-            match = re.search(r".*_([a-zA-Z0-9]+).*$", path)
-
-            # capture "(before)suffix(after)" and replace with "before{suffix}after"
-            new_path = re.sub(r"(.*_)[a-zA-Z0-9]+(.*)$", rf"\1{{{wildcard}}}\2", path)
-
-        else:
-            # BUG: tags cannot be a substr of another tag in the same path (e.g. space
-            #      and ce)
-            pattern = f"{tag}-([a-zA-Z0-9]+)"
-            replace = f"{tag}-{{{wildcard}}}"
-
-            match = re.search(pattern, path)
-            new_path = re.sub(pattern, replace, path)
-
-        if match and match.group(1):
-            value = match.group(1)
-        else:
-            value = ""
-
-        # update the path with the {wildcards} -- uses the
-        # value from the string (not from the pybids
-        # entities), since that has issues with integer
-        # formatting (e.g. for run=01)
-
-        path = new_path
+        # overwrite path one wildcard at a time
+        path = re.sub(entity.regex, rf"\1{{{wildcard}}}\3", path)
+        value = match.group(2)
         wildcard_values[wildcard] = value
 
     return path, wildcard_values
 
 
+# pylint: disable=too-many-locals
 def _get_lists_from_bids(
     bids_layout: Optional[BIDSLayout],
     pybids_inputs: InputsConfig,
@@ -628,7 +607,26 @@ def _get_lists_from_bids(
             ]
             _logger.debug("Wildcards %s found entities for %s", wildcards, img.path)
 
-            path, parsed_wildcards = _parse_bids_path(img.path, wildcards)
+            try:
+                path, parsed_wildcards = _parse_bids_path(img.path, wildcards)
+            except BidsParseError as err:
+                raise ConfigError(
+                    "Parsing failed:\n"
+                    f"  Entity: {err.entity.entity}\n"
+                    f"  Pattern: {err.entity.regex}\n"
+                    f"  Path: {img.path}\n"
+                    "\n"
+                    "Pybids parsed this path using the pattern: "
+                    f"{bids_layout.entities[err.entity.entity].regex}\n"
+                    "\n"
+                    "Snakebids is not currently able to handle this entity. If it is a "
+                    "custom entity, its `tag-` must be configured to be the same as "
+                    "its name. Its entry in your pybids config file should look like:\n"
+                    f'{{\n\t"name": "{err.entity.entity}",\n'
+                    f'\t"pattern":"{err.entity.entity}-(<value_pattern>)"\n}}\n'
+                    f"If {err.entity.entity} is an official pybids entity, please "
+                    "ensure you are using the latest version of snakebids"
+                ) from err
 
             for wildcard_name, value in parsed_wildcards.items():
                 zip_lists[wildcard_name].append(value)
