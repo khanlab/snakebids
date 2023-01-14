@@ -1,96 +1,190 @@
 {
     "subject": {
         "tag": "sub",
-        "pattern": "[a-zA-Z0-9]+"
+        "before": "[/\\\\]+sub-",
+        "match": "[a-zA-Z0-9]+"
     },
     "session": {
         "tag": "ses",
-        "pattern": "[a-zA-Z0-9]+"
+        "before": "[_/\\\\]+ses-",
+        "match": "[a-zA-Z0-9]+"
     },
     "sample": {
         "tag": "sample",
-        "pattern": "[a-zA-Z0-9]+"
+        "before": "[_/\\\\]+sample-",
+        "match": "[a-zA-Z0-9]+"
     },
     "task": {
         "tag": "task",
-        "pattern": "[a-zA-Z0-9]+"
-    },
-    "tracer": {
-        "tag": "trc",
-        "pattern": "[a-zA-Z0-9]+"
+        "before": "[_/\\\\]+task-",
+        "match": "[a-zA-Z0-9]+"
     },
     "acquisition": {
         "tag": "acq",
-        "pattern": "[a-zA-Z0-9]+"
-    },
-    "staining": {
-        "tag": "stain",
-        "pattern": "[a-zA-Z0-9]+"
+        "before": "[_/\\\\]+acq-",
+        "match": "[a-zA-Z0-9]+"
     },
     "ceagent": {
         "tag": "ce",
-        "pattern": "[a-zA-Z0-9]+"
+        "before": "[_/\\\\]+ce-",
+        "match": "[a-zA-Z0-9]+"
+    },
+    "staining": {
+        "tag": "stain",
+        "before": "[_/\\\\]+stain-",
+        "match": "[a-zA-Z0-9]+"
+    },
+    "tracer": {
+        "tag": "trc",
+        "before": "[_/\\\\]+trc-",
+        "match": "[a-zA-Z0-9]+"
     },
     "reconstruction": {
         "tag": "rec",
-        "pattern": "[a-zA-Z0-9]+"
+        "before": "[_/\\\\]+rec-",
+        "match": "[a-zA-Z0-9]+"
     },
     "direction": {
         "tag": "dir",
-        "pattern": "[a-zA-Z0-9]+"
+        "before": "[_/\\\\]+dir-",
+        "match": "[a-zA-Z0-9]+"
     },
     "run": {
         "tag": "run",
-        "pattern": "[0-9]{1,5}"
-    },
-    "chunk": {
-        "tag": "chunk",
-        "pattern": "[0-9]{1,5}"
+        "before": "[_/\\\\]+run-",
+        "match": "[0-9]{1,5}"
     },
     "proc": {
         "tag": "proc",
-        "pattern": "[a-zA-Z0-9]+"
+        "before": "[_/\\\\]+proc-",
+        "match": "[a-zA-Z0-9]+"
     },
     "modality": {
         "tag": "mod",
-        "pattern": "[a-zA-Z0-9]+"
+        "before": "[_/\\\\]+mod-",
+        "match": "[a-zA-Z0-9]+"
     },
     "echo": {
         "tag": "echo",
-        "pattern": "[0-9]{1,5}"
+        "before": "[_/\\\\]+echo-",
+        "match": "[0-9]{1,5}"
     },
     "flip": {
         "tag": "flip",
-        "pattern": "[0-9]{1,5}"
+        "before": "[_/\\\\]+flip-",
+        "match": "[0-9]{1,5}"
     },
     "inv": {
         "tag": "inv",
-        "pattern": "[0-9]{1,5}"
+        "before": "[_/\\\\]+inv-",
+        "match": "[0-9]{1,5}"
     },
     "mt": {
         "tag": "mt",
-        "pattern": "(on|off)"
-    },
-    "space": {
-        "tag": "space",
-        "pattern": "[a-zA-Z0-9]+"
-    },
-    "split": {
-        "tag": "split",
-        "pattern": "[a-zA-Z0-9]+"
-    },
-    "recording": {
-        "tag": "recording",
-        "pattern": "[a-zA-Z0-9]+"
-    },
-    "datatype": {
-        "pattern": "anat|beh|dwi|eeg|fmap|func|ieeg|meg|micr|perf|pet"
-    },
-    "suffix": {
-        "pattern": "[a-zA-Z0-9]*?"
+        "before": "[_/\\\\]+mt-",
+        "match": "on|off"
     },
     "part": {
         "tag": "part",
-        "pattern": "imag|mag|phase|real"
+        "before": "[_/\\\\]+part-",
+        "match": "imag|mag|phase|real"
+    },
+    "recording": {
+        "tag": "recording",
+        "before": "[_/\\\\]+recording-",
+        "match": "[a-zA-Z0-9]+"
+    },
+    "space": {
+        "tag": "space",
+        "before": "[_/\\\\]+space-",
+        "match": "[a-zA-Z0-9]+"
+    },
+    "chunk": {
+        "tag": "chunk",
+        "before": "[_/\\\\]+chunk-",
+        "match": "[0-9]{1,5}"
+    },
+    "suffix": {
+        "before": "[._]*",
+        "match": "[a-zA-Z0-9]*?",
+        "after": "\\.[^/\\\\]+$"
+    },
+    "datatype": {
+        "before": "[/\\\\]+",
+        "match": "anat|beh|dwi|eeg|fmap|func|ieeg|meg|micr|perf|pet",
+        "after": "[/\\\\]+"
+    },
+    "extension": {
+        "before": "[._]*[a-zA-Z0-9]*?",
+        "match": "[._]*[a-zA-Z0-9]*?(\\.[^/\\\\]+)$",
+        "after": "$"
+    },
+    "split": {
+        "tag": "split",
+        "before": "[_/\\\\]+split-",
+        "match": "[a-zA-Z0-9]+"
+    },
+    "atlas": {
+        "tag": "atlas",
+        "before": "atlas-",
+        "match": "[a-zA-Z0-9]+"
+    },
+    "roi": {
+        "tag": "roi",
+        "before": "roi-",
+        "match": "[a-zA-Z0-9]+"
+    },
+    "label": {
+        "tag": "label",
+        "before": "label-",
+        "match": "[a-zA-Z0-9]+"
+    },
+    "from": {
+        "tag": "from",
+        "before": "(?:^|_)from-",
+        "match": "[a-zA-Z0-9]+",
+        "after": ".*xfm"
+    },
+    "to": {
+        "tag": "to",
+        "before": "(?:^|_)to-",
+        "match": "[a-zA-Z0-9]+",
+        "after": ".*xfm"
+    },
+    "mode": {
+        "tag": "mode",
+        "before": "(?:^|_)mode-",
+        "match": "[a-zA-Z0-9]+",
+        "after": ".*xfm"
+    },
+    "hemi": {
+        "tag": "hemi",
+        "before": "hemi-",
+        "match": "L|R"
+    },
+    "res": {
+        "tag": "res",
+        "before": "res-",
+        "match": "[a-zA-Z0-9]+"
+    },
+    "den": {
+        "tag": "den",
+        "before": "den-",
+        "match": "[a-zA-Z0-9]+"
+    },
+    "model": {
+        "tag": "model",
+        "before": "model-",
+        "match": "[a-zA-Z0-9]+"
+    },
+    "subset": {
+        "tag": "subset",
+        "before": "subset-",
+        "match": "[a-zA-Z0-9]+"
+    },
+    "desc": {
+        "tag": "desc",
+        "before": "desc-",
+        "match": "[a-zA-Z0-9]+"
     }
 }
