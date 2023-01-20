@@ -636,7 +636,7 @@ def _get_lists_from_bids(
 
         # now, check to see if unique
         if len(paths) == 0:
-            _logger.warning("No input files found for %s", input_name)
+            _logger.warning("No input file found for %s", input_name)
             continue
         try:
             path = itx.one(paths)
