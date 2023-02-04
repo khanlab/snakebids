@@ -516,7 +516,6 @@ def _parse_bids_path(path: str, entities: Iterable[str]) -> Tuple[str, Dict[str,
 
     wildcard_values: Dict[str, str] = {}
 
-    # BUG: No support for "datatype"
     for entity in map(BidsEntity, entities):
         # Iterate over wildcards, slowly updating the path as each entity is replaced
 

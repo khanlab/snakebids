@@ -137,8 +137,6 @@ def datasets(draw: st.DrawFn, root: Optional[Path] = None):
     ent1 = draw(bids_entity_lists(min_size=2, max_size=3))
     ent2 = copy.copy(ent1)
     ent2.pop()
-    # BUG: snakebids currently doesn't properly parse paths with just suffix
-    assume(ent2 != ["suffix"])
     # BUG: need better controlling if 'datatype' is the only arg
     assume(ent2 != ["datatype"])
     comp1 = draw(bids_components(entities=ent1, restricted_chars=True, root=root))
