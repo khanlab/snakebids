@@ -7,6 +7,7 @@ import re
 from typing import Any, Callable, Dict, Iterable, TypeVar
 
 import attrs
+import more_itertools as itx
 from typing_extensions import Protocol
 
 from snakebids.utils.sb_typing import UserProperty
@@ -257,3 +258,9 @@ def property_alias(prop: _Documented, label: str | None = None, ref: str | None 
         return alias
 
     return inner
+
+
+def surround(__s: Iterable[str] | str, __object: str) -> Iterable[str]:
+    """Surround a string or each string in an iterable with characters"""
+    for item in itx.always_iterable(__s):
+        yield __object + item + __object

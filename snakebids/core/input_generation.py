@@ -17,7 +17,7 @@ from snakebids.core.filtering import filter_list
 from snakebids.exceptions import ConfigError
 from snakebids.types import InputsConfig
 from snakebids.utils.snakemake_io import glob_wildcards
-from snakebids.utils.utils import BidsEntity, BidsParseError
+from snakebids.utils.utils import BidsEntity, BidsParseError, surround
 
 _logger = logging.getLogger(__name__)
 
@@ -297,7 +297,10 @@ def generate_inputs(
     try:
         dataset = BidsDataset.from_iterable(bids_inputs)
     except ValueError as err:
-        raise ConfigError(err.args[0]) from err
+        raise ConfigError(
+            "Multiple components found with the same name: "
+            + ", ".join(surround(err.args[0], "'"))
+        ) from err
 
     if use_bids_inputs:
         return dataset
