@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Optional, Union, cast
 
 import attr
 import more_itertools as itx
+from bids import BIDSLayout
 from cached_property import cached_property
 from typing_extensions import TypedDict
 
@@ -188,11 +189,18 @@ class BidsDataset(_BidsComponentsType):
 
     Provides access to summarizing information, for instance, the set of all subjects or
     sessions found in the dataset
+
+    Properties
+    ----------
+    layout : BIDSLayout | None
+        Underlying layout generated from pybids. Note that this will be set to None if
+        custom paths are used to generate every :class:`component <BidsComponent>`
     """
 
     # pylint: disable=super-init-not-called
-    def __init__(self, data: Any):
-        self.data = dict(data)  # type: ignore
+    def __init__(self, data: Any, layout: BIDSLayout | None = None):
+        self.data = dict(data)
+        self.layout = layout
 
     def __setitem__(self, _: Any, __: Any):
         raise NotImplementedError(
@@ -305,7 +313,9 @@ class BidsDataset(_BidsComponentsType):
         )
 
     @classmethod
-    def from_iterable(cls, iterable: Iterable[BidsComponent]):
+    def from_iterable(
+        cls, iterable: Iterable[BidsComponent], layout: BIDSLayout | None = None
+    ):
         """Construct Dataset from iterable of BidsComponents
 
         Parameters
@@ -322,4 +332,4 @@ class BidsDataset(_BidsComponentsType):
             raise ValueError(
                 list(itx.duplicates_everseen([c.name for c in components]))
             )
-        return cls(indexed)
+        return cls(indexed, layout)

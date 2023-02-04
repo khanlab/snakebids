@@ -295,7 +295,7 @@ def generate_inputs(
         use_bids_inputs = False
 
     try:
-        dataset = BidsDataset.from_iterable(bids_inputs)
+        dataset = BidsDataset.from_iterable(bids_inputs, layout)
     except ValueError as err:
         raise ConfigError(
             "Multiple components found with the same name: "
