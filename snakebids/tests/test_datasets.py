@@ -64,7 +64,12 @@ class TestBidsComponentValidation:
 
     @given(sb_st.input_zip_lists().filter(lambda v: len(v) > 1))
     def test_path_cannot_have_missing_entities(self, zip_lists: Dict[str, List[str]]):
-        path = get_bids_path(sb_it.drop(1, zip_lists))
+        # Snakebids strategies won't return a zip_list with just datatype, but now that
+        # we've dropped an entity we need to check again
+        path_entities = sb_it.drop(1, zip_lists)
+        assume(set(path_entities) - {"datatype"})
+
+        path = get_bids_path(path_entities)
         with pytest.raises(ValueError) as err:
             BidsComponent("foo", path, zip_lists)
         assert (

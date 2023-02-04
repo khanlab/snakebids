@@ -130,7 +130,17 @@ def bids(
     """
     if not any([entities, suffix, subject, session]):
         raise ValueError(
-            "At least one of subject, session, suffix, or an entity must be supplied"
+            "At least one of subject, session, suffix, or an entity must be supplied.\n"
+            "\tGot only: "
+            + " and ".join(
+                filter(
+                    None,
+                    (
+                        f"datatype='{datatype}'" if datatype else None,
+                        f"prefix='{prefix}'" if prefix else None,
+                    ),
+                )
+            )
         )
 
     # replace underscores in keys (needed so that users can use reserved
