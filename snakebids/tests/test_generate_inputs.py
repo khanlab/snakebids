@@ -187,6 +187,22 @@ class TestFilterBools:
             }
         )
     )
+    @example(
+        dataset=BidsDataset(
+            {
+                "1": BidsComponent(
+                    name="1",
+                    path="sub-{subject}/sub-{subject}_{suffix}.foo",
+                    zip_lists={"subject": ["0"], "suffix": ["bar"]},
+                ),
+                "0": BidsComponent(
+                    name="0",
+                    path="{suffix}.foo",
+                    zip_lists={"suffix": ["bar"]},
+                ),
+            }
+        )
+    )
     @settings(
         deadline=800,
         suppress_health_check=[
