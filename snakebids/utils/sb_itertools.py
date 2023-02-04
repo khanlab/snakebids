@@ -30,6 +30,15 @@ def unpack(iterable: Iterable[T], default: Sequence[T]) -> Iterable[T]:
 
 # pylint: disable=invalid-name
 def drop(n: int, iterable: Iterable[T]) -> Iterable[T]:
-    first, second = it.tee(iterable, 2)
-    keep = itx.ilen(first) - n
-    return itx.take(max(0, keep), second)
+    """Returns all items of an iterable except the first *n* as a list
+
+    >>> drop(7, range(10))
+    [7, 8, 9]
+
+    If there are fewer than *n* items in the iterable, none of them are returned
+
+    >>> drop(8, range(5))
+    []
+    """
+    _list = list(iterable)
+    return list(it.islice(_list, n, len(_list)))
