@@ -1,18 +1,19 @@
 """Utilities for converting Snakemake apps to BIDS apps."""
+from __future__ import annotations
 
 from collections import OrderedDict
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 
 
 # pylint: disable=too-many-arguments
 def bids(
-    root: Union[str, Path] = None,
-    datatype: str = None,
-    prefix: str = None,
-    suffix: str = None,
-    subject: str = None,
-    session: str = None,
+    root: str | Path | None = None,
+    datatype: str | None = None,
+    prefix: str | None = None,
+    suffix: str | None = None,
+    subject: str | None = None,
+    session: str | None = None,
     include_subject_dir: bool = True,
     include_session_dir: bool = True,
     **entities: str,
@@ -127,7 +128,10 @@ def bids(
     * Some code adapted from mne-bids, specifically
       https://mne.tools/mne-bids/stable/_modules/mne_bids/utils.html
     """
-    # BUG: Datatype as the only arg is ill-defined, but no error is raised
+    if not any([entities, suffix, subject, session]):
+        raise ValueError(
+            "At least one of subject, session, suffix, or an entity must be supplied"
+        )
 
     # replace underscores in keys (needed so that users can use reserved
     # keywords by appending a _)
