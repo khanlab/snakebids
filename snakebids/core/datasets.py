@@ -7,6 +7,7 @@ from string import Formatter
 from typing import TYPE_CHECKING, Any, Iterable, Optional, Union, cast
 
 import attr
+import more_itertools as itx
 from cached_property import cached_property
 from typing_extensions import TypedDict
 
@@ -318,5 +319,7 @@ class BidsDataset(_BidsComponentsType):
         components = list(iterable)
         indexed = {bidsinput.name: bidsinput for bidsinput in components}
         if not len(components) == len(indexed):
-            raise ValueError("All BidsComponents must have different names")
+            raise ValueError(
+                list(itx.duplicates_everseen([c.name for c in components]))
+            )
         return cls(indexed)
