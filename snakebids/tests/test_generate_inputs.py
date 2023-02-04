@@ -937,7 +937,9 @@ def test_all_custom_paths(count: int):
 def test_generate_inputs(data: st.DataObject, bids_fs: Path, fakefs_tmpdir: Path):
     root = tempfile.mkdtemp(dir=fakefs_tmpdir)
     dataset = data.draw(sb_st.datasets(root=Path(root)))
-    assert reindex_dataset(root, dataset) == dataset
+    reindexed = reindex_dataset(root, dataset)
+    assert reindexed == dataset
+    assert reindexed.layout is not None
 
 
 def test_when_all_custom_paths_no_layout_indexed(
@@ -948,7 +950,9 @@ def test_when_all_custom_paths_no_layout_indexed(
     dataset = sb_st.datasets_one_comp(root=Path(root)).example()
 
     spy = mocker.spy(BIDSLayout, "__init__")
-    assert reindex_dataset(root, dataset, use_custom_paths=True) == dataset
+    reindexed = reindex_dataset(root, dataset, use_custom_paths=True)
+    assert reindexed == dataset
+    assert reindexed.layout is None
     spy.assert_not_called()
 
 
