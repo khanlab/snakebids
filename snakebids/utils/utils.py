@@ -232,7 +232,12 @@ class _Documented(Protocol):
     __doc__: str
 
 
-def property_alias(prop: _Documented, label: str | None = None, ref: str | None = None):
+def property_alias(
+    prop: _Documented,
+    label: str | None = None,
+    ref: str | None = None,
+    copy_extended_docstring: bool = False,
+):
     """Set property as an alias for another property
 
     Copies the docstring from the aliased property to the alias
@@ -241,6 +246,12 @@ def property_alias(prop: _Documented, label: str | None = None, ref: str | None 
     ----------
     prop : property
         Property to alias
+    label
+        Text to use in link to aliased property
+    ref
+        Name of the property to alias
+    copy_extended_docstring
+        If True, copies over the entire docstring, in addition to the summary line
 
     Returns
     -------
@@ -254,7 +265,10 @@ def property_alias(prop: _Documented, label: str | None = None, ref: str | None 
         else:
             link = f":attr:`{ref}`" if ref else None
         labeltxt = f"Alias of {link}\n\n" if link else ""
-        alias.__doc__ = f"{labeltxt}{prop.__doc__}"
+        if copy_extended_docstring:
+            alias.__doc__ = f"{labeltxt}{prop.__doc__}"
+        else:
+            alias.__doc__ = f"{labeltxt}{prop.__doc__.splitlines()[0]}"
         return alias
 
     return inner
