@@ -1,5 +1,6 @@
 import copy
 import itertools as it
+import warnings
 from typing import Any, Dict, List
 
 import more_itertools as itx
@@ -31,11 +32,13 @@ class TestBidsComponentAliases:
 
     @given(sb_st.bids_components())
     def test_bids_dataset_aliases_are_correctly_set(self, component: BidsComponent):
-        dataset = BidsDataset.from_iterable([component])
-        assert dataset.input_path == dataset.path
-        assert dataset.input_zip_lists == dataset.zip_lists
-        assert dataset.input_lists == dataset.input_lists
-        assert dataset.input_wildcards == dataset.wildcards
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=DeprecationWarning)
+            dataset = BidsDataset.from_iterable([component])
+            assert dataset.input_path == dataset.path
+            assert dataset.input_zip_lists == dataset.zip_lists
+            assert dataset.input_lists == dataset.input_lists
+            assert dataset.input_wildcards == dataset.wildcards
 
 
 class TestBidsComponentValidation:

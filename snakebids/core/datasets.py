@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools as it
 import operator as op
+import warnings
 from collections import UserDict
 from string import Formatter
 from typing import TYPE_CHECKING, Any, Iterable, Optional, Union, cast
@@ -289,9 +290,7 @@ class BidsDataset(_BidsComponentsType):
         return [
             *{
                 *it.chain.from_iterable(
-                    input_list["subject"]
-                    for input_list in self.entities.values()
-                    if "subject" in input_list
+                    component.entities.get("subject", []) for component in self.values()
                 )
             }
         ]
@@ -302,9 +301,7 @@ class BidsDataset(_BidsComponentsType):
         return [
             *{
                 *it.chain.from_iterable(
-                    input_list["session"]
-                    for input_list in self.entities.values()
-                    if "session" in input_list
+                    component.entities.get("session", []) for component in self.values()
                 )
             }
         ]
@@ -334,15 +331,17 @@ class BidsDataset(_BidsComponentsType):
         -------
         BidsDatasetDict
         """
-        return BidsDatasetDict(
-            input_path=self.input_path,
-            input_lists=self.entities,
-            input_wildcards=self.input_wildcards,
-            input_zip_lists=self.input_zip_lists,
-            subjects=self.subjects,
-            sessions=self.sessions,
-            subj_wildcards=self.subj_wildcards,
-        )
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=DeprecationWarning)
+            return BidsDatasetDict(
+                input_path=self.input_path,
+                input_lists=self.entities,
+                input_wildcards=self.input_wildcards,
+                input_zip_lists=self.input_zip_lists,
+                subjects=self.subjects,
+                sessions=self.sessions,
+                subj_wildcards=self.subj_wildcards,
+            )
 
     @classmethod
     def from_iterable(cls, iterable: Iterable[BidsComponent]):

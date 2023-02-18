@@ -58,7 +58,6 @@ class TestFilterBools:
 
     def disambiguate_components(self, dataset: BidsDataset):
         assert len(dataset) == 2
-        dataset.zip_lists
         comp1, comp2 = dataset.values()
         return sorted([comp1, comp2], key=lambda comp: len(comp.entities.keys()))
 
@@ -271,9 +270,7 @@ class TestAbsentConfigEntries:
             pybids_config=str(Path(__file__).parent / "data" / "custom_config.json"),
             use_bids_inputs=True,
         )
-        template = BidsDataset(
-            {"t1": BidsComponent("t1", config.input_path["t1"], zip_list)}
-        )
+        template = BidsDataset({"t1": BidsComponent("t1", config["t1"].path, zip_list)})
         # Order of the subjects is not deterministic
         assert template == config
         assert config.subj_wildcards == {"subject": "{subject}"}
@@ -297,7 +294,7 @@ class TestAbsentConfigEntries:
             pybids_config=str(Path(__file__).parent / "data" / "custom_config.json"),
             use_bids_inputs=True,
         )
-        template = BidsDataset({"t1": BidsComponent("t1", config.input_path["t1"], {})})
+        template = BidsDataset({"t1": BidsComponent("t1", config["t1"].path, {})})
         assert template == config
         assert config.subj_wildcards == {"subject": "{subject}"}
 
@@ -573,7 +570,7 @@ def test_custom_pybids_config(tmpdir: Path):
         }
     )
     assert template == result
-    assert result.input_wildcards == {"t1": {"foo": "{foo}", "subject": "{subject}"}}
+    assert result["t1"].wildcards == {"foo": "{foo}", "subject": "{subject}"}
     # Order of the subjects is not deterministic
     assert result.subj_wildcards == {"subject": "{subject}"}
 
@@ -647,7 +644,7 @@ def test_t1w():
         {
             "t1": BidsComponent(
                 "t1",
-                result.input_path["t1"],
+                result["t1"].path,
                 {"acq": ["mprage", "mprage"], "subject": ["001", "002"]},
             )
         }
@@ -678,14 +675,16 @@ def test_t1w():
         participant_label="001",
         use_bids_inputs=True,
     )
-    assert result.entities == {
-        "scan": {"acq": ["mprage"], "subject": ["001"], "suffix": ["T1w"]}
+    assert result["scan"].entities == {
+        "acq": ["mprage"],
+        "subject": ["001"],
+        "suffix": ["T1w"],
     }
     template = BidsDataset(
         {
             "scan": BidsComponent(
                 "scan",
-                result.input_path["scan"],
+                result["scan"].path,
                 {
                     "acq": [
                         "mprage",
@@ -751,15 +750,13 @@ def test_t1w():
             {
                 "t1": BidsComponent(
                     "t1",
-                    result.input_path["t1"],
+                    result["t1"].path,
                     {
                         "acq": ["mprage", "mprage"],
                         "subject": ["001", "002"],
                     },
                 ),
-                "t2": BidsComponent(
-                    "t2", result.input_path["t2"], {"subject": ["002"]}
-                ),
+                "t2": BidsComponent("t2", result["t2"].path, {"subject": ["002"]}),
             }
         )
         # Order of the subjects is not deterministic
