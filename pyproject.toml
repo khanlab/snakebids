@@ -37,6 +37,7 @@ attrs = ">=21.2.0,<23"
 boutiques = "^0.5.25"
 more-itertools = ">=8,<10"
 cached-property = "^1.5.2"
+deprecation = { git = "https://github.com/pvandyken/deprecation.git", rev="8309c44" }
 
 #  Below are non-direct dependencies (i.e. dependencies of other depenencies)
 #  specified to ensure a version with a pre-built wheel is installed depending
