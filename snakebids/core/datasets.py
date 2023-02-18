@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Optional, Union, cast
 import attr
 import more_itertools as itx
 from cached_property import cached_property
+from deprecation import deprecated
 from typing_extensions import TypedDict
 
 import snakebids.utils.sb_itertools as sb_it
@@ -200,6 +201,15 @@ class BidsDataset(_BidsComponentsType):
         )
 
     @cached_property
+    @deprecated(
+        details="""
+        The behaviour of path will change in an upcoming release, where it will refer
+        instead to the root path of the dataset. Please access component paths using
+        :attr:`Dataset[\\<component_name\\>].path <BidsComponent.path>`
+        """,
+        deprecated_in="0.8.0",
+        admonition="warning",
+    )
     def path(self):
         """Dict mapping :class:`BidsComponents <snakebids.BidsComponent>` names to \
         their ``paths``.
@@ -211,6 +221,16 @@ class BidsDataset(_BidsComponentsType):
         return self.path
 
     @cached_property
+    @deprecated(
+        details="""
+        The behaviour of zip_lists will change in an upcoming release, where it will
+        refer instead to the consensus of entity groups across all components in the
+        dataset. Please access component zip_lists using
+        :attr:`Dataset[\\<component_name\\>].zip_lists <BidsComponent.zip_lists>`
+        """,
+        deprecated_in="0.8.0",
+        admonition="warning",
+    )
     def zip_lists(self):
         """Dict mapping :class:`BidsComponents <snakebids.BidsComponent>` names to \
         their ``zip_lists``
@@ -222,6 +242,16 @@ class BidsDataset(_BidsComponentsType):
         return self.zip_lists
 
     @cached_property
+    @deprecated(
+        details="""
+        The behaviour of entities will change in the 1.0 release, where it will refer
+        instead to the union of all entity-values across all components in the dataset.
+        Please access component entity lists using
+        :attr:`Dataset[\\<component_name\\>].entities <BidsComponent.entities>`
+        """,
+        deprecated_in="0.8.0",
+        admonition="warning",
+    )
     def entities(self):
         """Dict mapping :class:`BidsComponents <snakebids.BidsComponent>` names to \
         to their :attr:`entities <snakebids.BidsComponent.entities>`
@@ -233,6 +263,16 @@ class BidsDataset(_BidsComponentsType):
         return self.entities
 
     @cached_property
+    @deprecated(
+        details="""
+        The behaviour of wildcards will change in an upcoming release, where it will
+        refer instead to the union of all entity-wildcard mappings across all components
+        in the dataset. Please access component wildcards using
+        :attr:`Dataset[\\<component_name\\>].wildcards <BidsComponent.wildcards>`
+        """,
+        deprecated_in="0.8.0",
+        admonition="warning",
+    )
     def wildcards(self):
         """Dict mapping :class:`BidsComponents <snakebids.BidsComponent>` names to \
         their :attr:`wildcards <snakebids.BidsComponent.wildcards>`
