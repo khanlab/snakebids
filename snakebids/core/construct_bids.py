@@ -8,12 +8,12 @@ from typing import Optional
 
 # pylint: disable=too-many-arguments
 def bids(
-    root: str | Path | None = None,
-    datatype: str | None = None,
-    prefix: str | None = None,
-    suffix: str | None = None,
-    subject: str | None = None,
-    session: str | None = None,
+    root: Optional[str | Path] = None,
+    datatype: Optional[str] = None,
+    prefix: Optional[str] = None,
+    suffix: Optional[str] = None,
+    subject: Optional[str] = None,
+    session: Optional[str] = None,
     include_subject_dir: bool = True,
     include_session_dir: bool = True,
     **entities: str,
