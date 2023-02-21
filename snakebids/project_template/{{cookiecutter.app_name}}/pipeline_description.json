@@ -1,23 +1,11 @@
 {
     "Name": "{{cookiecutter.app_name}} - {{cookiecutter.app_description}}",
-    "BIDSVersion": "1.4.0",
+    "BIDSVersion": "1.8.0",
     "DatasetType": "derivative",
-    "PipelineDescription":
-        {
-            "Name": "{{cookiecutter.app_name}}",
-            "Version": "0.1.0",
-            "CodeURL": "http://github.com/{{cookiecutter.github_username}}/{{cookiecutter.app_name}}",
-            "Author": "{{cookiecutter.full_name}}",
-            "AuthorEmail": "{{cookiecutter.email}}"
-        },
     "GeneratedBy": [
         {
             "Name": "{{cookiecutter.app_name}}",
-            "Version": "0.1.0",
-            "CodeURL": "http://github.com/{{cookiecutter.github_username}}/{{cookiecutter.app_name}}",
-            "Author": "{{cookiecutter.full_name}}",
-            "AuthorEmail": "{{cookiecutter.email}}"
- 
+            "Version": "0.1.0"{{ ',\n            "CodeURL": "http://github.com/cookiecutter.github_username/cookiecutter.app_name"' if cookiecutter.github_username }}{{ ',\n            "Author": "cookiecutter.full_name"' if cookiecutter.full_name }}{{ ',\n            "AuthorEmail": "cookiecutter.email",' if cookiecutter.email }}
         }
     ]
 }
