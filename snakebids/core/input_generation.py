@@ -651,7 +651,24 @@ def _get_lists_from_bids(
 
         # now, check to see if unique
         if len(paths) == 0:
-            _logger.warning("No input file found for %s", input_name)
+            _logger.warning(
+                "No input files found for snakebids component %s:\n"
+                "    filters:\n%s\n"
+                "    wildcards:\n%s",
+                input_name,
+                "\n".join(
+                    [
+                        f"       {key}: {val}"
+                        for key, val in component.get("filters", {}).items()
+                    ]
+                ),
+                "\n".join(
+                    [
+                        f"       {wildcard}"
+                        for wildcard in component.get("wildcards", [])
+                    ]
+                ),
+            )
             continue
         try:
             path = itx.one(paths)
