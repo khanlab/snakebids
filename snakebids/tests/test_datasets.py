@@ -37,7 +37,7 @@ class TestBidsComponentAliases:
             dataset = BidsDataset.from_iterable([component])
             assert dataset.input_path == dataset.path
             assert dataset.input_zip_lists == dataset.zip_lists
-            assert dataset.input_lists == dataset.input_lists
+            assert dataset.input_lists == dataset.entities
             assert dataset.input_wildcards == dataset.wildcards
 
 
