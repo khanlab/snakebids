@@ -14,7 +14,7 @@ from typing_extensions import Literal
 
 from snakebids.core.datasets import BidsComponent, BidsDataset, BidsDatasetDict
 from snakebids.core.filtering import filter_list
-from snakebids.exceptions import ConfigError
+from snakebids.exceptions import ConfigError, PybidsError
 from snakebids.types import InputsConfig
 from snakebids.utils.snakemake_io import glob_wildcards
 from snakebids.utils.utils import BidsEntity, BidsParseError, surround
@@ -607,7 +607,15 @@ def _get_lists_from_bids(
             key: Query.ANY if val is True else Query.NONE if val is False else val
             for key, val in component.get("filters", {}).items()
         }
-        for img in bids_layout.get(**pybids_filters, **filters):
+        try:
+            matching_files = bids_layout.get(**pybids_filters, **filters)
+        except AttributeError as err:
+            raise PybidsError(
+                "Pybids has encountered a problem that Snakebids cannot handle. This "
+                "may indicate a missing or invalid dataset_description.json for this "
+                "dataset."
+            ) from err
+        for img in matching_files:
             wildcards: List[str] = [
                 wildcard
                 for wildcard in component.get("wildcards", [])
