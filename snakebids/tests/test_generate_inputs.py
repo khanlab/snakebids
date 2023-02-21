@@ -7,6 +7,7 @@ import re
 import shutil
 import tempfile
 from collections import defaultdict
+from copy import deepcopy
 from pathlib import Path
 from typing import Dict, Iterable, List, NamedTuple, Optional, TypeVar
 
@@ -29,7 +30,7 @@ from snakebids.core.input_generation import (
     _parse_custom_path,
     generate_inputs,
 )
-from snakebids.exceptions import ConfigError
+from snakebids.exceptions import ConfigError, PybidsError
 from snakebids.tests import strategies as sb_st
 from snakebids.tests.helpers import (
     BidsListCompare,
@@ -826,6 +827,19 @@ def test_t1w_with_dict():
     assert config["subjects"] == ["001"]
     assert config["sessions"] == []
     assert config["subj_wildcards"] == {"subject": "{subject}"}
+
+
+def test_get_lists_from_bids_raises_pybids_error():
+    """Test that we wrap a cryptic AttributeError from pybids with PybidsError.
+
+    Pybids raises an AttributeError when a BIDSLayout.get is called with scope not
+    equal to 'all' on a layout that indexes a dataset without a
+    dataset_description.json. We wrap this error with something a bit less cryptic, so
+    this test ensures that that behaviour is still present.
+    """
+    layout = BIDSLayout("snakebids/tests/data/bids_t1w", validate=False)
+    with pytest.raises(PybidsError):
+        next(_get_lists_from_bids(layout, {"t1": {"filters": {"scope": "raw"}}}))
 
 
 def test_get_lists_from_bids():

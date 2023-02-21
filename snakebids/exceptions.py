@@ -12,3 +12,7 @@ class RunError(Exception):
     def __init__(self, msg: str, *args: object) -> None:
         super().__init__(msg, *args)
         self.msg = msg
+
+
+class PybidsError(Exception):
+    """Exception raised when pybids encounters a problem."""
