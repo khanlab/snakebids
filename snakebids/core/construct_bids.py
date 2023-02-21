@@ -74,18 +74,16 @@ def bids(
                 suffix='T1w.nii.gz'
             )
 
-    Note that here we are not actually using "functions as inputs" in
-    snakemake, which would require a function definition with wildcards as
-    the argument, and restrict to input/params, but bids() is being used
-    simply to return a string.
+    Note that here we are not actually using "functions as inputs" in snakemake, which
+    would require a function definition with wildcards as the argument, and restrict to
+    input/params, but bids() is being used simply to return a string.
 
-    Also note that space, desc and suffix are NOT wildcards here, only
-    {subject} is. This makes it easy to combine wildcards and non-wildcards
-    with bids-like naming.
+    Also note that space, desc and suffix are NOT wildcards here, only {subject} is.
+    This makes it easy to combine wildcards and non-wildcards with bids-like naming.
 
-    However, you can still use bids() in a lambda function. This is
-    especially useful if your wildcards are named the same as bids entities
-    (e.g. {subject}, {session}, {task} etc..)::
+    However, you can still use bids() in a lambda function. This is especially useful if
+    your wildcards are named the same as bids entities (e.g. {subject}, {session},
+    {task} etc..)::
 
         rule proc_img:
             input: lambda wildcards: bids(**wildcards,suffix='T1w.nii.gz')
@@ -96,8 +94,8 @@ def bids(
                 suffix='T1w.nii.gz'
             )
 
-    Or another example where you may have many bids-like wildcards used in
-    your workflow::
+    Or another example where you may have many bids-like wildcards used in your
+    workflow::
 
         rule denoise_func:
             input: lambda wildcards: bids(**wildcards, suffix='bold.nii.gz')
@@ -110,25 +108,26 @@ def bids(
                 suffix='bold.nii.gz'
             )
 
-    In this example, all the wildcards will be determined from the output
-    and passed on to bids() for inputs. The output filename will have a
-    'desc-denoise' flag added to it.
+    In this example, all the wildcards will be determined from the output and passed on
+    to bids() for inputs. The output filename will have a 'desc-denoise' flag added to
+    it.
 
-    Also note that even if you supply entities in a different order, the
-    entities will be ordered based on the OrderedDict defined here.
-    If entities not known are provided, they will be just be placed
-    at the end (before the suffix), in the order you provide them in.
+    Also note that even if you supply entities in a different order, the entities will
+    be ordered based on the OrderedDict defined here. If entities not known are
+    provided, they will be just be placed at the end (before the suffix), in the order
+    you provide them in.
 
     Notes
     -----
 
-    * For maximum flexibility all arguments are optional (if none are
-      specified, will return empty string)
+    * For maximum flexibility all arguments are optional (if none are specified, will
+      return empty string). Note that datatype and prefix may not be used in isolation,
+      but must be given with another entity.
 
     * Some code adapted from mne-bids, specifically
       https://mne.tools/mne-bids/stable/_modules/mne_bids/utils.html
     """
-    if not any([entities, suffix, subject, session]):
+    if not any([entities, suffix, subject, session]) and any([datatype, prefix]):
         raise ValueError(
             "At least one of subject, session, suffix, or an entity must be supplied.\n"
             "\tGot only: "
