@@ -3,7 +3,8 @@
   "email": "",
   "github_username": "",
   "app_full_name": "",
-  "app_name": "{{ cookiecutter.app_full_name.lower().replace(' ', '_').replace('-', '_') if cookiecutter.app_full_name else 'my_bids_app' }}",
+  "_output_dir": "",
+  "app_name": "{{ cookiecutter.app_full_name.lower().replace(' ', '_').replace('-', '_') if cookiecutter.app_full_name else cookiecutter._output_dir }}",
   "app_description": "",
   "snakebids_version": "0.0.0"
 }
