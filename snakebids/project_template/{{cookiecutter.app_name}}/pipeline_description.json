@@ -5,7 +5,7 @@
     "GeneratedBy": [
         {
             "Name": "{{cookiecutter.app_name}}",
-            "Version": "0.1.0"{{ ',\n            "CodeURL": "http://github.com/cookiecutter.github_username/cookiecutter.app_name"' if cookiecutter.github_username }}{{ ',\n            "Author": "cookiecutter.full_name"' if cookiecutter.full_name }}{{ ',\n            "AuthorEmail": "cookiecutter.email",' if cookiecutter.email }}
+            "Version": "0.1.0"{{ [',\n            "CodeURL": "http://github.com/', cookiecutter.github_username,'/',cookiecutter.app_name,'"']|join if cookiecutter.github_username }}{{ ',\n            "Author": "cookiecutter.full_name"' if cookiecutter.full_name }}{{ ',\n            "AuthorEmail": "cookiecutter.email",' if cookiecutter.email }}
         }
     ]
 }
