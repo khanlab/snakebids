@@ -34,10 +34,10 @@ author = "Ali R. Khan"
 extensions = [
     "sphinx_rtd_theme",
     "sphinxarg.ext",
-    "sphinx.ext.autodoc",
-    "sphinxcontrib.napoleon",
-    "sphinxcontrib.asciinema",
     "sphinx.ext.intersphinx",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.autodoc",
+    "sphinxcontrib.asciinema",
     "myst_parser",
 ]
 
