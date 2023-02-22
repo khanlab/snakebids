@@ -188,13 +188,13 @@ class BidsDataset(_BidsComponentsType):
     ``BidsDataset["t1w"].entities`` return the same thing.
 
     Provides access to summarizing information, for instance, the set of all subjects or
-    sessions found in the dataset
+    sessions found in the dataset.
+    """
 
-    Properties
-    ----------
-    layout : BIDSLayout | None
-        Underlying layout generated from pybids. Note that this will be set to None if
-        custom paths are used to generate every :class:`component <BidsComponent>`
+    layout: Optional[BIDSLayout]
+    """
+    Underlying layout generated from pybids. Note that this will be set to None if
+    custom paths are used to generate every :class:`component <BidsComponent>`
     """
 
     # pylint: disable=super-init-not-called
