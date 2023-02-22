@@ -38,6 +38,6 @@ setuptools.setup(
         ]
     },
     install_requires=["snakebids>={{cookiecutter.snakebids_version}}", "snakemake"],
-    python_requires=">=3.8",
+    python_requires=">=3.7",
     **optional_vals,
 )
