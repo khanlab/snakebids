@@ -14,6 +14,7 @@ def create_app(args):
     cookiecutter(
         str(Path(snakebids.__path__[0]) / "project_template"),
         output_dir=args.output_dir,
+        extra_context={"_output_dir": Path(args.output_dir).resolve().name},
     )
 
 

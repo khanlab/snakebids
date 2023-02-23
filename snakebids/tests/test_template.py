@@ -9,13 +9,15 @@ from snakebids.cli import SnakebidsArgs
 
 
 def test_template_dry_runs_successfully(tmp_path):
+    app_name = Path(tmp_path).resolve().name
     cookiecutter(
         str(Path(snakebids.__path__[0]) / "project_template"),
         no_input=True,
         output_dir=tmp_path,
+        extra_context={"_output_dir": app_name},
     )
     app = SnakeBidsApp(
-        tmp_path / "my_bids_app",
+        tmp_path / app_name,
         args=SnakebidsArgs(
             force=False,
             outputdir=tmp_path / "out",
