@@ -69,10 +69,10 @@ class SnakebidsArgs:
 
     force: bool
     outputdir: Path = attr.ib(converter=lambda p: Path(p).resolve())
-    pybidsdb_dir: Optional[Path] = None
-    reset_db: bool = False
     snakemake_args: List[str]
     args_dict: Dict[str, Any]
+    pybidsdb_dir: Optional[Path] = None
+    reset_db: bool = False
     skip_validation: bool = False
 
 

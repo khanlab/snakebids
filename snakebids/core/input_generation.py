@@ -269,9 +269,8 @@ def generate_inputs(
     )
 
     # Attempt to validate with node bids-validator, if needed
-    if not skip_bids_validation:
-        validated = _validate_input_dir(bids_dir) 
-
+    validated = _validate_input_dir if not skip_bids_validation else None
+    
     # Generates a BIDSLayout
     # If not skipping validation, set validate indicator to opposite of output
     # from _validate_input_dir, otherwise do not validate
