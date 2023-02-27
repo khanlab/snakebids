@@ -135,10 +135,10 @@ def generate_inputs(
         be specified if participant_label is specified
 
     skip_bids_validation : bool, optional
-        If True, will not perform validation of the input dataset. Otherwise, 
+        If True, will not perform validation of the input dataset. Otherwise,
         validation is first attempted by performing a system call to `bids-validator`
-        (e.g. node version), which is has more comprehensive coverage, before falling 
-        back on the python version of the validator. 
+        (e.g. node version), which is has more comprehensive coverage, before falling
+        back on the python version of the validator.
 
     use_bids_inputs : bool, optional
         If True, opts in to the new :class:`BidsDataset` output, otherwise returns the
@@ -268,12 +268,15 @@ def generate_inputs(
         participant_label, exclude_participant_label
     )
 
-    # Attempt to validate with node bids-validator, if needed
-    validated = _validate_input_dir if not skip_bids_validation else None
+    # Attempt to validate with node bids-validator
+    validated = (
+        _validate_bids_dir
+        if not skip_bids_validation and not _all_custom_paths(pybids_inputs)
+        else None
+    )
 
-    # Generates a BIDSLayout
     # If not skipping validation, set validate indicator to opposite of output
-    # from _validate_input_dir, otherwise do not validate
+    # from _validate_bids_dir, otherwise do not validate
     layout = (
         _gen_bids_layout(
             bids_dir=bids_dir,
@@ -390,7 +393,7 @@ def _gen_bids_layout(
     )
 
 
-def _validate_input_dir(
+def _validate_bids_dir(
     bids_dir: Union[Path, str],
 ) -> bool:
     """Perform validation of dataset. Initial attempt at validation performed

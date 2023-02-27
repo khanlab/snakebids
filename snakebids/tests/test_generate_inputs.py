@@ -29,7 +29,7 @@ from snakebids.core.input_generation import (
     _generate_filters,
     _get_lists_from_bids,
     _parse_custom_path,
-    _validate_input_dir,
+    _validate_bids_dir,
     generate_inputs,
 )
 from snakebids.exceptions import ConfigError, PybidsError
@@ -1004,7 +1004,7 @@ class TestValidate:
 
     def test_check_validator(self):
         """Test validator defaults to pybids (i.e. False)"""
-        assert _validate_input_dir(self.bids_dir) == False
+        assert _validate_bids_dir(self.bids_dir) == False
 
     def test_pybids_validation_fail(self):
         with pytest.raises(BIDSValidationError):

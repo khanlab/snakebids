@@ -14,10 +14,10 @@ To get access to these additions, the base Snakefile for a snakebids workflow sh
     inputs = snakebids.generate_inputs(
         bids_dir=config["bids_dir"],
         pybids_inputs=config["pybids_inputs"],
+        skip_bids_validation=config["skip_bids_validation"],
         derivatives=config.get("derivatives", None),
         participant_label=config.get("participant_label", None),
         exclude_participant_label=config.get("exclude_participant_label", None)
-
     )
 
     #this adds constraints to the bids naming

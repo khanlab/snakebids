@@ -19,6 +19,8 @@ Indexing of large datasets can be a time-consuming process. Snakebids, through `
 1. Uncomment the lines in `snakebids.yml` containing `pybids_db_dir` and `pybids_db_reset`.
 1. The variables can be updated directly in this file or through the CLI by using `-pybidsdb-dir {dir}` to specify the database path and `--reset-db` to indicate that the database should be updated. _Note: CLI arguments take precendence if both CLI and config variables are set._
 
+Input BIDS datasets are also validated via the bids-validator. By default, this feature uses the command-line (node.js) version of the [validator](https://www.npmjs.com/package/bids-validator). If this is not found to be installed on the system, the `pybids` version of validation will be performed instead. To opt-out validation, one can invoke `--skip-bids-validation`. 
+
 Workflow mode
 =============
 
