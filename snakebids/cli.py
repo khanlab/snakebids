@@ -55,20 +55,25 @@ class SnakebidsArgs:
         Directory to place outputs
     pybidsdb_dir : Path
         Directory to place pybids database
+    reset_db : bool
+        Update the pybids database
     snakemake_args : list of strings
         Arguments to pass on to Snakemake
     args_dict : Dict[str, Any]
         Contains all the snakebids specific args. Meant to contain custom user args
         defined in config, as well as dynamic --filter-xx and --wildcard-xx args.
         These will eventually be printed in the new config.
+    skip_validation : bool
+        Skip bids validation of input dataset
     """
 
     force: bool
     outputdir: Path = attr.ib(converter=lambda p: Path(p).resolve())
-    snakemake_args: List[str]
-    args_dict: Dict[str, Any]
     pybidsdb_dir: Optional[Path] = None
     reset_db: bool = False
+    snakemake_args: List[str]
+    args_dict: Dict[str, Any]
+    skip_validation: bool = False
 
 
 def create_parser(include_snakemake=False):
@@ -139,6 +144,13 @@ def create_parser(include_snakemake=False):
         "--force_output",
         action="store_true",
         help="Force output in a new directory that already has contents",
+    )
+
+    standard_group.add_argument(
+        "--skip-validation",
+        "--skip_validation",
+        action="store_true",
+        help=("Skip BIDS validation of input dataset")
     )
 
     standard_group.add_argument(
