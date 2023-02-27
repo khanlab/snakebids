@@ -270,7 +270,7 @@ def generate_inputs(
 
     # Attempt to validate with node bids-validator, if needed
     validated = _validate_input_dir if not skip_bids_validation else None
-    
+
     # Generates a BIDSLayout
     # If not skipping validation, set validate indicator to opposite of output
     # from _validate_input_dir, otherwise do not validate
@@ -351,7 +351,7 @@ def _gen_bids_layout(
         derivatives subdirectory of the input dataset.
 
     validate : bool
-        A boolean that indicates whether validation should be performed on 
+        A boolean that indicates whether validation should be performed on
         input dataset
 
     pybids_database_dir : str
@@ -394,9 +394,9 @@ def _validate_input_dir(
     bids_dir: Union[Path, str],
 ) -> bool:
     """Perform validation of dataset. Initial attempt at validation performed
-    with node-version of bids-validator. If not found, will fall back to 
+    with node-version of bids-validator. If not found, will fall back to
     validation integrated into pybids.
-    
+
     Parameters
     ----------
     bids_dir : str
@@ -408,16 +408,14 @@ def _validate_input_dir(
         Indication of whether validation was successfully performed using
         the node-version of bids-validator
     """
-    try: 
-        validator_config_dict = {
-            "ignoredFiles": ['/participants.tsv']
-        }
+    try:
+        validator_config_dict = {"ignoredFiles": ["/participants.tsv"]}
 
         with tempfile.NamedTemporaryFile(mode="w+", suffix=".json") as temp:
             temp.write(json.dumps(validator_config_dict))
             temp.flush()
 
-        subprocess.check_call(['bids-validator', str(bids_dir), '-c', temp.name])
+        subprocess.check_call(["bids-validator", str(bids_dir), "-c", temp.name])
 
         return True
     except FileNotFoundError:

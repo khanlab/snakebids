@@ -150,7 +150,7 @@ def create_parser(include_snakemake=False):
         "--skip-bids-validation",
         "--skip_bids-validation",
         action="store_true",
-        help=("Skip bids validation of input dataset")
+        help=("Skip bids validation of input dataset"),
     )
 
     standard_group.add_argument(

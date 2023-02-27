@@ -98,10 +98,7 @@ class TestFilterBools:
 
         with pytest.raises(ConfigError):
             generate_inputs(
-                root, 
-                pybids_inputs, 
-                skip_bids_validation=True, 
-                use_bids_inputs=True
+                root, pybids_inputs, skip_bids_validation=True, use_bids_inputs=True
             )
 
     @settings(
@@ -129,10 +126,7 @@ class TestFilterBools:
 
         with pytest.raises(ConfigError):
             generate_inputs(
-                root, 
-                pybids_inputs, 
-                skip_bids_validation=True, 
-                use_bids_inputs=True
+                root, pybids_inputs, skip_bids_validation=True, use_bids_inputs=True
             )
 
     @settings(
@@ -169,10 +163,7 @@ class TestFilterBools:
         )
 
         data = generate_inputs(
-            root, 
-            pybids_inputs, 
-            skip_bids_validation=True, 
-            use_bids_inputs=True
+            root, pybids_inputs, skip_bids_validation=True, use_bids_inputs=True
         )
         assert data == expected
 
@@ -252,10 +243,7 @@ class TestFilterBools:
         )
 
         data = generate_inputs(
-            root, 
-            pybids_inputs, 
-            skip_bids_validation=True, 
-            use_bids_inputs=True
+            root, pybids_inputs, skip_bids_validation=True, use_bids_inputs=True
         )
         assert data == expected
 
@@ -1007,23 +995,35 @@ class TestValidate:
 
         # Copy test data
         shutil.copytree(self.bids_dir, f"{self.tmp_dir}/data")
+        assert filecmp.dircmp("snakebids/tests/data/bids_t1w", f"{self.tmp_dir}/data")
 
+        # Copy dataset description
+        shutil.copy(
+            "snakebids/tests/data/dataset_description.json", f"{self.tmp_dir}/data"
+        )
 
     def test_check_validator(self):
-        """Test validator defaults to pybids"""
-        assert _validate_input_dir(self.bids_dir) == False 
+        """Test validator defaults to pybids (i.e. False)"""
+        assert _validate_input_dir(self.bids_dir) == False
 
-
-    # Test for validation failure
     def test_pybids_validation_fail(self):
         with pytest.raises(BIDSValidationError):
             _gen_bids_layout(
-                bids_dir=f"{self.tmp_dir}/data",
+                bids_dir=self.bids_dir,
                 derivatives=False,
                 pybids_database_dir=None,
                 pybids_reset_database=False,
                 validate=True,
             )
+
+    def test_pybids_validation_pass(self):
+        assert _gen_bids_layout(
+            bids_dir=f"{self.tmp_dir}/data",
+            derivatives=False,
+            pybids_database_dir=None,
+            pybids_reset_database=False,
+            validate=True,
+        )
 
 
 class TestDB:
