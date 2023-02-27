@@ -150,7 +150,7 @@ def create_parser(include_snakemake=False):
         "--skip-validation",
         "--skip_validation",
         action="store_true",
-        help=("Skip BIDS validation of input dataset")
+        help=("Skip bids validation of input dataset")
     )
 
     standard_group.add_argument(
@@ -283,6 +283,7 @@ def parse_snakebids_args(parser: argparse.ArgumentParser):
             else Path(all_args[0].pybidsdb_dir).resolve()
         ),
         reset_db=all_args[0].reset_db,
+        skip_bids_validation=all_args[0].skip_validation,
     )
 
 

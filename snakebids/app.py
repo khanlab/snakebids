@@ -171,6 +171,8 @@ class SnakeBidsApp:
             self.config["pybids_db_dir"] = args.pybidsdb_dir
         self.config["pybids_db_reset"] = args.reset_db
 
+        self.config["skip_bids_validation"] = args.skip_validation
+
         update_config(self.config, args)
 
         # First, handle outputs in snakebids_root or results folder
