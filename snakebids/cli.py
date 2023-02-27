@@ -63,7 +63,7 @@ class SnakebidsArgs:
         Contains all the snakebids specific args. Meant to contain custom user args
         defined in config, as well as dynamic --filter-xx and --wildcard-xx args.
         These will eventually be printed in the new config.
-    skip_validation : bool
+    skip_bids_validation : bool
         Skip bids validation of input dataset
     """
 
@@ -73,7 +73,7 @@ class SnakebidsArgs:
     args_dict: Dict[str, Any]
     pybidsdb_dir: Optional[Path] = None
     reset_db: bool = False
-    skip_validation: bool = False
+    skip_bids_validation: bool = False
 
 
 def create_parser(include_snakemake=False):
@@ -147,8 +147,8 @@ def create_parser(include_snakemake=False):
     )
 
     standard_group.add_argument(
-        "--skip-validation",
-        "--skip_validation",
+        "--skip-bids-validation",
+        "--skip_bids-validation",
         action="store_true",
         help=("Skip bids validation of input dataset")
     )
@@ -283,7 +283,7 @@ def parse_snakebids_args(parser: argparse.ArgumentParser):
             else Path(all_args[0].pybidsdb_dir).resolve()
         ),
         reset_db=all_args[0].reset_db,
-        skip_bids_validation=all_args[0].skip_validation,
+        skip_bids_validation=all_args[0].skip_bids_validation,
     )
 
 

@@ -171,7 +171,7 @@ class SnakeBidsApp:
             self.config["pybids_db_dir"] = args.pybidsdb_dir
         self.config["pybids_db_reset"] = args.reset_db
 
-        self.config["skip_bids_validation"] = args.skip_validation
+        self.config["skip_bids_validation"] = args.skip_bids_validation
 
         update_config(self.config, args)
 
