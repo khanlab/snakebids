@@ -15,6 +15,7 @@ import attrs
 import more_itertools as itx
 import pytest
 from bids import BIDSLayout
+from bids.exceptions import BIDSValidationError
 from hypothesis import HealthCheck, assume, example, given, settings
 from hypothesis import strategies as st
 from pyfakefs.fake_filesystem import FakeFilesystem
@@ -996,6 +997,33 @@ def test_when_all_custom_paths_no_layout_indexed(
     assert reindexed == dataset
     assert reindexed.layout is None
     spy.assert_not_called()
+
+
+class TestValidate:
+    @pytest.fixture(autouse=True)
+    def start(self, tmpdir):
+        self.bids_dir = "snakebids/tests/data/bids_t1w"
+        self.tmp_dir = tmpdir.strpath
+
+        # Copy test data
+        shutil.copytree(self.bids_dir, f"{self.tmp_dir}/data")
+
+
+    def test_check_validator(self):
+        """Test validator defaults to pybids"""
+        assert _validate_input_dir(self.bids_dir) == False 
+
+
+    # Test for validation failure
+    def test_pybids_validation_fail(self):
+        with pytest.raises(BIDSValidationError):
+            _gen_bids_layout(
+                bids_dir=f"{self.tmp_dir}/data",
+                derivatives=False,
+                pybids_database_dir=None,
+                pybids_reset_database=False,
+                validate=True,
+            )
 
 
 class TestDB:

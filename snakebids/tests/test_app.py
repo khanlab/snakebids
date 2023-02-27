@@ -100,6 +100,7 @@ class TestRunSnakemake:
                 "pybids_db_reset": True,
                 "snakefile": Path("Snakefile"),
                 "output_dir": outputdir.resolve(),
+                "skip_bids_validation": False
             }
         )
         if root == "app" and tail == "":
