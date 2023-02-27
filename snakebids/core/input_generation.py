@@ -3,6 +3,8 @@
 import json
 import logging
 import re
+import subprocess
+import tempfile
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, Generator, Iterable, List, Optional, Tuple, Union, overload
@@ -34,6 +36,7 @@ def generate_inputs(
     limit_to=...,
     participant_label=...,
     exclude_participant_label=...,
+    skip_bids_validation=...,
     use_bids_inputs: Union[Literal[False], None] = ...,
 ) -> BidsDatasetDict:
     ...
@@ -51,6 +54,7 @@ def generate_inputs(
     limit_to=...,
     participant_label=...,
     exclude_participant_label=...,
+    skip_bids_validation=...,
     use_bids_inputs: Literal[True] = ...,
 ) -> BidsDataset:
     ...
@@ -67,6 +71,7 @@ def generate_inputs(
     limit_to=None,
     participant_label=None,
     exclude_participant_label=None,
+    skip_bids_validation=False,
     use_bids_inputs=None,
 ):
     """Dynamically generate snakemake inputs using pybids_inputs
@@ -128,6 +133,12 @@ def generate_inputs(
         Indicate one or more participants to be excluded from input parsing. This may
         cause errors if subject filters are also specified in pybids_inputs. It may not
         be specified if participant_label is specified
+
+    skip_bids_validation : bool, optional
+        If True, will not perform validation of the input dataset. Otherwise, 
+        validation is first attempted by performing a system call to `bids-validator`
+        (e.g. node version), which is has more comprehensive coverage, before falling 
+        back on the python version of the validator. 
 
     use_bids_inputs : bool, optional
         If True, opts in to the new :class:`BidsDataset` output, otherwise returns the
@@ -257,11 +268,18 @@ def generate_inputs(
         participant_label, exclude_participant_label
     )
 
+    # Attempt to validate with node bids-validator, if needed
+    if not skip_bids_validation:
+        validated = _validate_input_dir(bids_dir) 
+
     # Generates a BIDSLayout
+    # If not skipping validation, set validate indicator to opposite of output
+    # from _validate_input_dir, otherwise do not validate
     layout = (
         _gen_bids_layout(
             bids_dir=bids_dir,
             derivatives=derivatives,
+            validate=not validated if validated else False,
             pybids_config=pybids_config,
             pybids_database_dir=pybids_database_dir,
             pybids_reset_database=pybids_reset_database,
@@ -315,6 +333,7 @@ def _all_custom_paths(config: InputsConfig):
 def _gen_bids_layout(
     bids_dir: Union[Path, str],
     derivatives: bool,
+    validate: Union[bool, None],
     pybids_database_dir: Union[Path, str, None],
     pybids_reset_database: bool,
     pybids_config: Union[Path, str, None] = None,
@@ -331,6 +350,10 @@ def _gen_bids_layout(
         A boolean (or path(s) to derivatives datasets) that
         determines whether snakebids will search in the
         derivatives subdirectory of the input dataset.
+
+    validate : bool
+        A boolean that indicates whether validation should be performed on 
+        input dataset
 
     pybids_database_dir : str
         Path to database directory. If None is provided, database
@@ -360,12 +383,50 @@ def _gen_bids_layout(
     return BIDSLayout(
         bids_dir,
         derivatives=derivatives,
-        validate=False,
+        validate=validate,
         config=pybids_config,
         database_path=pybids_database_dir,
         reset_database=pybids_reset_database,
-        indexer=BIDSLayoutIndexer(validate=False, index_metadata=False),
+        indexer=BIDSLayoutIndexer(validate=validate, index_metadata=False),
     )
+
+
+def _validate_input_dir(
+    bids_dir: Union[Path, str],
+) -> bool:
+    """Perform validation of dataset. Initial attempt at validation performed
+    with node-version of bids-validator. If not found, will fall back to 
+    validation integrated into pybids.
+    
+    Parameters
+    ----------
+    bids_dir : str
+        Path to bids directory
+
+    Returns
+    -------
+    bool
+        Indication of whether validation was successfully performed using
+        the node-version of bids-validator
+    """
+    try: 
+        validator_config_dict = {
+            "ignoredFiles": ['/participants.tsv']
+        }
+
+        with tempfile.NamedTemporaryFile(mode="w+", suffix=".json") as temp:
+            temp.write(json.dumps(validator_config_dict))
+            temp.flush()
+
+        subprocess.check_call(['bids-validator', str(bids_dir), '-c', temp.name])
+
+        return True
+    except FileNotFoundError:
+        _logger.warning(
+            "Bids-validator does not appear to be installed - will use pybids "
+            "validation."
+        )
+        return False
 
 
 def write_derivative_json(snakemake, **kwargs):
