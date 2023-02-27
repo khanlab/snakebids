@@ -22,6 +22,8 @@ pybids_inputs:
 pybids_db_dir: '/path/to/db_dir'
 pybids_db_reset: False
 
+skip_bids_validation: False
+
 targets_by_analysis_level:
   participant:
     - ''  # if '', then the first rule is run
