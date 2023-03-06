@@ -117,11 +117,18 @@ class TestRunSnakemake:
             reset_db=True,
         )
 
+        def plugin(my_app):
+            my_app.foo = "bar"
+
+        app.add_plugins([plugin])
+
         try:
             app.run_snakemake()
         except SystemExit as e:
             print("System exited prematurely")
             print(e)
+
+        assert app.foo == "bar"
 
         # First condition: outputdir is an arbitrary path
         if root not in ["app", "app/results"] or (root == "app" and tail):

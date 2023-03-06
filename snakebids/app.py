@@ -1,10 +1,12 @@
 """Tools to generate a Snakemake-based BIDS app."""
+from __future__ import annotations
 
 import argparse
 import logging
 import sys
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import attr
 import boutiques.creator as bc
@@ -111,6 +113,22 @@ class SnakeBidsApp:
         takes_self=True,
     )
     args: Optional[SnakebidsArgs] = None
+    plugins: list[Callable[[SnakeBidsApp], None]] = attr.Factory(list)
+
+    def add_plugins(self, plugins: Sequence[Callable[[SnakeBidsApp], None]]):
+        """Supply list of methods to be called after cli parsing
+
+        Each callable in ``plugins`` should take, as a single argument, a
+        reference to the ``SnakeBidsApp``, and should not return anything.
+        Plugins may perform any arbitrary side effects, including validation,
+        optimization, other other enhancements to the snakebids app.
+
+        CLI parameters may be read from ``SnakeBidsApp.config``. Plugins
+        are responsible for documenting what properties they expect to find
+        in the config.
+        """
+        # pylint: disable=no-member
+        self.plugins.extend(plugins)
 
     def run_snakemake(self):
         """Run snakemake with that config.
@@ -186,6 +204,10 @@ class SnakeBidsApp:
             cwd = args.outputdir
             new_config_file = args.outputdir / self.configfile_path
             self.config["root"] = ""
+
+        # pylint: disable=not-an-iterable
+        for plugin in self.plugins:
+            plugin(self)
 
         # Write the config file
         write_config_file(
