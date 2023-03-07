@@ -113,9 +113,11 @@ class SnakeBidsApp:
         takes_self=True,
     )
     args: Optional[SnakebidsArgs] = None
-    plugins: list[Callable[[SnakeBidsApp], None]] = attr.Factory(list)
+    plugins: list[Callable[[SnakeBidsApp], None | SnakeBidsApp]] = attr.Factory(list)
 
-    def add_plugins(self, plugins: Sequence[Callable[[SnakeBidsApp], None]]):
+    def add_plugins(
+        self, plugins: Sequence[Callable[[SnakeBidsApp], None | SnakeBidsApp]]
+    ):
         """Supply list of methods to be called after cli parsing
 
         Each callable in ``plugins`` should take, as a single argument, a
@@ -205,14 +207,15 @@ class SnakeBidsApp:
             new_config_file = args.outputdir / self.configfile_path
             self.config["root"] = ""
 
+        app = self
         # pylint: disable=not-an-iterable
         for plugin in self.plugins:
-            plugin(self)
+            app = plugin(app) or app
 
         # Write the config file
         write_config_file(
             config_file=new_config_file,
-            data=self.config,
+            data=app.config,
             force_overwrite=True,
         )
 
@@ -224,14 +227,14 @@ class SnakeBidsApp:
                     None,
                     [
                         "--snakefile",
-                        str(self.snakefile_path),
+                        str(app.snakefile_path),
                         "--directory",
                         str(cwd),
                         "--configfile",
                         str(new_config_file.resolve()),
-                        *self.config["snakemake_args"],
-                        *self.config["targets_by_analysis_level"][
-                            self.config["analysis_level"]
+                        *app.config["snakemake_args"],
+                        *app.config["targets_by_analysis_level"][
+                            app.config["analysis_level"]
                         ],
                     ],
                 )
