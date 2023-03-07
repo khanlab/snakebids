@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-from collections.abc import Sequence
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
@@ -116,7 +116,7 @@ class SnakeBidsApp:
     plugins: list[Callable[[SnakeBidsApp], None | SnakeBidsApp]] = attr.Factory(list)
 
     def add_plugins(
-        self, plugins: Sequence[Callable[[SnakeBidsApp], None | SnakeBidsApp]]
+        self, plugins: Iterable[Callable[[SnakeBidsApp], None | SnakeBidsApp]]
     ):
         """Supply list of methods to be called after cli parsing
 
