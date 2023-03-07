@@ -39,6 +39,7 @@ bids_function/overview
 bids_app/overview
 bids_app/config
 bids_app/workflow
+bids_app/plugins
 ```
 
 ```{toctree}
