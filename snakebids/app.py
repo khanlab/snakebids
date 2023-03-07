@@ -121,7 +121,15 @@ class SnakeBidsApp:
         """Supply list of methods to be called after cli parsing
 
         Each callable in ``plugins`` should take, as a single argument, a
-        reference to the ``SnakeBidsApp``, and should not return anything.
+        reference to the ``SnakeBidsApp``, and should return either:
+
+            - Nothing, in which case any changes to the SnakeBidsApp need to
+              come from mutating it.
+            - A ``SnakeBidsApp``, which will be used to call Snakemake. Note
+              that in this case, any processing of CLI arguments and
+              configuration must already be handled, so it is recommended to
+              use ``copy.deepcopy`` to copy the original ``SnakeBidsApp``.
+
         Plugins may perform any arbitrary side effects, including validation,
         optimization, other other enhancements to the snakebids app.
 
