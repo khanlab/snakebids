@@ -118,24 +118,23 @@ class SnakeBidsApp:
     def add_plugins(
         self, plugins: Iterable[Callable[[SnakeBidsApp], None | SnakeBidsApp]]
     ):
-        """Supply list of methods to be called after cli parsing
+        """Supply list of methods to be called after CLI parsing.
 
         Each callable in ``plugins`` should take, as a single argument, a
-        reference to the ``SnakeBidsApp``, and should return either:
-
-            - Nothing, in which case any changes to the SnakeBidsApp need to
-              come from mutating it.
-            - A ``SnakeBidsApp``, which will be used to call Snakemake. Note
-              that in this case, any processing of CLI arguments and
-              configuration must already be handled, so it is recommended to
-              use ``copy.deepcopy`` to copy the original ``SnakeBidsApp``.
-
-        Plugins may perform any arbitrary side effects, including validation,
-        optimization, other other enhancements to the snakebids app.
+        reference to the ``SnakeBidsApp``. Plugins may perform any arbitrary
+        side effects, including updates to the config dictionary, validation
+        of inputs, optimization, or other enhancements to the snakebids app.
 
         CLI parameters may be read from ``SnakeBidsApp.config``. Plugins
         are responsible for documenting what properties they expect to find
         in the config.
+
+        Every plugin should return either:
+
+            - Nothing, in which case any changes to the SnakeBidsApp will
+              persist in the workflow.
+            - A ``SnakeBidsApp``, which will replace the existing instance,
+              so this option should be used with care.
         """
         # pylint: disable=no-member
         self.plugins.extend(plugins)
