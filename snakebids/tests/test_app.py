@@ -162,6 +162,34 @@ class TestRunSnakemake:
             ]
         )
 
+    def test_plugins(self, mocker: MockerFixture, app: SnakeBidsApp):
+        # Get mocks for all the io functions
+        self.io_mocks(mocker)
+        mocker.patch.object(
+            sn_app,
+            "update_config",
+            side_effect=lambda config, sn_args: config.update(sn_args.args_dict),
+        )
+        output_dir = Path("app") / "results"
+        app.args = SnakebidsArgs(
+            force=False,
+            outputdir=output_dir,
+            snakemake_args=[],
+            args_dict={"output_dir": output_dir.resolve()},
+        )
+
+        def plugin(my_app):
+            my_app.foo = "bar"
+
+        app.add_plugins([plugin])
+        try:
+            app.run_snakemake()
+        except SystemExit as e:
+            print("System exited prematurely")
+            print(e)
+
+        assert app.foo == "bar"
+
 
 class TestGenBoutiques:
     def test_boutiques_descriptor(self, tmp_path: Path, app: SnakeBidsApp):

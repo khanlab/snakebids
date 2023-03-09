@@ -1,10 +1,12 @@
 """Tools to generate a Snakemake-based BIDS app."""
+from __future__ import annotations
 
 import argparse
 import logging
 import sys
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import attr
 import boutiques.creator as bc
@@ -111,6 +113,31 @@ class SnakeBidsApp:
         takes_self=True,
     )
     args: Optional[SnakebidsArgs] = None
+    plugins: list[Callable[[SnakeBidsApp], None | SnakeBidsApp]] = attr.Factory(list)
+
+    def add_plugins(
+        self, plugins: Iterable[Callable[[SnakeBidsApp], None | SnakeBidsApp]]
+    ):
+        """Supply list of methods to be called after CLI parsing.
+
+        Each callable in ``plugins`` should take, as a single argument, a
+        reference to the ``SnakeBidsApp``. Plugins may perform any arbitrary
+        side effects, including updates to the config dictionary, validation
+        of inputs, optimization, or other enhancements to the snakebids app.
+
+        CLI parameters may be read from ``SnakeBidsApp.config``. Plugins
+        are responsible for documenting what properties they expect to find
+        in the config.
+
+        Every plugin should return either:
+
+            - Nothing, in which case any changes to the SnakeBidsApp will
+              persist in the workflow.
+            - A ``SnakeBidsApp``, which will replace the existing instance,
+              so this option should be used with care.
+        """
+        # pylint: disable=no-member
+        self.plugins.extend(plugins)
 
     def run_snakemake(self):
         """Run snakemake with that config.
@@ -187,10 +214,15 @@ class SnakeBidsApp:
             new_config_file = args.outputdir / self.configfile_path
             self.config["root"] = ""
 
+        app = self
+        # pylint: disable=not-an-iterable
+        for plugin in self.plugins:
+            app = plugin(app) or app
+
         # Write the config file
         write_config_file(
             config_file=new_config_file,
-            data=self.config,
+            data=app.config,
             force_overwrite=True,
         )
 
@@ -202,14 +234,14 @@ class SnakeBidsApp:
                     None,
                     [
                         "--snakefile",
-                        str(self.snakefile_path),
+                        str(app.snakefile_path),
                         "--directory",
                         str(cwd),
                         "--configfile",
                         str(new_config_file.resolve()),
-                        *self.config["snakemake_args"],
-                        *self.config["targets_by_analysis_level"][
-                            self.config["analysis_level"]
+                        *app.config["snakemake_args"],
+                        *app.config["targets_by_analysis_level"][
+                            app.config["analysis_level"]
                         ],
                     ],
                 )
