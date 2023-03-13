@@ -233,6 +233,9 @@ class SnakeBidsApp:
                 *filter(
                     None,
                     [
+                        *app.config["targets_by_analysis_level"][
+                            app.config["analysis_level"]
+                        ],
                         "--snakefile",
                         str(app.snakefile_path),
                         "--directory",
@@ -240,9 +243,6 @@ class SnakeBidsApp:
                         "--configfile",
                         str(new_config_file.resolve()),
                         *app.config["snakemake_args"],
-                        *app.config["targets_by_analysis_level"][
-                            app.config["analysis_level"]
-                        ],
                     ],
                 )
             ]
