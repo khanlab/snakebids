@@ -29,7 +29,6 @@ from snakebids.core.input_generation import (
     _generate_filters,
     _get_lists_from_bids,
     _parse_custom_path,
-    _validate_bids_dir,
     generate_inputs,
 )
 from snakebids.exceptions import ConfigError, PybidsError
@@ -97,9 +96,7 @@ class TestFilterBools:
         }
 
         with pytest.raises(ConfigError):
-            generate_inputs(
-                root, pybids_inputs, skip_bids_validation=True, use_bids_inputs=True
-            )
+            generate_inputs(root, pybids_inputs, use_bids_inputs=True)
 
     @settings(
         deadline=800,
@@ -125,9 +122,7 @@ class TestFilterBools:
         }
 
         with pytest.raises(ConfigError):
-            generate_inputs(
-                root, pybids_inputs, skip_bids_validation=True, use_bids_inputs=True
-            )
+            generate_inputs(root, pybids_inputs, use_bids_inputs=True)
 
     @settings(
         deadline=800,
@@ -162,9 +157,7 @@ class TestFilterBools:
             }
         )
 
-        data = generate_inputs(
-            root, pybids_inputs, skip_bids_validation=True, use_bids_inputs=True
-        )
+        data = generate_inputs(root, pybids_inputs, use_bids_inputs=True)
         assert data == expected
 
     @example(
@@ -242,9 +235,7 @@ class TestFilterBools:
             }
         )
 
-        data = generate_inputs(
-            root, pybids_inputs, skip_bids_validation=True, use_bids_inputs=True
-        )
+        data = generate_inputs(root, pybids_inputs, use_bids_inputs=True)
         assert data == expected
 
 
@@ -279,7 +270,6 @@ class TestAbsentConfigEntries:
             bids_dir=tmpdir,
             derivatives=derivatives,
             pybids_config=str(Path(__file__).parent / "data" / "custom_config.json"),
-            skip_bids_validation=True,
             use_bids_inputs=True,
         )
         template = BidsDataset({"t1": BidsComponent("t1", config["t1"].path, zip_list)})
@@ -304,7 +294,6 @@ class TestAbsentConfigEntries:
             bids_dir=tmpdir,
             derivatives=derivatives,
             pybids_config=str(Path(__file__).parent / "data" / "custom_config.json"),
-            skip_bids_validation=True,
             use_bids_inputs=True,
         )
         template = BidsDataset({"t1": BidsComponent("t1", config["t1"].path, {})})
@@ -565,7 +554,6 @@ def test_custom_pybids_config(tmpdir: Path):
         bids_dir=tmpdir,
         derivatives=derivatives,
         pybids_config=Path(__file__).parent / "data" / "custom_config.json",
-        skip_bids_validation=True,
         use_bids_inputs=True,
     )
     template = BidsDataset(
@@ -618,7 +606,6 @@ def test_nonstandard_custom_pybids_config(tmpdir: Path):
             pybids_config=(
                 Path(__file__).parent / "data" / "custom_config_nonstandard.json"
             ),
-            skip_bids_validation=True,
             use_bids_inputs=True,
         )
 
@@ -642,7 +629,6 @@ def test_t1w():
             derivatives=derivatives,
             participant_label="001",
             exclude_participant_label="002",
-            skip_bids_validation=True,
         )
     assert v_error.value.args[0] == (
         "Cannot define both participant_label and "
@@ -654,7 +640,6 @@ def test_t1w():
         pybids_inputs=pybids_inputs,
         bids_dir=real_bids_dir,
         derivatives=derivatives,
-        skip_bids_validation=True,
         use_bids_inputs=True,
     )
     template = BidsDataset(
@@ -690,7 +675,6 @@ def test_t1w():
         bids_dir=real_bids_dir,
         derivatives=derivatives,
         participant_label="001",
-        skip_bids_validation=True,
         use_bids_inputs=True,
     )
     assert result["scan"].entities == {
@@ -762,7 +746,6 @@ def test_t1w():
             pybids_inputs=pybids_inputs,
             bids_dir=bids_dir,
             derivatives=derivatives,
-            skip_bids_validation=True,
             use_bids_inputs=True,
         )
         template = BidsDataset(
@@ -801,7 +784,6 @@ def test_t1w_with_dict():
         pybids_inputs=pybids_inputs,
         bids_dir=real_bids_dir,
         derivatives=derivatives,
-        skip_bids_validation=True,
     )
     # Order of the subjects is not deterministic
     assert config["input_lists"] == BidsListCompare(
@@ -833,7 +815,6 @@ def test_t1w_with_dict():
         bids_dir=real_bids_dir,
         derivatives=derivatives,
         participant_label="001",
-        skip_bids_validation=True,
     )
     assert config["input_lists"] == {
         "scan": {"acq": ["mprage"], "subject": ["001"], "suffix": ["T1w"]}
@@ -987,45 +968,6 @@ def test_when_all_custom_paths_no_layout_indexed(
     spy.assert_not_called()
 
 
-class TestValidate:
-    @pytest.fixture(autouse=True)
-    def start(self, tmpdir):
-        self.bids_dir = "snakebids/tests/data/bids_t1w"
-        self.tmp_dir = tmpdir.strpath
-
-        # Copy test data
-        shutil.copytree(self.bids_dir, f"{self.tmp_dir}/data")
-        assert filecmp.dircmp("snakebids/tests/data/bids_t1w", f"{self.tmp_dir}/data")
-
-        # Copy dataset description
-        shutil.copy(
-            "snakebids/tests/data/dataset_description.json", f"{self.tmp_dir}/data"
-        )
-
-    def test_check_validator(self):
-        """Test validator defaults to pybids (i.e. False)"""
-        assert _validate_bids_dir(self.bids_dir) == False
-
-    def test_pybids_validation_fail(self):
-        with pytest.raises(BIDSValidationError):
-            _gen_bids_layout(
-                bids_dir=self.bids_dir,
-                derivatives=False,
-                pybids_database_dir=None,
-                pybids_reset_database=False,
-                validate=True,
-            )
-
-    def test_pybids_validation_pass(self):
-        assert _gen_bids_layout(
-            bids_dir=f"{self.tmp_dir}/data",
-            derivatives=False,
-            pybids_database_dir=None,
-            pybids_reset_database=False,
-            validate=True,
-        )
-
-
 class TestDB:
     @pytest.fixture(autouse=True)
     def start(self, tmpdir):
@@ -1046,7 +988,6 @@ class TestDB:
             derivatives=False,
             pybids_database_dir=self.pybids_db.get("database_dir"),
             pybids_reset_database=self.pybids_db.get("reset_database"),
-            validate=False,
         )
         assert not os.path.exists(self.pybids_db.get("database_dir"))
 
@@ -1060,7 +1001,6 @@ class TestDB:
             derivatives=False,
             pybids_database_dir=self.pybids_db.get("database_dir"),
             pybids_reset_database=self.pybids_db.get("reset_database"),
-            validate=False,
         )
         assert not os.path.exists(f"{self.tmpdir}/data/.db/")
 
@@ -1075,7 +1015,6 @@ class TestDB:
             derivatives=False,
             pybids_database_dir=self.pybids_db.get("database_dir"),
             pybids_reset_database=self.pybids_db.get("reset_database"),
-            validate=False,
         )
         assert os.path.exists(f"{self.tmpdir}/data/.db/")
 
@@ -1091,7 +1030,6 @@ class TestDB:
             derivatives=False,
             pybids_database_dir=self.pybids_db.get("database_dir"),
             pybids_reset_database=self.pybids_db.get("reset_database"),
-            validate=False,
         )
         assert not layout.get(subject="003")
 
@@ -1103,6 +1041,5 @@ class TestDB:
             derivatives=False,
             pybids_database_dir=self.pybids_db.get("database_dir"),
             pybids_reset_database=self.pybids_db.get("reset_database"),
-            validate=False,
         )
         assert layout.get(subject="003")

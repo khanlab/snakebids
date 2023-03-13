@@ -20,6 +20,7 @@ from snakebids.cli import (
     parse_snakebids_args,
 )
 from snakebids.exceptions import ConfigError, RunError
+from snakebids.plugins.validation import bids_validate
 from snakebids.utils.output import (
     prepare_bidsapp_output,
     write_config_file,
@@ -170,8 +171,6 @@ class SnakeBidsApp:
         if args.pybidsdb_dir:
             self.config["pybids_db_dir"] = args.pybidsdb_dir
         self.config["pybids_db_reset"] = args.reset_db
-
-        self.config["skip_bids_validation"] = args.skip_bids_validation
 
         update_config(self.config, args)
 
