@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import itertools as it
 import operator as op
+import textwrap
 import warnings
 from collections import UserDict
+from math import inf
 from string import Formatter
 from typing import TYPE_CHECKING, Any, Iterable, Optional, Union, cast
 
@@ -15,6 +17,8 @@ from deprecation import deprecated
 from typing_extensions import TypedDict
 
 import snakebids.utils.sb_itertools as sb_it
+from snakebids.io.console import get_console_size
+from snakebids.io.printing import format_zip_lists, quote_wrap
 from snakebids.utils.utils import property_alias
 
 
@@ -54,6 +58,23 @@ class BidsComponent:
     zip_lists: dict[str, list[str]] = attr.field(
         on_setattr=attr.setters.frozen, converter=dict
     )
+
+    def __repr__(self) -> str:
+        return self.format()
+
+    def format(self, max_width: int | float | None = None, tabstop: int = 4):
+        width = max_width or get_console_size()[0] or inf
+        body = [
+            f"name={quote_wrap(self.name)},",
+            f"path={quote_wrap(self.path)},",
+            f"zip_lists={format_zip_lists(self.zip_lists, width - tabstop, tabstop)},",
+        ]
+        output = [
+            "BidsComponent(",
+            textwrap.indent("\n".join(body), " " * tabstop),
+            ")",
+        ]
+        return "\n".join(output)
 
     @zip_lists.validator  # type: ignore
     def _validate_zip_lists(self, _, value: dict[str, list[str]]):
@@ -208,6 +229,22 @@ class BidsDataset(_BidsComponentsType):
         raise NotImplementedError(
             f"Modification of {self.__class__.__name__} is not yet supported"
         )
+
+    def __repr__(self) -> str:
+        return self.format()
+
+    def format(self, max_width: int | float | None = None, tabstop: int = 4):
+        width = max_width or get_console_size()[0] or inf
+        body = [
+            f"{quote_wrap(name)}: {comp.format(width - tabstop, tabstop)},"
+            for name, comp in self.items()
+        ]
+        output = [
+            "BidsDataset({",
+            textwrap.indent("\n".join(body), " " * tabstop),
+            "})",
+        ]
+        return "\n".join(output)
 
     @cached_property
     @deprecated(
