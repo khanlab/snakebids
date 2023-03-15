@@ -12,3 +12,5 @@ class InputConfig(TypedDict, total=False):
 
 
 InputsConfig: TypeAlias = "dict[str, InputConfig]"
+
+ZipLists: TypeAlias = "dict[str, list[str]]"
