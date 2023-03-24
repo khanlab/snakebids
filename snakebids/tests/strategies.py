@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import itertools as it
 from pathlib import Path
@@ -25,7 +27,7 @@ def bids_entity():
     )
 
 
-def bids_value(pattern: str = ".*"):
+def bids_value(pattern: str = r"[^\n\r]*"):
     return st.from_regex(pattern, fullmatch=True).filter(len)
 
 
@@ -39,18 +41,21 @@ def bids_entity_lists(min_size: int = 1, max_size: int = 5):
     ).filter(lambda v: v != ["datatype"])
 
 
+# pylint: disable=too-many-arguments
 @st.composite
-def input_zip_lists(
+def zip_lists(
     draw: st.DrawFn,
-    min_size: int = 1,
-    max_size: int = 5,
+    min_entities: int = 1,
+    max_entities: int = 5,
+    min_values: int = 1,
+    max_values: int = 3,
     entities: Optional[List[BidsEntity]] = None,
     restrict_patterns: bool = False,
 ):
     # Generate multiple entity sets for different "file types"
 
     if entities is None:
-        entities = draw(bids_entity_lists(min_size=min_size, max_size=max_size))
+        entities = draw(bids_entity_lists(min_size=min_entities, max_size=max_entities))
 
     # TODO: min_size and max_size shouldn't be hard-coded, but we need a good way of
     # doing this.
@@ -58,8 +63,8 @@ def input_zip_lists(
         entity: draw(
             st.lists(
                 bids_value(entity.match if restrict_patterns else ".*"),
-                min_size=1,
-                max_size=3,
+                min_size=min_values,
+                max_size=max_values,
                 unique=True,
             )
         )
@@ -81,27 +86,31 @@ def input_zip_lists(
 @st.composite
 def bids_components(
     draw: st.DrawFn,
-    min_size: int = 1,
-    max_size: int = 5,
-    entities: Optional[List[BidsEntity]] = None,
+    min_entities: int = 1,
+    max_entities: int = 5,
+    min_values: int = 1,
+    max_values: int = 3,
+    entities: Optional[list[BidsEntity]] = None,
     root: Optional[Path] = None,
-    restricted_chars: bool = False,
+    restrict_patterns: bool = False,
 ):
-    zip_lists = draw(
-        input_zip_lists(
-            min_size=min_size,
-            max_size=max_size,
+    zip_list = draw(
+        zip_lists(
+            min_entities=min_entities,
+            max_entities=max_entities,
+            min_values=min_values,
+            max_values=max_values,
             entities=entities,
-            restrict_patterns=restricted_chars,
+            restrict_patterns=restrict_patterns,
         )
     )
 
-    path = (root or Path()) / helpers.get_bids_path(zip_lists)
+    path = (root or Path()) / helpers.get_bids_path(zip_list)
 
     return BidsComponent(
         name=draw(bids_value()),
         path=str(path),
-        zip_lists=zip_lists,
+        zip_lists=zip_list,
     )
 
 
@@ -139,8 +148,8 @@ def datasets(draw: st.DrawFn, root: Optional[Path] = None):
     ent2.pop()
     # BUG: need better controlling if 'datatype' is the only arg
     assume(ent2 != ["datatype"])
-    comp1 = draw(bids_components(entities=ent1, restricted_chars=True, root=root))
-    comp2 = draw(bids_components(entities=ent2, restricted_chars=True, root=root))
+    comp1 = draw(bids_components(entities=ent1, restrict_patterns=True, root=root))
+    comp2 = draw(bids_components(entities=ent2, restrict_patterns=True, root=root))
     assume(comp1.input_name != comp2.input_name)
     return BidsDataset.from_iterable([comp1, comp2])
 
@@ -148,5 +157,5 @@ def datasets(draw: st.DrawFn, root: Optional[Path] = None):
 @st.composite
 def datasets_one_comp(draw: st.DrawFn, root: Optional[Path] = None):
     ent1 = draw(bids_entity_lists(min_size=2, max_size=3))
-    comp1 = draw(bids_components(entities=ent1, restricted_chars=True, root=root))
+    comp1 = draw(bids_components(entities=ent1, restrict_patterns=True, root=root))
     return BidsDataset.from_iterable([comp1])
