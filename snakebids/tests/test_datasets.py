@@ -42,14 +42,14 @@ class TestBidsComponentAliases:
 
 
 class TestBidsComponentValidation:
-    @given(sb_st.input_zip_lists().filter(lambda v: len(v) > 1))
+    @given(sb_st.zip_lists().filter(lambda v: len(v) > 1))
     def test_zip_lists_must_be_same_length(self, zip_lists: Dict[str, List[str]]):
         itx.first(zip_lists.values()).append("foo")
         with pytest.raises(ValueError) as err:
             BidsComponent("foo", get_bids_path(zip_lists), zip_lists)
         assert err.value.args[0] == "zip_lists must all be of equal length"
 
-    @given(sb_st.input_zip_lists(), sb_st.bids_entity())
+    @given(sb_st.zip_lists(), sb_st.bids_entity())
     def test_path_cannot_have_extra_entities(
         self, zip_lists: Dict[str, List[str]], entity: BidsEntity
     ):
@@ -62,7 +62,7 @@ class TestBidsComponentValidation:
             in err.value.args[0]
         )
 
-    @given(sb_st.input_zip_lists().filter(lambda v: len(v) > 1))
+    @given(sb_st.zip_lists().filter(lambda v: len(v) > 1))
     def test_path_cannot_have_missing_entities(self, zip_lists: Dict[str, List[str]]):
         # Snakebids strategies won't return a zip_list with just datatype, but now that
         # we've dropped an entity we need to check again
