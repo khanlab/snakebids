@@ -71,6 +71,7 @@ mkinit = "^1.0.0"
 hypothesis = "^6.34.1"
 pytest-benchmark = "^4.0.0"
 pyfakefs = "^5.1.0"
+pyparsing = "^3.0.9"
 
 [tool.poetry.scripts]
 snakebids = "snakebids.admin:main"
