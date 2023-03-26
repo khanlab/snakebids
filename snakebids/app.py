@@ -75,26 +75,26 @@ def _get_file_paths(choices: List[str], file_name: str):
 class SnakeBidsApp:
     """Snakebids app with config and arguments.
 
-    Attributes
+    Parameters
     ----------
-    snakemake_dir : str
+    snakemake_dir : str | Path
         Root directory of the snakebids app, containing the config file and workflow
         files.
-    parser : ArgumentParser, optional
+    parser
         Parser including only the arguments specific to this Snakebids app, as specified
         in the config file. By default, it will use `create_parser()` from `cli.py`
-    configfile_path : str, optional
+    configfile_path
         Relative path to config file (relative to snakemake_dir). By default,
         autocalculates based on snamake_dir
-    snakefile_path : str, optional
+    snakefile_path
         Absolute path to the input Snakefile. By default, autocalculates based on
         snakemake_dir::
 
             join(snakemake_dir, snakefile_path)
-    config : dict, optional
+    config
         Contains all the configuration variables parsed from the config file
         and generated during the initialization of the SnakeBidsApp.
-    args : SnakebidsArgs, optional
+    args
         Arguments to use when running the app. By default, generated using the parser
         attribute, autopopulated with args from `config.py`
     """
@@ -117,34 +117,34 @@ class SnakeBidsApp:
 
     def add_plugins(
         self, plugins: Iterable[Callable[[SnakeBidsApp], None | SnakeBidsApp]]
-    ):
+    ) -> None:
         """Supply list of methods to be called after CLI parsing.
 
-        Each callable in ``plugins`` should take, as a single argument, a
-        reference to the ``SnakeBidsApp``. Plugins may perform any arbitrary
-        side effects, including updates to the config dictionary, validation
-        of inputs, optimization, or other enhancements to the snakebids app.
+        Each callable in ``plugins`` should take, as a single argument, a reference to
+        the ``SnakeBidsApp``. Plugins may perform any arbitrary side effects, including
+        updates to the config dictionary, validation of inputs, optimization, or other
+        enhancements to the snakebids app.
 
-        CLI parameters may be read from ``SnakeBidsApp.config``. Plugins
-        are responsible for documenting what properties they expect to find
-        in the config.
+        CLI parameters may be read from ``SnakeBidsApp.config``. Plugins are responsible
+        for documenting what properties they expect to find in the config.
 
         Every plugin should return either:
 
-            - Nothing, in which case any changes to the SnakeBidsApp will
-              persist in the workflow.
-            - A ``SnakeBidsApp``, which will replace the existing instance,
-              so this option should be used with care.
+        - Nothing, in which case any changes to the SnakeBidsApp will persist in the
+          workflow.
+        - A ``SnakeBidsApp``, which will replace the existing instance, so this option
+          should be used with care.
+
+        Parameters
+        ----------
+        plugins
+            List of plugins to be added
         """
         # pylint: disable=no-member
         self.plugins.extend(plugins)
 
-    def run_snakemake(self):
-        """Run snakemake with that config.
-
-        Workflow snakefile will read snakebids config, create inputs_config,
-        and read that in.
-        """
+    def run_snakemake(self) -> None:
+        """Run snakemake with the given config, after applying plugins"""
 
         # If no SnakebidsArgs were provided on class instantiation, we compute args
         # using the provided parser

@@ -1,4 +1,5 @@
 """Utilities for converting Snakemake apps to BIDS apps."""
+from __future__ import annotations
 
 import json
 import logging
@@ -25,15 +26,15 @@ _logger = logging.getLogger(__name__)
 # pylint: disable=too-many-arguments
 @overload
 def generate_inputs(
-    bids_dir,
+    bids_dir: Path | str,
     pybids_inputs: InputsConfig,
-    pybids_database_dir=...,
-    pybids_reset_database=...,
-    derivatives=...,
-    pybids_config=...,
-    limit_to=...,
-    participant_label=...,
-    exclude_participant_label=...,
+    pybids_database_dir: Path | str | None = ...,
+    pybids_reset_database: bool = ...,
+    derivatives: bool | Path | str = ...,
+    pybids_config: str | None = ...,
+    limit_to: list[str] | None = ...,
+    participant_label: list[str] | None = ...,
+    exclude_participant_label: list[str] | None = ...,
     use_bids_inputs: Union[Literal[False], None] = ...,
 ) -> BidsDatasetDict:
     ...
@@ -42,15 +43,15 @@ def generate_inputs(
 # pylint: disable=too-many-arguments
 @overload
 def generate_inputs(
-    bids_dir,
+    bids_dir: Path | str,
     pybids_inputs: InputsConfig,
-    pybids_database_dir=...,
-    pybids_reset_database=...,
-    derivatives=...,
-    pybids_config=...,
-    limit_to=...,
-    participant_label=...,
-    exclude_participant_label=...,
+    pybids_database_dir: Path | str | None = ...,
+    pybids_reset_database: bool = ...,
+    derivatives: bool | Path | str = ...,
+    pybids_config: str | None = ...,
+    limit_to: list[str] | None = ...,
+    participant_label: list[str] | None = ...,
+    exclude_participant_label: list[str] | None = ...,
     use_bids_inputs: Literal[True] = ...,
 ) -> BidsDataset:
     ...
@@ -58,17 +59,17 @@ def generate_inputs(
 
 # pylint: disable=too-many-arguments, too-many-locals
 def generate_inputs(
-    bids_dir,
+    bids_dir: Path | str,
     pybids_inputs: InputsConfig,
-    pybids_database_dir=None,
-    pybids_reset_database=False,
-    derivatives=False,
-    pybids_config=None,
-    limit_to=None,
-    participant_label=None,
-    exclude_participant_label=None,
-    use_bids_inputs=None,
-):
+    pybids_database_dir: Path | str | None = None,
+    pybids_reset_database: bool = False,
+    derivatives: bool | Path | str = False,
+    pybids_config: str | None = None,
+    limit_to: list[str] | None = None,
+    participant_label: list[str] | None = None,
+    exclude_participant_label: list[str] | None = None,
+    use_bids_inputs: bool | None = None,
+) -> BidsDataset | BidsDatasetDict:
     """Dynamically generate snakemake inputs using pybids_inputs
 
     Pybids is used to parse the bids_dir. Custom paths can also be parsed by including
@@ -76,13 +77,14 @@ def generate_inputs(
 
     Parameters
     ----------
-    bids_dir : str
+    bids_dir
         Path to bids directory
 
-    pybids_inputs : dict
+    pybids_inputs
         Configuration for bids inputs, with keys as the names (``str``)
 
-        Nested `dicts` with the following required keys:
+        Nested `dicts` with the following required keys (for complete info, see
+        :class:`~snakebids.types.InputConfig`):
 
         * ``"filters"``: Dictionary of entity: "values" (dict of str -> str or list of
           str). The entity keywords should the bids tags on which to filter. The values
@@ -100,36 +102,36 @@ def generate_inputs(
           as in ``/path/to/sub-{subject}/{wildcard_1}-{wildcard_2}``. This path will be
           parsed without pybids, allowing the use of non-bids-compliant paths.
 
-    pybids_database_dir : str
+    pybids_database_dir
         Path to database directory. If None is provided, database
         is not used
 
-    pybids_reset_database : bool
+    pybids_reset_database
         A boolean that determines whether to reset / overwrite
         existing database.
 
-    derivatives : bool
+    derivatives
         Indicates whether pybids should look for derivative datasets under bids_dir.
         These datasets must be properly formatted according to bids specs to be
         recognized. Defaults to False.
 
-    limit_to : list of str, optional
+    limit_to
         If provided, indicates which input descriptors from pybids_inputs should be
         parsed. For example, if pybids_inputs describes ``"bold"`` and ``"dwi"`` inputs,
         and ``limit_to = ["bold"]``, only the "bold" inputs will be parsed. "dwi" will
         be ignored
 
-    participant_label : str or list of str, optional
+    participant_label
         Indicate one or more participants to be included from input parsing. This may
         cause errors if subject filters are also specified in pybids_inputs. It may not
         be specified if exclude_participant_label is specified
 
-    exclude_participant_label : str or list of str, optional
+    exclude_participant_label
         Indicate one or more participants to be excluded from input parsing. This may
         cause errors if subject filters are also specified in pybids_inputs. It may not
         be specified if participant_label is specified
 
-    use_bids_inputs : bool, optional
+    use_bids_inputs
         If True, opts in to the new :class:`BidsDataset` output, otherwise returns the
         classic dict. Currently, the classic dict will be returned by default, however,
         this will change in a future release. If you do not wish to migrate to the new
@@ -137,7 +139,7 @@ def generate_inputs(
 
     Returns
     -------
-    BidsDataset or BidsDatasetDict:
+    BidsDataset | BidsDatasetDict
         Object containing organized information about the bids inputs for consumption in
         snakemake. See the documentation of :class:`BidsDataset` for details and
         examples.
@@ -314,7 +316,7 @@ def _all_custom_paths(config: InputsConfig):
 
 def _gen_bids_layout(
     bids_dir: Union[Path, str],
-    derivatives: bool,
+    derivatives: Path | str | bool,
     pybids_database_dir: Union[Path, str, None],
     pybids_reset_database: bool,
     pybids_config: Union[Path, str, None] = None,
@@ -324,19 +326,19 @@ def _gen_bids_layout(
 
      Parameters
     ----------
-    bids_dir : str
+    bids_dir
         Path to bids directory
 
-    derivatives : bool
+    derivatives
         A boolean (or path(s) to derivatives datasets) that
         determines whether snakebids will search in the
         derivatives subdirectory of the input dataset.
 
-    pybids_database_dir : str
+    pybids_database_dir
         Path to database directory. If None is provided, database
         is not used
 
-    pybids_reset_database : bool
+    pybids_reset_database
         A boolean that determines whether to reset / overwrite
         existing database.
 
@@ -359,7 +361,7 @@ def _gen_bids_layout(
 
     return BIDSLayout(
         bids_dir,
-        derivatives=derivatives,
+        derivatives=derivatives,  # type: ignore (mistake in BIDSLayout typing)
         validate=False,
         config=pybids_config,
         database_path=pybids_database_dir,

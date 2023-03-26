@@ -1,5 +1,3 @@
-(running overview)=
-
 Overview
 ========
 

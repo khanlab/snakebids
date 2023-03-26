@@ -1,5 +1,7 @@
+"""Top-level namespace containing the core classes and functions"""
 __submodules__ = ["core"]
 
+__version__ = "0.0.0"
 
 # <AUTOGEN_INIT>
 from snakebids.core import (
