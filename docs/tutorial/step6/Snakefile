@@ -1,30 +1,30 @@
-import snakebids
-from snakebids import bids
+from snakebids import bids, generate_inputs
 
 configfile: 'config.yml'
 
-config.update(
-    snakebids.generate_inputs(
-        bids_dir=config['bids_dir'],
-        pybids_inputs=config['pybids_inputs'],
-    )
+inputs = generate_inputs(
+    bids_dir=config['bids_dir'],
+    pybids_inputs=config['pybids_inputs'],
+    use_bids_inputs=True,
 )
 
-import pprint
-pprint.pp(config)
+print(inputs)
 
 rule all:
     input:
-        expand(bids(root='results',
+        expand(
+            bids(root='results',
                 subject='{subject}',
                 task='{task}',
                 run='{run}',
                 fwhm='{fwhm}',
-                suffix='bold.nii.gz'),
-                    subject=config['subjects'],
-                    task=config['tasks'],
-                    run=config['runs'],
-                    fwhm=config['fwhm'])
+                suffix='bold.nii.gz'
+            ),
+            subject=config['subjects'],
+            task=config['tasks'],
+            run=config['runs'],
+            fwhm=config['fwhm']
+        )
 
 
 def calc_sigma_from_fwhm(wildcards):
@@ -32,15 +32,17 @@ def calc_sigma_from_fwhm(wildcards):
 
 rule smooth:
     input:
-        config['path']['bold']
+        inputs['bold'].path
     params:
         sigma = calc_sigma_from_fwhm
     output:
-        bids(root='results',
-                subject='{subject}',
-                task='{task}',
-                run='{run}',
-                fwhm='{fwhm}',
-                suffix='bold.nii.gz')
+        bids(
+            root='results',
+            subject='{subject}',
+            task='{task}',
+            run='{run}',
+            fwhm='{fwhm}',
+            suffix='bold.nii.gz'
+        )
     shell:
         'fslmaths {input} -s {params.sigma} {output}'

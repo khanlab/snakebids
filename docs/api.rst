@@ -2,6 +2,8 @@
 API
 ================
 
+
+
 snakebids
 ---------
 
@@ -19,4 +21,23 @@ snakemake_io
 ------------
 
 .. automodule:: snakebids.utils.snakemake_io
+    :members:
+
+
+cli
+---
+
+.. automodule:: snakebids.cli
+    :members:
+
+exceptions
+----------
+
+.. automodule:: snakebids.exceptions
+    :members:
+
+types
+-----
+
+.. automodule:: snakebids.types
     :members:

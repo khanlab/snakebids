@@ -39,25 +39,23 @@ class BidsComponent:
     """Component of a BidsDataset mapping entities to their resolved values
 
     BidsComponents are immutable: their values cannot be altered.
-
-    Properties
-    ----------
-    name
-        Name of the component
-    path
-        Wildcard-filled path that matches the files for this component.
-    zip_lists
-        Dictionary where each key is a wildcard entity and each value is a list of the
-        values found for that entity. Each of these lists has length equal to the number
-        of images matched for this modality, so they can be zipped together to get a
-        list of the wildcard values for each file.
     """
 
     name: str = attr.field(on_setattr=attr.setters.frozen)
+    """Name of the component"""
+
     path: str = attr.field(on_setattr=attr.setters.frozen)
+    """Wildcard-filled path that matches the files for this component."""
     zip_lists: dict[str, list[str]] = attr.field(
         on_setattr=attr.setters.frozen, converter=dict
     )
+    """Table of unique wildcard groupings for each member in the component.
+
+    Dictionary where each key is a wildcard entity and each value is a list of the
+    values found for that entity. Each of these lists has length equal to the number
+    of images matched for this modality, so they can be zipped together to get a
+    list of the wildcard values for each file.
+    """
 
     def __repr__(self) -> str:
         return self.pformat()
@@ -91,33 +89,6 @@ class BidsComponent:
                 f"{self.path}: {fields} != zip_lists: {set(value)}"
             )
 
-    @property
-    def input_name(self):
-        """Alias of :attr:`name <snakebids.BidsComponent.name>`
-
-        Name of the component
-        """
-        return self.name
-
-    @property
-    def input_path(self):
-        """Alias of :attr:`path <snakebids.BidsComponent.path>`
-
-        Wildcard-filled path that matches the files for this component.
-        """
-        return self.path
-
-    @property
-    def input_zip_lists(self):
-        """Alias of :attr:`zip_lists <snakebids.BidsComponent.zip_lists>`
-
-        Dictionary where each key is a wildcard entity and each value is a list of the
-        values found for that entity. Each of these lists has length equal to the number
-        of images matched for this modality, so they can be zipped together to get a
-        list of the wildcard values for each file.
-        """
-        return self.zip_lists
-
     # Note: we can't use cached property here because it's incompatible with slots.
     _input_lists: Optional[dict[str, list[str]]] = attr.field(
         default=None, init=False, eq=False, repr=False
@@ -130,7 +101,7 @@ class BidsComponent:
     )
 
     @property
-    def entities(self):
+    def entities(self) -> dict[str, list[str]]:
         """Component entities and their associated values
 
         Dictionary where each key is an entity and each value is a list of the
@@ -142,12 +113,8 @@ class BidsComponent:
             }
         return self._input_lists
 
-    @property_alias(entities, "entities", "snakebids.BidsComponent.entities")
-    def input_lists(self):
-        return self.entities
-
     @property
-    def wildcards(self):
+    def wildcards(self) -> dict[str, str]:
         """Wildcards in brace-wrapped syntax
 
         Dictionary where each key is the name of a wildcard entity, and each value is
@@ -158,6 +125,37 @@ class BidsComponent:
                 entity: f"{{{entity}}}" for entity in self.zip_lists
             }
         return self._input_wildcards
+
+    @property
+    def input_name(self) -> str:
+        """Alias of :attr:`name <snakebids.BidsComponent.name>`
+
+        Name of the component
+        """
+        return self.name
+
+    @property
+    def input_path(self) -> str:
+        """Alias of :attr:`path <snakebids.BidsComponent.path>`
+
+        Wildcard-filled path that matches the files for this component.
+        """
+        return self.path
+
+    @property
+    def input_zip_lists(self) -> dict[str, list[str]]:
+        """Alias of :attr:`zip_lists <snakebids.BidsComponent.zip_lists>`
+
+        Dictionary where each key is a wildcard entity and each value is a list of the
+        values found for that entity. Each of these lists has length equal to the number
+        of images matched for this modality, so they can be zipped together to get a
+        list of the wildcard values for each file.
+        """
+        return self.zip_lists
+
+    @property_alias(entities, "entities", "snakebids.BidsComponent.entities")
+    def input_lists(self):
+        return self.entities
 
     @property_alias(wildcards, "wildcards", "snakebids.BidsComponent.wildcards")
     def input_wildcards(self):
@@ -256,15 +254,11 @@ class BidsDataset(_BidsComponentsType):
         deprecated_in="0.8.0",
         admonition="warning",
     )
-    def path(self):
+    def path(self) -> dict[str, str]:
         """Dict mapping :class:`BidsComponents <snakebids.BidsComponent>` names to \
         their ``paths``.
         """
         return {key: value.path for key, value in self.data.items()}
-
-    @property_alias(path, "path", "snakebids.BidsDataset.path")
-    def input_path(self):
-        return self.path
 
     @cached_property
     @deprecated(
@@ -277,15 +271,11 @@ class BidsDataset(_BidsComponentsType):
         deprecated_in="0.8.0",
         admonition="warning",
     )
-    def zip_lists(self):
+    def zip_lists(self) -> dict[str, dict[str, list[str]]]:
         """Dict mapping :class:`BidsComponents <snakebids.BidsComponent>` names to \
         their ``zip_lists``
         """
         return {key: value.zip_lists for key, value in self.data.items()}
-
-    @property_alias(zip_lists, "zip_lists", "snakebids.BidsDataset.zip_lists")
-    def input_zip_lists(self):
-        return self.zip_lists
 
     @cached_property
     @deprecated(
@@ -298,15 +288,11 @@ class BidsDataset(_BidsComponentsType):
         deprecated_in="0.8.0",
         admonition="warning",
     )
-    def entities(self):
+    def entities(self) -> dict[str, dict[str, list[str]]]:
         """Dict mapping :class:`BidsComponents <snakebids.BidsComponent>` names to \
         to their :attr:`entities <snakebids.BidsComponent.entities>`
         """
         return {key: value.entities for key, value in self.data.items()}
-
-    @property_alias(entities, "entities", "snakebids.BidsDataset.entities")
-    def input_lists(self):
-        return self.entities
 
     @cached_property
     @deprecated(
@@ -319,15 +305,11 @@ class BidsDataset(_BidsComponentsType):
         deprecated_in="0.8.0",
         admonition="warning",
     )
-    def wildcards(self):
+    def wildcards(self) -> dict[str, dict[str, str]]:
         """Dict mapping :class:`BidsComponents <snakebids.BidsComponent>` names to \
         their :attr:`wildcards <snakebids.BidsComponent.wildcards>`
         """
         return {key: value.input_wildcards for key, value in self.data.items()}
-
-    @property_alias(wildcards, "wildcards", "snakebids.BidsDataset.wildcards")
-    def input_wildcards(self):
-        return self.wildcards
 
     @cached_property
     def subjects(self):
@@ -341,7 +323,7 @@ class BidsDataset(_BidsComponentsType):
         ]
 
     @cached_property
-    def sessions(self):
+    def sessions(self) -> list[str]:
         """A list of the sessions in the dataset."""
         return [
             *{
@@ -352,7 +334,7 @@ class BidsDataset(_BidsComponentsType):
         ]
 
     @cached_property
-    def subj_wildcards(self):
+    def subj_wildcards(self) -> dict[str, str]:
         """The subject and session wildcards applicable to this dataset.
 
         ``{"subject":"{subject}"}`` if there is only one session, ``{"subject":
@@ -364,6 +346,22 @@ class BidsDataset(_BidsComponentsType):
             "subject": "{subject}",
             "session": "{session}",
         }
+
+    @property_alias(path, "path", "snakebids.BidsDataset.path")
+    def input_path(self) -> dict[str, str]:
+        return self.path
+
+    @property_alias(entities, "entities", "snakebids.BidsDataset.entities")
+    def input_lists(self) -> dict[str, dict[str, list[str]]]:
+        return self.entities
+
+    @property_alias(zip_lists, "zip_lists", "snakebids.BidsDataset.zip_lists")
+    def input_zip_lists(self) -> dict[str, dict[str, list[str]]]:
+        return self.zip_lists
+
+    @property_alias(wildcards, "wildcards", "snakebids.BidsDataset.wildcards")
+    def input_wildcards(self) -> dict[str, dict[str, str]]:
+        return self.wildcards
 
     @property
     def as_dict(self):

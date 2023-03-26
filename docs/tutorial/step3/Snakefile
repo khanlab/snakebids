@@ -14,7 +14,7 @@ def calc_sigma_from_fwhm(wildcards):
 
 rule smooth:
     input:
-        '../bids/sub-{subject}/func/sub-{subject}_task-{task}_run-{run}_bold.nii.gz'
+        'data/sub-{subject}/func/sub-{subject}_task-{task}_run-{run}_bold.nii.gz'
     params:
         sigma = calc_sigma_from_fwhm,
     output:

@@ -5,7 +5,12 @@ description = "BIDS integration into snakemake workflows"
 readme = "README.md"
 repository = "https://github.com/akhanf/snakebids"
 documentation = "https://snakebids.readthedocs.io/"
-authors = ["Ali Khan <alik@robarts.ca>"]
+authors = [
+    "Ali Khan <alik@robarts.ca>",
+    "Peter Van Dyken <pvandyk2@uwo.ca>",
+    "Tristan Kuehn <tkuehn@uwo.ca>",
+    "Jason Kai <tkai@uwo.ca>",
+]
 license = "MIT"
 packages = [
     { include = "snakebids" }
@@ -20,8 +25,8 @@ style = "pep440"
 bump = true
 
 [tool.poetry-dynamic-versioning.substitution]
-files = ['snakebids/project_template/cookiecutter.json']
-patterns = ["(^\\s+\"snakebids_version\":\\s*\")[^'\"](\")"]
+files = ['snakebids/project_template/cookiecutter.json', 'snakebids/__init__.py']
+patterns = ["(^\\s+\"snakebids_version\":\\s*\")[^'\"]*(\")", "(^__version__\\s*(?::.*?)?=\\s*['\"])[^'\"]*(['\"])"]
 
 [tool.poetry.dependencies]
 python = ">=3.7,<3.12"

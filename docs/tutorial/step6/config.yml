@@ -1,15 +1,4 @@
-bids_dir: '../bids'
-
-subjects:
-  - '001'
-
-tasks:
-  - rest
-
-runs:
-  - 1
-  - 2
-
+bids_dir: 'data'
 
 fwhm:
   - 5
@@ -29,4 +18,3 @@ pybids_inputs:
       - acquisition
       - task
       - run
-      

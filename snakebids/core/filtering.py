@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import operator as op
 import re
 from typing import Dict, List, TypeVar, Union, overload
@@ -13,52 +15,48 @@ T_co = TypeVar("T_co", bound=Union[List[str], str], covariant=True)
 
 @overload
 def filter_list(
-    zip_list,
-    filters: Dict[str, T_co],
+    zip_list: dict[str, list[str]],
+    filters: dict[str, list[str] | str],
     return_indices_only: Literal[False] = ...,
     regex_search: bool = ...,
-) -> Dict[str, List[str]]:
+) -> dict[str, list[str]]:
     ...
 
 
 @overload
 def filter_list(
-    zip_list,
-    filters: Dict[str, T_co],
+    zip_list: dict[str, list[str]],
+    filters: dict[str, list[str] | str],
     return_indices_only: Literal[True] = ...,
     regex_search: bool = ...,
-) -> List[int]:
+) -> list[int]:
     ...
 
 
 def filter_list(
-    zip_list: Dict[str, List[str]],
-    filters: Dict[str, T_co],
+    zip_list: dict[str, list[str]],
+    filters: dict[str, list[str] | str],
     return_indices_only: bool = False,
-    regex_search=False,
-):
+    regex_search: bool = False,
+) -> dict[str, list[str]] | list[int]:
     """This function is used when you are expanding over some subset of the
     wildcards i.e. if your output file doesn't contain all the wildcards in
     :attr:`BidsComponent.wildcards <snakebids.BidsComponent.wildcards>`
 
     Parameters
     ----------
-    zip_list : dict
+    zip_list
         generated zip lists dict from config file to filter
 
-    filters : dict
+    filters
         wildcard values to filter the zip lists
 
-    return_indices_only : bool, default=False
+    return_indices_only
         return the indices of the matching wildcards
 
-    regex_search : bool, default=False
+    regex_search
         Use regex matching to filter instead of the default equality check.
 
-    Returns
-    -------
-    dict
-        zip list with non-matching elements removed
 
     Examples
     --------
@@ -135,7 +133,7 @@ def filter_list(
     else:
         match_func = op.eq
 
-    keep_indices = set.intersection(
+    keep_indices: set[int] = set.intersection(
         # Get a set {0,1,2,3...n-1} where n is the length of any one of the lists in
         # zip_list
         {*_get_zip_list_indices(zip_list)},
@@ -147,7 +145,7 @@ def filter_list(
             }
             for key, val in filters.items()
             if key in zip_list
-        )
+        ),
     )
 
     # Now we have the indices, so filter the lists

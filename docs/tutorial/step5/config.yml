@@ -15,4 +15,4 @@ fwhm:
   - 20
 
 
-in_bold: '../bids/sub-{subject}/func/sub-{subject}_task-{task}_run-{run}_bold.nii.gz'
+in_bold: 'data/sub-{subject}/func/sub-{subject}_task-{task}_run-{run}_bold.nii.gz'

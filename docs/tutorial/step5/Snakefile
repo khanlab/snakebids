@@ -29,11 +29,13 @@ rule smooth:
     params:
         sigma = calc_sigma_from_fwhm
     output:
-        bids(root='results',
-                subject='{subject}',
-                task='{task}',
-                run='{run}',
-                fwhm='{fwhm}',
-                suffix='bold.nii.gz')
+        bids(
+            root='results',
+            subject='{subject}',
+            task='{task}',
+            run='{run}',
+            fwhm='{fwhm}',
+            suffix='bold.nii.gz',
+        )
     shell:
         'fslmaths {input} -s {params.sigma} {output}'
