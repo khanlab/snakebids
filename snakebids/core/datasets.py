@@ -60,9 +60,9 @@ class BidsComponent:
     )
 
     def __repr__(self) -> str:
-        return self.format()
+        return self.pformat()
 
-    def format(self, max_width: int | float | None = None, tabstop: int = 4):
+    def pformat(self, max_width: int | float | None = None, tabstop: int = 4):
         width = max_width or get_console_size()[0] or inf
         body = [
             f"name={quote_wrap(self.name)},",
@@ -231,12 +231,12 @@ class BidsDataset(_BidsComponentsType):
         )
 
     def __repr__(self) -> str:
-        return self.format()
+        return self.pformat()
 
-    def format(self, max_width: int | float | None = None, tabstop: int = 4):
+    def pformat(self, max_width: int | float | None = None, tabstop: int = 4):
         width = max_width or get_console_size()[0] or inf
         body = [
-            f"{quote_wrap(name)}: {comp.format(width - tabstop, tabstop)},"
+            f"{quote_wrap(name)}: {comp.pformat(width - tabstop, tabstop)},"
             for name, comp in self.items()
         ]
         output = [

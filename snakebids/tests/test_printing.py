@@ -74,7 +74,8 @@ class TestCorrectNumberOfLinesCreated:
     )
     def test_in_component(self, component: BidsComponent):
         assert (
-            len(component.format(tabstop=0).splitlines()) == len(component.entities) + 6
+            len(component.pformat(tabstop=0).splitlines())
+            == len(component.entities) + 6
         )
 
     @given(dataset=sb_st.datasets())
@@ -82,7 +83,7 @@ class TestCorrectNumberOfLinesCreated:
         n_comps = len(dataset)
         n_entities = sum(len(comp.entities) for comp in dataset.values())
         assert (
-            len(dataset.format(tabstop=0).splitlines()) == n_entities + 6 * n_comps + 2
+            len(dataset.pformat(tabstop=0).splitlines()) == n_entities + 6 * n_comps + 2
         )
 
 
@@ -93,11 +94,11 @@ class TestIsValidPython:
 
     @given(component=sb_st.bids_components(restrict_patterns=True))
     def test_in_component(self, component: BidsComponent):
-        assert eval((component.format())) == component
+        assert eval((component.pformat())) == component
 
     @given(dataset=sb_st.datasets())
     def test_in_dataset(self, dataset: BidsDataset):
-        assert eval(dataset.format()) == dataset
+        assert eval(dataset.pformat()) == dataset
 
 
 # this could also be tested for components and datasets, however, in those objects the
@@ -131,12 +132,12 @@ class TestIndentLengthMultipleOfTabStop:
         tabstop=st.integers(1, 10),
     )
     def test_in_component(self, component: BidsComponent, tabstop: int):
-        for line in component.format(tabstop=tabstop).splitlines():
+        for line in component.pformat(tabstop=tabstop).splitlines():
             assert get_indent_length(line) / tabstop in {0, 1, 2}
 
     @given(dataset=sb_st.datasets(), tabstop=st.integers(1, 10))
     def test_in_dataset(self, dataset: BidsDataset, tabstop: int):
-        for line in dataset.format(tabstop=tabstop).splitlines():
+        for line in dataset.pformat(tabstop=tabstop).splitlines():
             assert get_indent_length(line) / tabstop in {0, 1, 2, 3}
 
 
@@ -147,13 +148,13 @@ class TestMultipleLevelsOfIndentationUsed:
     )
     def test_in_component(self, component: BidsComponent, tabstop: int):
         indents: set[int] = set()
-        for line in component.format(tabstop=tabstop).splitlines():
+        for line in component.pformat(tabstop=tabstop).splitlines():
             indents.add(get_indent_length(line))
         assert len(indents) == 3
 
     @given(dataset=sb_st.datasets(), tabstop=st.integers(1, 10))
     def test_in_dataset(self, dataset: BidsDataset, tabstop: int):
         indents: set[int] = set()
-        for line in dataset.format(tabstop=tabstop).splitlines():
+        for line in dataset.pformat(tabstop=tabstop).splitlines():
             indents.add(get_indent_length(line))
         assert len(indents) == 4
