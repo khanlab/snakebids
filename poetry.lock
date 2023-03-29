@@ -436,25 +436,6 @@ files = [
 ]
 
 [[package]]
-name = "deprecation"
-version = "2.1.0"
-description = "A library to handle automated deprecations"
-category = "main"
-optional = false
-python-versions = "*"
-files = []
-develop = false
-
-[package.dependencies]
-packaging = "*"
-
-[package.source]
-type = "git"
-url = "https://github.com/pvandyken/deprecation.git"
-reference = "8309c44"
-resolved_reference = "8309c44112f349df9c38cbbfea6aed73f99ff66c"
-
-[[package]]
 name = "dill"
 version = "0.3.6"
 description = "serialize all of python"
@@ -1822,6 +1803,22 @@ files = [
 ]
 
 [[package]]
+name = "pvandyken-deprecated"
+version = "0.0.3"
+description = "Wrapper to manage deprecations"
+category = "main"
+optional = false
+python-versions = ">=3.7,<3.12"
+files = [
+    {file = "pvandyken_deprecated-0.0.3-py3-none-any.whl", hash = "sha256:83e192d2a33bb681cbbc4be86ba00d3622c024eeacd8f96dfe635595d4d67540"},
+    {file = "pvandyken_deprecated-0.0.3.tar.gz", hash = "sha256:1ee350747ece4a6a55a8a2ad4cb7a7ae9f3f77a144b5cd80b94ce58545658737"},
+]
+
+[package.dependencies]
+packaging = ">=22.0,<24.0"
+typing-extensions = ">=3.10.0"
+
+[[package]]
 name = "py-cpuinfo"
 version = "9.0.0"
 description = "Get CPU info with pure Python"
@@ -3023,4 +3020,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.7,<3.12"
-content-hash = "1114c70a4661912d74dace98c3af143a5ef441c0d178c74f09dca3cf064cdd96"
+content-hash = "254fb6e039c8c1b191a430a00781cbe4ebf28a707c95139bb038be593c646cd8"

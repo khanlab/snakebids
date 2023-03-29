@@ -13,7 +13,7 @@ import attr
 import more_itertools as itx
 from bids import BIDSLayout
 from cached_property import cached_property
-from deprecation import deprecated
+from pvandyken.deprecated import deprecated
 from typing_extensions import TypedDict
 
 import snakebids.utils.sb_itertools as sb_it
