@@ -484,25 +484,17 @@ def _parse_custom_path(
     input_zip_list, input_list, input_wildcards
     """
     wildcards = glob_wildcards(input_path)
-    wildcard_names = list(wildcards._fields)
 
-    if len(wildcard_names) == 0:
+    if not wildcards:
         _logger.warning("No wildcards defined in %s", input_path)
 
-    # Initialize output values
-    zip_lists: Dict[str, List[str]] = {}
-
     # Log an error if no matches found
-    if len(wildcards[0]) == 0:
+    if len(next(iter(wildcards.values()))) == 0:
         _logger.error("No matching files for %s", input_path)
-        return zip_lists
-
-    # Loop through every wildcard name
-    for i, wildcard in enumerate(wildcard_names):
-        zip_lists[wildcard] = wildcards[i]
+        return wildcards
 
     # Return the output values, running filtering on the zip_lists
-    return filter_list(zip_lists, filters, regex_search=regex_search)
+    return filter_list(wildcards, filters, regex_search=regex_search)
 
 
 def _parse_bids_path(path: str, entities: Iterable[str]) -> Tuple[str, Dict[str, str]]:
