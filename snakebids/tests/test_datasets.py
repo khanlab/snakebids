@@ -1,19 +1,34 @@
+from __future__ import annotations
+
 import copy
 import itertools as it
 import re
+import string
 import warnings
+from pathlib import Path
 from typing import Any, Dict, List
 
 import more_itertools as itx
 import pytest
 from hypothesis import assume, given
 from hypothesis import strategies as st
+from snakemake.exceptions import WildcardError
 
+from snakebids.core.construct_bids import bids
 from snakebids.core.datasets import BidsComponent, BidsDataset
 from snakebids.tests import strategies as sb_st
-from snakebids.tests.helpers import debug, get_bids_path, get_zip_list, setify
+from snakebids.tests.helpers import (
+    debug,
+    entity_to_wildcard,
+    expand_zip_list,
+    get_bids_path,
+    get_zip_list,
+    mock_data,
+    setify,
+)
 from snakebids.utils import sb_itertools as sb_it
-from snakebids.utils.utils import BidsEntity
+from snakebids.utils.snakemake_io import glob_wildcards
+from snakebids.utils.utils import BidsEntity, zip_list_eq
 
 
 def test_multiple_components_cannot_have_same_name():
@@ -212,3 +227,89 @@ class TestBidsDatasetLegacyAccess:
         self, dataset: BidsDataset, name: str
     ):
         assert isinstance(dataset[name], BidsComponent)
+
+
+class TestBidsComponentExpand:
+    def get_novel_path(self, component: BidsComponent):
+        # use the "comp-" prefix to give a constant part to the novel template,
+        # otherwise the trivial template "{foo}" globs everything
+        return Path(*map(lambda s: f"comp-{s}", component.wildcards.values()))
+
+    @given(component=sb_st.bids_components(restrict_patterns=True))
+    def test_expand_with_no_args_returns_initial_paths(self, component: BidsComponent):
+        paths = component.expand()
+        assert zip_list_eq(glob_wildcards(component.path, paths), component.zip_lists)
+
+    @given(
+        component=sb_st.bids_components(restrict_patterns=True),
+        wildcards=st.lists(
+            st.text(string.ascii_letters, min_size=1, max_size=10).filter(
+                lambda s: s not in sb_st.valid_entities
+            ),
+            min_size=1,
+            max_size=5,
+        ),
+        data=st.data(),
+    )
+    def test_expand_with_extra_args_returns_all_paths(
+        self, component: BidsComponent, wildcards: list[str], data: st.DataObject
+    ):
+        num_wildcards = len(wildcards)
+        values = data.draw(
+            st.lists(
+                st.lists(
+                    st.text(sb_st.alphanum, min_size=1, max_size=10),
+                    min_size=1,
+                    max_size=3,
+                ),
+                min_size=num_wildcards,
+                max_size=num_wildcards,
+            )
+        )
+        path_tpl = bids(
+            **component.wildcards,
+            **entity_to_wildcard(wildcards),
+        )
+        wcard_dict = dict(zip(wildcards, values))
+        zlist = expand_zip_list(component.zip_lists, wcard_dict)
+        paths = component.expand(path_tpl, **wcard_dict)
+        assert zip_list_eq(glob_wildcards(path_tpl, paths), zlist)
+
+    @given(component=sb_st.bids_components(restrict_patterns=True))
+    def test_not_expand_over_internal_path_when_novel_given(
+        self, component: BidsComponent
+    ):
+        novel_path = self.get_novel_path(component)
+        paths = component.expand(novel_path)
+        assert not glob_wildcards(component.path, paths)
+
+    @given(component=sb_st.bids_components(restrict_patterns=True))
+    def test_expand_over_multiple_paths(self, component: BidsComponent):
+        novel_path = self.get_novel_path(component)
+        paths = component.expand([component.path, novel_path])
+        assert zip_list_eq(
+            glob_wildcards(component.path, paths), glob_wildcards(novel_path, paths)
+        )
+
+    @given(
+        component=sb_st.bids_components(min_entities=2, restrict_patterns=True),
+        wildcard=st.text(string.ascii_letters, min_size=1, max_size=10).filter(
+            lambda s: s not in sb_st.valid_entities
+        ),
+    )
+    def test_partial_expansion(self, component: BidsComponent, wildcard: str):
+        path_tpl = bids(**component.wildcards, **entity_to_wildcard(wildcard))
+        paths = component.expand(path_tpl)
+        for path in paths:
+            assert re.search(r"\{.+\}", path)
+
+    @given(
+        component=sb_st.bids_components(min_entities=2, restrict_patterns=True),
+        wildcard=st.text(string.ascii_letters, min_size=1, max_size=10).filter(
+            lambda s: s not in sb_st.valid_entities
+        ),
+    )
+    def test_prevent_partial_expansion(self, component: BidsComponent, wildcard: str):
+        path_tpl = bids(**component.wildcards, **entity_to_wildcard(wildcard))
+        with pytest.raises(WildcardError):
+            component.expand(path_tpl, allow_missing=False)

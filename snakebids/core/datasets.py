@@ -4,14 +4,16 @@ import itertools as it
 import textwrap
 import warnings
 from math import inf
+from pathlib import Path
 from string import Formatter
-from typing import Any, Iterable, Optional, Union
+from typing import Any, Iterable, NoReturn, Optional, Union
 
 import attr
 import more_itertools as itx
 from bids import BIDSLayout
 from cached_property import cached_property
 from pvandyken.deprecated import deprecated
+from snakemake.io import expand as sn_expand
 from typing_extensions import TypedDict
 
 import snakebids.utils.sb_itertools as sb_it
@@ -172,6 +174,47 @@ class BidsComponent:
 
         return zip_list_eq(self.zip_lists, other.zip_lists)
 
+    def expand(
+        self,
+        paths: Iterable[Path | str] | Path | str | None = None,
+        allow_missing: bool = True,
+        **wildcards: str | Iterable[str],
+    ) -> list[str]:
+        """Safely expand over given paths with component wildcards
+
+        Uses the entity-value combinations found in the dataset to expand over the given
+        paths. If no path is provided, expands over the component
+        :attr:`~snakebids.BidsComponent.path` (thus returning the original files used to
+        create the component). Extra wildcards can be specifed as keyword arguments.
+
+        By default, expansion over paths with extra wildcards not accounted for by the
+        component is allowed. This allows for easy partial expansion in your workflow.
+        If you want to enforce all wildcards be substituted with values, set
+        ``allow_missing`` to ``False``.
+
+        Uses the snakemake :ref:`expand <snakemake:snakefiles_expand>` under the hood.
+        """
+        paths = paths or self.path
+        inner_expand = sn_expand(
+            list(itx.always_iterable(paths)),
+            zip,
+            allow_missing=True if wildcards else allow_missing,
+            **self.zip_lists,
+        )
+        if not wildcards:
+            return inner_expand
+
+        return sn_expand(
+            inner_expand,
+            allow_missing=allow_missing,
+            # Turn all the wildcard items into lists because Snakemake doesn't handle
+            # iterables very well
+            **{
+                wildcard: list(itx.always_iterable(v))
+                for wildcard, v in wildcards.items()
+            },
+        )
+
 
 class BidsDataset(UserDictPy37[str, BidsComponent]):
     """A bids dataset parsed by pybids, organized into BidsComponents.
@@ -222,7 +265,7 @@ class BidsDataset(UserDictPy37[str, BidsComponent]):
                 ) from err
             raise err
 
-    def __setitem__(self, _: Any, __: Any):
+    def __setitem__(self, _: Any, __: Any) -> NoReturn:
         raise NotImplementedError(
             f"Modification of {self.__class__.__name__} is not yet supported"
         )

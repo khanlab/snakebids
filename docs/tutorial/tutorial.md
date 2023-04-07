@@ -422,17 +422,7 @@ with this:
 
 This effectively ensures that any bids entities from the input filenames (that are listed as pybids wildcards) get carried over to the output filenames. Note that we still have the ability to add on additional entities, such as `fwhm` here, and set the root directory and suffix.
 
-Another useful property is {attr}`.entities <snakebids.BidsComponent.entities>`. This is a {class}`dict` mapping each entity to the list of all values that it could take:
-
-```py
-inputs['bold'].entities == {
-    'subject': ['001'],
-    'task': ['rest'],
-    'run': ['1', '2'],
-}
-```
-
-This is a useful dict to use with [`expand()`][expand_func] in a target rule, letting us avoid having to specify e.g. the run numbers or task names in the config, and rely on pybids to determine these:
+Finally, we can use our {class}`BidsComponents <snakebids.BidsComponent>` to easily expand over the entity values found in our dataset using {meth}`BidsComponent.expand() <snakebids.BidsComponent.expand>`. This method gets used instead of the snakemake [`expand()`][expand_func] function:
 
 ```{literalinclude} step7/Snakefile
 :language: python
@@ -441,14 +431,13 @@ This is a useful dict to use with [`expand()`][expand_func] in a target rule, le
 :start-at: rule all
 :end-before: def calc
 :lineno-match:
-:emphasize-lines: 11
+:emphasize-lines: 3
 ```
-
 
 ```{note}
-Since `expand()` will by default use all combinations of these, this can lead to snakemake searching for inputs that do not exist (e.g. if only one of your subjects has run-2). In this case, you want to use {attr}`BidsComponent.zip_lists <snakebids.BidsComponent.zip_lists>` instead).
-%TODO: maybe just do this in a later step, and/or link to other docs..
+[`BidsComponent.expand()`](#snakebids.BidsComponent.expand) still uses snakemake's [`expand()`][expand_func] under the hood, but applies extra logic to ensure only entity groups *actually* found in your dataset are used. If need to expand over additional wildcards, just add them as keyword args. They'll expand over every possible combination, just like snakemake's [`expand()`][expand_func]
 ```
+
 
 For reference, here is the updated config file and Snakefile after these changes:
 

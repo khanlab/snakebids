@@ -39,7 +39,7 @@ def fakefs_tmpdir(request: pytest.FixtureRequest, fakefs: Optional[FakeFilesyste
     Path
     """
     if not fakefs:
-        return request.getfixturevalue("tmpdir")
+        return Path(request.getfixturevalue("tmpdir"))
     return Path(tempfile.mkdtemp())
 
 

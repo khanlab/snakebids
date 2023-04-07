@@ -1,12 +1,11 @@
 #---- begin snakebids boilerplate ----------------------------------------------
 
-import snakebids
-from snakebids import bids
+from snakebids import bids, generate_inputs, get_wildcard_constraints
 
 configfile: workflow.source_path('../config/snakebids.yml')
 
 # Get input wildcards
-inputs = snakebids.generate_inputs(
+inputs = generate_inputs(
     bids_dir=config["bids_dir"],
     pybids_inputs=config["pybids_inputs"],
     pybids_database_dir=config.get("pybids_db_dir"),
@@ -19,7 +18,7 @@ inputs = snakebids.generate_inputs(
 
 
 #this adds constraints to the bids naming
-wildcard_constraints:  **snakebids.get_wildcard_constraints(config['pybids_inputs'])
+wildcard_constraints:  **get_wildcard_constraints(config['pybids_inputs'])
 
 #---- end snakebids boilerplate ------------------------------------------------
 
@@ -48,13 +47,9 @@ rule smooth:
 
 rule all:
     input:
-        expand(
-            expand(
-                rules.smooth.output,
-                fwhm = config['smoothing_fwhm'],
-                allow_missing=True,
-            ),
-            zip,
-            **inputs['bold'].zip_lists
+        inputs['bold'].expand(
+            rules.smooth.output,
+            fwhm = config['smoothing_fwhm'],
+            allow_missing=False,
         )
     default_target: True
