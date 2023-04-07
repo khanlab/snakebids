@@ -4,7 +4,6 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
@@ -97,28 +96,8 @@ class SnakeBidsApp:
     args
         Arguments to use when running the app. By default, generated using the parser
         attribute, autopopulated with args from `config.py`
-    """
-
-    snakemake_dir: Path = attr.ib(converter=lambda path: Path(path).resolve())
-    skip_parse_args: bool = False
-    parser: argparse.ArgumentParser = create_parser()
-    configfile_path: Path = attr.Factory(
-        _get_file_paths(CONFIGFILE_CHOICES, "config"), takes_self=True
-    )
-    snakefile_path: Path = attr.Factory(
-        _get_file_paths(SNAKEFILE_CHOICES, "Snakefile"), takes_self=True
-    )
-    config: Dict[str, Any] = attr.Factory(
-        lambda self: load_configfile(self.snakemake_dir / self.configfile_path),
-        takes_self=True,
-    )
-    args: Optional[SnakebidsArgs] = None
-    plugins: list[Callable[[SnakeBidsApp], None | SnakeBidsApp]] = attr.Factory(list)
-
-    def add_plugins(
-        self, plugins: Iterable[Callable[[SnakeBidsApp], None | SnakeBidsApp]]
-    ) -> None:
-        """Supply list of methods to be called after CLI parsing.
+    plugins
+        List of methods to be called after CLI parsing.
 
         Each callable in ``plugins`` should take, as a single argument, a reference to
         the ``SnakeBidsApp``. Plugins may perform any arbitrary side effects, including
@@ -135,13 +114,23 @@ class SnakeBidsApp:
         - A ``SnakeBidsApp``, which will replace the existing instance, so this option
           should be used with care.
 
-        Parameters
-        ----------
-        plugins
-            List of plugins to be added
-        """
-        # pylint: disable=no-member
-        self.plugins.extend(plugins)
+    """
+
+    snakemake_dir: Path = attr.ib(converter=lambda path: Path(path).resolve())
+    plugins: list[Callable[[SnakeBidsApp], None | SnakeBidsApp]] = attr.Factory(list)
+    skip_parse_args: bool = False
+    parser: argparse.ArgumentParser = create_parser()
+    configfile_path: Path = attr.Factory(
+        _get_file_paths(CONFIGFILE_CHOICES, "config"), takes_self=True
+    )
+    snakefile_path: Path = attr.Factory(
+        _get_file_paths(SNAKEFILE_CHOICES, "Snakefile"), takes_self=True
+    )
+    config: Dict[str, Any] = attr.Factory(
+        lambda self: load_configfile(self.snakemake_dir / self.configfile_path),
+        takes_self=True,
+    )
+    args: Optional[SnakebidsArgs] = None
 
     def run_snakemake(self) -> None:
         """Run snakemake with the given config, after applying plugins"""
