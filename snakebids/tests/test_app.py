@@ -22,7 +22,7 @@ from .mock.config import config
 def app(mocker: MockerFixture):
     app = SnakeBidsApp(
         Path("app"),
-        False,
+        skip_parse_args=False,
         snakefile_path=Path("Snakefile"),
         configfile_path=Path("mock/config.yaml"),
         config=copy.deepcopy(config),
@@ -77,7 +77,7 @@ class TestRunSnakemake:
         # Prepare app and initial config values
         app = SnakeBidsApp(
             Path("app"),
-            False,
+            skip_parse_args=False,
             snakefile_path=Path("Snakefile"),
             configfile_path=Path("mock/config.yaml"),
             config=copy.deepcopy(config),
@@ -181,7 +181,7 @@ class TestRunSnakemake:
         def plugin(my_app):
             my_app.foo = "bar"
 
-        app.add_plugins([plugin])
+        app.plugins.extend([plugin])
         try:
             app.run_snakemake()
         except SystemExit as e:
