@@ -4,10 +4,9 @@ import itertools as it
 import operator as op
 import textwrap
 import warnings
-from collections import UserDict
 from math import inf
 from string import Formatter
-from typing import TYPE_CHECKING, Any, Iterable, Optional, Union, cast
+from typing import Any, Iterable, Optional, Union, cast
 
 import attr
 import more_itertools as itx
@@ -19,6 +18,7 @@ from typing_extensions import TypedDict
 import snakebids.utils.sb_itertools as sb_it
 from snakebids.io.console import get_console_size
 from snakebids.io.printing import format_zip_lists, quote_wrap
+from snakebids.types import UserDictPy37
 from snakebids.utils.utils import property_alias
 
 
@@ -188,14 +188,7 @@ class BidsComponent:
         return set(zip(*our_items)) == set(zip(*other_items))
 
 
-if TYPE_CHECKING:
-    _BidsComponentsType = UserDict[str, BidsComponent]
-else:
-    # UserDict is not subscriptable in py37
-    _BidsComponentsType = UserDict
-
-
-class BidsDataset(_BidsComponentsType):
+class BidsDataset(UserDictPy37[str, BidsComponent]):
     """A bids dataset parsed by pybids, organized into BidsComponents.
 
     BidsDatasets are typically generated using :func:`generate_inputs()
@@ -220,7 +213,7 @@ class BidsDataset(_BidsComponentsType):
 
     # pylint: disable=super-init-not-called
     def __init__(self, data: Any, layout: BIDSLayout | None = None):
-        self.data = dict(data)
+        super().__init__(data)
         self.layout = layout
 
     def __setitem__(self, _: Any, __: Any):
@@ -258,7 +251,7 @@ class BidsDataset(_BidsComponentsType):
         """Dict mapping :class:`BidsComponents <snakebids.BidsComponent>` names to \
         their ``paths``.
         """
-        return {key: value.path for key, value in self.data.items()}
+        return {key: value.path for key, value in self.items()}
 
     @cached_property
     @deprecated(
@@ -275,7 +268,7 @@ class BidsDataset(_BidsComponentsType):
         """Dict mapping :class:`BidsComponents <snakebids.BidsComponent>` names to \
         their ``zip_lists``
         """
-        return {key: value.zip_lists for key, value in self.data.items()}
+        return {key: value.zip_lists for key, value in self.items()}
 
     @cached_property
     @deprecated(
@@ -292,7 +285,7 @@ class BidsDataset(_BidsComponentsType):
         """Dict mapping :class:`BidsComponents <snakebids.BidsComponent>` names to \
         to their :attr:`entities <snakebids.BidsComponent.entities>`
         """
-        return {key: value.entities for key, value in self.data.items()}
+        return {key: value.entities for key, value in self.items()}
 
     @cached_property
     @deprecated(
@@ -309,7 +302,7 @@ class BidsDataset(_BidsComponentsType):
         """Dict mapping :class:`BidsComponents <snakebids.BidsComponent>` names to \
         their :attr:`wildcards <snakebids.BidsComponent.wildcards>`
         """
-        return {key: value.input_wildcards for key, value in self.data.items()}
+        return {key: value.input_wildcards for key, value in self.items()}
 
     @cached_property
     def subjects(self):
