@@ -314,3 +314,126 @@ class TestBidsComponentExpand:
         path_tpl = bids(**component.wildcards, **entity_to_wildcard(wildcard))
         with pytest.raises(WildcardError):
             component.expand(path_tpl)
+
+
+class TestFiltering:
+    def get_filter_dict(
+        self,
+        data: st.DataObject,
+        component: BidsComponent,
+        allow_extra_filters: bool = False,
+    ):
+        filter_dict: dict[str, list[str] | str] = {}
+        filters = data.draw(
+            st.lists(
+                st.one_of(
+                    [
+                        st.sampled_from(list(component.zip_lists)),
+                        st.text(string.ascii_letters, min_size=1, max_size=5),
+                    ]
+                )
+                if allow_extra_filters
+                else st.sampled_from(list(component.zip_lists)),
+                max_size=len(component.zip_lists),
+                unique=True,
+            )
+        )
+
+        def value_strat(filt: str):
+            rand_text = st.text(sb_st.alphanum, min_size=1, max_size=10)
+            return (
+                st.one_of([st.sampled_from(component.entities[filt]), rand_text])
+                if filt in component.entities
+                else rand_text
+            )
+
+        for filt in filters:
+            filter_dict[filt] = data.draw(
+                st.one_of(
+                    [
+                        st.lists(
+                            value_strat(filt),
+                            unique=True,
+                            min_size=1,
+                            max_size=5,
+                        ),
+                        value_strat(filt),
+                    ]
+                )
+            )
+        return filter_dict
+
+    @given(
+        component=sb_st.bids_components(max_values=4, restrict_patterns=True),
+        data=st.data(),
+    )
+    def test_only_filter_values_in_output(
+        self, component: BidsComponent, data: st.DataObject
+    ):
+        filter_dict = self.get_filter_dict(data, component)
+        filtered = component.filter(**filter_dict)
+        for filt in filter_dict:
+            for val in filtered.zip_lists[filt]:
+                assert val in filter_dict[filt]
+
+    @given(
+        component=sb_st.bids_components(max_values=4, restrict_patterns=True),
+        data=st.data(),
+    )
+    def test_zip_lists_rows_remain_of_equal_length(
+        self, component: BidsComponent, data: st.DataObject
+    ):
+        filter_dict = self.get_filter_dict(data, component)
+        filtered = component.filter(**filter_dict)
+        lengths: set[int] = set()
+        for row in filtered.zip_lists.values():
+            lengths.add(len(row))
+        assert len(lengths) == 1
+
+    @given(
+        component=sb_st.bids_components(max_values=4, restrict_patterns=True),
+        data=st.data(),
+    )
+    def test_all_columns_found_in_original_zip_list(
+        self, component: BidsComponent, data: st.DataObject
+    ):
+        filter_dict = self.get_filter_dict(data, component, allow_extra_filters=True)
+        filtered = component.filter(**filter_dict)
+        cols = set(zip(*component.zip_lists.values()))
+        for col in zip(*filtered.zip_lists.values()):
+            assert col in cols
+
+    @given(
+        component=sb_st.bids_components(max_values=4, restrict_patterns=True),
+        data=st.data(),
+    )
+    def test_all_entities_remain_after_filtering(
+        self, component: BidsComponent, data: st.DataObject
+    ):
+        filter_dict = self.get_filter_dict(data, component, allow_extra_filters=True)
+        filtered = component.filter(**filter_dict)
+        assert set(component.zip_lists) == set(filtered.zip_lists)
+
+    @given(
+        component=sb_st.bids_components(max_values=4, restrict_patterns=True),
+        data=st.data(),
+    )
+    def test_no_columns_that_should_be_present_are_missing(
+        self, component: BidsComponent, data: st.DataObject
+    ):
+        filter_dict = self.get_filter_dict(data, component)
+        filtered = component.filter(**filter_dict)
+        keys = list(component.zip_lists)
+        cols = set(zip(*component.zip_lists.values()))
+        result = set(zip(*filtered.zip_lists.values()))
+        for col in cols:
+            should_be_present = True
+            for filt in filter_dict:
+                if col[keys.index(filt)] not in list(
+                    itx.always_iterable(filter_dict[filt])
+                ):
+                    assert col not in result
+                    should_be_present = False
+                    break
+            if should_be_present:
+                assert col in result

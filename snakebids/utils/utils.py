@@ -13,7 +13,7 @@ import more_itertools as itx
 from typing_extensions import Protocol, Self
 
 from snakebids import types
-from snakebids.types import ZipListLike
+from snakebids.types import BinaryOperator, ZipListLike
 from snakebids.utils.user_property import UserProperty
 
 T = TypeVar("T")
@@ -159,9 +159,9 @@ class BidsEntity:
 
 
 def matches_any(
-    item: Any,
-    match_list: Iterable[Any],
-    match_func: Callable[[Any, Any], Any],
+    item: T,
+    match_list: Iterable[T],
+    match_func: BinaryOperator[T, object],
     *args: Any,
 ) -> bool:
     for match in match_list:

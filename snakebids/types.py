@@ -3,12 +3,15 @@ from __future__ import annotations
 from collections.abc import Hashable
 from typing import Dict, Generic, Mapping, Sequence
 
-from typing_extensions import TYPE_CHECKING, TypeAlias, TypedDict, TypeVar
+from typing_extensions import TYPE_CHECKING, Protocol, TypeAlias, TypedDict, TypeVar
 
 if TYPE_CHECKING:
     # This TYPE_CHECKING guard can be removed when py37 support is dropped, as we won't
     # have a circular import anymore
     from snakebids.utils import utils
+
+_T_contra = TypeVar("_T_contra", contravariant=True)
+_S_co = TypeVar("_S_co", covariant=True)
 
 
 class InputConfig(TypedDict, total=False):
@@ -46,6 +49,11 @@ class InputConfig(TypedDict, total=False):
     If the entity is not found, it will be ignored.
     """
     custom_path: str
+
+
+class BinaryOperator(Protocol, Generic[_T_contra, _S_co]):
+    def __call__(self, __first: _T_contra, __second: _T_contra) -> _S_co:
+        ...
 
 
 InputsConfig: TypeAlias = "dict[str, InputConfig]"

@@ -6,7 +6,7 @@ import warnings
 from math import inf
 from pathlib import Path
 from string import Formatter
-from typing import Any, Iterable, NoReturn, Optional
+from typing import Any, Iterable, NoReturn, Optional, Sequence
 
 import attr
 import more_itertools as itx
@@ -14,9 +14,10 @@ from bids import BIDSLayout
 from cached_property import cached_property
 from pvandyken.deprecated import deprecated
 from snakemake.io import expand as sn_expand
-from typing_extensions import TypedDict
+from typing_extensions import Self, TypedDict
 
 import snakebids.utils.sb_itertools as sb_it
+from snakebids.core.filtering import filter_list
 from snakebids.io.console import get_console_size
 from snakebids.io.printing import format_zip_lists, quote_wrap
 from snakebids.types import UserDictPy37, ZipLists
@@ -213,6 +214,39 @@ class BidsComponent:
                 wildcard: list(itx.always_iterable(v))
                 for wildcard, v in wildcards.items()
             },
+        )
+
+    def filter(
+        self, *, regex_search: bool = False, **filters: str | Sequence[str]
+    ) -> Self:
+        """Filter component based on provided entity filters
+
+        This method allows you to expand over a subset of your wildcards. This could be
+        useful for extracting subjects from a specific patient group, running different
+        rules on different aquisitions, and any other reason you may need to filter your
+        data after the workflow has already started.
+
+        Takes entities as keyword arguments assigned to values or list of values to
+        select from the component. Only columns containing the provided entity-values
+        are kept. If no matches are found, a component with the all the original
+        entities but with no values will be returned.
+
+        Returns a brand new :class:`~snakebids.BidsComponent`. The original component is
+        not modified.
+
+        Parameters
+        ----------
+        regex_search
+            Treat filters as regex patterns when matching with entity-values.
+        filters
+            Each keyword should be the name of an entity in the component. Entities not
+            found in the component will be ignored. Keywords take values or a list of
+            values to be matched with the component
+            :attr:`~snakebids.BidsComponent.zip_lists`
+        """
+        return attr.evolve(
+            self,
+            zip_lists=filter_list(self.zip_lists, filters, regex_search=regex_search),
         )
 
 
