@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 import itertools as it
 from pathlib import Path
-from typing import Any, List, Optional, Type
+from typing import Any, List, Optional, Type, TypeVar
 
 import hypothesis.strategies as st
 from bids.layout import Config as BidsConfig
@@ -12,7 +12,10 @@ from hypothesis import assume
 from snakebids.core.datasets import BidsComponent
 from snakebids.core.input_generation import BidsDataset
 from snakebids.tests import helpers
-from snakebids.utils.utils import BidsEntity
+from snakebids.utils.utils import BidsEntity, MultiSelectDict
+
+_Ex_co = TypeVar("_Ex_co", bound=str, covariant=True)
+_T = TypeVar("_T")
 
 
 def bids_entity():
@@ -159,3 +162,28 @@ def datasets_one_comp(draw: st.DrawFn, root: Optional[Path] = None):
     ent1 = draw(bids_entity_lists(min_size=2, max_size=3))
     comp1 = draw(bids_components(entities=ent1, restrict_patterns=True, root=root))
     return BidsDataset.from_iterable([comp1])
+
+
+@st.composite
+def multiselect_dicts(
+    draw: st.DrawFn,
+    keys: st.SearchStrategy[_Ex_co],
+    values: st.SearchStrategy[_T],
+    *,
+    min_size: int = 0,
+    max_size: Optional[int] = None,
+) -> MultiSelectDict[_Ex_co, _T]:
+    return MultiSelectDict(
+        draw(
+            st.dictionaries(
+                keys,
+                values,
+                min_size=min_size,
+                max_size=max_size,
+            )
+        )
+    )
+
+
+def everything():
+    return st.from_type(type).flatmap(st.from_type)

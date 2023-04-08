@@ -4,12 +4,13 @@ import functools as ft
 import importlib.resources
 import json
 import re
-from typing import Any, Callable, Dict, Iterable, TypeVar
+from typing import Any, Callable, Dict, Iterable, TypeVar, overload
 
 import attrs
 import more_itertools as itx
-from typing_extensions import Protocol
+from typing_extensions import Protocol, Self
 
+from snakebids import types
 from snakebids.utils.user_property import UserProperty
 
 T = TypeVar("T")
@@ -278,3 +279,84 @@ def surround(__s: Iterable[str] | str, __object: str) -> Iterable[str]:
     """Surround a string or each string in an iterable with characters"""
     for item in itx.always_iterable(__s):
         yield __object + item + __object
+
+
+_K = TypeVar("_K", bound="str")
+_V = TypeVar("_V")
+
+
+class MultiSelectDict(types.UserDictPy37[_K, _V]):
+    """Dict supporting selection of multiple keys using tuples
+
+    If a single key is given, the item associated with that key is returned just as in a
+    regular dict. If multiple, comma-seperated keys are given, (e.g. a tuple), a new
+    ``MultiSelectDict`` will be returned containing the keys given and their values:
+
+        >>> mydict = MultiSelectDict({
+        ...     "foo": "bar",
+        ...     "hello": "world",
+        ...     "fee": "fie",
+        ... })
+        >>> mydict["foo"]
+        'bar'
+        >>> mydict["foo", "hello"]
+        {'foo': 'bar', 'hello': 'world'}
+
+    The new ``MultiSelectDict`` is a "view" of the original data. Any mutations made to
+    the values will be reflected in the original object:
+
+        >>> mydict = MultiSelectDict({
+        ...     "foo": [1, 2, 3, 4],
+        ...     "hello": "world",
+        ...     "fee": "fie",
+        ... })
+        >>> view = mydict["foo", "hello"]
+        >>> view["foo"].append(5)
+        >>> mydict
+        {'foo': [1, 2, 3, 4, 5], 'hello': 'world', 'fee': 'fie'}
+
+    The keys of the new ``MultiSelectDict`` will be inserted in the order provided in
+    the selector
+
+        >>> mydict = MultiSelectDict({
+        ...     "foo": "bar",
+        ...     "hello": "world",
+        ...     "fee": "fie",
+        ... })
+        >>> mydict["hello", "foo"]
+        {'hello': 'world', 'foo': 'bar'}
+
+    Tuples of length 1 will still return a ``MultiSelectDict``:
+
+        >>> mydict = MultiSelectDict({
+        ...     "foo": [1, 2, 3, 4],
+        ...     "hello": "world",
+        ...     "fee": "fie",
+        ... })
+        >>> mydict["foo",]
+        {'foo': [1, 2, 3, 4]}
+
+    If a key is given multiple times, the extra instances of the key will be ignored:
+
+        >>> mydict = MultiSelectDict({
+        ...     "foo": [1, 2, 3, 4],
+        ...     "hello": "world",
+        ...     "fee": "fie",
+        ... })
+        >>> mydict["foo", "foo", "foo"]
+        {'foo': [1, 2, 3, 4]}
+    """
+
+    @overload
+    def __getitem__(self, __key: _K) -> _V:
+        ...
+
+    @overload
+    def __getitem__(self, __key: tuple[_K]) -> Self:
+        ...
+
+    def __getitem__(self, __key: _K | tuple[_K]) -> _V | Self:
+        if isinstance(__key, tuple):
+            # Use dict.fromkeys for de-duplication
+            return self.__class__({key: self[key] for key in dict.fromkeys(__key)})
+        return super().__getitem__(__key)

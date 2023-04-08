@@ -3,7 +3,6 @@
 
 import functools as ft
 import itertools as it
-from collections import UserDict
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Tuple, TypeVar, Union
 
@@ -12,7 +11,7 @@ from hypothesis import HealthCheck, settings
 
 from snakebids import bids
 from snakebids.core.input_generation import BidsDataset, generate_inputs
-from snakebids.types import InputsConfig
+from snakebids.types import InputsConfig, UserDictPy37
 from snakebids.utils.utils import BidsEntity
 
 T = TypeVar("T")
@@ -84,14 +83,17 @@ def get_bids_path(entities: Iterable[str]):
     )
 
 
-class BidsListCompare(UserDict):
+# pylint: disable=too-few-public-methods
+class BidsListCompare(UserDictPy37[str, Dict[str, List[str]]]):
     """Dict override specifically for comparing input_lists
 
     When comparing, all lists are converted into sets so that order doesn't matter for
     the comparison
     """
 
-    def __eq__(self, other: Dict):
+    def __eq__(self, other: object):
+        if not isinstance(other, dict):
+            return False
         for name, lists in other.items():
             if name not in self:
                 return False
