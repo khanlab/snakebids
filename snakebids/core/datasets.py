@@ -18,7 +18,7 @@ from typing_extensions import TypedDict
 import snakebids.utils.sb_itertools as sb_it
 from snakebids.io.console import get_console_size
 from snakebids.io.printing import format_zip_lists, quote_wrap
-from snakebids.types import UserDictPy37
+from snakebids.types import UserDictPy37, ZipLists
 from snakebids.utils.utils import property_alias
 
 
@@ -46,9 +46,7 @@ class BidsComponent:
 
     path: str = attr.field(on_setattr=attr.setters.frozen)
     """Wildcard-filled path that matches the files for this component."""
-    zip_lists: dict[str, list[str]] = attr.field(
-        on_setattr=attr.setters.frozen, converter=dict
-    )
+    zip_lists: ZipLists = attr.field(on_setattr=attr.setters.frozen, converter=dict)
     """Table of unique wildcard groupings for each member in the component.
 
     Dictionary where each key is a wildcard entity and each value is a list of the
@@ -143,7 +141,7 @@ class BidsComponent:
         return self.path
 
     @property
-    def input_zip_lists(self) -> dict[str, list[str]]:
+    def input_zip_lists(self) -> ZipLists:
         """Alias of :attr:`zip_lists <snakebids.BidsComponent.zip_lists>`
 
         Dictionary where each key is a wildcard entity and each value is a list of the
@@ -264,7 +262,7 @@ class BidsDataset(UserDictPy37[str, BidsComponent]):
         deprecated_in="0.8.0",
         admonition="warning",
     )
-    def zip_lists(self) -> dict[str, dict[str, list[str]]]:
+    def zip_lists(self) -> dict[str, ZipLists]:
         """Dict mapping :class:`BidsComponents <snakebids.BidsComponent>` names to \
         their ``zip_lists``
         """
