@@ -103,6 +103,13 @@ ignore-paths = ["typings"]
 [tool.pylint.format]
 good-names = "i,j,k,ex,_,x,y,f,d"
 
+[tool.pylint.similarities]
+ignore-comments = true
+ignore-docstrings = true
+ignore-imports = true
+ignore-signatures = true
+min-similarity-lines = 4
+
 [tool.pylint.messages_control]
 disable = """
     missing-function-docstring,
