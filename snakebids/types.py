@@ -1,6 +1,10 @@
+# pylint: disable-all
 from __future__ import annotations
 
-from typing_extensions import TypeAlias, TypedDict
+from collections.abc import Hashable
+from typing import Generic
+
+from typing_extensions import TYPE_CHECKING, TypeAlias, TypedDict, TypeVar
 
 
 class InputConfig(TypedDict, total=False):
@@ -43,3 +47,17 @@ class InputConfig(TypedDict, total=False):
 InputsConfig: TypeAlias = "dict[str, InputConfig]"
 
 ZipLists: TypeAlias = "dict[str, list[str]]"
+
+# Hack to make userdicts subscriptable in python 3.7. Can remove when we drop support
+# for that version
+_K = TypeVar("_K", bound=Hashable)
+_V = TypeVar("_V")
+if TYPE_CHECKING:
+
+    class UserDictPy37(dict[_K, _V]):
+        pass
+
+else:
+
+    class UserDictPy37(dict, Generic[_K, _V]):
+        pass
