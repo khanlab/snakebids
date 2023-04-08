@@ -1,7 +1,9 @@
+# pylint: disable=invalid-name
 from __future__ import annotations
 
 import copy
 import itertools as it
+import string
 from pathlib import Path
 from typing import Any, List, Optional, Type, TypeVar
 
@@ -16,6 +18,8 @@ from snakebids.utils.utils import BidsEntity, MultiSelectDict
 
 _Ex_co = TypeVar("_Ex_co", bound=str, covariant=True)
 _T = TypeVar("_T")
+
+alphanum = string.ascii_letters + string.digits
 
 
 def bids_entity():
@@ -95,6 +99,7 @@ def bids_components(
     max_values: int = 3,
     entities: Optional[list[BidsEntity]] = None,
     root: Optional[Path] = None,
+    name: str | None = None,
     restrict_patterns: bool = False,
 ):
     zip_list = draw(
@@ -111,7 +116,7 @@ def bids_components(
     path = (root or Path()) / helpers.get_bids_path(zip_list)
 
     return BidsComponent(
-        name=draw(bids_value()),
+        name=name or draw(bids_value()),
         path=str(path),
         zip_lists=zip_list,
     )
@@ -145,7 +150,10 @@ def everything_except(*excluded_types: Type[Any]):
 
 
 @st.composite
-def datasets(draw: st.DrawFn, root: Optional[Path] = None):
+def datasets(
+    draw: st.DrawFn,
+    root: Optional[Path] = None,
+):
     ent1 = draw(bids_entity_lists(min_size=2, max_size=3))
     ent2 = copy.copy(ent1)
     ent2.pop()
@@ -158,9 +166,20 @@ def datasets(draw: st.DrawFn, root: Optional[Path] = None):
 
 
 @st.composite
-def datasets_one_comp(draw: st.DrawFn, root: Optional[Path] = None):
+def datasets_one_comp(
+    draw: st.DrawFn,
+    root: Optional[Path] = None,
+    names: st.SearchStrategy[str] | None = None,
+):
     ent1 = draw(bids_entity_lists(min_size=2, max_size=3))
-    comp1 = draw(bids_components(entities=ent1, restrict_patterns=True, root=root))
+    comp1 = draw(
+        bids_components(
+            entities=ent1,
+            restrict_patterns=True,
+            root=root,
+            name=draw(names) if names is not None else None,
+        )
+    )
     return BidsDataset.from_iterable([comp1])
 
 
