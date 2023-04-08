@@ -10,7 +10,7 @@ import attrs
 import more_itertools as itx
 from typing_extensions import Protocol
 
-from snakebids.utils.sb_typing import UserProperty
+from snakebids.utils.user_property import UserProperty
 
 T = TypeVar("T")
 

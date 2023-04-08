@@ -1,6 +1,6 @@
 from typing import TypeVar
 
-from snakebids.utils.sb_typing import UserProperty
+from snakebids.utils.user_property import UserProperty
 
 T = TypeVar("T")
 
