@@ -19,7 +19,7 @@ import snakebids.utils.sb_itertools as sb_it
 from snakebids.io.console import get_console_size
 from snakebids.io.printing import format_zip_lists, quote_wrap
 from snakebids.types import UserDictPy37, ZipLists
-from snakebids.utils.utils import property_alias
+from snakebids.utils.utils import MultiSelectDict, property_alias
 
 
 class BidsDatasetDict(TypedDict):
@@ -46,7 +46,9 @@ class BidsComponent:
 
     path: str = attr.field(on_setattr=attr.setters.frozen)
     """Wildcard-filled path that matches the files for this component."""
-    zip_lists: ZipLists = attr.field(on_setattr=attr.setters.frozen, converter=dict)
+    zip_lists: ZipLists = attr.field(
+        on_setattr=attr.setters.frozen, converter=MultiSelectDict
+    )
     """Table of unique wildcard groupings for each member in the component.
 
     Dictionary where each key is a wildcard entity and each value is a list of the
@@ -88,10 +90,10 @@ class BidsComponent:
             )
 
     # Note: we can't use cached property here because it's incompatible with slots.
-    _input_lists: Optional[dict[str, list[str]]] = attr.field(
+    _input_lists: Optional[MultiSelectDict[str, list[str]]] = attr.field(
         default=None, init=False, eq=False, repr=False
     )
-    _input_wildcards: Optional[dict[str, str]] = attr.field(
+    _input_wildcards: Optional[MultiSelectDict[str, str]] = attr.field(
         default=None, init=False, eq=False, repr=False
     )
     _entities: Optional[list[str]] = attr.field(
@@ -99,29 +101,29 @@ class BidsComponent:
     )
 
     @property
-    def entities(self) -> dict[str, list[str]]:
+    def entities(self) -> MultiSelectDict[str, list[str]]:
         """Component entities and their associated values
 
         Dictionary where each key is an entity and each value is a list of the
         unique values found for that entity. These lists might not be the same length.
         """
         if self._input_lists is None:
-            self._input_lists = {
-                entity: list(set(values)) for entity, values in self.zip_lists.items()
-            }
+            self._input_lists = MultiSelectDict(
+                {entity: list(set(values)) for entity, values in self.zip_lists.items()}
+            )
         return self._input_lists
 
     @property
-    def wildcards(self) -> dict[str, str]:
+    def wildcards(self) -> MultiSelectDict[str, str]:
         """Wildcards in brace-wrapped syntax
 
         Dictionary where each key is the name of a wildcard entity, and each value is
         the Snakemake wildcard used for that entity.
         """
         if self._input_wildcards is None:
-            self._input_wildcards = {
-                entity: f"{{{entity}}}" for entity in self.zip_lists
-            }
+            self._input_wildcards = MultiSelectDict(
+                {entity: f"{{{entity}}}" for entity in self.zip_lists}
+            )
         return self._input_wildcards
 
     @property
@@ -279,7 +281,7 @@ class BidsDataset(UserDictPy37[str, BidsComponent]):
         deprecated_in="0.8.0",
         admonition="warning",
     )
-    def entities(self) -> dict[str, dict[str, list[str]]]:
+    def entities(self) -> dict[str, MultiSelectDict[str, list[str]]]:
         """Dict mapping :class:`BidsComponents <snakebids.BidsComponent>` names to \
         to their :attr:`entities <snakebids.BidsComponent.entities>`
         """
@@ -296,7 +298,7 @@ class BidsDataset(UserDictPy37[str, BidsComponent]):
         deprecated_in="0.8.0",
         admonition="warning",
     )
-    def wildcards(self) -> dict[str, dict[str, str]]:
+    def wildcards(self) -> dict[str, MultiSelectDict[str, str]]:
         """Dict mapping :class:`BidsComponents <snakebids.BidsComponent>` names to \
         their :attr:`wildcards <snakebids.BidsComponent.wildcards>`
         """
@@ -343,17 +345,18 @@ class BidsDataset(UserDictPy37[str, BidsComponent]):
         return self.path
 
     @property_alias(entities, "entities", "snakebids.BidsDataset.entities")
-    def input_lists(self) -> dict[str, dict[str, list[str]]]:
+    def input_lists(self) -> dict[str, MultiSelectDict[str, list[str]]]:
         return self.entities
 
     @property_alias(zip_lists, "zip_lists", "snakebids.BidsDataset.zip_lists")
-    def input_zip_lists(self) -> dict[str, dict[str, list[str]]]:
+    def input_zip_lists(self) -> dict[str, MultiSelectDict[str, list[str]]]:
         return self.zip_lists
 
     @property_alias(wildcards, "wildcards", "snakebids.BidsDataset.wildcards")
-    def input_wildcards(self) -> dict[str, dict[str, str]]:
+    def input_wildcards(self) -> dict[str, MultiSelectDict[str, str]]:
         return self.wildcards
 
+    # pylint: disable-all
     @property
     def as_dict(self):
         """Get the layout as a legacy dict
@@ -369,9 +372,13 @@ class BidsDataset(UserDictPy37[str, BidsComponent]):
             warnings.filterwarnings("ignore", category=DeprecationWarning)
             return BidsDatasetDict(
                 input_path=self.input_path,
-                input_lists=self.entities,
-                input_wildcards=self.input_wildcards,
-                input_zip_lists=self.input_zip_lists,
+                input_lists={k: dict(val) for k, val in self.entities.items()},
+                input_wildcards={
+                    k: dict(val) for k, val in self.input_wildcards.items()
+                },
+                input_zip_lists={
+                    k: dict(val) for k, val in self.input_zip_lists.items()
+                },
                 subjects=self.subjects,
                 sessions=self.sessions,
                 subj_wildcards=self.subj_wildcards,

@@ -28,7 +28,7 @@ from snakebids.core.filtering import filter_list
 from snakebids.exceptions import ConfigError, PybidsError
 from snakebids.types import InputsConfig
 from snakebids.utils.snakemake_io import glob_wildcards
-from snakebids.utils.utils import BidsEntity, BidsParseError, surround
+from snakebids.utils.utils import BidsEntity, BidsParseError, MultiSelectDict, surround
 
 _logger = logging.getLogger(__name__)
 
@@ -594,7 +594,7 @@ def _get_lists_from_bids(
             zip_lists = _parse_custom_path(
                 path, **pybids_inputs[input_name].get("filters", {}), **filters
             )
-            yield BidsComponent(input_name, path, zip_lists)
+            yield BidsComponent(input_name, path, MultiSelectDict(zip_lists))
             continue
 
         if bids_layout is None:
@@ -683,7 +683,7 @@ def _get_lists_from_bids(
                 f"narrow the search. Found filenames: {paths}"
             )
 
-        yield BidsComponent(input_name, path, zip_lists)
+        yield BidsComponent(input_name, path, MultiSelectDict(zip_lists))
 
 
 def get_wildcard_constraints(image_types):

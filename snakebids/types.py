@@ -6,6 +6,11 @@ from typing import Generic
 
 from typing_extensions import TYPE_CHECKING, TypeAlias, TypedDict, TypeVar
 
+if TYPE_CHECKING:
+    # This TYPE_CHECKING guard can be removed when py37 support is dropped, as we won't
+    # have a circular import anymore
+    from snakebids.utils import utils
+
 
 class InputConfig(TypedDict, total=False):
     """Configuration passed in snakebids.yaml file"""
@@ -46,7 +51,7 @@ class InputConfig(TypedDict, total=False):
 
 InputsConfig: TypeAlias = "dict[str, InputConfig]"
 
-ZipLists: TypeAlias = "dict[str, list[str]]"
+ZipLists: TypeAlias = "utils.MultiSelectDict[str, list[str]]"
 
 # Hack to make userdicts subscriptable in python 3.7. Can remove when we drop support
 # for that version
