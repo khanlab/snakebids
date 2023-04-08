@@ -5,7 +5,6 @@ configfile: 'config.yml'
 inputs = generate_inputs(
     bids_dir=config['bids_dir'],
     pybids_inputs=config['pybids_inputs'],
-    use_bids_inputs=True,
 )
 
 print(inputs)

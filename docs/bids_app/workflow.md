@@ -20,7 +20,6 @@ inputs = snakebids.generate_inputs(
     derivatives=config.get("derivatives"),
     participant_label=config.get("participant_label"),
     exclude_participant_label=config.get("exclude_participant_label"),
-    use_bids_inputs=True,
 )
 
 ```

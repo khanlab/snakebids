@@ -95,7 +95,7 @@ class TestFilterBools:
         }
 
         with pytest.raises(ConfigError):
-            generate_inputs(root, pybids_inputs, use_bids_inputs=True)
+            generate_inputs(root, pybids_inputs)
 
     @settings(
         deadline=800,
@@ -121,7 +121,7 @@ class TestFilterBools:
         }
 
         with pytest.raises(ConfigError):
-            generate_inputs(root, pybids_inputs, use_bids_inputs=True)
+            generate_inputs(root, pybids_inputs)
 
     @settings(
         deadline=800,
@@ -156,7 +156,7 @@ class TestFilterBools:
             }
         )
 
-        data = generate_inputs(root, pybids_inputs, use_bids_inputs=True)
+        data = generate_inputs(root, pybids_inputs)
         assert data == expected
 
     @example(
@@ -234,7 +234,7 @@ class TestFilterBools:
             }
         )
 
-        data = generate_inputs(root, pybids_inputs, use_bids_inputs=True)
+        data = generate_inputs(root, pybids_inputs)
         assert data == expected
 
 
@@ -269,7 +269,6 @@ class TestAbsentConfigEntries:
             bids_dir=tmpdir,
             derivatives=derivatives,
             pybids_config=str(Path(__file__).parent / "data" / "custom_config.json"),
-            use_bids_inputs=True,
         )
         template = BidsDataset({"t1": BidsComponent("t1", config["t1"].path, zip_list)})
         # Order of the subjects is not deterministic
@@ -293,7 +292,6 @@ class TestAbsentConfigEntries:
             bids_dir=tmpdir,
             derivatives=derivatives,
             pybids_config=str(Path(__file__).parent / "data" / "custom_config.json"),
-            use_bids_inputs=True,
         )
         template = BidsDataset({"t1": BidsComponent("t1", config["t1"].path, {})})
         assert template == config
@@ -553,7 +551,6 @@ def test_custom_pybids_config(tmpdir: Path):
         bids_dir=tmpdir,
         derivatives=derivatives,
         pybids_config=Path(__file__).parent / "data" / "custom_config.json",
-        use_bids_inputs=True,
     )
     template = BidsDataset(
         {
@@ -605,7 +602,6 @@ def test_nonstandard_custom_pybids_config(tmpdir: Path):
             pybids_config=(
                 Path(__file__).parent / "data" / "custom_config_nonstandard.json"
             ),
-            use_bids_inputs=True,
         )
 
 
@@ -639,7 +635,6 @@ def test_t1w():
         pybids_inputs=pybids_inputs,
         bids_dir=real_bids_dir,
         derivatives=derivatives,
-        use_bids_inputs=True,
     )
     template = BidsDataset(
         {
@@ -674,7 +669,6 @@ def test_t1w():
         bids_dir=real_bids_dir,
         derivatives=derivatives,
         participant_label="001",
-        use_bids_inputs=True,
     )
     assert result["scan"].entities == {
         "acq": ["mprage"],
@@ -745,7 +739,6 @@ def test_t1w():
             pybids_inputs=pybids_inputs,
             bids_dir=bids_dir,
             derivatives=derivatives,
-            use_bids_inputs=True,
         )
         template = BidsDataset(
             {

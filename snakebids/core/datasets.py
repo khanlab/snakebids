@@ -197,9 +197,7 @@ class BidsDataset(UserDictPy37[str, BidsComponent]):
     provided name, wildcards, and filters.
 
     Individual components can be accessed using bracket-syntax: (e.g.
-    ``inputs["t1w"]``). Component access attributes along with the component name in
-    brackets can also be used. For example, ``BidsDataset.entities["t1w"]`` and
-    ``BidsDataset["t1w"].entities`` return the same thing.
+    ``inputs["t1w"]``).
 
     Provides access to summarizing information, for instance, the set of all subjects or
     sessions found in the dataset.
