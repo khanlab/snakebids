@@ -6,7 +6,17 @@ import logging
 import re
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, Generator, Iterable, List, Optional, Tuple, Union, overload
+from typing import (
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+    overload,
+)
 
 import more_itertools as itx
 from bids import BIDSLayout, BIDSLayoutIndexer
@@ -541,7 +551,7 @@ def _get_lists_from_bids(
     pybids_inputs: InputsConfig,
     *,
     limit_to: "list[str] | None" = None,
-    **filters,
+    **filters: str | Sequence[str],
 ) -> Generator[BidsComponent, None, None]:
     """Grabs files using pybids and creates snakemake-friendly lists
 
@@ -595,8 +605,8 @@ def _get_lists_from_bids(
             )
             continue
 
-        zip_lists = defaultdict(list)
-        paths = set()
+        zip_lists: dict[str, list[str]] = defaultdict(list)
+        paths: set[str] = set()
         pybids_filters = {
             key: Query.ANY if val is True else Query.NONE if val is False else val
             for key, val in component.get("filters", {}).items()
