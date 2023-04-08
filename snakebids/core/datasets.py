@@ -214,6 +214,29 @@ class BidsDataset(UserDictPy37[str, BidsComponent]):
         super().__init__(data)
         self.layout = layout
 
+    def __getitem__(self, key: str):
+        try:
+            return super().__getitem__(key)
+        except KeyError as err:
+            if key in {
+                "input_path",
+                "input_zip_lists",
+                "input_lists",
+                "input_wildcards",
+                "subjects",
+                "sessions",
+                "subj_wildcards",
+            }:
+                raise KeyError(
+                    "As of v0.8, generate_inputs() no longer returns a dict by "
+                    f"default, but an instance of BidsDataset. As such, '{key}' can no "
+                    "longer be accessed via brackets '[]' as before. The original dict "
+                    "can be returned by setting `use_bids_inputs` to False in the call "
+                    "to generate_inputs(). However, we encourage you to transition to "
+                    "the use of `BidsDataset` for long term support"
+                ) from err
+            raise err
+
     def __setitem__(self, _: Any, __: Any):
         raise NotImplementedError(
             f"Modification of {self.__class__.__name__} is not yet supported"

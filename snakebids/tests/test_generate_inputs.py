@@ -776,6 +776,7 @@ def test_t1w_with_dict():
         pybids_inputs=pybids_inputs,
         bids_dir=real_bids_dir,
         derivatives=derivatives,
+        use_bids_inputs=False,
     )
     # Order of the subjects is not deterministic
     assert config["input_lists"] == BidsListCompare(
@@ -807,6 +808,7 @@ def test_t1w_with_dict():
         bids_dir=real_bids_dir,
         derivatives=derivatives,
         participant_label="001",
+        use_bids_inputs=False,
     )
     assert config["input_lists"] == {
         "scan": {"acq": ["mprage"], "subject": ["001"], "suffix": ["T1w"]}

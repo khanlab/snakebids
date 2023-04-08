@@ -1,5 +1,6 @@
 import copy
 import itertools as it
+import re
 import warnings
 from typing import Any, Dict, List
 
@@ -164,3 +165,50 @@ class TestBidsComponentProperties:
         first = wildstr.format(**bids_input.input_wildcards)
         second = first.format(**bids_entities)
         assert set(second.split(".")) == set(bids_entities.values())
+
+
+legacy_names = [
+    "input_path",
+    "input_zip_lists",
+    "input_lists",
+    "input_wildcards",
+    "subjects",
+    "sessions",
+    "subj_wildcards",
+]
+
+
+class TestBidsDatasetLegacyAccess:
+    match_str = r".*generate_inputs\(\) no longer returns a dict by default.*"
+
+    @given(dataset=sb_st.datasets(), name=st.sampled_from(legacy_names))
+    def test_accessing_legacy_names_leads_to_informative_error(
+        self, dataset: BidsDataset, name: str
+    ):
+        assume(name not in dataset)
+        with pytest.raises(KeyError, match=self.match_str):
+            dataset[name]
+
+    @given(
+        dataset=sb_st.datasets(),
+        name=st.text(sb_st.alphanum).filter(lambda s: s not in legacy_names),
+    )
+    def test_accessing_ordinary_missing_names_leads_to_regular_error(
+        self, dataset: BidsDataset, name: str
+    ):
+        assume(name not in dataset)
+        with pytest.raises(KeyError) as err:
+            dataset[name]
+
+        assert not re.search(self.match_str, str(err.value))
+
+    @given(
+        dataset=sb_st.datasets_one_comp(
+            names=st.shared(st.sampled_from(legacy_names), key="names")
+        ),
+        name=st.shared(st.sampled_from(legacy_names), key="names"),
+    )
+    def test_legacy_names_can_be_accessed_if_component_name(
+        self, dataset: BidsDataset, name: str
+    ):
+        assert isinstance(dataset[name], BidsComponent)
