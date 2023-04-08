@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import copy
 import itertools as it
-import string
 from pathlib import Path
+from string import ascii_letters, digits
 from typing import Any, List, Optional, Type, TypeVar
 
 import hypothesis.strategies as st
@@ -19,16 +19,16 @@ from snakebids.utils.utils import BidsEntity, MultiSelectDict
 _Ex_co = TypeVar("_Ex_co", bound=str, covariant=True)
 _T = TypeVar("_T")
 
-alphanum = string.ascii_letters + string.digits
+alphanum = ascii_letters + digits
+valid_entities: tuple[str] = tuple(BidsConfig.load("bids").entities.keys())
 
 
 def bids_entity():
-    bidsconfig = BidsConfig.load("bids")
     # Generate inputs and bids does not properly handle 'extension', so exclude it
     return st.sampled_from(
         [
             BidsEntity(key)
-            for key in bidsconfig.entities.keys()
+            for key in valid_entities
             if key not in ["extension", "fmap", "scans"]
         ],
     )

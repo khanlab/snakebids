@@ -1,17 +1,30 @@
 """Helper functions and classes for tests
 """
+from __future__ import annotations
 
 import functools as ft
 import itertools as it
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Tuple, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
+import more_itertools as itx
 import pytest
 from hypothesis import HealthCheck, settings
 
 from snakebids import bids
 from snakebids.core.input_generation import BidsDataset, generate_inputs
-from snakebids.types import InputsConfig, UserDictPy37
+from snakebids.types import InputsConfig, UserDictPy37, ZipListLike
 from snakebids.utils.utils import BidsEntity
 
 T = TypeVar("T")
@@ -130,6 +143,25 @@ def debug(**overrides: Any):
     return inner
 
 
+def mock_data(*draws: Any):
+    """Utility function for mocking the hypothesis data strategy
+
+    Intended for combination with debug. Takes a list of values corresponding the draws
+    taking from the data object. In the debug run, calls to data will return the given
+    values in the order specified
+    """
+
+    # pylint: disable=missing-class-docstring, too-few-public-methods
+    class MockData:
+        _draws = iter(draws)
+
+        # pylint: disable=unused-argument
+        def draw(self, strategy: Any, label: Any = None):
+            return next(self._draws)
+
+    return MockData()
+
+
 def create_dataset(root: Union[str, Path], dataset: BidsDataset):
     """Create an empty BidsDataset on the filesystem
 
@@ -188,3 +220,28 @@ def allow_tmpdir(__callable: T) -> T:
             HealthCheck.function_scoped_fixture,
         ],
     )(__callable)
+
+
+def expand_zip_list(
+    zip_list: ZipListLike, new_values: Mapping[str, Sequence[str]]
+) -> ZipListLike:
+    """Expand a zip list with new values via product
+
+    Each zip list column will be combined with all possible combinations of the
+    entity-value pairs in ``new_values``. It is thus equivalent to calling
+    :meth:`BidsComponent.expand() <snakebids.BidsComponent.expand>` with ``new_values``
+    as extra args.
+    """
+    zip_cols = list(zip(*zip_list.values()))
+    new_cols = list(
+        map(
+            it.chain.from_iterable,
+            it.product(zip_cols, it.product(*new_values.values())),
+        )
+    )
+    return dict(zip(it.chain(zip_list.keys(), new_values.keys()), zip(*new_cols)))
+
+
+def entity_to_wildcard(__entities: str | Iterable[str]):
+    """Turn entity strings into wildcard dicts as {"entity": "{entity}"}"""
+    return {entity: f"{{{entity}}}" for entity in itx.always_iterable(__entities)}
