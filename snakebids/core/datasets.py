@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import itertools as it
-import operator as op
 import textwrap
 import warnings
 from math import inf
 from string import Formatter
-from typing import Any, Iterable, Optional, Union, cast
+from typing import Any, Iterable, Optional, Union
 
 import attr
 import more_itertools as itx
@@ -19,7 +18,7 @@ import snakebids.utils.sb_itertools as sb_it
 from snakebids.io.console import get_console_size
 from snakebids.io.printing import format_zip_lists, quote_wrap
 from snakebids.types import UserDictPy37, ZipLists
-from snakebids.utils.utils import MultiSelectDict, property_alias
+from snakebids.utils.utils import MultiSelectDict, property_alias, zip_list_eq
 
 
 class BidsDatasetDict(TypedDict):
@@ -171,21 +170,7 @@ class BidsComponent:
         if self.path != other.path:
             return False
 
-        def sorted_items(dictionary: dict[str, list[str]]):
-            return sorted(dictionary.items(), key=op.itemgetter(0))
-
-        if set(self.zip_lists) != set(other.zip_lists):
-            return False
-
-        if not other.zip_lists and not self.zip_lists:
-            return True
-
-        other_items = cast(
-            "list[list[str]]", list(zip(*sorted_items(other.zip_lists)))[1]
-        )
-        our_items = cast("list[list[str]]", list(zip(*sorted_items(self.zip_lists)))[1])
-
-        return set(zip(*our_items)) == set(zip(*other_items))
+        return zip_list_eq(self.zip_lists, other.zip_lists)
 
 
 class BidsDataset(UserDictPy37[str, BidsComponent]):
