@@ -45,7 +45,7 @@ def generate_inputs(
     limit_to: list[str] | None = ...,
     participant_label: list[str] | None = ...,
     exclude_participant_label: list[str] | None = ...,
-    use_bids_inputs: Union[Literal[False], None] = ...,
+    use_bids_inputs: Literal[False] = ...,
 ) -> BidsDatasetDict:
     ...
 
@@ -62,7 +62,7 @@ def generate_inputs(
     limit_to: list[str] | None = ...,
     participant_label: list[str] | None = ...,
     exclude_participant_label: list[str] | None = ...,
-    use_bids_inputs: Literal[True] = ...,
+    use_bids_inputs: Literal[True] | None = ...,
 ) -> BidsDataset:
     ...
 
@@ -142,10 +142,9 @@ def generate_inputs(
         be specified if participant_label is specified
 
     use_bids_inputs
-        If True, opts in to the new :class:`BidsDataset` output, otherwise returns the
-        classic dict. Currently, the classic dict will be returned by default, however,
-        this will change in a future release. If you do not wish to migrate to the new
-        BidsDataset, we recommend you explictely set this parameter to False
+        If False, returns the classic :class:`BidsDatasetDict` instead of
+        :class`BidsDataset`. Setting to True is deprecated as of v0.8, as this is now
+        the default behaviour
 
     Returns
     -------
@@ -291,20 +290,14 @@ def generate_inputs(
         **(filters),
     )
 
-    if use_bids_inputs is None:
+    if use_bids_inputs is True:
         _logger.warning(
-            "The dictionary returned by generate_inputs() will soon be deprecated in "
-            "favour of the new BidsDataset class. BidsDataset provides the same "
-            "functionality of the dict, but with attribute access and new convience "
-            "methods. In a future release, generate_inputs() will return this class "
-            "by default. You can opt into this behaviour now by setting the "
-            "`use_bids_inputs` argument in generate_inputs() to True. If you do not "
-            "wish to migrate your code to BidsDataset at this time, we recommend you "
-            "explicately set `use_bids_inputs` to False. This will preserve the "
-            "current behaviour of returning a Dict in future releases, and will "
-            "silence this warning."
+            "The parameter `use_bids_inputs` in generate_inputs() is now set, by "
+            "default, to True. Manually setting it to True is deprecated as of version "
+            "0.8. "
         )
-        use_bids_inputs = False
+    elif use_bids_inputs is None:
+        use_bids_inputs = True
 
     try:
         dataset = BidsDataset.from_iterable(bids_inputs, layout)

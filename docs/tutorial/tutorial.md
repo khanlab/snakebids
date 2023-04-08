@@ -314,7 +314,7 @@ To add this parsing to the workflow, we call the {func}`generate_inputs() <snake
 
 
 ```{note}
-Snakebids is transitioning to a new format for {func}`generate_inputs() <snakebids.generate_inputs()>`. Currently, you need to opt-in to the new features by setting `use_bids_inputs=True` in `generate_inputs()`, but it will become the default in an upcoming version. We recommend all new users opt-in to maintain long term support, so the tutorial is written using the new syntax. A tutorial for the old syntax can be found on [the v0.5.0 docs](https://snakebids.readthedocs.io/en/v0.5.0/tutorial/tutorial.html#part-ii-snakebids).
+Snakebids has transitioned to a new format for {func}`generate_inputs() <snakebids.generate_inputs()>`. To get access to the old dict style return, the `use_bids_inputs` parameter must be set to False. A tutorial for the old syntax can be found on [the v0.5.0 docs](https://snakebids.readthedocs.io/en/v0.5.0/tutorial/tutorial.html#part-ii-snakebids).
 ```
 
 
