@@ -41,6 +41,7 @@ extensions = [
     "sphinxcontrib.asciinema",
     "myst_parser",
     "sphinx_copybutton",
+    "sphinx_reredirects",
 ]
 
 
@@ -89,12 +90,21 @@ intersphinx_mapping = {
 # a list of builtin themes.
 #
 html_theme = "furo"
+html_theme_options = {
+    "source_repository": "https://github.com/akhanf/snakebids",
+    "source_branch": "main",
+    "source_directory": "docs/",
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 # templates_path = ["_templates"]
+
+redirects = {
+    "migration/0.5_to_0.6.md": "migration/0.5_to_0.8.html",
+}
 
 sphinxcontrib_asciinema_defaults = {
     "preload": 1,

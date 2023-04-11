@@ -1,3 +1,6 @@
+```{warning}
+Snakebids is migrating to a more robust, extensible API! If you're coming from pre-v0.8 code, check out the [migration guide](/migration/0.7_to_0.8) to ensure your workflow is up-to-date.
+```
 
 ```{include} ../README.md
 ```
@@ -57,7 +60,8 @@ running_snakebids/overview
 :hidden:
 :maxdepth: 2
 
-migration/0.5_to_0.6
+migration/0.5_to_0.8
+migration/0.7_to_0.8
 ```
 
 ```{toctree}
