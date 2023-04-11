@@ -3,3 +3,4 @@ sphinxcontrib-asciinema>=0.3.7,<0.4
 myst-parser>=1.0.0,<2.0
 furo>=2023.3.23,<2024
 sphinx_copybutton>=0.5.1,<0.6
+sphinx-reredirects>=0.1,<0.2
