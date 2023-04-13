@@ -318,12 +318,12 @@ def _all_custom_paths(config: InputsConfig):
 
 
 def _gen_bids_layout(
-    bids_dir: Union[Path, str],
+    bids_dir: Path | str,
     derivatives: Path | str | bool,
-    pybids_database_dir: Union[Path, str, None],
+    pybids_database_dir: Path | str | None,
     pybids_reset_database: bool,
-    pybids_config: Union[Path, str, None] = None,
-):
+    pybids_config: Path | str | None = None,
+) -> BIDSLayout:
     """Create (or reindex) the BIDSLayout if one doesn't exist,
     which is only saved if a database directory path is provided
 
@@ -373,7 +373,7 @@ def _gen_bids_layout(
     )
 
 
-def write_derivative_json(snakemake, **kwargs):
+def write_derivative_json(snakemake, **kwargs) -> None:
     """Snakemake function to read a json file, and write to a new one,
     adding BIDS derivatives fields for Sources and Parameters.
 
@@ -461,7 +461,7 @@ def _parse_custom_path(
     input_path: Union[Path, str],
     regex_search: bool = False,
     **filters: Union[List[str], str],
-):
+) -> dict[str, list[str]]:
     """Glob wildcards from a custom path and apply filters
 
     This replicates pybids path globbing for any custom path. Input path should have
@@ -544,6 +544,7 @@ def _get_lists_from_bids(
     pybids_inputs: InputsConfig,
     *,
     limit_to: "list[str] | None" = None,
+    regex_search: bool = False,
     **filters: str | Sequence[str],
 ) -> Generator[BidsComponent, None, None]:
     """Grabs files using pybids and creates snakemake-friendly lists
@@ -585,7 +586,10 @@ def _get_lists_from_bids(
 
             path = component["custom_path"]
             zip_lists = _parse_custom_path(
-                path, **pybids_inputs[input_name].get("filters", {}), **filters
+                path,
+                regex_search=regex_search,
+                **pybids_inputs[input_name].get("filters", {}),
+                **filters,
             )
             yield BidsComponent(input_name, path, MultiSelectDict(zip_lists))
             continue
@@ -605,7 +609,9 @@ def _get_lists_from_bids(
             for key, val in component.get("filters", {}).items()
         }
         try:
-            matching_files = bids_layout.get(**pybids_filters, **filters)
+            matching_files = bids_layout.get(
+                regex_search=regex_search, **pybids_filters, **filters
+            )
         except AttributeError as err:
             raise PybidsError(
                 "Pybids has encountered a problem that Snakebids cannot handle. This "
@@ -679,7 +685,7 @@ def _get_lists_from_bids(
         yield BidsComponent(input_name, path, MultiSelectDict(zip_lists))
 
 
-def get_wildcard_constraints(image_types):
+def get_wildcard_constraints(image_types: dict) -> dict[str, str]:
     """Return a wildcard_constraints dict for snakemake to use, containing
     all the wildcards that are in the dynamically grabbed inputs
 

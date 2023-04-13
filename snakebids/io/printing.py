@@ -11,13 +11,13 @@ import more_itertools as itx
 from snakebids.types import ZipLists
 
 
-def quote_wrap(val: str):
+def quote_wrap(val: str) -> str:
     return json.dumps(val, ensure_ascii=False)
 
 
 def format_zip_lists(
     zip_list: ZipLists, max_width: int | float | None = None, tabstop: int = 4
-):
+) -> str:
     table = [_format_zip_row(key, row) for key, row in zip_list.items()]
     widths = [max(len(val) for val in col) for col in zip(*table)]
     aligned = _align_zip_table(table, widths)
@@ -35,7 +35,7 @@ def format_zip_lists(
     )
 
 
-def _format_zip_row(key: str, row: list[str]):
+def _format_zip_row(key: str, row: list[str]) -> list[str]:
     formatted_values = [
         quote_wrap(val) + sep
         for val, sep in it.zip_longest(row, it.repeat(", ", len(row) - 1), fillvalue="")
@@ -43,7 +43,7 @@ def _format_zip_row(key: str, row: list[str]):
     return [f"{quote_wrap(key)}: "] + ["[" + formatted_values[0]] + formatted_values[1:]
 
 
-def _align_zip_table(table: list[list[str]], widths: list[int]):
+def _align_zip_table(table: list[list[str]], widths: list[int]) -> list[list[str]]:
     output: list[list[str]] = []
     for row in table:
         spaces = [" " * (width - len(val)) for val, width in zip(row, widths)]
@@ -51,7 +51,9 @@ def _align_zip_table(table: list[list[str]], widths: list[int]):
     return output
 
 
-def _elide_zip_table(table: list[list[str]], widths: list[int], max_width: int | float):
+def _elide_zip_table(
+    table: list[list[str]], widths: list[int], max_width: int | float
+) -> list[list[str]] | list[tuple[str]] | list[list[str] | tuple[str]]:
     def new_col(val: str):
         return [[val] * len(table)]
 
@@ -59,11 +61,15 @@ def _elide_zip_table(table: list[list[str]], widths: list[int], max_width: int |
     elision = _find_elision(list(widths), slice(0, 0), overflow)
     cols = list(zip(*table))
     if elision != slice(0, 0):
-        return it.chain(
-            cols[: elision.start] if elision.start > 1 else [cols[0]] + new_col("["),
-            new_col("..."),
-            (new_col(" ") if elision.stop - elision.start < len(cols) - 1 else []),
-            cols[elision.stop :],
+        return list(
+            it.chain(
+                cols[: elision.start]
+                if elision.start > 1
+                else [cols[0]] + new_col("["),
+                new_col("..."),
+                (new_col(" ") if elision.stop - elision.start < len(cols) - 1 else []),
+                cols[elision.stop :],
+            )
         )
     return cols
 

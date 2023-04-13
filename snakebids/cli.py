@@ -3,6 +3,7 @@ import logging
 import os
 import pathlib
 import re
+from collections.abc import Iterable
 from typing import Any, Dict, List, Optional
 
 import attr
@@ -21,7 +22,13 @@ class KeyValue(argparse.Action):
     """Class for accepting key=value pairs in argparse"""
 
     # Constructor calling
-    def __call__(self, parser, namespace, values, option_string=None):
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: Iterable[str],
+        option_string: str | None = None,
+    ):
         setattr(namespace, self.dest, {})
 
         for value in values:
@@ -35,7 +42,13 @@ class KeyValue(argparse.Action):
 class SnakemakeHelpAction(argparse.Action):
     """Class for printing snakemake usage in argparse"""
 
-    def __call__(self, parser, namespace, values, option_string=None):
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values,
+        option_string: str | None = None,
+    ):
         snakemake.main(["-h"])
 
 
@@ -71,7 +84,7 @@ class SnakebidsArgs:
     reset_db: bool = False
 
 
-def create_parser(include_snakemake=False):
+def create_parser(include_snakemake: bool = False) -> argparse.ArgumentParser:
     """Generate basic Snakebids Parser
 
     Includes the standard Snakebids arguments.
@@ -165,7 +178,7 @@ def add_dynamic_args(
     parser: argparse.ArgumentParser,
     parse_args: Dict[str, Dict[str, str]],
     pybids_inputs: Dict[str, Dict[str, Dict[str, Any]]],
-):
+) -> None:
     # create parser group for app options
     app_group = parser.add_argument_group("SNAKEBIDS", "Options for snakebids app")
 
@@ -243,7 +256,7 @@ def add_dynamic_args(
         override_opts.add_argument(*argnames, default=None)
 
 
-def parse_snakebids_args(parser: argparse.ArgumentParser):
+def parse_snakebids_args(parser: argparse.ArgumentParser) -> SnakebidsArgs:
     all_args = parser.parse_known_args()
     if all_args[0].workflow_mode:
         logger.warning(
@@ -274,7 +287,7 @@ def parse_snakebids_args(parser: argparse.ArgumentParser):
     )
 
 
-def _make_underscore_dash_aliases(name: str):
+def _make_underscore_dash_aliases(name: str) -> set[str]:
     """Generate --dash-arg aliases for --dash_args and vice versa
 
     If no dashes or underscores are in the argument name, a tuple containing just the
@@ -287,7 +300,7 @@ def _make_underscore_dash_aliases(name: str):
 
     Returns
     -------
-    tuple of strings
+    set of strings
         Converted args
     """
     match = re.match(r"^--(.+)$", name)

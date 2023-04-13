@@ -10,15 +10,15 @@ from snakebids.app import SnakeBidsApp
 from snakebids.cli import add_dynamic_args
 
 
-def create_app(args):
+def create_app(args: argparse.Namespace) -> None:
     cookiecutter(
-        str(Path(snakebids.__path__[0]) / "project_template"),
+        str(Path(list(snakebids.__path__)[0]) / "project_template"),
         output_dir=args.output_dir,
         extra_context={"_output_dir": Path(args.output_dir).resolve().name},
     )
 
 
-def create_descriptor(args):
+def create_descriptor(args: argparse.Namespace) -> None:
     # pylint: disable=unsubscriptable-object
     app = SnakeBidsApp(args.app_dir.resolve())
     add_dynamic_args(app.parser, app.config["parse_args"], app.config["pybids_inputs"])
@@ -26,7 +26,7 @@ def create_descriptor(args):
     print(f"Boutiques descriptor created at {args.out_path}")
 
 
-def gen_parser():
+def gen_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Perform administrative Snakebids tasks."
     )
@@ -55,7 +55,7 @@ def gen_parser():
     return parser
 
 
-def main():
+def main() -> None:
     """Invoke Cookiecutter on the Snakebids project template."""
 
     parser = gen_parser()
