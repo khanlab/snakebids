@@ -39,3 +39,11 @@ repos:
         language: system
         exclude: \._py\}\}$
         types_or: [cython, pyi, python]
+  - repo: local
+    hooks:
+      - id: pyright
+        name: pyright
+        entry: poetry run pyright
+        language: system
+        exclude: ^docs
+        types_or: [cython, pyi, python]

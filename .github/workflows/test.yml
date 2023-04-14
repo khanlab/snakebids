@@ -69,6 +69,8 @@ jobs:
         run: poetry run flake8 snakebids
       - name: pylint
         run: poetry run pylint snakebids
+      - name: pyright
+        run: poetry run pyright snakebids
 
   test:
     runs-on: ubuntu-latest
