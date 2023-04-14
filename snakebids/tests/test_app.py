@@ -188,7 +188,7 @@ class TestRunSnakemake:
             print("System exited prematurely")
             print(e)
 
-        assert app.foo == "bar"
+        assert app.foo == "bar"  # type: ignore
 
 
 class TestGenBoutiques:

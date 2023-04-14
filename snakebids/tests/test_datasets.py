@@ -2,7 +2,7 @@ import copy
 import itertools as it
 import re
 import warnings
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 import more_itertools as itx
 import pytest
@@ -11,14 +11,15 @@ from hypothesis import strategies as st
 
 from snakebids.core.datasets import BidsComponent, BidsDataset
 from snakebids.tests import strategies as sb_st
-from snakebids.tests.helpers import debug, get_bids_path, get_zip_list, setify
+from snakebids.tests.helpers import get_bids_path, get_zip_list, setify
+from snakebids.types import ZipLists
 from snakebids.utils import sb_itertools as sb_it
-from snakebids.utils.utils import BidsEntity
+from snakebids.utils.utils import BidsEntity, MultiSelectDict
 
 
 def test_multiple_components_cannot_have_same_name():
-    comp1 = BidsComponent("foo", path=".", zip_lists={})
-    comp2 = BidsComponent("foo", path=".", zip_lists={})
+    comp1 = BidsComponent("foo", path=".", zip_lists=MultiSelectDict({}))
+    comp2 = BidsComponent("foo", path=".", zip_lists=MultiSelectDict({}))
     with pytest.raises(ValueError):
         BidsDataset.from_iterable([comp1, comp2])
 
@@ -44,7 +45,7 @@ class TestBidsComponentAliases:
 
 class TestBidsComponentValidation:
     @given(sb_st.zip_lists().filter(lambda v: len(v) > 1))
-    def test_zip_lists_must_be_same_length(self, zip_lists: Dict[str, List[str]]):
+    def test_zip_lists_must_be_same_length(self, zip_lists: ZipLists):
         itx.first(zip_lists.values()).append("foo")
         with pytest.raises(ValueError) as err:
             BidsComponent("foo", get_bids_path(zip_lists), zip_lists)
@@ -52,7 +53,7 @@ class TestBidsComponentValidation:
 
     @given(sb_st.zip_lists(), sb_st.bids_entity())
     def test_path_cannot_have_extra_entities(
-        self, zip_lists: Dict[str, List[str]], entity: BidsEntity
+        self, zip_lists: ZipLists, entity: BidsEntity
     ):
         assume(entity.wildcard not in zip_lists)
         path = get_bids_path(it.chain(zip_lists, [entity.entity]))
@@ -64,7 +65,7 @@ class TestBidsComponentValidation:
         )
 
     @given(sb_st.zip_lists().filter(lambda v: len(v) > 1))
-    def test_path_cannot_have_missing_entities(self, zip_lists: Dict[str, List[str]]):
+    def test_path_cannot_have_missing_entities(self, zip_lists: ZipLists):
         # Snakebids strategies won't return a zip_list with just datatype, but now that
         # we've dropped an entity we need to check again
         path_entities = sb_it.drop(1, zip_lists)
@@ -85,10 +86,12 @@ class TestBidsComponentEq:
         assert input != other
 
     def test_empty_BidsInput_are_equal(self):
-        assert BidsComponent("", "", {}) == BidsComponent("", "", {})
-        assert BidsComponent("", "{foo}{bar}", {"foo": [], "bar": []}) == BidsComponent(
-            "", "{foo}{bar}", {"foo": [], "bar": []}
+        assert BidsComponent("", "", MultiSelectDict({})) == BidsComponent(
+            "", "", MultiSelectDict({})
         )
+        assert BidsComponent(
+            "", "{foo}{bar}", MultiSelectDict({"foo": [], "bar": []})
+        ) == BidsComponent("", "{foo}{bar}", MultiSelectDict({"foo": [], "bar": []}))
 
     @given(sb_st.bids_components())
     def test_copies_are_equal(self, input: BidsComponent):
@@ -116,8 +119,8 @@ class TestBidsComponentEq:
     @given(sb_st.bids_components())
     def test_order_doesnt_affect_equality(self, input: BidsComponent):
         cp = copy.deepcopy(input)
-        for l in cp.zip_lists:
-            cp.zip_lists[l].reverse()
+        for list_ in cp.zip_lists:
+            cp.zip_lists[list_].reverse()
         assert cp == input
 
     @given(sb_st.bids_components())
@@ -158,7 +161,7 @@ class TestBidsComponentProperties:
         bids_input = BidsComponent(
             name="foo",
             path=get_bids_path(zip_lists),
-            zip_lists=zip_lists,
+            zip_lists=MultiSelectDict(zip_lists),
         )
 
         wildstr = ".".join(bids_input.input_wildcards.values())

@@ -28,7 +28,9 @@ def fakefs(
 
 
 @pytest.fixture
-def fakefs_tmpdir(request: pytest.FixtureRequest, fakefs: Optional[FakeFilesystem]):
+def fakefs_tmpdir(
+    request: pytest.FixtureRequest, fakefs: Optional[FakeFilesystem]
+) -> Path:
     """Version of tmpdir compatible with fakefs
 
     If fakefs is disabled, a tmpdir is returned using the builtin tmpdir fixture.
@@ -44,7 +46,7 @@ def fakefs_tmpdir(request: pytest.FixtureRequest, fakefs: Optional[FakeFilesyste
 
 
 @pytest.fixture
-def bids_fs(fakefs: Optional[FakeFilesystem]):
+def bids_fs(fakefs: Optional[FakeFilesystem]) -> FakeFilesystem | None:
     if fakefs:
         f = Path(*bids.layout.__path__, "config")
         fakefs.add_real_file(f / "bids.json")

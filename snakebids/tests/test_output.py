@@ -1,12 +1,10 @@
 from __future__ import absolute_import
 
-import itertools as it
 import json
 from pathlib import Path
 from typing import Callable
 
 import pytest
-from pytest_mock.plugin import MockerFixture
 
 import snakebids.utils.output as output
 from snakebids.exceptions import RunError

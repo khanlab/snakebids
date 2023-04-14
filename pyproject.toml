@@ -110,3 +110,7 @@ disable = """
     missing-module-docstring,
     fixme
 """
+
+[tool.pyright]
+include = ["snakebids"]
+exclude = ["snakebids/project_template"]

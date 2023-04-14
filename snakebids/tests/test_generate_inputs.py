@@ -7,7 +7,6 @@ import re
 import shutil
 import tempfile
 from collections import defaultdict
-from copy import deepcopy
 from pathlib import Path
 from typing import Dict, Iterable, List, NamedTuple, Optional, TypeVar
 
@@ -36,14 +35,12 @@ from snakebids.tests.helpers import (
     BidsListCompare,
     allow_tmpdir,
     create_dataset,
-    debug,
     get_bids_path,
     get_zip_list,
     reindex_dataset,
 )
 from snakebids.types import InputsConfig
-from snakebids.utils import sb_itertools as sb_it
-from snakebids.utils.utils import BidsEntity
+from snakebids.utils.utils import BidsEntity, MultiSelectDict
 
 T = TypeVar("T")
 
@@ -165,9 +162,11 @@ class TestFilterBools:
                 "0": BidsComponent(
                     name="0",
                     path="ce-{ce}_space-{space}",
-                    zip_lists={"ce": ["0"], "space": ["0"]},
+                    zip_lists=MultiSelectDict({"ce": ["0"], "space": ["0"]}),
                 ),
-                "1": BidsComponent(name="1", path="ce-{ce}", zip_lists={"ce": ["0"]}),
+                "1": BidsComponent(
+                    name="1", path="ce-{ce}", zip_lists=MultiSelectDict({"ce": ["0"]})
+                ),
             }
         )
     )
@@ -177,12 +176,12 @@ class TestFilterBools:
                 "1": BidsComponent(
                     name="1",
                     path="sub-{subject}/{datatype}/sub-{subject}",
-                    zip_lists={"subject": ["0"], "datatype": ["anat"]},
+                    zip_lists=MultiSelectDict({"subject": ["0"], "datatype": ["anat"]}),
                 ),
                 "0": BidsComponent(
                     name="0",
                     path="sub-{subject}/sub-{subject}",
-                    zip_lists={"subject": ["0"]},
+                    zip_lists=MultiSelectDict({"subject": ["0"]}),
                 ),
             }
         )
@@ -193,12 +192,12 @@ class TestFilterBools:
                 "1": BidsComponent(
                     name="1",
                     path="sub-{subject}/sub-{subject}_{suffix}.foo",
-                    zip_lists={"subject": ["0"], "suffix": ["bar"]},
+                    zip_lists=MultiSelectDict({"subject": ["0"], "suffix": ["bar"]}),
                 ),
                 "0": BidsComponent(
                     name="0",
                     path="{suffix}.foo",
-                    zip_lists={"suffix": ["bar"]},
+                    zip_lists=MultiSelectDict({"suffix": ["bar"]}),
                 ),
             }
         )
@@ -250,7 +249,7 @@ class TestAbsentConfigEntries:
             path = Path(bids(root, datatype="anat", suffix="T1w.nii.gz", **d))
             path.parent.mkdir(parents=True, exist_ok=True)
             path.touch()
-        return entities, zip_list
+        return entities, MultiSelectDict(zip_list)
 
     def test_missing_filters(self, tmpdir: Path):
         entities, zip_list = self.get_entities(tmpdir)
@@ -269,6 +268,7 @@ class TestAbsentConfigEntries:
             bids_dir=tmpdir,
             derivatives=derivatives,
             pybids_config=str(Path(__file__).parent / "data" / "custom_config.json"),
+            use_bids_inputs=True,
         )
         template = BidsDataset({"t1": BidsComponent("t1", config["t1"].path, zip_list)})
         # Order of the subjects is not deterministic
@@ -288,12 +288,15 @@ class TestAbsentConfigEntries:
 
         # Simplest case -- one input type, using pybids
         config = generate_inputs(
-            pybids_inputs=pybids_inputs,
             bids_dir=tmpdir,
+            pybids_inputs=pybids_inputs,
             derivatives=derivatives,
             pybids_config=str(Path(__file__).parent / "data" / "custom_config.json"),
+            use_bids_inputs=True,
         )
-        template = BidsDataset({"t1": BidsComponent("t1", config["t1"].path, {})})
+        template = BidsDataset(
+            {"t1": BidsComponent("t1", config["t1"].path, MultiSelectDict({}))}
+        )
         assert template == config
         assert config.subj_wildcards == {"subject": "{subject}"}
 
@@ -465,7 +468,7 @@ class TestCustomPaths:
         zip_lists = get_zip_list(entities, it.product(*entities.values()))
         assert BidsComponent(
             "foo", get_bids_path(zip_lists), zip_lists
-        ) == BidsComponent("foo", get_bids_path(result), result)
+        ) == BidsComponent("foo", get_bids_path(result), MultiSelectDict(result))
 
     @allow_tmpdir
     @given(path_entities=path_entities())
@@ -478,13 +481,15 @@ class TestCustomPaths:
         test_path = self.generate_test_directory(entities, template, temp_dir)
 
         # Test with filters
-        result_filtered = _parse_custom_path(test_path, **filters)
-        zip_lists = {
-            # Start with empty lists for each key, otherwise keys will be missing
-            **{key: [] for key in entities},
-            # Override entities with relevant filters before making zip lists
-            **get_zip_list(entities, it.product(*{**entities, **filters}.values())),
-        }
+        result_filtered = MultiSelectDict(_parse_custom_path(test_path, **filters))
+        zip_lists = MultiSelectDict(
+            {
+                # Start with empty lists for each key, otherwise keys will be missing
+                **{key: [] for key in entities},
+                # Override entities with relevant filters before making zip lists
+                **get_zip_list(entities, it.product(*{**entities, **filters}.values())),
+            }
+        )
         assert BidsComponent(
             "foo", get_bids_path(zip_lists), zip_lists
         ) == BidsComponent("foo", get_bids_path(result_filtered), result_filtered)
@@ -505,20 +510,22 @@ class TestCustomPaths:
             key: _generate_filters(exclude=values)[0]
             for key, values in filters.items()
         }
-        result_excluded = _parse_custom_path(
-            test_path, regex_search=True, **exclude_filters
+        result_excluded = MultiSelectDict(
+            _parse_custom_path(test_path, regex_search=True, **exclude_filters)
         )
 
         entities_excluded = {
             entity: [value for value in values if value not in filters.get(entity, [])]
             for entity, values in entities.items()
         }
-        zip_lists = {
-            # Start with empty lists for each key, otherwise keys will be missing
-            **{key: [] for key in entities},
-            # Override entities with relevant filters before making zip lists
-            **get_zip_list(entities, it.product(*entities_excluded.values())),
-        }
+        zip_lists = MultiSelectDict(
+            {
+                # Start with empty lists for each key, otherwise keys will be missing
+                **{key: [] for key in entities},
+                # Override entities with relevant filters before making zip lists
+                **get_zip_list(entities, it.product(*entities_excluded.values())),
+            }
+        )
 
         assert BidsComponent(
             "foo", get_bids_path(zip_lists), zip_lists
@@ -550,7 +557,8 @@ def test_custom_pybids_config(tmpdir: Path):
         pybids_inputs=pybids_inputs,
         bids_dir=tmpdir,
         derivatives=derivatives,
-        pybids_config=Path(__file__).parent / "data" / "custom_config.json",
+        pybids_config=str(Path(__file__).parent / "data" / "custom_config.json"),
+        use_bids_inputs=True,
     )
     template = BidsDataset(
         {
@@ -563,7 +571,7 @@ def test_custom_pybids_config(tmpdir: Path):
                     foo="{foo}",
                     suffix="T1w.nii.gz",
                 ),
-                {"foo": ["0", "1"], "subject": ["001", "001"]},
+                MultiSelectDict({"foo": ["0", "1"], "subject": ["001", "001"]}),
             )
         }
     )
@@ -600,7 +608,7 @@ def test_nonstandard_custom_pybids_config(tmpdir: Path):
             bids_dir=tmpdir,
             derivatives=derivatives,
             pybids_config=(
-                Path(__file__).parent / "data" / "custom_config_nonstandard.json"
+                str(Path(__file__).parent / "data" / "custom_config_nonstandard.json")
             ),
         )
 
@@ -635,13 +643,16 @@ def test_t1w():
         pybids_inputs=pybids_inputs,
         bids_dir=real_bids_dir,
         derivatives=derivatives,
+        use_bids_inputs=True,
     )
     template = BidsDataset(
         {
             "t1": BidsComponent(
                 "t1",
                 result["t1"].path,
-                {"acq": ["mprage", "mprage"], "subject": ["001", "002"]},
+                MultiSelectDict(
+                    {"acq": ["mprage", "mprage"], "subject": ["001", "002"]}
+                ),
             )
         }
     )
@@ -669,6 +680,7 @@ def test_t1w():
         bids_dir=real_bids_dir,
         derivatives=derivatives,
         participant_label="001",
+        use_bids_inputs=True,
     )
     assert result["scan"].entities == {
         "acq": ["mprage"],
@@ -680,17 +692,19 @@ def test_t1w():
             "scan": BidsComponent(
                 "scan",
                 result["scan"].path,
-                {
-                    "acq": [
-                        "mprage",
-                    ],
-                    "subject": [
-                        "001",
-                    ],
-                    "suffix": [
-                        "T1w",
-                    ],
-                },
+                MultiSelectDict(
+                    {
+                        "acq": [
+                            "mprage",
+                        ],
+                        "subject": [
+                            "001",
+                        ],
+                        "suffix": [
+                            "T1w",
+                        ],
+                    }
+                ),
             )
         }
     )
@@ -739,18 +753,23 @@ def test_t1w():
             pybids_inputs=pybids_inputs,
             bids_dir=bids_dir,
             derivatives=derivatives,
+            use_bids_inputs=True,
         )
         template = BidsDataset(
             {
                 "t1": BidsComponent(
                     "t1",
                     result["t1"].path,
-                    {
-                        "acq": ["mprage", "mprage"],
-                        "subject": ["001", "002"],
-                    },
+                    MultiSelectDict(
+                        {
+                            "acq": ["mprage", "mprage"],
+                            "subject": ["001", "002"],
+                        }
+                    ),
                 ),
-                "t2": BidsComponent("t2", result["t2"].path, {"subject": ["002"]}),
+                "t2": BidsComponent(
+                    "t2", result["t2"].path, MultiSelectDict({"subject": ["002"]})
+                ),
             }
         )
         # Order of the subjects is not deterministic
@@ -851,7 +870,7 @@ def test_get_lists_from_bids():
     )
     print(wildcard_path_t1)
     layout = BIDSLayout(bids_dir, validate=False)
-    pybids_inputs = {
+    pybids_inputs: InputsConfig = {
         "t1": {
             "filters": {"suffix": "T1w"},
             "wildcards": ["acquisition", "subject", "session", "run"],
@@ -879,10 +898,12 @@ def test_get_lists_from_bids():
                 template = BidsComponent(
                     "t1",
                     wildcard_path_t1,
-                    {
-                        "acq": ["mprage", "mprage"],
-                        "subject": ["001", "002"],
-                    },
+                    MultiSelectDict(
+                        {
+                            "acq": ["mprage", "mprage"],
+                            "subject": ["001", "002"],
+                        }
+                    ),
                 )
                 assert template == bids_lists
             elif bids_lists.input_name == "t2":
@@ -890,9 +911,11 @@ def test_get_lists_from_bids():
                 template = BidsComponent(
                     "t2",
                     wildcard_path_t2,
-                    {
-                        "subject": ["002"],
-                    },
+                    MultiSelectDict(
+                        {
+                            "subject": ["002"],
+                        }
+                    ),
                 )
                 assert template == bids_lists
 
@@ -981,9 +1004,9 @@ class TestDB:
             bids_dir=self.bids_dir,
             derivatives=False,
             pybids_database_dir=self.pybids_db.get("database_dir"),
-            pybids_reset_database=self.pybids_db.get("reset_database"),
+            pybids_reset_database=self.pybids_db["reset_database"],
         )
-        assert not os.path.exists(self.pybids_db.get("database_dir"))
+        assert not os.path.exists(self.pybids_db["database_dir"])
 
     def test_database_dir_relative(self):
         # Update config
@@ -994,7 +1017,7 @@ class TestDB:
             bids_dir=self.bids_dir,
             derivatives=False,
             pybids_database_dir=self.pybids_db.get("database_dir"),
-            pybids_reset_database=self.pybids_db.get("reset_database"),
+            pybids_reset_database=self.pybids_db["reset_database"],
         )
         assert not os.path.exists(f"{self.tmpdir}/data/.db/")
 
@@ -1008,7 +1031,7 @@ class TestDB:
             bids_dir=self.bids_dir,
             derivatives=False,
             pybids_database_dir=self.pybids_db.get("database_dir"),
-            pybids_reset_database=self.pybids_db.get("reset_database"),
+            pybids_reset_database=self.pybids_db["reset_database"],
         )
         assert os.path.exists(f"{self.tmpdir}/data/.db/")
 
@@ -1023,7 +1046,7 @@ class TestDB:
             bids_dir=self.bids_dir,
             derivatives=False,
             pybids_database_dir=self.pybids_db.get("database_dir"),
-            pybids_reset_database=self.pybids_db.get("reset_database"),
+            pybids_reset_database=self.pybids_db["reset_database"],
         )
         assert not layout.get(subject="003")
 
@@ -1034,6 +1057,6 @@ class TestDB:
             bids_dir=self.bids_dir,
             derivatives=False,
             pybids_database_dir=self.pybids_db.get("database_dir"),
-            pybids_reset_database=self.pybids_db.get("reset_database"),
+            pybids_reset_database=self.pybids_db["reset_database"],
         )
         assert layout.get(subject="003")

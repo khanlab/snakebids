@@ -50,10 +50,10 @@ class BidsEntity:
 
     entity: str = attrs.field(converter=str)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.entity
 
-    def __eq__(self, other: Any):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, str):
             return self.entity == other
         if isinstance(other, BidsEntity):
@@ -61,15 +61,11 @@ class BidsEntity:
         return False
 
     @property
-    def tag(self):
+    def tag(self) -> str:
         """Get the bids tag version of the entity
 
         For entities in the bids spec, the tag is the short version of the entity
         name. Otherwise, the tag is equal to the entity.
-
-        Returns
-        -------
-        str
         """
         tags = read_bids_tags()
         return (
@@ -79,15 +75,11 @@ class BidsEntity:
         )
 
     @property
-    def match(self):
+    def match(self) -> str:
         """Get regex of acceptable value matches
 
         If no pattern is associated with the entity, the default pattern is a word with
         letters and numbers
-
-        Returns
-        -------
-        str
         """
         tags = read_bids_tags()
         return (
@@ -97,13 +89,8 @@ class BidsEntity:
         )
 
     @property
-    def before(self):
-        """regex str to search before value in paths
-
-        Returns
-        -------
-        str
-        """
+    def before(self) -> str:
+        """regex str to search before value in paths"""
         tags = read_bids_tags()
         return (
             tags[self.entity]["before"]
@@ -112,13 +99,8 @@ class BidsEntity:
         )
 
     @property
-    def after(self):
-        """regex str to search after value in paths
-
-        Returns
-        -------
-        str
-        """
+    def after(self) -> str:
+        """regex str to search after value in paths"""
         tags = read_bids_tags()
         return (
             tags[self.entity]["after"]
@@ -127,28 +109,21 @@ class BidsEntity:
         )
 
     @property
-    def regex(self):
+    def regex(self) -> re.Pattern[str]:
         """Complete pattern to match when searching in paths
 
         Contains three capture groups, the first corresponding to "before", the second
         to "value", and the third to "after"
-        Returns
-        -------
-        str
         """
         return re.compile(f"({self.before})({self.match})({self.after})")
 
     @property
-    def wildcard(self):
+    def wildcard(self) -> str:
         """Get the snakebids {wildcard}
 
         The wildcard is generally equal to the tag, i.e. the short version of the entity
         name, except for subject and session, which use the full name name. This is to
         ensure compatibility with the bids function
-
-        Returns
-        -------
-        str
         """
         # HACK FIX FOR acq vs acquisition etc -- should
         # eventually update the bids() function to also use
@@ -160,7 +135,7 @@ class BidsEntity:
         return self.tag
 
     @classmethod
-    def from_tag(cls, tag: str):
+    def from_tag(cls, tag: str) -> BidsEntity:
         """Return the entity associated with the given tag, if found
 
         If not associated entity is found, the tag itself is used as the entity name
@@ -185,7 +160,7 @@ def matches_any(
     match_list: Iterable[Any],
     match_func: Callable[[Any, Any], Any],
     *args: Any,
-):
+) -> bool:
     for match in match_list:
         if match_func(match, item, *args):
             return True
@@ -194,7 +169,7 @@ def matches_any(
 
 def get_match_search_func(
     match_list: Iterable[Any], match_func: Callable[[Any, Any], Any]
-):
+) -> Callable[[Any], bool]:
     """Return a match search function suitable for use in filter
 
     Parameters
@@ -222,7 +197,7 @@ def get_match_search_func(
 class BidsParseError(Exception):
     """Exception raised for errors encountered in the parsing of Bids paths"""
 
-    def __init__(self, path: str, entity: BidsEntity):
+    def __init__(self, path: str, entity: BidsEntity) -> None:
         self.path = path
         self.entity = entity
         super().__init__(path, entity)
@@ -238,7 +213,7 @@ def property_alias(
     label: str | None = None,
     ref: str | None = None,
     copy_extended_docstring: bool = False,
-):
+) -> Callable[[Callable[[Any], Any]], UserProperty]:
     """Set property as an alias for another property
 
     Copies the docstring from the aliased property to the alias
@@ -259,7 +234,7 @@ def property_alias(
     property
     """
 
-    def inner(__func: Callable[[Any], T]) -> "UserProperty[T]":
+    def inner(__func: Callable[[Any], Any]) -> UserProperty:
         alias = UserProperty(__func)
         if label:
             link = f":attr:`{label} <{ref}>`" if ref else label

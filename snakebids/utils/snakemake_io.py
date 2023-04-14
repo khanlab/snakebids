@@ -10,9 +10,10 @@ from pathlib import Path
 from typing import Sequence
 
 from snakebids.types import ZipLists
+from snakebids.utils.utils import MultiSelectDict
 
 
-def regex(filepattern: str):
+def regex(filepattern: str) -> str:
     """Build Snakebids regex based on the given file pattern."""
     regex_list: list[str] = []
     last = 0
@@ -93,7 +94,7 @@ def glob_wildcards(
     # remove duplicates while preserving ordering
     names = list(dict.fromkeys(names))
 
-    wildcards: ZipLists = collections.defaultdict(list)
+    wildcards = collections.defaultdict(list)
 
     re_pattern = re.compile(regex(pattern))
 
@@ -114,12 +115,14 @@ def glob_wildcards(
         if match:
             for name, value in match.groupdict().items():
                 wildcards[name].append(value)
-    return wildcards
+    return MultiSelectDict(wildcards)
 
 
 def update_wildcard_constraints(
-    pattern, wildcard_constraints, global_wildcard_constraints
-):
+    pattern: str,
+    wildcard_constraints: dict[str, str],
+    global_wildcard_constraints: dict[str, str],
+) -> str:
     """Update wildcard constraints.
 
     Parameters

@@ -1,7 +1,7 @@
 class ConfigError(Exception):
     """Exception raised for errors with the Snakebids config."""
 
-    def __init__(self, msg):
+    def __init__(self, msg: str) -> None:
         self.msg = msg
         super().__init__(msg)
 

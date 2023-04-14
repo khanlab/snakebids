@@ -43,8 +43,8 @@ def generate_inputs(
     derivatives: bool | Path | str = ...,
     pybids_config: str | None = ...,
     limit_to: list[str] | None = ...,
-    participant_label: list[str] | None = ...,
-    exclude_participant_label: list[str] | None = ...,
+    participant_label: list[str] | str | None = ...,
+    exclude_participant_label: list[str] | str | None = ...,
     use_bids_inputs: Literal[False] = ...,
 ) -> BidsDatasetDict:
     ...
@@ -60,8 +60,8 @@ def generate_inputs(
     derivatives: bool | Path | str = ...,
     pybids_config: str | None = ...,
     limit_to: list[str] | None = ...,
-    participant_label: list[str] | None = ...,
-    exclude_participant_label: list[str] | None = ...,
+    participant_label: list[str] | str | None = ...,
+    exclude_participant_label: list[str] | str | None = ...,
     use_bids_inputs: Literal[True] | None = ...,
 ) -> BidsDataset:
     ...
@@ -76,8 +76,8 @@ def generate_inputs(
     derivatives: bool | Path | str = False,
     pybids_config: str | None = None,
     limit_to: list[str] | None = None,
-    participant_label: list[str] | None = None,
-    exclude_participant_label: list[str] | None = None,
+    participant_label: list[str] | str | None = None,
+    exclude_participant_label: list[str] | str | None = None,
     use_bids_inputs: bool | None = None,
 ) -> BidsDataset | BidsDatasetDict:
     """Dynamically generate snakemake inputs using pybids_inputs

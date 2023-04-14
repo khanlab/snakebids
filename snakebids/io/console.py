@@ -94,7 +94,7 @@ def in_interactive_session() -> bool:
         True if running under python/ipython interactive shell.
     """
 
-    def check_main():
+    def check_main() -> bool:
         try:
             # pylint: disable=import-outside-toplevel
             import __main__ as main

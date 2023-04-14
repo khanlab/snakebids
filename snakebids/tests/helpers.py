@@ -1,5 +1,4 @@
-"""Helper functions and classes for tests
-"""
+"""Helper functions and classes for tests"""
 
 import functools as ft
 import itertools as it
@@ -11,15 +10,15 @@ from hypothesis import HealthCheck, settings
 
 from snakebids import bids
 from snakebids.core.input_generation import BidsDataset, generate_inputs
-from snakebids.types import InputsConfig, UserDictPy37
-from snakebids.utils.utils import BidsEntity
+from snakebids.types import InputsConfig, UserDictPy37, ZipLists
+from snakebids.utils.utils import BidsEntity, MultiSelectDict
 
 T = TypeVar("T")
 
 
 def get_zip_list(
     entities: Iterable[Union[BidsEntity, str]], combinations: Iterable[Tuple[str, ...]]
-):
+) -> ZipLists:
     """Return a zip list from iterables of entities and value combinations
 
     Parameters
@@ -35,13 +34,15 @@ def get_zip_list(
     Dict[str, List[str]]
         zip_list representation of entity-value combinations
     """
-    return {
-        BidsEntity(entity).wildcard: list(combs)  # type: ignore
-        for entity, combs in zip(entities, zip(*combinations))
-    }
+    return MultiSelectDict(
+        {
+            BidsEntity(str(entity)).wildcard: list(combs)
+            for entity, combs in zip(entities, zip(*combinations))
+        }
+    )
 
 
-def setify(dic: Dict[Any, List[Any]]):
+def setify(dic: Dict[Any, List[Any]]) -> Dict[Any, set[Any]]:
     """Convert a dict of *->lists into a dict of *->sets
 
     Parameters
@@ -57,7 +58,7 @@ def setify(dic: Dict[Any, List[Any]]):
     return {key: set(val) for key, val in dic.items()}
 
 
-def get_bids_path(entities: Iterable[str]):
+def get_bids_path(entities: Iterable[str]) -> str:
     """Get consistently ordered bids path for a group of entities
 
     Parameters
@@ -71,9 +72,9 @@ def get_bids_path(entities: Iterable[str]):
         bids path
     """
 
-    def get_tag(entity: BidsEntity):
+    def get_tag(entity: BidsEntity) -> tuple[str, str]:
         # For pybids, suffixes MUST be followed by extensions, but we don't yet support
-        # seperate indexing of extensions, so add a dummy extension any time there's a
+        # separate indexing of extensions, so add a dummy extension any time there's a
         # suffix
         extension = ".foo" if entity == "suffix" else ""
         return entity.wildcard, f"{{{entity.wildcard}}}{extension}"
@@ -91,7 +92,7 @@ class BidsListCompare(UserDictPy37[str, Dict[str, List[str]]]):
     the comparison
     """
 
-    def __eq__(self, other: object):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, dict):
             return False
         for name, lists in other.items():
@@ -130,7 +131,7 @@ def debug(**overrides: Any):
     return inner
 
 
-def create_dataset(root: Union[str, Path], dataset: BidsDataset):
+def create_dataset(root: Union[str, Path], dataset: BidsDataset) -> None:
     """Create an empty BidsDataset on the filesystem
 
     Creates the directory structure and files represented by a BidsDataset. Files are
@@ -165,7 +166,9 @@ def create_snakebids_config(dataset: BidsDataset) -> InputsConfig:
     }
 
 
-def reindex_dataset(root: str, dataset: BidsDataset, use_custom_paths: bool = False):
+def reindex_dataset(
+    root: str, dataset: BidsDataset, use_custom_paths: bool = False
+) -> BidsDataset:
     """Create BidsDataset on the filesystem and reindex
 
     Paths within the dataset must be absolute
@@ -175,7 +178,7 @@ def reindex_dataset(root: str, dataset: BidsDataset, use_custom_paths: bool = Fa
     if use_custom_paths:
         for comp in config:
             config[comp]["custom_path"] = dataset[comp].path
-    return generate_inputs(root, config)
+    return generate_inputs(root, config, use_bids_inputs=True)
 
 
 def allow_tmpdir(__callable: T) -> T:

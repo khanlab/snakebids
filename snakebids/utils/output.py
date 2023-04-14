@@ -16,7 +16,7 @@ from snakebids.exceptions import RunError
 Mode = Union[Literal["workflow"], Literal["bidsapp"]]
 
 
-def prepare_bidsapp_output(outputdir: Path, force_output: bool = False):
+def prepare_bidsapp_output(outputdir: Path, force_output: bool = False) -> None:
     """Ensure output directory is in the correct mode and is ready for snakemake to run
 
     Checks for existing output at the directory, creating it if necessary. Creates a
@@ -57,7 +57,7 @@ def prepare_bidsapp_output(outputdir: Path, force_output: bool = False):
     write_output_mode(outputdir / ".snakebids", "bidsapp")
 
 
-def write_output_mode(dotfile: Path, mode: Mode):
+def write_output_mode(dotfile: Path, mode: Mode) -> None:
     """Write output mode to .snakebids
 
     Parameters
@@ -77,7 +77,7 @@ def write_output_mode(dotfile: Path, mode: Mode):
         json.dump(data, f)
 
 
-def _get_snakebids_file(outputdir: Path):
+def _get_snakebids_file(outputdir: Path) -> dict[str, str] | None:
     """Ensure populated dir contains .snakebids file, retrieving it if it does.
 
     First checks if outputdir doesn't exist or is completely empty, returing None if so.
@@ -134,7 +134,7 @@ def _get_snakebids_file(outputdir: Path):
     )
 
 
-def get_time_hash():
+def get_time_hash() -> str:
     """currently unused"""
 
     time_hash = hashlib.sha1()
@@ -142,7 +142,9 @@ def get_time_hash():
     return time_hash.hexdigest()[:8]
 
 
-def write_config_file(config_file: Path, data: dict, force_overwrite: bool = False):
+def write_config_file(
+    config_file: Path, data: dict, force_overwrite: bool = False
+) -> None:
     if (config_file.exists()) and not force_overwrite:
         raise RunError(
             f"A config file named {config_file.name} already exists:\n"
