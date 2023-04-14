@@ -1,5 +1,7 @@
 """Tools to manage generation and interconversion of bidsapps and snakemake outputs."""
 
+from __future__ import annotations
+
 import hashlib
 import json
 import time

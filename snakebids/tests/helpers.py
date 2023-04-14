@@ -1,5 +1,7 @@
 """Helper functions and classes for tests"""
 
+from __future__ import annotations
+
 import functools as ft
 import itertools as it
 from pathlib import Path
