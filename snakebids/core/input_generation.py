@@ -6,7 +6,7 @@ import logging
 import re
 from collections import defaultdict
 from pathlib import Path
-from typing import Generator, Iterable, Optional, Sequence, overload
+from typing import Any, Generator, Iterable, Optional, Sequence, overload
 
 import more_itertools as itx
 from bids import BIDSLayout, BIDSLayoutIndexer
@@ -675,7 +675,7 @@ def _get_lists_from_bids(
         yield BidsComponent(input_name, path, MultiSelectDict(zip_lists))
 
 
-def get_wildcard_constraints(image_types: dict) -> dict[str, str]:
+def get_wildcard_constraints(image_types: dict[str, dict[str, Any]]) -> dict[str, str]:
     """Return a wildcard_constraints dict for snakemake to use, containing
     all the wildcards that are in the dynamically grabbed inputs
 

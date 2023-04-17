@@ -4,6 +4,7 @@ import functools as ft
 import importlib.resources
 import json
 import re
+from pathlib import Path
 from typing import Any, Callable, Iterable, TypeVar, overload
 
 import attrs
@@ -17,7 +18,7 @@ T = TypeVar("T")
 
 
 @ft.lru_cache(None)
-def read_bids_tags(bids_json=None) -> dict[str, dict[str, str]]:
+def read_bids_tags(bids_json: Path | None = None) -> dict[str, dict[str, str]]:
     """Read the bids tags we are aware of from a JSON file.
 
     This is used specifically for compatibility with pybids, since some tag keys
@@ -26,7 +27,7 @@ def read_bids_tags(bids_json=None) -> dict[str, dict[str, str]]:
 
     Parameters
     ----------
-    bids_json : str, optional
+    bids_json
         Path to JSON file to use, if not specified will use
         ``bids_tags.json`` in the snakebids module.
 
@@ -213,7 +214,7 @@ def property_alias(
     label: str | None = None,
     ref: str | None = None,
     copy_extended_docstring: bool = False,
-) -> Callable[[Callable[[Any], Any]], UserProperty]:
+) -> Callable[[Callable[[Any], T]], "UserProperty[T]"]:
     """Set property as an alias for another property
 
     Copies the docstring from the aliased property to the alias
@@ -234,7 +235,7 @@ def property_alias(
     property
     """
 
-    def inner(__func: Callable[[Any], Any]) -> UserProperty:
+    def inner(__func: Callable[[Any], T]) -> "UserProperty[T]":
         alias = UserProperty(__func)
         if label:
             link = f":attr:`{label} <{ref}>`" if ref else label

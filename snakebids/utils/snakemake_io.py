@@ -93,7 +93,7 @@ def glob_wildcards(
     # remove duplicates while preserving ordering
     names = list(dict.fromkeys(names))
 
-    wildcards = collections.defaultdict(list)
+    wildcards: dict[str, list[str]] = collections.defaultdict(list)
 
     re_pattern = re.compile(regex(pattern))
 
@@ -134,7 +134,7 @@ def update_wildcard_constraints(
         Dictionary of wildcard:constraint key-value pairs.
     """
 
-    def replace_constraint(match):
+    def replace_constraint(match: re.Match[str]):
         name = match.group("name")
         constraint = match.group("constraint")
         newconstraint = wildcard_constraints.get(
@@ -151,7 +151,7 @@ def update_wildcard_constraints(
             return f"{{{name},{newconstraint}}}"
         return match.group(0)
 
-    examined_names = set()
+    examined_names: set[str] = set()
     updated = _wildcard_regex.sub(replace_constraint, pattern)
 
     return updated
