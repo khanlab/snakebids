@@ -3,7 +3,7 @@ from __future__ import annotations
 import operator as op
 import re
 from collections.abc import Iterator
-from typing import Dict, List, TypeVar, Union, overload
+from typing import List, TypeVar, Union, overload
 
 import more_itertools as itx
 from typing_extensions import Literal
@@ -252,7 +252,7 @@ def get_filtered_ziplist_index(zip_list, wildcards, subj_wildcards) -> int | lis
     return indices
 
 
-def _get_zip_list_indices(zip_list: Dict[str, List[str]]) -> Iterator[int]:
+def _get_zip_list_indices(zip_list: dict[str, list[str]]) -> Iterator[int]:
     """Convert a zip_list into its indices
 
     Generates a sequence of numbers from 0 up to the length of the zip_lists. For
@@ -269,7 +269,7 @@ def _get_zip_list_indices(zip_list: Dict[str, List[str]]) -> Iterator[int]:
 
     Parameters
     ----------
-    zip_list : Dict[str, List[str]]
+    zip_list : dict[str, list[str]]
         Zip_list to be converted
 
     Yields

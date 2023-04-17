@@ -1,4 +1,4 @@
-from typing import Dict, List, Union
+from __future__ import annotations
 
 import pytest
 
@@ -86,7 +86,7 @@ from snakebids.types import ZipLists
 )
 def test_filter_list(
     zip_list: ZipLists,
-    filters: Dict[str, Union[List[str], str]],
-    output: Dict[str, Dict[str, List[str]]],
+    filters: dict[str, list[str] | str],
+    output: dict[str, dict[str, list[str]]],
 ):
     assert filter_list(zip_list, filters) == output

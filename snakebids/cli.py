@@ -6,7 +6,7 @@ import os
 import pathlib
 import re
 from collections.abc import Iterable
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import attr
 import snakemake
@@ -72,7 +72,7 @@ class SnakebidsArgs:
         Directory to place pybids database
     snakemake_args : list of strings
         Arguments to pass on to Snakemake
-    args_dict : Dict[str, Any]
+    args_dict : dict[str, Any]
         Contains all the snakebids specific args. Meant to contain custom user args
         defined in config, as well as dynamic --filter-xx and --wildcard-xx args.
         These will eventually be printed in the new config.
@@ -80,8 +80,8 @@ class SnakebidsArgs:
 
     force: bool
     outputdir: Path = attr.ib(converter=lambda p: Path(p).resolve())
-    snakemake_args: List[str]
-    args_dict: Dict[str, Any]
+    snakemake_args: list[str]
+    args_dict: dict[str, Any]
     pybidsdb_dir: Optional[Path] = None
     reset_db: bool = False
 
@@ -178,8 +178,8 @@ def create_parser(include_snakemake: bool = False) -> argparse.ArgumentParser:
 
 def add_dynamic_args(
     parser: argparse.ArgumentParser,
-    parse_args: Dict[str, Dict[str, str]],
-    pybids_inputs: Dict[str, Dict[str, Dict[str, Any]]],
+    parse_args: dict[str, dict[str, str]],
+    pybids_inputs: dict[str, dict[str, dict[str, Any]]],
 ) -> None:
     # create parser group for app options
     app_group = parser.add_argument_group("SNAKEBIDS", "Options for snakebids app")

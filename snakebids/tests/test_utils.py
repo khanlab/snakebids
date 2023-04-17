@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import operator as op
 import re
-from typing import Any, List, Tuple
+from typing import Any
 
 import more_itertools as itx
 import pytest
@@ -15,7 +15,7 @@ from snakebids.utils.utils import MultiSelectDict, matches_any
 
 class TestMatchesAny:
     @given(st.text(), st.lists(st.text()))
-    def test_with_eq_operator(self, item: str, match_list: List[str]):
+    def test_with_eq_operator(self, item: str, match_list: list[str]):
         if item not in match_list:
             assert matches_any(item, match_list, op.eq) is False
             match_list.append(item)
@@ -38,7 +38,7 @@ class TestMatchesAny:
         return item, match_list
 
     @given(NonMatchingMatchList())
-    def test_with_re_match(self, args: Tuple[str, List[str]]):
+    def test_with_re_match(self, args: tuple[str, list[str]]):
         item, match_list = args
 
         if item not in match_list:

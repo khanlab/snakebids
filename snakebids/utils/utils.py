@@ -4,7 +4,7 @@ import functools as ft
 import importlib.resources
 import json
 import re
-from typing import Any, Callable, Dict, Iterable, TypeVar, overload
+from typing import Any, Callable, Iterable, TypeVar, overload
 
 import attrs
 import more_itertools as itx
@@ -17,7 +17,7 @@ T = TypeVar("T")
 
 
 @ft.lru_cache(None)
-def read_bids_tags(bids_json=None) -> Dict[str, Dict[str, str]]:
+def read_bids_tags(bids_json=None) -> dict[str, dict[str, str]]:
     """Read the bids tags we are aware of from a JSON file.
 
     This is used specifically for compatibility with pybids, since some tag keys

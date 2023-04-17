@@ -7,7 +7,6 @@ import json
 import time
 from collections import OrderedDict
 from pathlib import Path, PosixPath, WindowsPath
-from typing import Dict, Union
 
 import more_itertools as itx
 import yaml
@@ -15,7 +14,7 @@ from typing_extensions import Literal
 
 from snakebids.exceptions import RunError
 
-Mode = Union[Literal["workflow"], Literal["bidsapp"]]
+Mode = Literal["workflow", "bidsapp"]
 
 
 def prepare_bidsapp_output(outputdir: Path, force_output: bool = False) -> None:
@@ -119,7 +118,7 @@ def _get_snakebids_file(outputdir: Path) -> dict[str, str] | None:
         )
         with (outputdir / ".snakebids").open("r") as f:
             try:
-                snakebids_data: Dict[str, str] = json.load(f)
+                snakebids_data: dict[str, str] = json.load(f)
             except json.JSONDecodeError as err:
                 raise malformed_err from err
         if "mode" not in snakebids_data:

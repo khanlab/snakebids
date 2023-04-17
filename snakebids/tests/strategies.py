@@ -5,7 +5,7 @@ import copy
 import itertools as it
 import string
 from pathlib import Path
-from typing import Any, List, Optional, Type, TypeVar
+from typing import Any, Optional, Type, TypeVar
 
 import hypothesis.strategies as st
 from bids.layout import Config as BidsConfig
@@ -56,7 +56,7 @@ def zip_lists(
     max_entities: int = 5,
     min_values: int = 1,
     max_values: int = 3,
-    entities: Optional[List[BidsEntity]] = None,
+    entities: Optional[list[BidsEntity]] = None,
     restrict_patterns: bool = False,
 ):
     # Generate multiple entity sets for different "file types"
@@ -127,7 +127,7 @@ def bids_input_lists(
     draw: st.DrawFn,
     min_size: int = 1,
     max_size: int = 5,
-    entities: Optional[List[BidsEntity]] = None,
+    entities: Optional[list[BidsEntity]] = None,
 ):
     # Generate multiple entity sets for different "file types"
     if entities is None:

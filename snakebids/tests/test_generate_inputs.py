@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import filecmp
 import functools as ft
 import itertools as it
@@ -411,7 +413,7 @@ def path_entities(draw: st.DrawFn):
         )
     )
 
-    def get_subset(of: Iterable[T]) -> List[T]:
+    def get_subset(of: Iterable[T]) -> list[T]:
         return draw(
             st.lists(st.sampled_from([*of]), unique=True, max_size=len(entities))
         )
@@ -436,7 +438,7 @@ class TestCustomPaths:
         return fakefs_tmpdir
 
     def generate_test_directory(
-        self, entities: Dict[str, List[str]], template: Path, tmpdir: Path
+        self, entities: dict[str, list[str]], template: Path, tmpdir: Path
     ):
         root = Path(tempfile.mkdtemp(prefix="hypothesis-", dir=tmpdir))
         # Generate fake directory structure

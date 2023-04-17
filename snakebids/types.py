@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Hashable
-from typing import Generic
+from typing import Dict, Generic
 
 from typing_extensions import TYPE_CHECKING, TypeAlias, TypedDict, TypeVar
 
@@ -59,7 +59,7 @@ _K = TypeVar("_K", bound=Hashable)
 _V = TypeVar("_V")
 if TYPE_CHECKING:
 
-    class UserDictPy37(dict[_K, _V]):
+    class UserDictPy37(Dict[_K, _V]):
         pass
 
 else:

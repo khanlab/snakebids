@@ -5,7 +5,7 @@ from __future__ import annotations
 import functools as ft
 import itertools as it
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Tuple, TypeVar, Union
+from typing import Any, Callable, Dict, Iterable, List, TypeVar
 
 import pytest
 from hypothesis import HealthCheck, settings
@@ -19,7 +19,7 @@ T = TypeVar("T")
 
 
 def get_zip_list(
-    entities: Iterable[Union[BidsEntity, str]], combinations: Iterable[Tuple[str, ...]]
+    entities: Iterable[BidsEntity | str], combinations: Iterable[tuple[str, ...]]
 ) -> ZipLists:
     """Return a zip list from iterables of entities and value combinations
 
@@ -27,13 +27,13 @@ def get_zip_list(
     ----------
     entities : Iterable[str]
         Iterable of entities
-    combinations : Iterable[Tuple[str, ...]]
+    combinations : Iterable[tuple[str, ...]]
         Iterable of combinations (e.g. produced using itertools.product). Each tuple
         must be the same length as entities
 
     Returns
     -------
-    Dict[str, List[str]]
+    dict[str, list[str]]
         zip_list representation of entity-value combinations
     """
     return MultiSelectDict(
@@ -44,17 +44,17 @@ def get_zip_list(
     )
 
 
-def setify(dic: Dict[Any, List[Any]]) -> Dict[Any, set[Any]]:
+def setify(dic: dict[Any, list[Any]]) -> dict[Any, set[Any]]:
     """Convert a dict of *->lists into a dict of *->sets
 
     Parameters
     ----------
-    dic : Dict[Any, List[Any]]
+    dic : dict[Any, list[Any]]
         Dict of lists to convert
 
     Returns
     -------
-    Dict[Any, Set[Any]]
+    dict[Any, Set[Any]]
         Dict of sets
     """
     return {key: set(val) for key, val in dic.items()}
@@ -133,7 +133,7 @@ def debug(**overrides: Any):
     return inner
 
 
-def create_dataset(root: Union[str, Path], dataset: BidsDataset) -> None:
+def create_dataset(root: str | Path, dataset: BidsDataset) -> None:
     """Create an empty BidsDataset on the filesystem
 
     Creates the directory structure and files represented by a BidsDataset. Files are

@@ -6,17 +6,7 @@ import logging
 import re
 from collections import defaultdict
 from pathlib import Path
-from typing import (
-    Dict,
-    Generator,
-    Iterable,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
-    overload,
-)
+from typing import Generator, Iterable, Optional, Sequence, overload
 
 import more_itertools as itx
 from bids import BIDSLayout, BIDSLayoutIndexer
@@ -402,9 +392,9 @@ def write_derivative_json(snakemake, **kwargs) -> None:
 
 
 def _generate_filters(
-    include: Union[List[str], str, None] = None,
-    exclude: Union[List[str], str, None] = None,
-) -> Tuple[List[str], bool]:
+    include: list[str] | str | None = None,
+    exclude: list[str] | str | None = None,
+) -> tuple[list[str], bool]:
     """Generate Pybids filter based on inclusion or exclusion criteria
 
     Converts either a list of values to include or exclude in a list of Pybids
@@ -458,9 +448,9 @@ def _generate_filters(
 
 
 def _parse_custom_path(
-    input_path: Union[Path, str],
+    input_path: Path | str,
     regex_search: bool = False,
-    **filters: Union[List[str], str],
+    **filters: list[str] | str,
 ) -> dict[str, list[str]]:
     """Glob wildcards from a custom path and apply filters
 
@@ -500,7 +490,7 @@ def _parse_custom_path(
     return filter_list(wildcards, filters, regex_search=regex_search)
 
 
-def _parse_bids_path(path: str, entities: Iterable[str]) -> Tuple[str, Dict[str, str]]:
+def _parse_bids_path(path: str, entities: Iterable[str]) -> tuple[str, dict[str, str]]:
     """Replace parameters in an bids path with the given wildcard {tags}.
 
     Parameters
@@ -520,7 +510,7 @@ def _parse_bids_path(path: str, entities: Iterable[str]) -> Tuple[str, Dict[str,
         The values matched with each wildcard
     """
 
-    wildcard_values: Dict[str, str] = {}
+    wildcard_values: dict[str, str] = {}
 
     for entity in map(BidsEntity, entities):
         # Iterate over wildcards, slowly updating the path as each entity is replaced
@@ -619,7 +609,7 @@ def _get_lists_from_bids(
                 "dataset."
             ) from err
         for img in matching_files:
-            wildcards: List[str] = [
+            wildcards: list[str] = [
                 wildcard
                 for wildcard in component.get("wildcards", [])
                 if wildcard in img.entities

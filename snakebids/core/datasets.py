@@ -6,7 +6,7 @@ import textwrap
 import warnings
 from math import inf
 from string import Formatter
-from typing import Any, Iterable, Optional, Union, cast
+from typing import Any, Iterable, Optional, cast
 
 import attr
 import more_itertools as itx
@@ -161,7 +161,7 @@ class BidsComponent:
     def input_wildcards(self):
         return self.wildcards
 
-    def __eq__(self, other: Union["BidsComponent", object]) -> bool:
+    def __eq__(self, other: BidsComponent | object) -> bool:
         if not isinstance(other, BidsComponent):
             return False
 

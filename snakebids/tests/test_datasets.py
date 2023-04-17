@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import copy
 import itertools as it
 import re
 import warnings
-from typing import Any, Dict
+from typing import Any
 
 import more_itertools as itx
 import pytest
@@ -155,7 +157,7 @@ class TestBidsComponentProperties:
     )
     def test_input_wildcards_derives_from_zip_lists(
         self,
-        bids_entities: Dict[str, str],
+        bids_entities: dict[str, str],
     ):
         zip_lists = {entity: [val] for entity, val in bids_entities.items()}
         bids_input = BidsComponent(
