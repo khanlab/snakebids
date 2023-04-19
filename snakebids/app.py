@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 import attr
-import boutiques.creator as bc
+import boutiques.creator as bc  # type: ignore
 import snakemake
 from snakemake.io import load_configfile
 
@@ -20,11 +20,8 @@ from snakebids.cli import (
     parse_snakebids_args,
 )
 from snakebids.exceptions import ConfigError, RunError
-from snakebids.utils.output import (
-    prepare_bidsapp_output,
-    write_config_file,
-    write_output_mode,
-)
+from snakebids.utils.output import write_config_file  # type: ignore
+from snakebids.utils.output import prepare_bidsapp_output, write_output_mode
 
 logger = logging.Logger(__name__)
 
@@ -220,7 +217,7 @@ class SnakeBidsApp:
 
         # Run snakemake (passing any leftover args from argparse)
         # Filter any blank strings before submitting
-        snakemake.main(
+        snakemake.main(  # type: ignore
             [
                 *filter(
                     None,
@@ -240,10 +237,12 @@ class SnakeBidsApp:
             ]
         )
 
-    def create_descriptor(self, out_file: PathLike | str) -> None:
+    def create_descriptor(self, out_file: PathLike[str] | str) -> None:
         """Generate a boutiques descriptor for this Snakebids app."""
-        new_descriptor = bc.CreateDescriptor(self.parser, execname="run.py")
-        new_descriptor.save(out_file)
+        new_descriptor = bc.CreateDescriptor(  # type: ignore
+            self.parser, execname="run.py"
+        )
+        new_descriptor.save(out_file)  # type: ignore
 
 
 def update_config(config: dict[str, Any], snakebids_args: SnakebidsArgs) -> None:

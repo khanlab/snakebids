@@ -7,6 +7,7 @@ import json
 import time
 from collections import OrderedDict
 from pathlib import Path, PosixPath, WindowsPath
+from typing import Any
 
 import more_itertools as itx
 import yaml
@@ -144,7 +145,7 @@ def get_time_hash() -> str:
 
 
 def write_config_file(
-    config_file: Path, data: dict, force_overwrite: bool = False
+    config_file: Path, data: dict[str, Any], force_overwrite: bool = False
 ) -> None:
     if (config_file.exists()) and not force_overwrite:
         raise RunError(
@@ -169,16 +170,18 @@ def write_config_file(
         # this is needed to make the output yaml clean
         yaml.add_representer(
             OrderedDict,
-            lambda dumper, data: dumper.represent_mapping(
-                "tag:yaml.org,2002:map", data.items()
+            lambda dumper, data: dumper.represent_mapping(  # type: ignore
+                "tag:yaml.org,2002:map", data.items()  # type: ignore
             ),
         )
 
         # Represent any PathLikes as str.
-        def path2str(dumper, data):
-            return dumper.represent_scalar("tag:yaml.org,2002:str", str(data))
+        def path2str(dumper, data):  # type: ignore
+            return dumper.represent_scalar(  # type: ignore
+                "tag:yaml.org,2002:str", str(data)  # type: ignore
+            )
 
-        yaml.add_representer(PosixPath, path2str)
-        yaml.add_representer(WindowsPath, path2str)
+        yaml.add_representer(PosixPath, path2str)  # type: ignore
+        yaml.add_representer(WindowsPath, path2str)  # type: ignore
 
         yaml.dump(data, f, default_flow_style=False, sort_keys=False)

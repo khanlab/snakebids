@@ -10,13 +10,14 @@ from typing import Any, Generator, Iterable, Optional, Sequence, overload
 
 import more_itertools as itx
 from bids import BIDSLayout, BIDSLayoutIndexer
-from bids.layout import Query
+from bids.layout import BIDSFile, Query
+from snakemake.script import Snakemake
 from typing_extensions import Literal
 
 from snakebids.core.datasets import BidsComponent, BidsDataset, BidsDatasetDict
 from snakebids.core.filtering import filter_list
 from snakebids.exceptions import ConfigError, PybidsError
-from snakebids.types import InputsConfig
+from snakebids.types import InputsConfig, ZipLists
 from snakebids.utils.snakemake_io import glob_wildcards
 from snakebids.utils.utils import BidsEntity, BidsParseError, MultiSelectDict, surround
 
@@ -353,8 +354,8 @@ def _gen_bids_layout(
         _logger.warning("Absolute path must be provided, database will not be used")
 
     return BIDSLayout(
-        bids_dir,
-        derivatives=derivatives,  # type: ignore (mistake in BIDSLayout typing)
+        str(bids_dir),
+        derivatives=derivatives,
         validate=False,
         config=pybids_config,
         database_path=pybids_database_dir,
@@ -363,7 +364,7 @@ def _gen_bids_layout(
     )
 
 
-def write_derivative_json(snakemake, **kwargs) -> None:
+def write_derivative_json(snakemake: Snakemake, **kwargs: dict[str, Any]) -> None:
     """Snakemake function to read a json file, and write to a new one,
     adding BIDS derivatives fields for Sources and Parameters.
 
@@ -376,7 +377,9 @@ def write_derivative_json(snakemake, **kwargs) -> None:
         it will read and write json files
     """
 
-    with open(snakemake.input.json, "r", encoding="utf-8") as input_json:
+    with open(
+        snakemake.input.json, "r", encoding="utf-8"  # type: ignore
+    ) as input_json:
         sidecar = json.load(input_json)
 
     sidecar.update(
@@ -387,7 +390,7 @@ def write_derivative_json(snakemake, **kwargs) -> None:
         }
     )
 
-    with open(snakemake.output.json, "w", encoding="utf-8") as outfile:
+    with open(snakemake.output.json, "w", encoding="utf-8") as outfile:  # type: ignore
         json.dump(sidecar, outfile, indent=4)
 
 
@@ -451,7 +454,7 @@ def _parse_custom_path(
     input_path: Path | str,
     regex_search: bool = False,
     **filters: list[str] | str,
-) -> dict[str, list[str]]:
+) -> ZipLists:
     """Glob wildcards from a custom path and apply filters
 
     This replicates pybids path globbing for any custom path. Input path should have
@@ -599,7 +602,7 @@ def _get_lists_from_bids(
             for key, val in component.get("filters", {}).items()
         }
         try:
-            matching_files = bids_layout.get(
+            matching_files: Iterable[BIDSFile] = bids_layout.get(
                 regex_search=regex_search, **pybids_filters, **filters
             )
         except AttributeError as err:
@@ -626,7 +629,7 @@ def _get_lists_from_bids(
                     f"  Path: {img.path}\n"
                     "\n"
                     "Pybids parsed this path using the pattern: "
-                    f"{bids_layout.entities[err.entity.entity].regex}\n"
+                    f"{bids_layout.entities[err.entity.entity].regex}\n"  # type: ignore
                     "\n"
                     "Snakebids is not currently able to handle this entity. If it is a "
                     "custom entity, its `tag-` must be configured to be the same as "

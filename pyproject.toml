@@ -113,4 +113,5 @@ disable = """
 
 [tool.pyright]
 include = ["snakebids"]
-exclude = ["snakebids/project_template"]
+exclude = ["snakebids/project_template", "typings"]
+typeCheckingMode = "strict"

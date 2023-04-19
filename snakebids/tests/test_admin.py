@@ -4,7 +4,7 @@ import sys
 from argparse import ArgumentParser
 
 import pytest
-from configargparse import Namespace
+from configargparse import Namespace  # type: ignore
 from pytest_mock.plugin import MockerFixture
 
 from snakebids.admin import gen_parser

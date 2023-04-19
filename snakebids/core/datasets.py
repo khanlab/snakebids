@@ -6,7 +6,7 @@ import textwrap
 import warnings
 from math import inf
 from string import Formatter
-from typing import Any, Iterable, Optional, cast
+from typing import Any, Iterable, NoReturn, Optional, Type, cast
 
 import attr
 import more_itertools as itx
@@ -20,6 +20,10 @@ from snakebids.io.console import get_console_size
 from snakebids.io.printing import format_zip_lists, quote_wrap
 from snakebids.types import UserDictPy37, ZipLists
 from snakebids.utils.utils import MultiSelectDict, property_alias
+
+# Pyright doesn't handle cached_properties properly.
+# This will work as long as we don't delete things from the cache
+cached_property = cast(Type[property], cached_property)
 
 
 class BidsDatasetDict(TypedDict):
@@ -237,7 +241,7 @@ class BidsDataset(UserDictPy37[str, BidsComponent]):
                 ) from err
             raise err
 
-    def __setitem__(self, _: Any, __: Any):
+    def __setitem__(self, _: Any, __: Any) -> NoReturn:
         raise NotImplementedError(
             f"Modification of {self.__class__.__name__} is not yet supported"
         )

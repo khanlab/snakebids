@@ -95,19 +95,23 @@ class BidsListCompare(UserDictPy37[str, Dict[str, List[str]]]):
     """
 
     def __eq__(self, other: object) -> bool:
+        # Getting pyright to like this is more work than it's worth
         if not isinstance(other, dict):
             return False
-        for name, lists in other.items():
+        for name, lists in other.items():  # type: ignore
             if name not in self:
                 return False
-            for key, val in lists.items():
+            for key, val in lists.items():  # type: ignore
                 if (
                     not isinstance(val, list)
-                    or key not in self[name]
-                    or set(self[name][key]) != set(val)
+                    or key not in self[name]  # type: ignore
+                    or set(self[name][key]) != set(val)  # type: ignore
                 ):
                     return False
         return True
+
+
+_FuncT = TypeVar("_FuncT", bound=Callable[..., Any])
 
 
 def debug(**overrides: Any):
@@ -118,17 +122,17 @@ def debug(**overrides: Any):
     when hypothesis is not being used)
     """
 
-    def inner(func: Callable[..., Any]):
+    def inner(func: _FuncT) -> _FuncT:
         test = getattr(func, "hypothesis").inner_test
 
         @pytest.mark.disable_fakefs(True)
         @ft.wraps(func)
-        def inner_test(*args, **kwargs):
+        def inner_test(*args, **kwargs):  # type: ignore
             return test(*args, **{**kwargs, **overrides})
 
         if not hasattr(func, "hypothesis"):
             raise TypeError(f"{func} is not decorated with hypothesis.given")
-        return inner_test
+        return inner_test  # type: ignore
 
     return inner
 

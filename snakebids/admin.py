@@ -3,7 +3,7 @@
 import argparse
 from pathlib import Path
 
-from cookiecutter.main import cookiecutter
+from cookiecutter.main import cookiecutter  # type: ignore
 
 import snakebids
 from snakebids.app import SnakeBidsApp

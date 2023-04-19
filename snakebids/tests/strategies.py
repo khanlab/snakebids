@@ -27,8 +27,8 @@ def bids_entity():
     # Generate inputs and bids does not properly handle 'extension', so exclude it
     return st.sampled_from(
         [
-            BidsEntity(key)
-            for key in bidsconfig.entities.keys()
+            BidsEntity(key)  # type: ignore
+            for key in bidsconfig.entities.keys()  # type: ignore
             if key not in ["extension", "fmap", "scans"]
         ],
     )

@@ -5,7 +5,7 @@ import logging
 import os
 import pathlib
 import re
-from collections.abc import Iterable
+from collections.abc import Sequence
 from typing import Any, Optional
 
 import attr
@@ -28,10 +28,12 @@ class KeyValue(argparse.Action):
         self,
         parser: argparse.ArgumentParser,
         namespace: argparse.Namespace,
-        values: Iterable[str],
+        values: str | Sequence[Any] | None,
         option_string: str | None = None,
     ):
         setattr(namespace, self.dest, {})
+        if not values:
+            return
 
         for value in values:
             # split it into key and value
@@ -48,10 +50,10 @@ class SnakemakeHelpAction(argparse.Action):
         self,
         parser: argparse.ArgumentParser,
         namespace: argparse.Namespace,
-        values,
+        values: str | Sequence[Any] | None,
         option_string: str | None = None,
     ):
-        snakemake.main(["-h"])
+        snakemake.main(["-h"])  # type: ignore
 
 
 # pylint: disable=missing-class-docstring
@@ -97,13 +99,13 @@ def create_parser(include_snakemake: bool = False) -> argparse.ArgumentParser:
     # needed.
     if include_snakemake:
         # get snakemake parser
-        smk_parser = snakemake.get_argument_parser()
+        smk_parser = snakemake.get_argument_parser()  # type: ignore
 
         # create parser
         parser = argparse.ArgumentParser(
             description="Snakebids helps build BIDS Apps with Snakemake",
             add_help=False,
-            parents=[smk_parser],
+            parents=[smk_parser],  # type: ignore
         )
     else:
         parser = argparse.ArgumentParser(
@@ -190,7 +192,7 @@ def add_dynamic_args(
         # We first check that the type annotation is, in fact,
         # a str to allow the edge case where it's already
         # been converted
-        if "type" in arg and isinstance(arg["type"], str):
+        if "type" in arg:
             try:
                 arg["type"] = globals()[arg["type"]]
             except KeyError as err:
@@ -316,7 +318,9 @@ def _make_underscore_dash_aliases(name: str) -> set[str]:
     return {name}
 
 
-def _resolve_path(path_candidate: Any) -> Any:
+def _resolve_path(
+    path_candidate: list["os.PathLike[str]"] | "os.PathLike[str]" | str,
+) -> Any:
     """Helper function to resolve any paths or list
     of paths it's passed. Otherwise, returns the argument
     unchanged.
