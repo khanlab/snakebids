@@ -17,7 +17,6 @@ rule all:
                 **inputs['bold'].wildcards
             ),
             fwhm=config['fwhm'],
-            allow_missing=False,
         )
 
 

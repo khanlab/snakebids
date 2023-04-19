@@ -177,7 +177,7 @@ class BidsComponent:
     def expand(
         self,
         paths: Iterable[Path | str] | Path | str | None = None,
-        allow_missing: bool = True,
+        allow_missing: bool = False,
         **wildcards: str | Iterable[str],
     ) -> list[str]:
         """Safely expand over given paths with component wildcards
@@ -188,9 +188,9 @@ class BidsComponent:
         create the component). Extra wildcards can be specifed as keyword arguments.
 
         By default, expansion over paths with extra wildcards not accounted for by the
-        component is allowed. This allows for easy partial expansion in your workflow.
-        If you want to enforce all wildcards be substituted with values, set
-        ``allow_missing`` to ``False``.
+        component causes an error. This prevents accidental partial expansion. To allow
+        the passage of extra wildcards without expansion,set ``allow_missing`` to
+        ``True``.
 
         Uses the snakemake :ref:`expand <snakemake:snakefiles_expand>` under the hood.
         """

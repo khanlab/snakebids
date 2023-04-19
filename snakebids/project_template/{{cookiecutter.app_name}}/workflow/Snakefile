@@ -50,6 +50,5 @@ rule all:
         inputs['bold'].expand(
             rules.smooth.output,
             fwhm = config['smoothing_fwhm'],
-            allow_missing=False,
         )
     default_target: True
