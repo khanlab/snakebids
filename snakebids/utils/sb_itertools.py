@@ -28,7 +28,6 @@ def unpack(iterable: Iterable[T], default: Sequence[T]) -> Iterable[T]:
     return default
 
 
-# pylint: disable=invalid-name
 def drop(n: int, iterable: Iterable[T]) -> Iterable[T]:
     """Returns all items of an iterable except the first *n* as a list
 

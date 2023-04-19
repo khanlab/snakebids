@@ -16,7 +16,6 @@ Path = pathlib.Path
 logger = logging.Logger(__name__)
 
 
-# pylint: disable=too-few-public-methods,
 class KeyValue(argparse.Action):
     """Class for accepting key=value pairs in argparse"""
 
@@ -24,14 +23,13 @@ class KeyValue(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         setattr(namespace, self.dest, {})
 
-        for value in values:
+        for pair in values:
             # split it into key and value
-            key, value = value.split("=")
+            key, value = pair.split("=")
             # assign into dictionary
             getattr(namespace, self.dest)[key] = value
 
 
-# pylint: disable=too-few-public-methods
 class SnakemakeHelpAction(argparse.Action):
     """Class for printing snakemake usage in argparse"""
 
@@ -39,7 +37,6 @@ class SnakemakeHelpAction(argparse.Action):
         snakemake.main(["-h"])
 
 
-# pylint: disable=missing-class-docstring
 @attr.frozen
 class SnakebidsArgs:
     """Arguments for Snakebids App

@@ -1,3 +1,5 @@
+# ruff: noqa: PLR2004
+
 import filecmp
 import functools as ft
 import itertools as it
@@ -7,7 +9,6 @@ import re
 import shutil
 import tempfile
 from collections import defaultdict
-from copy import deepcopy
 from pathlib import Path
 from typing import Dict, Iterable, List, NamedTuple, Optional, TypeVar
 
@@ -36,13 +37,11 @@ from snakebids.tests.helpers import (
     BidsListCompare,
     allow_tmpdir,
     create_dataset,
-    debug,
     get_bids_path,
     get_zip_list,
     reindex_dataset,
 )
 from snakebids.types import InputsConfig
-from snakebids.utils import sb_itertools as sb_it
 from snakebids.utils.utils import BidsEntity
 
 T = TypeVar("T")

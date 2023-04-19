@@ -1,4 +1,3 @@
-# pylint: disable-all
 from __future__ import annotations
 
 from collections.abc import Hashable

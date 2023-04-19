@@ -237,7 +237,6 @@ class BidsDataset(UserDictPy37[str, BidsComponent]):
     custom paths are used to generate every :class:`component <BidsComponent>`
     """
 
-    # pylint: disable=super-init-not-called
     def __init__(self, data: Any, layout: BIDSLayout | None = None):
         super().__init__(data)
         self.layout = layout
@@ -405,7 +404,6 @@ class BidsDataset(UserDictPy37[str, BidsComponent]):
     def input_wildcards(self) -> dict[str, MultiSelectDict[str, str]]:
         return self.wildcards
 
-    # pylint: disable-all
     @property
     def as_dict(self):
         """Get the layout as a legacy dict

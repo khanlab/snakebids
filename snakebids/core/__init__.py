@@ -1,4 +1,3 @@
-# flake8: noqa
 __submodules__ = ["construct_bids", "filtering", "input_generation", "datasets"]
 
 __ignore__ = ["T_co"]

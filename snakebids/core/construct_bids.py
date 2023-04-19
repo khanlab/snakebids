@@ -6,8 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 
-# pylint: disable=too-many-arguments
-def bids(
+def bids(  # noqa: PLR0913
     root: Optional[str | Path] = None,
     datatype: Optional[str] = None,
     prefix: Optional[str] = None,
@@ -147,7 +146,6 @@ def bids(
     entities = {k.replace("_", ""): v for k, v in entities.items()}
 
     # strict ordering of bids entities is specified here:
-    # pylint: disable=unsubscriptable-object
     order: OrderedDict[str, Optional[str]] = OrderedDict(
         [
             ("task", None),

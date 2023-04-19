@@ -131,3 +131,6 @@ dmypy.json
 
 # VS Code
 .vscode
+
+# ruff
+.ruff_cache

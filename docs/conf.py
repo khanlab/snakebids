@@ -1,4 +1,3 @@
-# pylint: disable=all
 # flake8: noqa
 # Configuration file for the Sphinx documentation builder.
 #

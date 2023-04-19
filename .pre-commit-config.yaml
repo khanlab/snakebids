@@ -24,17 +24,9 @@ repos:
         types_or: [cython, pyi, python]
   - repo: local
     hooks:
-      - id: flake8
-        exclude: snakebids/tests|typings
-        entry: poetry run flake8
-        language: system
-        name: flake8
-        types_or: [cython, pyi, python]
-  - repo: local
-    hooks:
       - id: system
-        name: PyLint
-        entry: poetry run pylint
+        name: Ruff
+        entry: poetry run ruff
         language: system
         exclude: \._py\}\}$
         types_or: [cython, pyi, python]
