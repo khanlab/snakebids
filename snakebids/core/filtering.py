@@ -9,7 +9,6 @@ from typing_extensions import Literal
 
 from snakebids.utils.utils import matches_any
 
-# pylint: disable=invalid-name
 T_co = TypeVar("T_co", bound=Union[List[str], str], covariant=True)
 
 
@@ -282,7 +281,6 @@ def _get_zip_list_indices(zip_list: Dict[str, List[str]]):
 
     # Retrieve the first zip_list (all zip_lists should be the same, so it doesn't
     # matter which one we take)
-    # pylint: disable=stop-iteration-return
     sample_zip_list = zip_list[next(iter(zip_list))]
 
     # Return a sequence of numbers 0, 1, 2, 3, ... n-1 where n is the length of the

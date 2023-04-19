@@ -96,7 +96,6 @@ def in_interactive_session() -> bool:
 
     def check_main():
         try:
-            # pylint: disable=import-outside-toplevel
             import __main__ as main
         except ModuleNotFoundError:
             return False

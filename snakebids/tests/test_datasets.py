@@ -18,12 +18,10 @@ from snakebids.core.construct_bids import bids
 from snakebids.core.datasets import BidsComponent, BidsDataset
 from snakebids.tests import strategies as sb_st
 from snakebids.tests.helpers import (
-    debug,
     entity_to_wildcard,
     expand_zip_list,
     get_bids_path,
     get_zip_list,
-    mock_data,
     setify,
 )
 from snakebids.utils import sb_itertools as sb_it
@@ -131,8 +129,8 @@ class TestBidsComponentEq:
     @given(sb_st.bids_components())
     def test_order_doesnt_affect_equality(self, input: BidsComponent):
         cp = copy.deepcopy(input)
-        for l in cp.zip_lists:
-            cp.zip_lists[l].reverse()
+        for list_ in cp.zip_lists:
+            cp.zip_lists[list_].reverse()
         assert cp == input
 
     @given(sb_st.bids_components())

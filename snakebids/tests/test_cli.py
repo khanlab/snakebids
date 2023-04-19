@@ -1,4 +1,3 @@
-# pylint: disable=protected-access, redefined-outer-name
 from __future__ import absolute_import
 
 import copy

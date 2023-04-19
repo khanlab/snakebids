@@ -33,9 +33,8 @@ from snakebids.utils.utils import BidsEntity, BidsParseError, MultiSelectDict, s
 _logger = logging.getLogger(__name__)
 
 
-# pylint: disable=too-many-arguments
 @overload
-def generate_inputs(
+def generate_inputs(  # noqa: PLR0913
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
     pybids_database_dir: Path | str | None = ...,
@@ -50,9 +49,8 @@ def generate_inputs(
     ...
 
 
-# pylint: disable=too-many-arguments
 @overload
-def generate_inputs(
+def generate_inputs(  # noqa: PLR0913
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
     pybids_database_dir: Path | str | None = ...,
@@ -67,8 +65,7 @@ def generate_inputs(
     ...
 
 
-# pylint: disable=too-many-arguments, too-many-locals
-def generate_inputs(
+def generate_inputs(  # noqa: PLR0913
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
     pybids_database_dir: Path | str | None = None,
@@ -163,19 +160,19 @@ def generate_inputs(
         ├── README
         └── sub-control01
             ├── anat
-            │   ├── sub-control01_T1w.json
-            │   ├── sub-control01_T1w.nii.gz
-            │   ├── sub-control01_T2w.json
-            │   └── sub-control01_T2w.nii.gz
+            │   ├── sub-control01_T1w.json
+            │   ├── sub-control01_T1w.nii.gz
+            │   ├── sub-control01_T2w.json
+            │   └── sub-control01_T2w.nii.gz
             ├── dwi
-            │   ├── sub-control01_dwi.bval
-            │   ├── sub-control01_dwi.bvec
-            │   └── sub-control01_dwi.nii.gz
+            │   ├── sub-control01_dwi.bval
+            │   ├── sub-control01_dwi.bvec
+            │   └── sub-control01_dwi.nii.gz
             ├── fmap
-            │   ├── sub-control01_magnitude1.nii.gz
-            │   ├── sub-control01_phasediff.json
-            │   ├── sub-control01_phasediff.nii.gz
-            │   └── sub-control01_scans.tsv
+            │   ├── sub-control01_magnitude1.nii.gz
+            │   ├── sub-control01_phasediff.json
+            │   ├── sub-control01_phasediff.nii.gz
+            │   └── sub-control01_scans.tsv
             └── func
                 ├── sub-control01_task-nback_bold.json
                 ├── sub-control01_task-nback_bold.nii.gz
@@ -353,7 +350,7 @@ def _gen_bids_layout(
 
     # Check for database_dir
     # If blank, assume db not to be used
-    if pybids_database_dir == "":
+    if not pybids_database_dir:
         pybids_database_dir = None
     # Otherwise check for relative path and update
     elif (
@@ -538,7 +535,6 @@ def _parse_bids_path(path: str, entities: Iterable[str]) -> Tuple[str, Dict[str,
     return path, wildcard_values
 
 
-# pylint: disable=too-many-locals
 def _get_lists_from_bids(
     bids_layout: Optional[BIDSLayout],
     pybids_inputs: InputsConfig,
@@ -569,10 +565,7 @@ def _get_lists_from_bids(
     BidsComponent:
         One BidsComponent is yielded for each modality described by ``pybids_inputs``.
     """
-    if limit_to is None:
-        limit_to = list(pybids_inputs)
-
-    for input_name in limit_to:
+    for input_name in limit_to or list(pybids_inputs):
         _logger.debug("Grabbing inputs for %s...", input_name)
         component = pybids_inputs[input_name]
 
@@ -670,7 +663,7 @@ def _get_lists_from_bids(
         try:
             path = itx.one(paths)
         except ValueError:
-            raise ConfigError(  # pylint: disable=raise-missing-from
+            raise ConfigError(
                 f"More than one snakemake filename for {input_name}, taking the "
                 f"first. To correct this, use the --filter_{input_name} option to "
                 f"narrow the search. Found filenames: {paths}"
