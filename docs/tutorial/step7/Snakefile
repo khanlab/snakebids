@@ -9,7 +9,7 @@ inputs = generate_inputs(
 
 rule all:
     input:
-        expand(
+        inputs['bold'].expand(
             bids(
                 root='results',
                 fwhm='{fwhm}',
@@ -17,7 +17,7 @@ rule all:
                 **inputs['bold'].wildcards
             ),
             fwhm=config['fwhm'],
-            **inputs['bold'].entities
+            allow_missing=False,
         )
 
 

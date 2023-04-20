@@ -280,7 +280,7 @@ def local(value):  # -> AnnotatedString | list[Unknown]:
     """
     ...
 
-def expand(*args, **wildcards):  # -> list[str]:
+def expand(*args, **wildcards) -> list[str]:
     """
     Expand wildcards in given filepatterns.
 

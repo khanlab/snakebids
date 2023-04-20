@@ -43,7 +43,7 @@ def fakefs_tmpdir(
     Path
     """
     if not fakefs:
-        return request.getfixturevalue("tmpdir")
+        return Path(request.getfixturevalue("tmpdir"))
     return Path(tempfile.mkdtemp())
 
 

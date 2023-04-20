@@ -3,15 +3,17 @@ from __future__ import annotations
 import functools as ft
 import importlib.resources
 import json
+import operator as op
 import re
 from pathlib import Path
-from typing import Any, Callable, Iterable, TypeVar, overload
+from typing import Any, Callable, Iterable, Mapping, Sequence, TypeVar, cast, overload
 
 import attrs
 import more_itertools as itx
 from typing_extensions import Protocol, Self
 
 from snakebids import types
+from snakebids.types import ZipListLike
 from snakebids.utils.user_property import UserProperty
 
 T = TypeVar("T")
@@ -336,3 +338,24 @@ class MultiSelectDict(types.UserDictPy37[_K, _V]):
             # Use dict.fromkeys for de-duplication
             return self.__class__({key: self[key] for key in dict.fromkeys(__key)})
         return super().__getitem__(__key)
+
+
+def zip_list_eq(__first: ZipListLike, __second: ZipListLike):
+    """Compare two zip lists, allowing the order of columns to be irrelevant"""
+
+    def sorted_items(dictionary: Mapping[str, Sequence[str]]):
+        return sorted(dictionary.items(), key=op.itemgetter(0))
+
+    def get_values(zlist: ZipListLike):
+        return cast("tuple[list[str]]", list(zip(*sorted_items(zlist)))[1])
+
+    if not __first and not __second:
+        return True
+
+    if set(__first) != set(__second):
+        return False
+
+    first_items = get_values(__first)
+    second_items = get_values(__second)
+
+    return set(zip(*first_items)) == set(zip(*second_items))

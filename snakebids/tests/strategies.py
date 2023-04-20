@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import copy
 import itertools as it
-import string
 from pathlib import Path
+from string import ascii_letters, digits
 from typing import Any, Optional, Type, TypeVar
 
 import hypothesis.strategies as st
@@ -20,7 +20,10 @@ from snakebids.utils.utils import BidsEntity, MultiSelectDict
 _Ex_co = TypeVar("_Ex_co", bound=str, covariant=True)
 _T = TypeVar("_T")
 
-alphanum = string.ascii_letters + string.digits
+alphanum = ascii_letters + digits
+valid_entities: tuple[str] = tuple(
+    BidsConfig.load("bids").entities.keys()  # type: ignore
+)
 
 
 def bids_entity() -> st.SearchStrategy[BidsEntity]:
@@ -67,8 +70,6 @@ def zip_lists(
     if entities is None:
         entities = draw(bids_entity_lists(min_size=min_entities, max_size=max_entities))
 
-    # TODO: min_size and max_size shouldn't be hard-coded, but we need a good way of
-    # doing this.
     values = {
         entity: draw(
             st.lists(

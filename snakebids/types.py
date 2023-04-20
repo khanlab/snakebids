@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Hashable
-from typing import Dict, Generic
+from typing import Dict, Generic, Mapping, Sequence
 
 from typing_extensions import TYPE_CHECKING, TypeAlias, TypedDict, TypeVar
 
@@ -52,6 +52,7 @@ class InputConfig(TypedDict, total=False):
 InputsConfig: TypeAlias = "dict[str, InputConfig]"
 
 ZipLists: TypeAlias = "utils.MultiSelectDict[str, list[str]]"
+ZipListLike: TypeAlias = "Mapping[str, Sequence[str]]"
 
 # Hack to make userdicts subscriptable in python 3.7. Can remove when we drop support
 # for that version

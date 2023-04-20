@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import itertools as it
-import operator as op
 import textwrap
 import warnings
 from math import inf
+from pathlib import Path
 from string import Formatter
 from typing import Any, Iterable, NoReturn, Optional, Type, cast
 
@@ -13,13 +13,14 @@ import more_itertools as itx
 from bids import BIDSLayout
 from cached_property import cached_property
 from pvandyken.deprecated import deprecated
+from snakemake.io import expand as sn_expand  # type: ignore
 from typing_extensions import TypedDict
 
 import snakebids.utils.sb_itertools as sb_it
 from snakebids.io.console import get_console_size
 from snakebids.io.printing import format_zip_lists, quote_wrap
 from snakebids.types import UserDictPy37, ZipLists
-from snakebids.utils.utils import MultiSelectDict, property_alias
+from snakebids.utils.utils import MultiSelectDict, property_alias, zip_list_eq
 
 # Pyright doesn't handle cached_properties properly.
 # This will work as long as we don't delete things from the cache
@@ -175,21 +176,48 @@ class BidsComponent:
         if self.path != other.path:
             return False
 
-        def sorted_items(dictionary: dict[str, list[str]]):
-            return sorted(dictionary.items(), key=op.itemgetter(0))
+        return zip_list_eq(self.zip_lists, other.zip_lists)
 
-        if set(self.zip_lists) != set(other.zip_lists):
-            return False
+    def expand(
+        self,
+        paths: Iterable[Path | str] | Path | str | None = None,
+        allow_missing: bool = True,
+        **wildcards: str | Iterable[str],
+    ) -> list[str]:
+        """Safely expand over given paths with component wildcards
 
-        if not other.zip_lists and not self.zip_lists:
-            return True
+        Uses the entity-value combinations found in the dataset to expand over the given
+        paths. If no path is provided, expands over the component
+        :attr:`~snakebids.BidsComponent.path` (thus returning the original files used to
+        create the component). Extra wildcards can be specifed as keyword arguments.
 
-        other_items = cast(
-            "list[list[str]]", list(zip(*sorted_items(other.zip_lists)))[1]
+        By default, expansion over paths with extra wildcards not accounted for by the
+        component is allowed. This allows for easy partial expansion in your workflow.
+        If you want to enforce all wildcards be substituted with values, set
+        ``allow_missing`` to ``False``.
+
+        Uses the snakemake :ref:`expand <snakemake:snakefiles_expand>` under the hood.
+        """
+        paths = paths or self.path
+        inner_expand = sn_expand(
+            list(itx.always_iterable(paths)),
+            zip,
+            allow_missing=True if wildcards else allow_missing,
+            **self.zip_lists,
         )
-        our_items = cast("list[list[str]]", list(zip(*sorted_items(self.zip_lists)))[1])
+        if not wildcards:
+            return inner_expand
 
-        return set(zip(*our_items)) == set(zip(*other_items))
+        return sn_expand(
+            inner_expand,
+            allow_missing=allow_missing,
+            # Turn all the wildcard items into lists because Snakemake doesn't handle
+            # iterables very well
+            **{
+                wildcard: list(itx.always_iterable(v))
+                for wildcard, v in wildcards.items()
+            },
+        )
 
 
 class BidsDataset(UserDictPy37[str, BidsComponent]):
