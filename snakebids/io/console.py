@@ -119,7 +119,7 @@ def in_ipython_frontend() -> bool:
     try:
         # error: Name 'get_ipython' is not defined
         ipy = get_ipython()  # type: ignore[name-defined]
-        return "zmq" in str(type(ipy)).lower()
+        return "zmq" in str(type(ipy)).lower()  # type: ignore
     except NameError:
         pass
 

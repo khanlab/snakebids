@@ -14,6 +14,7 @@ from hypothesis import assume
 from snakebids.core.datasets import BidsComponent
 from snakebids.core.input_generation import BidsDataset
 from snakebids.tests import helpers
+from snakebids.types import ZipLists
 from snakebids.utils.utils import BidsEntity, MultiSelectDict
 
 _Ex_co = TypeVar("_Ex_co", bound=str, covariant=True)
@@ -22,7 +23,7 @@ _T = TypeVar("_T")
 alphanum = string.ascii_letters + string.digits
 
 
-def bids_entity():
+def bids_entity() -> st.SearchStrategy[BidsEntity]:
     bidsconfig = BidsConfig.load("bids")
     # Generate inputs and bids does not properly handle 'extension', so exclude it
     return st.sampled_from(
@@ -34,11 +35,13 @@ def bids_entity():
     )
 
 
-def bids_value(pattern: str = r"[^\n\r]*"):
+def bids_value(pattern: str = r"[^\n\r]*") -> st.SearchStrategy[str]:
     return st.from_regex(pattern, fullmatch=True).filter(len)
 
 
-def bids_entity_lists(min_size: int = 1, max_size: int = 5):
+def bids_entity_lists(
+    min_size: int = 1, max_size: int = 5
+) -> st.SearchStrategy[list[BidsEntity]]:
     return st.lists(
         bids_entity(),
         min_size=min_size,
@@ -58,7 +61,7 @@ def zip_lists(
     max_values: int = 3,
     entities: Optional[list[BidsEntity]] = None,
     restrict_patterns: bool = False,
-):
+) -> ZipLists:
     # Generate multiple entity sets for different "file types"
 
     if entities is None:
@@ -101,7 +104,7 @@ def bids_components(
     root: Optional[Path] = None,
     name: str | None = None,
     restrict_patterns: bool = False,
-):
+) -> BidsComponent:
     zip_list = draw(
         zip_lists(
             min_entities=min_entities,
@@ -128,7 +131,7 @@ def bids_input_lists(
     min_size: int = 1,
     max_size: int = 5,
     entities: Optional[list[BidsEntity]] = None,
-):
+) -> dict[str, list[str]]:
     # Generate multiple entity sets for different "file types"
     if entities is None:
         entities = draw(bids_entity_lists(min_size))
@@ -141,7 +144,7 @@ def bids_input_lists(
     }
 
 
-def everything_except(*excluded_types: Type[Any]):
+def everything_except(*excluded_types: Type[Any]) -> st.SearchStrategy[Any]:
     return (
         st.from_type(type)
         .flatmap(st.from_type)
@@ -153,7 +156,7 @@ def everything_except(*excluded_types: Type[Any]):
 def datasets(
     draw: st.DrawFn,
     root: Optional[Path] = None,
-):
+) -> BidsDataset:
     ent1 = draw(bids_entity_lists(min_size=2, max_size=3))
     ent2 = copy.copy(ent1)
     ent2.pop()
@@ -170,7 +173,7 @@ def datasets_one_comp(
     draw: st.DrawFn,
     root: Optional[Path] = None,
     names: st.SearchStrategy[str] | None = None,
-):
+) -> BidsDataset:
     ent1 = draw(bids_entity_lists(min_size=2, max_size=3))
     comp1 = draw(
         bids_components(
@@ -204,5 +207,5 @@ def multiselect_dicts(
     )
 
 
-def everything():
+def everything() -> st.SearchStrategy[Any]:
     return st.from_type(type).flatmap(st.from_type)

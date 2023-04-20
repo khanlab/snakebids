@@ -10,7 +10,17 @@ import shutil
 import tempfile
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, Iterable, List, NamedTuple, Optional, TypeVar
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    NamedTuple,
+    Optional,
+    TypeVar,
+    cast,
+)
 
 import attrs
 import more_itertools as itx
@@ -24,13 +34,21 @@ from pytest_mock import MockerFixture
 from snakebids.core.construct_bids import bids
 from snakebids.core.datasets import BidsComponent, BidsDataset
 from snakebids.core.input_generation import (
-    _all_custom_paths,
-    _gen_bids_layout,
-    _generate_filters,
-    _get_lists_from_bids,
-    _parse_custom_path,
-    generate_inputs,
+    _all_custom_paths,  # type: ignore[reportPrivateUsage]
 )
+from snakebids.core.input_generation import (
+    _gen_bids_layout,  # type: ignore[reportPrivateUsage]
+)
+from snakebids.core.input_generation import (
+    _generate_filters,  # type: ignore[reportPrivateUsage]
+)
+from snakebids.core.input_generation import (
+    _get_lists_from_bids,  # type: ignore[reportPrivateUsage]
+)
+from snakebids.core.input_generation import (
+    _parse_custom_path,  # type: ignore[reportPrivateUsage]
+)
+from snakebids.core.input_generation import generate_inputs
 from snakebids.exceptions import ConfigError, PybidsError
 from snakebids.tests import strategies as sb_st
 from snakebids.tests.helpers import (
@@ -62,11 +80,14 @@ class TestFilterBools:
         return sorted([comp1, comp2], key=lambda comp: len(comp.entities.keys()))
 
     def get_extra_entity(self, dataset: BidsDataset) -> str:
+        def set_difference(set_: set[str], comp: BidsComponent) -> set[str]:
+            return set_.symmetric_difference(comp.entities.keys())
+
         return itx.one(
             ft.reduce(
-                lambda set_, comp: set_.symmetric_difference(comp.entities.keys()),
+                set_difference,
                 dataset.values(),
-                set(),
+                cast("set[str]", set()),
             )
         )
 
@@ -240,10 +261,10 @@ class TestFilterBools:
 
 
 class TestAbsentConfigEntries:
-    def get_entities(self, root):
+    def get_entities(self, root: Path):
         # Generate directory
         entities = {"subject": ["001", "002"], "acq": sorted(["foo", "bar"])}
-        zip_list = defaultdict(list)
+        zip_list: dict[str, list[str]] = defaultdict(list)
         for e in it.product(*entities.values()):
             d = dict(zip(entities.keys(), e))
             for key, val in d.items():
@@ -254,7 +275,7 @@ class TestAbsentConfigEntries:
         return entities, MultiSelectDict(zip_list)
 
     def test_missing_filters(self, tmpdir: Path):
-        entities, zip_list = self.get_entities(tmpdir)
+        _, zip_list = self.get_entities(tmpdir)
 
         # create config
         derivatives = False
@@ -278,7 +299,7 @@ class TestAbsentConfigEntries:
         assert config.subj_wildcards == {"subject": "{subject}"}
 
     def test_missing_wildcards(self, tmpdir: Path):
-        entities, zip_list = self.get_entities(tmpdir)
+        self.get_entities(tmpdir)
 
         # create config
         derivatives = False
@@ -308,12 +329,14 @@ class TestGenerateFilter:
     st_lists_or_text = st.lists(st.text(valid_chars)) | st.text(valid_chars)
 
     @given(st.tuples(st_lists_or_text, st_lists_or_text))
-    def test_throws_error_if_labels_and_excludes_are_given(self, args):
+    def test_throws_error_if_labels_and_excludes_are_given(
+        self, args: tuple[list[str] | str, list[str] | str]
+    ):
         with pytest.raises(ValueError):
             _generate_filters(*args)
 
     @given(st_lists_or_text)
-    def test_returns_participant_label_as_list(self, label):
+    def test_returns_participant_label_as_list(self, label: list[str] | str):
         result = _generate_filters(label)[0]
         if isinstance(label, str):
             assert result == [label]
@@ -326,7 +349,7 @@ class TestGenerateFilter:
         st.text(valid_chars, min_size=1, max_size=3),
     )
     def test_exclude_gives_regex_that_matches_anything_except_exclude(
-        self, excluded, dummy_values, padding
+        self, excluded: list[str] | str, dummy_values: list[str], padding: str
     ):
         # Make sure the dummy_values and padding we'll be testing against are different
         # from our test values
@@ -449,7 +472,11 @@ class TestCustomPaths:
             (root / path).touch()
         return root / template
 
-    def test_benchmark_test_custom_paths(self, benchmark, tmp_path: Path):
+    T = TypeVar("T")
+
+    def test_benchmark_test_custom_paths(
+        self, benchmark: Callable[[Callable[..., Any], Any], Any], tmp_path: Path
+    ):
         entities = {"A": ["A", "B", "C"], "B": ["1", "2", "3"]}
         template = Path("{A}/A-{A}_B-{B}")
         test_path = self.generate_test_directory(entities, template, tmp_path)
@@ -989,51 +1016,52 @@ def test_when_all_custom_paths_no_layout_indexed(
 
 class TestDB:
     @pytest.fixture(autouse=True)
-    def start(self, tmpdir):
-        self.tmpdir = tmpdir.strpath
+    def start(self, tmpdir: Path):
+        self.tmpdir: str = tmpdir.strpath  # type: ignore
 
         # Copy over test data
         shutil.copytree("snakebids/tests/data/bids_t1w", f"{self.tmpdir}/data")
         assert filecmp.dircmp("snakebids/tests/data/bids_t1w", f"{self.tmpdir}/data")
 
         # Create config
-        self.bids_dir = f"{self.tmpdir}/data"
-        self.pybids_db = {"database_dir": "", "reset_database": False}
+        self.bids_dir: str = f"{self.tmpdir}/data"
+        self.database_dir = ""
+        self.reset_database = False
 
     def test_database_dir_blank(self):
         # Test non-saving (check db does not exist)
         _gen_bids_layout(
             bids_dir=self.bids_dir,
             derivatives=False,
-            pybids_database_dir=self.pybids_db.get("database_dir"),
-            pybids_reset_database=self.pybids_db["reset_database"],
+            pybids_database_dir=self.database_dir,
+            pybids_reset_database=self.reset_database,
         )
-        assert not os.path.exists(self.pybids_db["database_dir"])
+        assert not os.path.exists(self.database_dir)
 
     def test_database_dir_relative(self):
         # Update config
-        self.pybids_db["database_dir"] = "./.db"
+        self.database_dir = "./.db"
 
         # Check to make sure db exists (relative path)
         _gen_bids_layout(
             bids_dir=self.bids_dir,
             derivatives=False,
-            pybids_database_dir=self.pybids_db.get("database_dir"),
-            pybids_reset_database=self.pybids_db["reset_database"],
+            pybids_database_dir=self.database_dir,
+            pybids_reset_database=self.reset_database,
         )
         assert not os.path.exists(f"{self.tmpdir}/data/.db/")
 
     def test_database_dir_absolute(self):
         # Update config
-        self.pybids_db["database_dir"] = f"{self.tmpdir}/data/.db/"
-        self.pybids_db["reset_database"] = False
+        self.database_dir = f"{self.tmpdir}/data/.db/"
+        self.reset_database = False
 
         # Check to make sure db exists (absolute path)
         _gen_bids_layout(
             bids_dir=self.bids_dir,
             derivatives=False,
-            pybids_database_dir=self.pybids_db.get("database_dir"),
-            pybids_reset_database=self.pybids_db["reset_database"],
+            pybids_database_dir=self.database_dir,
+            pybids_reset_database=self.reset_database,
         )
         assert os.path.exists(f"{self.tmpdir}/data/.db/")
 
@@ -1047,18 +1075,18 @@ class TestDB:
         layout = _gen_bids_layout(
             bids_dir=self.bids_dir,
             derivatives=False,
-            pybids_database_dir=self.pybids_db.get("database_dir"),
-            pybids_reset_database=self.pybids_db["reset_database"],
+            pybids_database_dir=self.database_dir,
+            pybids_reset_database=self.reset_database,
         )
         assert not layout.get(subject="003")
 
         # Test updating of layout
-        self.pybids_db["reset_database"] = True
+        self.reset_database = True
         # Check to see if new subject in updated layout
         layout = _gen_bids_layout(
             bids_dir=self.bids_dir,
             derivatives=False,
-            pybids_database_dir=self.pybids_db.get("database_dir"),
-            pybids_reset_database=self.pybids_db["reset_database"],
+            pybids_database_dir=self.database_dir,
+            pybids_reset_database=self.reset_database,
         )
         assert layout.get(subject="003")

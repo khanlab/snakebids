@@ -22,7 +22,7 @@ class TestMatchesAny:
         assert matches_any(item, match_list, op.eq)
 
     @st.composite
-    def NonMatchingMatchList(draw: st.DrawFn):
+    def NonMatchingMatchList(draw: st.DrawFn) -> tuple[str, list[str]]:
         item = draw(st.text())
         match_list = draw(
             st.lists(

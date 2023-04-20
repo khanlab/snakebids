@@ -1,7 +1,9 @@
 # flake8: noqa
 # pylint: skip-file
 
-pybids_inputs = {
+from __future__ import annotations
+
+pybids_inputs: dict[str, dict[str, dict[str, str] | list[str]]] = {
     "bold": {
         "filters": {"suffix": "bold", "extension": ".nii.gz", "datatype": "func"},
         "wildcards": ["subject", "session", "acquisition", "task", "run"],

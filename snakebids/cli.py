@@ -6,7 +6,7 @@ import os
 import pathlib
 import re
 from collections.abc import Sequence
-from typing import Any, Optional
+from typing import Any, Iterable, Mapping, Optional, cast
 
 import attr
 import snakemake
@@ -180,8 +180,8 @@ def create_parser(include_snakemake: bool = False) -> argparse.ArgumentParser:
 
 def add_dynamic_args(
     parser: argparse.ArgumentParser,
-    parse_args: dict[str, dict[str, str]],
-    pybids_inputs: dict[str, dict[str, dict[str, Any]]],
+    parse_args: Mapping[str, Mapping[str, str | Iterable[str] | bool]],
+    pybids_inputs: Mapping[str, Mapping[str, Mapping[str, str] | Iterable[str]]],
 ) -> None:
     # create parser group for app options
     app_group = parser.add_argument_group("SNAKEBIDS", "Options for snakebids app")
@@ -192,16 +192,16 @@ def add_dynamic_args(
         # We first check that the type annotation is, in fact,
         # a str to allow the edge case where it's already
         # been converted
+        arg_copy = dict(arg)
         if "type" in arg:
             try:
-                arg["type"] = globals()[arg["type"]]
+                arg_copy["type"] = globals()[str(arg["type"])]
             except KeyError as err:
                 raise TypeError(
                     f"{arg['type']} is not available " + f"as a type for {name}"
                 ) from err
 
-        names = _make_underscore_dash_aliases(name)
-        app_group.add_argument(*names, **arg)
+        app_group.add_argument(*_make_underscore_dash_aliases(name), **arg_copy)
 
     # general parser for
     # --filter_{input_type} {key1}={value1} {key2}={value2}...
@@ -213,17 +213,16 @@ def add_dynamic_args(
 
     for input_type in pybids_inputs.keys():
         argnames = (f"--filter-{input_type}", f"--filter_{input_type}")
-        arglist_default = [
-            f"{key}={value}"
-            for (key, value) in pybids_inputs[input_type]["filters"].items()
-        ]
-        arglist_default_string = " ".join(arglist_default)
+        filters: Mapping[str, str] = cast(
+            Mapping[str, str], pybids_inputs[input_type]["filters"]
+        )
+        arglist_default = [f"{key}={value}" for (key, value) in filters.items()]
 
         filter_opts.add_argument(
             *argnames,
             nargs="+",
             action=KeyValue,
-            help=f"(default: {arglist_default_string})",
+            help=f"(default: {' '.join(arglist_default)})",
         )
 
     # general parser for
@@ -237,12 +236,11 @@ def add_dynamic_args(
     for input_type in pybids_inputs.keys():
         argnames = (f"--wildcards-{input_type}", f"--wildcards_{input_type}")
         arglist_default = [f"{wc}" for wc in pybids_inputs[input_type]["wildcards"]]
-        arglist_default_string = " ".join(arglist_default)
 
         wildcards_opts.add_argument(
             *argnames,
             nargs="+",
-            help=f"(default: {arglist_default_string})",
+            help=f"(default: {' '.join(arglist_default)})",
         )
 
     override_opts = parser.add_argument_group(
@@ -319,7 +317,7 @@ def _make_underscore_dash_aliases(name: str) -> set[str]:
 
 
 def _resolve_path(
-    path_candidate: list["os.PathLike[str]"] | "os.PathLike[str]" | str,
+    path_candidate: Iterable["os.PathLike[str] | str"] | "os.PathLike[str]" | str,
 ) -> Any:
     """Helper function to resolve any paths or list
     of paths it's passed. Otherwise, returns the argument
@@ -336,7 +334,8 @@ def _resolve_path(
         If os.Pathlike or list  of os.Pathlike, the same paths resolved.
         Otherwise, the argument unchanged.
     """
-    if isinstance(path_candidate, list):
+
+    if isinstance(path_candidate, Iterable) and not isinstance(path_candidate, str):
         return [_resolve_path(p) for p in path_candidate]
 
     if isinstance(path_candidate, os.PathLike):

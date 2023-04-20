@@ -276,7 +276,7 @@ class BIDSLayout:
         regex_search: bool = ...,
         absolute_paths=...,
         invalid_filters=...,
-        **filters: dict[str, str],
+        **filters: str,
     ) -> list[BIDSFile]:
         """Retrieve files and/or metadata from the current Layout.
 
