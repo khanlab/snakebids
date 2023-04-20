@@ -33,9 +33,9 @@ def generate_inputs(
     pybids_reset_database: bool = ...,
     derivatives: bool | Path | str = ...,
     pybids_config: str | None = ...,
-    limit_to: list[str] | None = ...,
-    participant_label: list[str] | str | None = ...,
-    exclude_participant_label: list[str] | str | None = ...,
+    limit_to: Iterable[str] | None = ...,
+    participant_label: Iterable[str] | str | None = ...,
+    exclude_participant_label: Iterable[str] | str | None = ...,
     use_bids_inputs: Literal[False] = ...,
 ) -> BidsDatasetDict:
     ...
@@ -50,9 +50,9 @@ def generate_inputs(
     pybids_reset_database: bool = ...,
     derivatives: bool | Path | str = ...,
     pybids_config: str | None = ...,
-    limit_to: list[str] | None = ...,
-    participant_label: list[str] | str | None = ...,
-    exclude_participant_label: list[str] | str | None = ...,
+    limit_to: Iterable[str] | None = ...,
+    participant_label: Iterable[str] | str | None = ...,
+    exclude_participant_label: Iterable[str] | str | None = ...,
     use_bids_inputs: Literal[True] | None = ...,
 ) -> BidsDataset:
     ...
@@ -66,9 +66,9 @@ def generate_inputs(
     pybids_reset_database: bool = False,
     derivatives: bool | Path | str = False,
     pybids_config: str | None = None,
-    limit_to: list[str] | None = None,
-    participant_label: list[str] | str | None = None,
-    exclude_participant_label: list[str] | str | None = None,
+    limit_to: Iterable[str] | None = None,
+    participant_label: Iterable[str] | str | None = None,
+    exclude_participant_label: Iterable[str] | str | None = None,
     use_bids_inputs: bool | None = None,
 ) -> BidsDataset | BidsDatasetDict:
     """Dynamically generate snakemake inputs using pybids_inputs
@@ -395,8 +395,8 @@ def write_derivative_json(snakemake: Snakemake, **kwargs: dict[str, Any]) -> Non
 
 
 def _generate_filters(
-    include: list[str] | str | None = None,
-    exclude: list[str] | str | None = None,
+    include: Iterable[str] | str | None = None,
+    exclude: Iterable[str] | str | None = None,
 ) -> tuple[list[str], bool]:
     """Generate Pybids filter based on inclusion or exclusion criteria
 
@@ -440,11 +440,9 @@ def _generate_filters(
 
     if exclude is not None:
         # if multiple items to exclude, combine with with item1|item2|...
-        if isinstance(exclude, list):
-            exclude_string = "|".join(re.escape(label) for label in exclude)
-        # if not, then string is the label itself
-        else:
-            exclude_string = re.escape(exclude)
+        exclude_string = "|".join(
+            re.escape(label) for label in itx.always_iterable(exclude)
+        )
         # regex to exclude subjects
         return [f"^((?!({exclude_string})$).*)$"], True
     return [], False
@@ -536,7 +534,7 @@ def _get_lists_from_bids(
     bids_layout: Optional[BIDSLayout],
     pybids_inputs: InputsConfig,
     *,
-    limit_to: "list[str] | None" = None,
+    limit_to: Iterable[str] | None = None,
     regex_search: bool = False,
     **filters: str | Sequence[str],
 ) -> Generator[BidsComponent, None, None]:
