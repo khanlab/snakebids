@@ -388,7 +388,7 @@ def write_derivative_json(snakemake: Snakemake, **kwargs: dict[str, Any]) -> Non
         }
     )
 
-    with open(snakemake.output.json, "w", encoding="utf-8") as outfile:  # type: ignore
+    with open(snakemake.output.json, "w", encoding="utf-8") as outfile:
         json.dump(sidecar, outfile, indent=4)
 
 
