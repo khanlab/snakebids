@@ -12,7 +12,7 @@ import more_itertools as itx
 import pytest
 from hypothesis import assume, given
 from hypothesis import strategies as st
-from snakemake.exceptions import WildcardError  # type: ignore
+from snakemake.exceptions import WildcardError
 
 from snakebids.core.construct_bids import bids
 from snakebids.core.datasets import BidsComponent, BidsDataset
