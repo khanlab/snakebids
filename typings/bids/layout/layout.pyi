@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from bids import BIDSLayoutIndexer
-from bids.layout.models import BIDSFile
+from bids.layout.models import BIDSFile, Entity
 
 """BIDSLayout class."""
 __all__ = ["BIDSLayout"]
@@ -101,7 +101,7 @@ class BIDSLayout:
     @lru_cache()
     def config(self): ...
     @property
-    def entities(self):  # -> dict[Unknown, Unknown]:
+    def entities(self) -> dict[str, Entity]:
         """Get the entities."""
         ...
     @property
