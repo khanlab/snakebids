@@ -13,7 +13,7 @@ import more_itertools as itx
 from bids import BIDSLayout
 from cached_property import cached_property
 from pvandyken.deprecated import deprecated
-from snakemake.io import expand as sn_expand  # type: ignore
+from snakemake.io import expand as sn_expand
 from typing_extensions import TypedDict
 
 import snakebids.utils.sb_itertools as sb_it
