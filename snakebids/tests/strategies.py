@@ -1,4 +1,3 @@
-# pylint: disable=invalid-name
 from __future__ import annotations
 
 import copy
@@ -52,9 +51,8 @@ def bids_entity_lists(
     ).filter(lambda v: v != ["datatype"])
 
 
-# pylint: disable=too-many-arguments
 @st.composite
-def zip_lists(
+def zip_lists(  # noqa: PLR0913
     draw: st.DrawFn,
     min_entities: int = 1,
     max_entities: int = 5,
@@ -93,7 +91,7 @@ def zip_lists(
 
 
 @st.composite
-def bids_components(
+def bids_components(  # noqa: PLR0913
     draw: st.DrawFn,
     min_entities: int = 1,
     max_entities: int = 5,

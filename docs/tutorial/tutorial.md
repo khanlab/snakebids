@@ -435,7 +435,7 @@ Finally, we can use our {class}`BidsComponents <snakebids.BidsComponent>` to eas
 ```
 
 ```{note}
-[`BidsComponent.expand()`](#snakebids.BidsComponent.expand) still uses snakemake's [`expand()`][expand_func] under the hood, but applies extra logic to ensure only entity groups *actually* found in your dataset are used. If need to expand over additional wildcards, just add them as keyword args. They'll expand over every possible combination, just like snakemake's [`expand()`][expand_func]
+[`BidsComponent.expand()`](#snakebids.BidsComponent.expand) still uses snakemake's [`expand()`][expand_func] under the hood, but applies extra logic to ensure only entity groups *actually* found in your dataset are used. If need to expand over additional wildcards, just add them as keyword args. They'll expand over every possible combination, just like snakemake's [`expand()`][expand_func].
 ```
 
 

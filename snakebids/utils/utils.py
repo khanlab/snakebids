@@ -206,7 +206,6 @@ class BidsParseError(Exception):
         super().__init__(path, entity)
 
 
-# pylint: disable=too-few-public-methods
 class _Documented(Protocol):
     __doc__: str
 

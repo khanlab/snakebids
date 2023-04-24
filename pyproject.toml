@@ -65,10 +65,7 @@ black = "^23.1.0"
 pybids = "^0.15.2"
 pytest = "^7.0.0"
 pytest-mock = "^3.7.0"
-pylint = "^2.12.0"
 isort = "^5.10.1"
-# flake8==6.0.0 requires py38 or greater
-flake8 = "^5.0.4"
 poethepoet = "^0.18.1"
 # pre-commit==3.0.0 requires py38 or greater
 pre-commit = "^2.17.0"
@@ -78,6 +75,7 @@ pytest-benchmark = "^4.0.0"
 pyfakefs = "^5.1.0"
 pyparsing = "^3.0.9"
 pyright = "^1.1.302"
+ruff = "^0.0.261"
 
 [tool.poetry.scripts]
 snakebids = "snakebids.admin:main"
@@ -88,7 +86,7 @@ build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poe.tasks]
 setup = "pre-commit install"
-quality = { shell = "isort snakebids && black snakebids && flake8 snakebids && pylint snakebids" }
+quality = { shell = "isort snakebids && black snakebids && ruff snakebids" }
 test = "pytest --doctest-modules --ignore=docs --ignore=snakebids/project_template --benchmark-disable"
 mkinit = "mkinit --recursive --nomods --black -i snakebids"
 benchmark = "pytest --benchmark-only --benchmark-autosave"
@@ -97,30 +95,12 @@ benchmark = "pytest --benchmark-only --benchmark-autosave"
 profile = "black"
 multi_line_output = 3
 
-[tool.pylint.master]
-ignore-patterns = "^[0-9][0-9]+_,^test_,^__init__,"
-ignore-paths = ["typings"]
-
-[tool.pylint.format]
-good-names = "i,j,k,ex,_,x,y,f,d"
-
-[tool.pylint.similarities]
-ignore-comments = true
-ignore-docstrings = true
-ignore-imports = true
-ignore-signatures = true
-min-similarity-lines = 4
-
-[tool.pylint.messages_control]
-disable = """
-    missing-function-docstring,
-    missing-module-docstring,
-    fixme
-"""
-
 [tool.pyright]
 include = ["snakebids"]
 exclude = ["snakebids/project_template", "typings"]
 typeCheckingMode = "strict"
 reportPrivateUsage = false
 reportImportCycles = false
+
+[tool.ruff]
+select = ["E", "F", "PL", "RUF"]

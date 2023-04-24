@@ -1,15 +1,17 @@
+# ruff: noqa: PLR2004
 from __future__ import absolute_import
 
 import json
 from pathlib import Path
-from typing import Callable
 
 import pytest
 
-import snakebids.utils.output as output
 from snakebids.exceptions import RunError
+from snakebids.utils import output
 
-dirlen: Callable[[Path], int] = lambda f: len([*f.iterdir()])
+
+def dirlen(f: Path):
+    return len([*f.iterdir()])
 
 
 @pytest.fixture

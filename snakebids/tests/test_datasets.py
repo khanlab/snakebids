@@ -300,7 +300,7 @@ class TestBidsComponentExpand:
     )
     def test_partial_expansion(self, component: BidsComponent, wildcard: str):
         path_tpl = bids(**component.wildcards, **entity_to_wildcard(wildcard))
-        paths = component.expand(path_tpl)
+        paths = component.expand(path_tpl, allow_missing=True)
         for path in paths:
             assert re.search(r"\{.+\}", path)
 
@@ -312,5 +312,5 @@ class TestBidsComponentExpand:
     )
     def test_prevent_partial_expansion(self, component: BidsComponent, wildcard: str):
         path_tpl = bids(**component.wildcards, **entity_to_wildcard(wildcard))
-        with pytest.raises(WildcardError):  # type: ignore
-            component.expand(path_tpl, allow_missing=False)
+        with pytest.raises(WildcardError):
+            component.expand(path_tpl)

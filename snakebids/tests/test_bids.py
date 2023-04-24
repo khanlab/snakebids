@@ -17,7 +17,7 @@ def test_bids_subj():
 
 
 def test_bids_with_no_args_gives_empty_path():
-    assert bids() == ""
+    assert not bids()
 
 
 @pytest.mark.parametrize(

@@ -87,7 +87,6 @@ def get_bids_path(entities: Iterable[str]) -> str:
     )
 
 
-# pylint: disable=too-few-public-methods
 class BidsListCompare(UserDictPy37[str, Dict[str, List[str]]]):
     """Dict override specifically for comparing input_lists
 

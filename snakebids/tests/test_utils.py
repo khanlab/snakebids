@@ -85,7 +85,9 @@ class TestMultiselectDict:
         self, dicts: MultiSelectDict[str, Any], data: st.DataObject
     ):
         selectors = self.get_selectors(data, dicts)
-        assert type(dicts) == type(dicts[selectors])
+        # `noqa`, because in this case we actually want the classes to be exactly the
+        # same
+        assert type(dicts) == type(dicts[selectors])  # noqa: E721
 
     @given(dicts=sb_st.multiselect_dicts(st.text(), sb_st.everything()), data=st.data())
     def test_selected_items_in_original(

@@ -65,7 +65,7 @@ def _elide_zip_table(
             it.chain(
                 cols[: elision.start]
                 if elision.start > 1
-                else [cols[0]] + new_col("["),
+                else [cols[0], *new_col("[")],
                 new_col("..."),
                 (new_col(" ") if elision.stop - elision.start < len(cols) - 1 else []),
                 cols[elision.stop :],

@@ -1,4 +1,3 @@
-# pylint: disable=protected-access, redefined-outer-name
 from __future__ import absolute_import
 
 import copy
@@ -104,7 +103,7 @@ class TestRunSnakemake:
                 "output_dir": outputdir.resolve(),
             }
         )
-        if root == "app" and tail == "":
+        if root == "app" and not tail:
             expected_config["output_dir"] /= "results"
             expected_config["root"] = "results"
 

@@ -1,5 +1,4 @@
-# flake8: noqa
-# pylint: skip-file
+# ruff: noqa
 
 from __future__ import annotations
 

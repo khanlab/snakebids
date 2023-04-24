@@ -65,12 +65,10 @@ jobs:
         run: poetry run isort snakebids -c
       - name: Black
         run: poetry run black snakebids --check
-      - name: Flake8
-        run: poetry run flake8 snakebids
-      - name: pylint
-        run: poetry run pylint snakebids
       - name: pyright
         run: poetry run pyright snakebids
+      - name: ruff
+        run: poetry run ruff snakebids
 
   test:
     runs-on: ubuntu-latest

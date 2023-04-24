@@ -68,8 +68,6 @@ def _get_file_paths(
     return wrapper
 
 
-# pylint: disable=unsubscriptable-object, unsupported-assignment-operation,
-# pylint: disable=too-few-public-methods
 @attr.define(slots=False)
 class SnakeBidsApp:
     """Snakebids app with config and arguments.
@@ -204,7 +202,6 @@ class SnakeBidsApp:
             self.config["root"] = ""
 
         app = self
-        # pylint: disable=not-an-iterable
         for plugin in self.plugins:
             app = plugin(app) or app
 

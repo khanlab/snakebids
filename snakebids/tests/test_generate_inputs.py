@@ -1,3 +1,4 @@
+# ruff: noqa: PLR2004
 from __future__ import annotations
 
 import filecmp
