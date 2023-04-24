@@ -9,13 +9,14 @@ from typing import Any, Callable, Dict, Iterable, List, Mapping, Sequence, TypeV
 import more_itertools as itx
 import pytest
 from hypothesis import HealthCheck, settings
+from typing_extensions import ParamSpec, TypeAlias
 
 from snakebids import bids
 from snakebids.core.input_generation import BidsDataset, generate_inputs
 from snakebids.types import InputsConfig, UserDictPy37, ZipListLike, ZipLists
 from snakebids.utils.utils import BidsEntity, MultiSelectDict
 
-T = TypeVar("T")
+_T = TypeVar("_T")
 
 
 def get_zip_list(
@@ -111,7 +112,8 @@ class BidsListCompare(UserDictPy37[str, Dict[str, List[str]]]):
         return True
 
 
-_FuncT = TypeVar("_FuncT", bound=Callable[..., Any])
+_P = ParamSpec("_P")
+_FuncT: TypeAlias = Callable[_P, _T]
 
 
 def debug(**overrides: Any):
@@ -122,17 +124,17 @@ def debug(**overrides: Any):
     when hypothesis is not being used)
     """
 
-    def inner(func: _FuncT) -> _FuncT:
+    def inner(func: _FuncT[_P, _T]) -> _FuncT[_P, _T]:
         test = getattr(func, "hypothesis").inner_test
 
         @pytest.mark.disable_fakefs(True)
         @ft.wraps(func)
-        def inner_test(*args, **kwargs):  # type: ignore
+        def inner_test(*args: _P.args, **kwargs: _P.kwargs):
             return test(*args, **{**kwargs, **overrides})
 
         if not hasattr(func, "hypothesis"):
             raise TypeError(f"{func} is not decorated with hypothesis.given")
-        return inner_test  # type: ignore
+        return inner_test
 
     return inner
 
@@ -206,7 +208,7 @@ def reindex_dataset(
     return generate_inputs(root, config, use_bids_inputs=True)
 
 
-def allow_tmpdir(__callable: T) -> T:
+def allow_tmpdir(__callable: _T) -> _T:
     """Allow function_scoped fixtures in hypothesis tests
 
     This is primarily useful for using tmpdirs, hence, the name
