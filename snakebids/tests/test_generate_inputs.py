@@ -34,21 +34,13 @@ from pytest_mock import MockerFixture
 from snakebids.core.construct_bids import bids
 from snakebids.core.datasets import BidsComponent, BidsDataset
 from snakebids.core.input_generation import (
-    _all_custom_paths,  # type: ignore[reportPrivateUsage]
+    _all_custom_paths,
+    _gen_bids_layout,
+    _generate_filters,
+    _get_lists_from_bids,
+    _parse_custom_path,
+    generate_inputs,
 )
-from snakebids.core.input_generation import (
-    _gen_bids_layout,  # type: ignore[reportPrivateUsage]
-)
-from snakebids.core.input_generation import (
-    _generate_filters,  # type: ignore[reportPrivateUsage]
-)
-from snakebids.core.input_generation import (
-    _get_lists_from_bids,  # type: ignore[reportPrivateUsage]
-)
-from snakebids.core.input_generation import (
-    _parse_custom_path,  # type: ignore[reportPrivateUsage]
-)
-from snakebids.core.input_generation import generate_inputs
 from snakebids.exceptions import ConfigError, PybidsError
 from snakebids.tests import strategies as sb_st
 from snakebids.tests.helpers import (
