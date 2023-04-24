@@ -1,5 +1,5 @@
 # pylint: disable=protected-access, redefined-outer-name
-from __future__ import absolute_import, annotations
+from __future__ import annotations
 
 import copy
 import sys
