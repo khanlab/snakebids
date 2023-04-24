@@ -5,7 +5,8 @@ from __future__ import annotations
 
 import os
 from contextlib import contextmanager
-from typing import Any, Generic, Iterable, List, TypeVar
+from pathlib import Path
+from typing import Any, Callable, Generic, Iterable, List, Sequence, TypeVar, overload
 
 __author__ = ...
 __copyright__ = ...
@@ -280,7 +281,12 @@ def local(value):  # -> AnnotatedString | list[Unknown]:
     """
     ...
 
-def expand(*args, **wildcards) -> list[str]:
+def expand(
+    filepatterns: Sequence[Path | str] | Path | str,
+    func: Callable[[Iterable[str]], Iterable[Iterable[str]]] | None = ...,
+    allow_missing: bool | Sequence[str] | str = ...,
+    **wildcards: Sequence[str] | str,
+) -> list[str]:
     """
     Expand wildcards in given filepatterns.
 
