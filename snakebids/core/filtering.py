@@ -8,7 +8,7 @@ from typing import List, TypeVar, Union, overload
 import more_itertools as itx
 from typing_extensions import Literal
 
-from snakebids.types import ZipLists
+from snakebids.types import ZipListLike, ZipLists
 from snakebids.utils.utils import MultiSelectDict, matches_any
 
 # pylint: disable=invalid-name
@@ -17,7 +17,7 @@ T_co = TypeVar("T_co", bound=Union[List[str], str], covariant=True)
 
 @overload
 def filter_list(
-    zip_list: ZipLists,
+    zip_list: ZipListLike,
     filters: Mapping[str, list[str] | str],
     return_indices_only: Literal[False] = ...,
     regex_search: bool = ...,
@@ -27,7 +27,7 @@ def filter_list(
 
 @overload
 def filter_list(
-    zip_list: ZipLists,
+    zip_list: ZipListLike,
     filters: Mapping[str, list[str] | str],
     return_indices_only: Literal[True] = ...,
     regex_search: bool = ...,
@@ -36,7 +36,7 @@ def filter_list(
 
 
 def filter_list(
-    zip_list: ZipLists,
+    zip_list: ZipListLike,
     filters: Mapping[str, list[str] | str],
     return_indices_only: bool = False,
     regex_search: bool = False,
@@ -258,7 +258,7 @@ def get_filtered_ziplist_index(
     return indices
 
 
-def _get_zip_list_indices(zip_list: dict[str, list[str]]) -> Iterator[int]:
+def _get_zip_list_indices(zip_list: ZipListLike) -> Iterator[int]:
     """Convert a zip_list into its indices
 
     Generates a sequence of numbers from 0 up to the length of the zip_lists. For

@@ -221,7 +221,7 @@ def allow_tmpdir(__callable: _T) -> _T:
 
 
 def expand_zip_list(
-    zip_list: ZipLists, new_values: Mapping[str, Sequence[str]]
+    zip_list: ZipListLike, new_values: Mapping[str, Sequence[str]]
 ) -> ZipListLike:
     """Expand a zip list with new values via product
 
