@@ -21,9 +21,7 @@ _Ex_co = TypeVar("_Ex_co", bound=str, covariant=True)
 _T = TypeVar("_T")
 
 alphanum = ascii_letters + digits
-valid_entities: tuple[str] = tuple(
-    BidsConfig.load("bids").entities.keys()  # type: ignore
-)
+valid_entities: tuple[str] = tuple(BidsConfig.load("bids").entities.keys())
 
 
 def bids_entity() -> st.SearchStrategy[BidsEntity]:
@@ -31,8 +29,8 @@ def bids_entity() -> st.SearchStrategy[BidsEntity]:
     # Generate inputs and bids does not properly handle 'extension', so exclude it
     return st.sampled_from(
         [
-            BidsEntity(key)  # type: ignore
-            for key in bidsconfig.entities.keys()  # type: ignore
+            BidsEntity(key)
+            for key in bidsconfig.entities.keys()
             if key not in ["extension", "fmap", "scans"]
         ],
     )
