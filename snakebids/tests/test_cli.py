@@ -3,13 +3,12 @@ from __future__ import absolute_import, annotations
 
 import copy
 import sys
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from os import PathLike
 from pathlib import Path
 from typing import Iterable, Mapping
 
 import pytest
-from configargparse import Namespace  # type: ignore
 from pytest_mock.plugin import MockerFixture
 
 from snakebids.cli import (

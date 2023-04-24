@@ -6,10 +6,12 @@ import os
 import pathlib
 import re
 from collections.abc import Sequence
-from typing import Any, Iterable, Mapping, Optional, cast
+from typing import Any, Iterable, Mapping, Optional
 
 import attr
 import snakemake
+
+from snakebids.types import InputsConfig
 
 # We define Path here in addition to pathlib to put both variables in globals()
 # This way, users specifying a path type in their config.yaml can indicate
@@ -181,7 +183,7 @@ def create_parser(include_snakemake: bool = False) -> argparse.ArgumentParser:
 def add_dynamic_args(
     parser: argparse.ArgumentParser,
     parse_args: Mapping[str, Mapping[str, str | Iterable[str] | bool]],
-    pybids_inputs: Mapping[str, Mapping[str, Mapping[str, str] | Iterable[str]]],
+    pybids_inputs: InputsConfig,
 ) -> None:
     # create parser group for app options
     app_group = parser.add_argument_group("SNAKEBIDS", "Options for snakebids app")
@@ -213,9 +215,7 @@ def add_dynamic_args(
 
     for input_type in pybids_inputs.keys():
         argnames = (f"--filter-{input_type}", f"--filter_{input_type}")
-        filters: Mapping[str, str] = cast(
-            Mapping[str, str], pybids_inputs[input_type]["filters"]
-        )
+        filters = pybids_inputs[input_type].get("filters", {})
         arglist_default = [f"{key}={value}" for (key, value) in filters.items()]
 
         filter_opts.add_argument(
@@ -235,7 +235,9 @@ def add_dynamic_args(
 
     for input_type in pybids_inputs.keys():
         argnames = (f"--wildcards-{input_type}", f"--wildcards_{input_type}")
-        arglist_default = [f"{wc}" for wc in pybids_inputs[input_type]["wildcards"]]
+        arglist_default = [
+            f"{wc}" for wc in pybids_inputs[input_type].get("wildcards", [])
+        ]
 
         wildcards_opts.add_argument(
             *argnames,
