@@ -1016,8 +1016,8 @@ def test_when_all_custom_paths_no_layout_indexed(
 
 class TestDB:
     @pytest.fixture(autouse=True)
-    def start(self, tmpdir: Path):
-        self.tmpdir: str = tmpdir.strpath  # type: ignore
+    def start(self, tmp_path: Path):
+        self.tmpdir = str(tmp_path)
 
         # Copy over test data
         shutil.copytree("snakebids/tests/data/bids_t1w", f"{self.tmpdir}/data")
