@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
-pybids_inputs: dict[str, dict[str, dict[str, str] | list[str]]] = {
+from snakebids.types import InputsConfig
+
+pybids_inputs: InputsConfig = {
     "bold": {
         "filters": {"suffix": "bold", "extension": ".nii.gz", "datatype": "func"},
         "wildcards": ["subject", "session", "acquisition", "task", "run"],
