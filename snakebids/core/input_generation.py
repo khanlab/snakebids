@@ -625,7 +625,7 @@ def _get_lists_from_bids(
                     f"  Path: {img.path}\n"
                     "\n"
                     "Pybids parsed this path using the pattern: "
-                    f"{bids_layout.entities[err.entity.entity].regex}\n"  # type: ignore
+                    f"{bids_layout.entities[err.entity.entity].regex}\n"
                     "\n"
                     "Snakebids is not currently able to handle this entity. If it is a "
                     "custom entity, its `tag-` must be configured to be the same as "
