@@ -17,7 +17,7 @@ from typing_extensions import Literal
 from snakebids.core.datasets import BidsComponent, BidsDataset, BidsDatasetDict
 from snakebids.core.filtering import filter_list
 from snakebids.exceptions import ConfigError, PybidsError
-from snakebids.types import InputsConfig, ZipLists
+from snakebids.types import InputsConfig, ZipList
 from snakebids.utils.snakemake_io import glob_wildcards
 from snakebids.utils.utils import BidsEntity, BidsParseError, MultiSelectDict, surround
 
@@ -423,7 +423,7 @@ def _parse_custom_path(
     input_path: Path | str,
     regex_search: bool = False,
     **filters: list[str] | str,
-) -> ZipLists:
+) -> ZipList:
     """Glob wildcards from a custom path and apply filters
 
     This replicates pybids path globbing for any custom path. Input path should have

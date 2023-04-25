@@ -8,7 +8,7 @@ from typing import List, Sequence, TypeVar, Union, overload
 import more_itertools as itx
 from typing_extensions import Literal
 
-from snakebids.types import ZipListLike, ZipLists
+from snakebids.types import ZipList, ZipListLike
 from snakebids.utils.utils import MultiSelectDict, matches_any
 
 T_co = TypeVar("T_co", bound=Union[List[str], str], covariant=True)
@@ -20,7 +20,7 @@ def filter_list(
     filters: Mapping[str, Sequence[str] | str],
     return_indices_only: Literal[False] = ...,
     regex_search: bool = ...,
-) -> ZipLists:
+) -> ZipList:
     ...
 
 
@@ -39,7 +39,7 @@ def filter_list(
     filters: Mapping[str, Sequence[str] | str],
     return_indices_only: bool = False,
     regex_search: bool = False,
-) -> ZipLists | list[int]:
+) -> ZipList | list[int]:
     """This function is used when you are expanding over some subset of the
     wildcards i.e. if your output file doesn't contain all the wildcards in
     :attr:`BidsComponent.wildcards <snakebids.BidsComponent.wildcards>`
@@ -157,7 +157,7 @@ def filter_list(
 
 
 def get_filtered_ziplist_index(
-    zip_list: ZipLists,
+    zip_list: ZipList,
     wildcards: dict[str, str],
     subj_wildcards: dict[str, str],
 ) -> int | list[int]:

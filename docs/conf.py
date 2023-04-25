@@ -62,6 +62,12 @@ napoleon_numpy_docstring = True
 
 autodoc_member_order = "bysource"
 autodoc_typehints = "description"
+autodoc_type_aliases = {
+    "ZipList": "snakebids.types.ZipList",
+    "ZipListLike": "snakebids.types.ZipListLike",
+    "InputsConfig": "snakebids.types.InputsConfig",
+}
+autodoc_typehints_format = "short"
 autosummary_imported_members = True
 
 
@@ -100,6 +106,8 @@ html_theme_options = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 # templates_path = ["_templates"]
+
+html_css_files = ["css/typealiases.css"]
 
 redirects = {
     "migration/0.5_to_0.6.md": "migration/0.5_to_0.8.html",

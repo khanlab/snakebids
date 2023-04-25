@@ -13,7 +13,7 @@ from hypothesis import assume
 from snakebids.core.datasets import BidsComponent
 from snakebids.core.input_generation import BidsDataset
 from snakebids.tests import helpers
-from snakebids.types import ZipLists
+from snakebids.types import ZipList
 from snakebids.utils.utils import BidsEntity, MultiSelectDict
 
 _Ex_co = TypeVar("_Ex_co", bound=str, covariant=True)
@@ -60,7 +60,7 @@ def zip_lists(  # noqa: PLR0913
     max_values: int = 3,
     entities: Optional[list[BidsEntity]] = None,
     restrict_patterns: bool = False,
-) -> ZipLists:
+) -> ZipList:
     # Generate multiple entity sets for different "file types"
 
     if entities is None:

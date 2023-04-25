@@ -8,7 +8,7 @@ from itertools import chain
 from pathlib import Path
 from typing import Sequence
 
-from snakebids.types import ZipLists
+from snakebids.types import ZipList
 from snakebids.utils.utils import MultiSelectDict
 
 
@@ -62,7 +62,7 @@ def glob_wildcards(
     pattern: str | Path,
     files: Sequence[str | Path] | None = None,
     followlinks: bool = False,
-) -> ZipLists:
+) -> ZipList:
     """Glob the values of wildcards by matching a pattern to the filesystem.
 
     Returns a zip_list of field names with matched wildcard values.
