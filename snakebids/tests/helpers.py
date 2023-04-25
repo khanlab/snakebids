@@ -204,7 +204,7 @@ def reindex_dataset(
     if use_custom_paths:
         for comp in config:
             config[comp]["custom_path"] = dataset[comp].path
-    return generate_inputs(root, config, use_bids_inputs=True)
+    return generate_inputs(root, config)
 
 
 def allow_tmpdir(__callable: _T) -> _T:
