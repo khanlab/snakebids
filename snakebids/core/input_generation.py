@@ -145,36 +145,49 @@ def generate_inputs(  # noqa: PLR0913
     -------
     As an example, consider the following BIDS dataset::
 
-        bids-example/
+        example
+        ├── README.md
         ├── dataset_description.json
-        ├── participants.tsv
-        ├── README
-        └── sub-control01
-            ├── anat
-            │   ├── sub-control01_T1w.json
-            │   ├── sub-control01_T1w.nii.gz
-            │   ├── sub-control01_T2w.json
-            │   └── sub-control01_T2w.nii.gz
-            ├── dwi
-            │   ├── sub-control01_dwi.bval
-            │   ├── sub-control01_dwi.bvec
-            │   └── sub-control01_dwi.nii.gz
-            ├── fmap
-            │   ├── sub-control01_magnitude1.nii.gz
-            │   ├── sub-control01_phasediff.json
-            │   ├── sub-control01_phasediff.nii.gz
-            │   └── sub-control01_scans.tsv
-            └── func
-                ├── sub-control01_task-nback_bold.json
-                ├── sub-control01_task-nback_bold.nii.gz
-                ├── sub-control01_task-nback_events.tsv
-                ├── sub-control01_task-nback_physio.json
-                ├── sub-control01_task-nback_physio.tsv.gz
-                ├── sub-control01_task-nback_sbref.nii.gz
-                ├── sub-control01_task-rest_bold.json
-                ├── sub-control01_task-rest_bold.nii.gz
-                ├── sub-control01_task-rest_physio.json
-                └── sub-control01_task-rest_physio.tsv.gz
+        ├── participant.tsv
+        ├── sub-001
+        │   ├── ses-01
+        │   │   ├── anat
+        │   │   │   ├── sub-001_ses-01_run-01_T1w.json
+        │   │   │   ├── sub-001_ses-01_run-01_T1w.nii.gz
+        │   │   │   ├── sub-001_ses-01_run-02_T1w.json
+        │   │   │   └── sub-001_ses-01_run-02_T1w.nii.gz
+        │   │   └── func
+        │   │       ├── sub-001_ses-01_task-nback_bold.json
+        │   │       ├── sub-001_ses-01_task-nback_bold.nii.gz
+        │   │       ├── sub-001_ses-01_task-rest_bold.json
+        │   │       └── sub-001_ses-01_task-rest_bold.nii.gz
+        │   └── ses-02
+        │       ├── anat
+        │       │   ├── sub-001_ses-02_run-01_T1w.json
+        │       │   └── sub-001_ses-02_run-01_T1w.nii.gz
+        │       └── func
+        │           ├── sub-001_ses-02_task-nback_bold.json
+        │           ├── sub-001_ses-02_task-nback_bold.nii.gz
+        │           ├── sub-001_ses-02_task-rest_bold.json
+        │           └── sub-001_ses-02_task-rest_bold.nii.gz
+        └── sub-002
+            ├── ses-01
+            │   ├── anat
+            │   │   ├── sub-002_ses-01_run-01_T1w.json
+            │   │   ├── sub-002_ses-01_run-01_T1w.nii.gz
+            │   │   ├── sub-002_ses-01_run-02_T1w.json
+            │   │   └── sub-002_ses-01_run-02_T1w.nii.gz
+            │   └── func
+            │       ├── sub-002_ses-01_task-nback_bold.json
+            │       ├── sub-002_ses-01_task-nback_bold.nii.gz
+            │       ├── sub-002_ses-01_task-rest_bold.json
+            │       └── sub-002_ses-01_task-rest_bold.nii.gz
+            └── ses-02
+                └── anat
+                    ├── sub-002_ses-02_run-01_T1w.json
+                    ├── sub-002_ses-02_run-01_T1w.nii.gz
+                    ├── sub-002_ses-02_run-02_T1w.json
+                    └── sub-002_ses-02_run-02_T1w.nii.gz
 
     With the following ``pybids_inputs`` defined in the config file::
 
@@ -191,65 +204,30 @@ def generate_inputs(  # noqa: PLR0913
               - task
               - run
 
-    Then ``generate_inputs(bids_dir, pybids_input)`` would return the
-    following values::
+    Then ``generate_inputs(bids_dir, pybids_input)`` would return the following values::
 
-        {
-            "input_path": {
-                "bold": "bids-example/sub-{subject}/func/sub-{subject}_task-{task}_bold\
-                    .nii.gz"
-            },
-            "input_zip_lists": {
-                "bold": {
-                    "subject": ["control01", "control01"],
-                    "task": ["nback", "rest"]
-                }
-            },
-            "input_lists": {
-                "bold": {
-                    "subject": ["control01"],
-                    "task": ["nback", "rest"]
-                }
-            },
-            "input_wildcards": {
-                "bold": {
-                    "subject": "{subject}",
-                    "task": "{task}"
-                }
-            },
-            "subjects": ["subject01"],
-            "sessions": [],
-            "subj_wildcards": {"subject": "{subject}"}
-        }
-
-    Or, if :class:`BidsDataset` is enabled::
-
-        <class BidsDataset>
-            path: {
-                "bold": "bids-example/sub-{subject}/func/sub-{subject}_task-{task}_bold\
-                    .nii.gz"
-            }
-            zip_lists: {
-                "bold": {
-                    "subject": ["control01", "control01"],
-                    "task": ["nback", "rest"]
-                }
-            }
-            entities: {
-                "bold": {
-                    "subject": ["control01"],
-                    "task": ["nback", "rest"]
-                }
-            }
-            wildcards: {
-                "bold": {
-                    "subject": "{subject}",
-                    "task": "{task}"
-                }
-            }
-            subjects: ["subject01"]
-            sessions: []
-            subj_wildcards: {"subject": "{subject}"}
+        BidsDataset({
+            "bold": BidsComponent(
+                name="bold",
+                path="bids/sub-{subject}/ses-{session}/func/sub-{subject}_ses-{session}\
+_task-{task}_bold.nii.gz",
+                zip_lists={
+                    "subject": ["001",   "001",  "001",   "001",  "002",   "002" ],
+                    "session": ["01",    "01",   "02",    "02",   "01",    "01"  ],
+                    "task":    ["nback", "rest", "nback", "rest", "nback", "rest"],
+                },
+            ),
+            "t1w": BidsComponent(
+                name="t1w",
+                path="example/sub-{subject}/ses-{session}/anat/sub-{subject}_\
+ses-{session}_run-{run}_T1w.nii.gz",
+                zip_lists={
+                    "subject": ["001", "001", "001", "002", "002", "002", "002"],
+                    "session": ["01",  "01",  "02",  "01",  "01",  "02",  "02" ],
+                    "run":     ["01",  "02",  "01",  "01",  "02",  "01",  "02" ],
+                },
+            ),
+        })
     """
 
     subject_filter, regex_search = _generate_filters(
