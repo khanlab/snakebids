@@ -1,76 +1,67 @@
-"""Helper functions and classes for tests
-"""
+"""Helper functions and classes for tests"""
 from __future__ import annotations
 
 import functools as ft
 import itertools as it
 from pathlib import Path
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Mapping,
-    Sequence,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Sequence, TypeVar
 
 import more_itertools as itx
 import pytest
 from hypothesis import HealthCheck, settings
+from typing_extensions import ParamSpec, TypeAlias
 
 from snakebids import bids
 from snakebids.core.input_generation import BidsDataset, generate_inputs
-from snakebids.types import InputsConfig, UserDictPy37, ZipListLike
-from snakebids.utils.utils import BidsEntity
+from snakebids.types import InputsConfig, UserDictPy37, ZipListLike, ZipLists
+from snakebids.utils.utils import BidsEntity, MultiSelectDict
 
-T = TypeVar("T")
+_T = TypeVar("_T")
 
 
 def get_zip_list(
-    entities: Iterable[Union[BidsEntity, str]], combinations: Iterable[Tuple[str, ...]]
-):
+    entities: Iterable[BidsEntity | str], combinations: Iterable[tuple[str, ...]]
+) -> ZipLists:
     """Return a zip list from iterables of entities and value combinations
 
     Parameters
     ----------
     entities : Iterable[str]
         Iterable of entities
-    combinations : Iterable[Tuple[str, ...]]
+    combinations : Iterable[tuple[str, ...]]
         Iterable of combinations (e.g. produced using itertools.product). Each tuple
         must be the same length as entities
 
     Returns
     -------
-    Dict[str, List[str]]
+    dict[str, list[str]]
         zip_list representation of entity-value combinations
     """
-    return {
-        BidsEntity(entity).wildcard: list(combs)  # type: ignore
-        for entity, combs in zip(entities, zip(*combinations))
-    }
+    return MultiSelectDict(
+        {
+            BidsEntity(str(entity)).wildcard: list(combs)
+            for entity, combs in zip(entities, zip(*combinations))
+        }
+    )
 
 
-def setify(dic: Dict[Any, List[Any]]):
+def setify(dic: dict[Any, list[Any]]) -> dict[Any, set[Any]]:
     """Convert a dict of *->lists into a dict of *->sets
 
     Parameters
     ----------
-    dic : Dict[Any, List[Any]]
+    dic : dict[Any, list[Any]]
         Dict of lists to convert
 
     Returns
     -------
-    Dict[Any, Set[Any]]
+    dict[Any, Set[Any]]
         Dict of sets
     """
     return {key: set(val) for key, val in dic.items()}
 
 
-def get_bids_path(entities: Iterable[str]):
+def get_bids_path(entities: Iterable[str]) -> str:
     """Get consistently ordered bids path for a group of entities
 
     Parameters
@@ -84,9 +75,9 @@ def get_bids_path(entities: Iterable[str]):
         bids path
     """
 
-    def get_tag(entity: BidsEntity):
+    def get_tag(entity: BidsEntity) -> tuple[str, str]:
         # For pybids, suffixes MUST be followed by extensions, but we don't yet support
-        # seperate indexing of extensions, so add a dummy extension any time there's a
+        # separate indexing of extensions, so add a dummy extension any time there's a
         # suffix
         extension = ".foo" if entity == "suffix" else ""
         return entity.wildcard, f"{{{entity.wildcard}}}{extension}"
@@ -103,20 +94,25 @@ class BidsListCompare(UserDictPy37[str, Dict[str, List[str]]]):
     the comparison
     """
 
-    def __eq__(self, other: object):
+    def __eq__(self, other: object) -> bool:
+        # Getting pyright to like this is more work than it's worth
         if not isinstance(other, dict):
             return False
-        for name, lists in other.items():
+        for name, lists in other.items():  # type: ignore
             if name not in self:
                 return False
-            for key, val in lists.items():
+            for key, val in lists.items():  # type: ignore
                 if (
                     not isinstance(val, list)
-                    or key not in self[name]
-                    or set(self[name][key]) != set(val)
+                    or key not in self[name]  # type: ignore
+                    or set(self[name][key]) != set(val)  # type: ignore
                 ):
                     return False
         return True
+
+
+_P = ParamSpec("_P")
+_FuncT: TypeAlias = Callable[_P, _T]
 
 
 def debug(**overrides: Any):
@@ -127,12 +123,12 @@ def debug(**overrides: Any):
     when hypothesis is not being used)
     """
 
-    def inner(func: Callable[..., Any]):
+    def inner(func: _FuncT[_P, _T]) -> _FuncT[_P, _T]:
         test = getattr(func, "hypothesis").inner_test
 
         @pytest.mark.disable_fakefs(True)
         @ft.wraps(func)
-        def inner_test(*args, **kwargs):
+        def inner_test(*args: _P.args, **kwargs: _P.kwargs):
             return test(*args, **{**kwargs, **overrides})
 
         if not hasattr(func, "hypothesis"):
@@ -161,7 +157,7 @@ def mock_data(*draws: Any):
     return MockData()
 
 
-def create_dataset(root: Union[str, Path], dataset: BidsDataset):
+def create_dataset(root: str | Path, dataset: BidsDataset) -> None:
     """Create an empty BidsDataset on the filesystem
 
     Creates the directory structure and files represented by a BidsDataset. Files are
@@ -196,7 +192,9 @@ def create_snakebids_config(dataset: BidsDataset) -> InputsConfig:
     }
 
 
-def reindex_dataset(root: str, dataset: BidsDataset, use_custom_paths: bool = False):
+def reindex_dataset(
+    root: str, dataset: BidsDataset, use_custom_paths: bool = False
+) -> BidsDataset:
     """Create BidsDataset on the filesystem and reindex
 
     Paths within the dataset must be absolute
@@ -206,10 +204,10 @@ def reindex_dataset(root: str, dataset: BidsDataset, use_custom_paths: bool = Fa
     if use_custom_paths:
         for comp in config:
             config[comp]["custom_path"] = dataset[comp].path
-    return generate_inputs(root, config)
+    return generate_inputs(root, config, use_bids_inputs=True)
 
 
-def allow_tmpdir(__callable: T) -> T:
+def allow_tmpdir(__callable: _T) -> _T:
     """Allow function_scoped fixtures in hypothesis tests
 
     This is primarily useful for using tmpdirs, hence, the name

@@ -1,5 +1,4 @@
-"""File globbing functions based on snakemake.io library
-"""
+"""File globbing functions based on snakemake.io library"""
 from __future__ import annotations
 
 import collections
@@ -10,9 +9,10 @@ from pathlib import Path
 from typing import Sequence
 
 from snakebids.types import ZipLists
+from snakebids.utils.utils import MultiSelectDict
 
 
-def regex(filepattern: str):
+def regex(filepattern: str) -> str:
     """Build Snakebids regex based on the given file pattern."""
     regex_list: list[str] = []
     last = 0
@@ -93,7 +93,7 @@ def glob_wildcards(
     # remove duplicates while preserving ordering
     names = list(dict.fromkeys(names))
 
-    wildcards: ZipLists = collections.defaultdict(list)
+    wildcards: dict[str, list[str]] = collections.defaultdict(list)
 
     re_pattern = re.compile(regex(pattern))
 
@@ -114,12 +114,14 @@ def glob_wildcards(
         if match:
             for name, value in match.groupdict().items():
                 wildcards[name].append(value)
-    return wildcards
+    return MultiSelectDict(wildcards)
 
 
 def update_wildcard_constraints(
-    pattern, wildcard_constraints, global_wildcard_constraints
-):
+    pattern: str,
+    wildcard_constraints: dict[str, str],
+    global_wildcard_constraints: dict[str, str],
+) -> str:
     """Update wildcard constraints.
 
     Parameters
@@ -132,7 +134,7 @@ def update_wildcard_constraints(
         Dictionary of wildcard:constraint key-value pairs.
     """
 
-    def replace_constraint(match):
+    def replace_constraint(match: re.Match[str]):
         name = match.group("name")
         constraint = match.group("constraint")
         newconstraint = wildcard_constraints.get(
@@ -149,7 +151,7 @@ def update_wildcard_constraints(
             return f"{{{name},{newconstraint}}}"
         return match.group(0)
 
-    examined_names = set()
+    examined_names: set[str] = set()
     updated = _wildcard_regex.sub(replace_constraint, pattern)
 
     return updated

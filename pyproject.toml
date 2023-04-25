@@ -74,6 +74,7 @@ hypothesis = "^6.34.1"
 pytest-benchmark = "^4.0.0"
 pyfakefs = "^5.1.0"
 pyparsing = "^3.0.9"
+pyright = "^1.1.302"
 ruff = "^0.0.261"
 
 [tool.poetry.scripts]
@@ -93,6 +94,13 @@ benchmark = "pytest --benchmark-only --benchmark-autosave"
 [tool.isort]
 profile = "black"
 multi_line_output = 3
+
+[tool.pyright]
+include = ["snakebids"]
+exclude = ["snakebids/project_template", "typings"]
+typeCheckingMode = "strict"
+reportPrivateUsage = false
+reportImportCycles = false
 
 [tool.ruff]
 select = ["E", "F", "PL", "RUF"]

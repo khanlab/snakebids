@@ -2,30 +2,32 @@ from __future__ import annotations
 
 import operator as op
 import re
-from typing import Dict, List, TypeVar, Union, overload
+from collections.abc import Iterator, Mapping
+from typing import List, TypeVar, Union, overload
 
 import more_itertools as itx
 from typing_extensions import Literal
 
-from snakebids.utils.utils import matches_any
+from snakebids.types import ZipListLike, ZipLists
+from snakebids.utils.utils import MultiSelectDict, matches_any
 
 T_co = TypeVar("T_co", bound=Union[List[str], str], covariant=True)
 
 
 @overload
 def filter_list(
-    zip_list: dict[str, list[str]],
-    filters: dict[str, list[str] | str],
+    zip_list: ZipListLike,
+    filters: Mapping[str, list[str] | str],
     return_indices_only: Literal[False] = ...,
     regex_search: bool = ...,
-) -> dict[str, list[str]]:
+) -> ZipLists:
     ...
 
 
 @overload
 def filter_list(
-    zip_list: dict[str, list[str]],
-    filters: dict[str, list[str] | str],
+    zip_list: ZipListLike,
+    filters: Mapping[str, list[str] | str],
     return_indices_only: Literal[True] = ...,
     regex_search: bool = ...,
 ) -> list[int]:
@@ -33,11 +35,11 @@ def filter_list(
 
 
 def filter_list(
-    zip_list: dict[str, list[str]],
-    filters: dict[str, list[str] | str],
+    zip_list: ZipListLike,
+    filters: Mapping[str, list[str] | str],
     return_indices_only: bool = False,
     regex_search: bool = False,
-) -> dict[str, list[str]] | list[int]:
+) -> ZipLists | list[int]:
     """This function is used when you are expanding over some subset of the
     wildcards i.e. if your output file doesn't contain all the wildcards in
     :attr:`BidsComponent.wildcards <snakebids.BidsComponent.wildcards>`
@@ -132,10 +134,9 @@ def filter_list(
     else:
         match_func = op.eq
 
-    keep_indices: set[int] = set.intersection(
-        # Get a set {0,1,2,3...n-1} where n is the length of any one of the lists in
-        # zip_list
-        {*_get_zip_list_indices(zip_list)},
+    # Get a set {0,1,2,3...n-1} where n is the length of any one of the lists in
+    # zip_list
+    keep_indices: set[int] = set(_get_zip_list_indices(zip_list)).intersection(
         *(
             {
                 i
@@ -150,10 +151,16 @@ def filter_list(
     # Now we have the indices, so filter the lists
     if return_indices_only:
         return list(keep_indices)
-    return {key: [val[i] for i in keep_indices] for key, val in zip_list.items()}
+    return MultiSelectDict(
+        {key: [val[i] for i in keep_indices] for key, val in zip_list.items()}
+    )
 
 
-def get_filtered_ziplist_index(zip_list, wildcards, subj_wildcards):
+def get_filtered_ziplist_index(
+    zip_list: ZipLists,
+    wildcards: dict[str, str],
+    subj_wildcards: dict[str, str],
+) -> int | list[int]:
     """Use this function when you have wildcards for a single scan instance,
     and want to know the index of that scan, amongst that subject's scan
     instances.
@@ -250,7 +257,7 @@ def get_filtered_ziplist_index(zip_list, wildcards, subj_wildcards):
     return indices
 
 
-def _get_zip_list_indices(zip_list: Dict[str, List[str]]):
+def _get_zip_list_indices(zip_list: ZipListLike) -> Iterator[int]:
     """Convert a zip_list into its indices
 
     Generates a sequence of numbers from 0 up to the length of the zip_lists. For
@@ -267,7 +274,7 @@ def _get_zip_list_indices(zip_list: Dict[str, List[str]]):
 
     Parameters
     ----------
-    zip_list : Dict[str, List[str]]
+    zip_list : dict[str, list[str]]
         Zip_list to be converted
 
     Yields

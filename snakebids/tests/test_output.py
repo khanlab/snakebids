@@ -10,7 +10,7 @@ from snakebids.exceptions import RunError
 from snakebids.utils import output
 
 
-def dirlen(f):
+def dirlen(f: Path):
     return len([*f.iterdir()])
 
 

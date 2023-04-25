@@ -6,7 +6,7 @@ import warnings
 from math import inf
 from pathlib import Path
 from string import Formatter
-from typing import Any, Iterable, NoReturn, Optional, Union
+from typing import Any, Iterable, NoReturn, Optional
 
 import attr
 import more_itertools as itx
@@ -61,7 +61,7 @@ class BidsComponent:
     def __repr__(self) -> str:
         return self.pformat()
 
-    def pformat(self, max_width: int | float | None = None, tabstop: int = 4):
+    def pformat(self, max_width: int | float | None = None, tabstop: int = 4) -> str:
         width = max_width or get_console_size()[0] or inf
         body = [
             f"name={quote_wrap(self.name)},",
@@ -76,7 +76,7 @@ class BidsComponent:
         return "\n".join(output)
 
     @zip_lists.validator  # type: ignore
-    def _validate_zip_lists(self, _, value: dict[str, list[str]]):
+    def _validate_zip_lists(self, _, value: dict[str, list[str]]) -> None:
         lengths = {len(val) for val in value.values()}
         if len(lengths) > 1:
             raise ValueError("zip_lists must all be of equal length")
@@ -162,7 +162,7 @@ class BidsComponent:
     def input_wildcards(self):
         return self.wildcards
 
-    def __eq__(self, other: Union["BidsComponent", object]):
+    def __eq__(self, other: BidsComponent | object) -> bool:
         if not isinstance(other, BidsComponent):
             return False
 
@@ -237,11 +237,11 @@ class BidsDataset(UserDictPy37[str, BidsComponent]):
     custom paths are used to generate every :class:`component <BidsComponent>`
     """
 
-    def __init__(self, data: Any, layout: BIDSLayout | None = None):
+    def __init__(self, data: Any, layout: BIDSLayout | None = None) -> None:
         super().__init__(data)
         self.layout = layout
 
-    def __getitem__(self, key: str):
+    def __getitem__(self, key: str) -> BidsComponent:
         try:
             return super().__getitem__(key)
         except KeyError as err:
@@ -272,7 +272,7 @@ class BidsDataset(UserDictPy37[str, BidsComponent]):
     def __repr__(self) -> str:
         return self.pformat()
 
-    def pformat(self, max_width: int | float | None = None, tabstop: int = 4):
+    def pformat(self, max_width: int | float | None = None, tabstop: int = 4) -> str:
         width = max_width or get_console_size()[0] or inf
         body = [
             f"{quote_wrap(name)}: {comp.pformat(width - tabstop, tabstop)},"
@@ -353,7 +353,7 @@ class BidsDataset(UserDictPy37[str, BidsComponent]):
         return {key: value.input_wildcards for key, value in self.items()}
 
     @cached_property
-    def subjects(self):
+    def subjects(self) -> list[str]:
         """A list of the subjects in the dataset."""
         return [
             *{
@@ -405,7 +405,7 @@ class BidsDataset(UserDictPy37[str, BidsComponent]):
         return self.wildcards
 
     @property
-    def as_dict(self):
+    def as_dict(self) -> BidsDatasetDict:
         """Get the layout as a legacy dict
 
         Included primarily for backward compatability with older versions of snakebids,
@@ -434,7 +434,7 @@ class BidsDataset(UserDictPy37[str, BidsComponent]):
     @classmethod
     def from_iterable(
         cls, iterable: Iterable[BidsComponent], layout: BIDSLayout | None = None
-    ):
+    ) -> BidsDataset:
         """Construct Dataset from iterable of BidsComponents
 
         Parameters

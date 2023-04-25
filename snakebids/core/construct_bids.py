@@ -16,7 +16,7 @@ def bids(  # noqa: PLR0913
     include_subject_dir: bool = True,
     include_session_dir: bool = True,
     **entities: str,
-):
+) -> str:
     """Helper function for generating bids paths for snakemake workflows.
 
     File path is of the form::
@@ -50,7 +50,7 @@ def bids(  # noqa: PLR0913
 
     Returns
     -------
-    Path
+    str
         bids-like file path
 
     Examples
@@ -209,7 +209,7 @@ def bids(  # noqa: PLR0913
     return str(folder / filename)
 
 
-def print_boilerplate():
+def print_boilerplate() -> None:
     """Function to print out boilerplate to add to Snakefile. (not used
     anywhere yet)"""
 

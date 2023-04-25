@@ -1,13 +1,13 @@
-from __future__ import absolute_import
+from __future__ import annotations
 
 import copy
 import sys
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from os import PathLike
 from pathlib import Path
+from typing import Iterable, Mapping
 
 import pytest
-from configargparse import Namespace
 from pytest_mock.plugin import MockerFixture
 
 from snakebids.cli import (
@@ -29,7 +29,7 @@ def parser():
 
 class TestResolvePath:
     @pytest.fixture
-    def arg_dict(self):
+    def arg_dict(self) -> dict[str, str | list[str]]:
         return {
             "bids_dir": "path/to/input",
             "output_dir": "path/to/output",
@@ -37,17 +37,20 @@ class TestResolvePath:
             "--derivatives": ["path/to/deriv1", "path/to/deriv2"],
         }
 
-    def test_does_not_change_dict_without_paths(self, arg_dict):
+    def test_does_not_change_dict_without_paths(
+        self, arg_dict: Mapping[str, str | Iterable[str]]
+    ):
         arg_dict_copy = copy.deepcopy(arg_dict)
         resolved = {key: _resolve_path(value) for key, value in arg_dict.items()}
         assert resolved == arg_dict_copy
 
-    def test_resolves_all_paths(self, arg_dict):
-        arg_dict["--derivatives"] = [Path("path/to/deriv1"), Path("path/to/deriv2")]
+    def test_resolves_all_paths(
+        self, arg_dict: dict[str, str | Path | Iterable[str | Path]]
+    ):
+        derivative_paths = [Path("path/to/deriv1"), Path("path/to/deriv2")]
+        arg_dict["--derivatives"] = derivative_paths
         arg_dict_copy = copy.deepcopy(arg_dict)
-        arg_dict_copy["--derivatives"] = [
-            p.resolve() for p in arg_dict_copy["--derivatives"]
-        ]
+        arg_dict_copy["--derivatives"] = [p.resolve() for p in derivative_paths]
         resolved = {key: _resolve_path(value) for key, value in arg_dict.items()}
         assert resolved == arg_dict_copy
 

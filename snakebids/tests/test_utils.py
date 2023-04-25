@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import operator as op
 import re
-from typing import Any, List, Tuple
+from typing import Any
 
 import more_itertools as itx
 import pytest
@@ -15,14 +15,14 @@ from snakebids.utils.utils import MultiSelectDict, matches_any
 
 class TestMatchesAny:
     @given(st.text(), st.lists(st.text()))
-    def test_with_eq_operator(self, item: str, match_list: List[str]):
+    def test_with_eq_operator(self, item: str, match_list: list[str]):
         if item not in match_list:
             assert matches_any(item, match_list, op.eq) is False
             match_list.append(item)
         assert matches_any(item, match_list, op.eq)
 
     @st.composite
-    def NonMatchingMatchList(draw: st.DrawFn):
+    def NonMatchingMatchList(draw: st.DrawFn) -> tuple[str, list[str]]:
         item = draw(st.text())
         match_list = draw(
             st.lists(
@@ -38,7 +38,7 @@ class TestMatchesAny:
         return item, match_list
 
     @given(NonMatchingMatchList())
-    def test_with_re_match(self, args: Tuple[str, List[str]]):
+    def test_with_re_match(self, args: tuple[str, list[str]]):
         item, match_list = args
 
         if item not in match_list:
@@ -52,12 +52,12 @@ class TestMatchesAny:
         assert matches_any(email, match_list, re.match) is False
         # Email regex copied from https://www.emailregex.com/
         match_list.append(
-            r'(?:[a-z0-9!#$%&\'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&\'*+/=?^_`{|}~-]+)*|"(?:['
-            r"\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-"
-            r'\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*'
-            r"[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2"
-            r"[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-"
-            r"\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])"
+            r'(?:[a-z0-9!#$%&\'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&\'*+/=?^_`{|}~-]+)*|"(?:'
+            r"[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c"
+            r'\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-'
+            r"9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0"
+            r"-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c"
+            r"\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])"
         )
         assert matches_any(email, match_list, re.match, re.IGNORECASE)
 

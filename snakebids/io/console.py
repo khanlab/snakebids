@@ -94,7 +94,7 @@ def in_interactive_session() -> bool:
         True if running under python/ipython interactive shell.
     """
 
-    def check_main():
+    def check_main() -> bool:
         try:
             import __main__ as main
         except ModuleNotFoundError:
@@ -118,7 +118,7 @@ def in_ipython_frontend() -> bool:
     try:
         # error: Name 'get_ipython' is not defined
         ipy = get_ipython()  # type: ignore[name-defined]
-        return "zmq" in str(type(ipy)).lower()
+        return "zmq" in str(type(ipy)).lower()  # type: ignore
     except NameError:
         pass
 

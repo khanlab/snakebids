@@ -86,7 +86,9 @@ class TestRunSnakemake:
         mocker.patch.object(
             sn_app,
             "update_config",
-            side_effect=lambda config, sn_args: config.update(sn_args.args_dict),
+            side_effect=lambda config, sn_args: (  # type: ignore
+                config.update(sn_args.args_dict)  # type: ignore
+            ),
         )
 
         # Prepare expected config
@@ -167,7 +169,9 @@ class TestRunSnakemake:
         mocker.patch.object(
             sn_app,
             "update_config",
-            side_effect=lambda config, sn_args: config.update(sn_args.args_dict),
+            side_effect=(
+                lambda config, sn_args: config.update(sn_args.args_dict)  # type: ignore
+            ),
         )
         output_dir = Path("app") / "results"
         app.args = SnakebidsArgs(
@@ -177,8 +181,8 @@ class TestRunSnakemake:
             args_dict={"output_dir": output_dir.resolve()},
         )
 
-        def plugin(my_app):
-            my_app.foo = "bar"
+        def plugin(my_app: SnakeBidsApp):
+            my_app.foo = "bar"  # type: ignore
 
         app.plugins.extend([plugin])
         try:
@@ -187,7 +191,7 @@ class TestRunSnakemake:
             print("System exited prematurely")
             print(e)
 
-        assert app.foo == "bar"
+        assert app.foo == "bar"  # type: ignore
 
 
 class TestGenBoutiques:

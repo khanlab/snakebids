@@ -65,6 +65,8 @@ jobs:
         run: poetry run isort snakebids -c
       - name: Black
         run: poetry run black snakebids --check
+      - name: pyright
+        run: poetry run pyright snakebids
       - name: ruff
         run: poetry run ruff snakebids
 

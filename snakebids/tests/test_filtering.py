@@ -1,8 +1,9 @@
-from typing import Dict, List, Union
+from __future__ import annotations
 
 import pytest
 
 from snakebids.core.filtering import filter_list
+from snakebids.types import ZipLists
 
 
 @pytest.mark.parametrize(
@@ -84,8 +85,8 @@ from snakebids.core.filtering import filter_list
     ],
 )
 def test_filter_list(
-    zip_list: Dict[str, Dict[str, List[str]]],
-    filters: Dict[str, Union[List[str], str]],
-    output: Dict[str, Dict[str, List[str]]],
+    zip_list: ZipLists,
+    filters: dict[str, list[str] | str],
+    output: dict[str, dict[str, list[str]]],
 ):
     assert filter_list(zip_list, filters) == output

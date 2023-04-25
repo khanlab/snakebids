@@ -1,10 +1,9 @@
 from __future__ import absolute_import
 
 import sys
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 
 import pytest
-from configargparse import Namespace
 from pytest_mock.plugin import MockerFixture
 
 from snakebids.admin import gen_parser

@@ -4,11 +4,12 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from os import PathLike
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 
 import attr
-import boutiques.creator as bc
+import boutiques.creator as bc  # type: ignore
 import snakemake
 from snakemake.io import load_configfile
 
@@ -19,11 +20,8 @@ from snakebids.cli import (
     parse_snakebids_args,
 )
 from snakebids.exceptions import ConfigError, RunError
-from snakebids.utils.output import (
-    prepare_bidsapp_output,
-    write_config_file,
-    write_output_mode,
-)
+from snakebids.utils.output import write_config_file  # type: ignore
+from snakebids.utils.output import prepare_bidsapp_output, write_output_mode
 
 logger = logging.Logger(__name__)
 
@@ -52,7 +50,9 @@ CONFIGFILE_CHOICES = [
 ]
 
 
-def _get_file_paths(choices: List[str], file_name: str):
+def _get_file_paths(
+    choices: list[str], file_name: str
+) -> Callable[[SnakeBidsApp], Path]:
     def wrapper(self: "SnakeBidsApp"):
         for path in choices:
             if (self.snakemake_dir / path).exists():
@@ -124,7 +124,7 @@ class SnakeBidsApp:
     snakefile_path: Path = attr.Factory(
         _get_file_paths(SNAKEFILE_CHOICES, "Snakefile"), takes_self=True
     )
-    config: Dict[str, Any] = attr.Factory(
+    config: dict[str, Any] = attr.Factory(
         lambda self: load_configfile(self.snakemake_dir / self.configfile_path),
         takes_self=True,
     )
@@ -214,7 +214,7 @@ class SnakeBidsApp:
 
         # Run snakemake (passing any leftover args from argparse)
         # Filter any blank strings before submitting
-        snakemake.main(
+        snakemake.main(  # type: ignore
             [
                 *filter(
                     None,
@@ -234,14 +234,16 @@ class SnakeBidsApp:
             ]
         )
 
-    def create_descriptor(self, out_file):
+    def create_descriptor(self, out_file: PathLike[str] | str) -> None:
         """Generate a boutiques descriptor for this Snakebids app."""
-        new_descriptor = bc.CreateDescriptor(self.parser, execname="run.py")
-        new_descriptor.save(out_file)
+        new_descriptor = bc.CreateDescriptor(  # type: ignore
+            self.parser, execname="run.py"
+        )
+        new_descriptor.save(out_file)  # type: ignore
 
 
-def update_config(config: Dict[str, Any], snakebids_args: SnakebidsArgs):
-    # add snakemake arguments to config
+def update_config(config: dict[str, Any], snakebids_args: SnakebidsArgs) -> None:
+    """Add snakebids arguments to config in-place."""
     config.update({"snakemake_args": snakebids_args.snakemake_args})
 
     # argparse adds filter_{input_type}

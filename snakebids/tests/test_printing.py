@@ -11,7 +11,7 @@ from snakebids.io.printing import format_zip_lists
 from snakebids.types import ZipLists
 
 
-def zip_list_parser():
+def zip_list_parser() -> pp.ParserElement:
     key = pp.quoted_string().set_results_name("key") + pp.Suppress(":")
     elided_list = (
         pp.Opt(pp.delimited_list(pp.quoted_string()))("left")
@@ -24,7 +24,7 @@ def zip_list_parser():
 
 
 @given(zip_list=sb_st.zip_lists(max_entities=1, restrict_patterns=True))
-def test_ellipses_appears_when_maxwidth_too_short(zip_list):
+def test_ellipses_appears_when_maxwidth_too_short(zip_list: ZipLists):
     width = len(format_zip_lists(zip_list, tabstop=0).splitlines()[1])
     parsed = zip_list_parser().parse_string(
         format_zip_lists(zip_list, width - 1, tabstop=0)
@@ -39,7 +39,7 @@ def test_ellipses_appears_when_maxwidth_too_short(zip_list):
     width=st.integers(min_value=10, max_value=200),
 )
 def test_values_balanced_around_elision_correctly(zip_list: ZipLists, width: int):
-    parsed = zip_list_parser().parse_string(
+    parsed: pp.ParseResults = zip_list_parser().parse_string(
         format_zip_lists(zip_list, max_width=width, tabstop=0)
     )
     assert parsed
@@ -48,15 +48,15 @@ def test_values_balanced_around_elision_correctly(zip_list: ZipLists, width: int
     nright = len(parsed[0].get("right", []))  # type: ignore
     if "ellipse" in parsed[0]:
         assert nleft == nright or nleft == nright + 1
-        assert nleft + nright == len(parsed[0]) - 2
+        assert nleft + nright == len(parsed[0]) - 2  # type: ignore
     else:
         assert nright == 0
         # nleft contains all elements in the first row except the key
-        assert nleft == len(parsed[0]) - 1
+        assert nleft == len(parsed[0]) - 1  # type: ignore
 
-    for line in parsed[1:]:
-        assert len(line.get("left", [])) == nleft
-        assert len(line.get("right", [])) == nright
+    for line in parsed[1:]:  # type: ignore
+        assert len(line.get("left", [])) == nleft  # type: ignore
+        assert len(line.get("right", [])) == nright  # type: ignore
 
 
 class TestCorrectNumberOfLinesCreated:

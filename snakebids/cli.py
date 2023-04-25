@@ -1,12 +1,17 @@
+from __future__ import annotations
+
 import argparse
 import logging
 import os
 import pathlib
 import re
-from typing import Any, Dict, List, Optional
+from collections.abc import Sequence
+from typing import Any, Iterable, Mapping, Optional
 
 import attr
 import snakemake
+
+from snakebids.types import InputsConfig
 
 # We define Path here in addition to pathlib to put both variables in globals()
 # This way, users specifying a path type in their config.yaml can indicate
@@ -20,8 +25,16 @@ class KeyValue(argparse.Action):
     """Class for accepting key=value pairs in argparse"""
 
     # Constructor calling
-    def __call__(self, parser, namespace, values, option_string=None):
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = None,
+    ):
         setattr(namespace, self.dest, {})
+        if not values:
+            return
 
         for pair in values:
             # split it into key and value
@@ -33,8 +46,14 @@ class KeyValue(argparse.Action):
 class SnakemakeHelpAction(argparse.Action):
     """Class for printing snakemake usage in argparse"""
 
-    def __call__(self, parser, namespace, values, option_string=None):
-        snakemake.main(["-h"])
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = None,
+    ):
+        snakemake.main(["-h"])  # type: ignore
 
 
 @attr.frozen
@@ -54,7 +73,7 @@ class SnakebidsArgs:
         Directory to place pybids database
     snakemake_args : list of strings
         Arguments to pass on to Snakemake
-    args_dict : Dict[str, Any]
+    args_dict : dict[str, Any]
         Contains all the snakebids specific args. Meant to contain custom user args
         defined in config, as well as dynamic --filter-xx and --wildcard-xx args.
         These will eventually be printed in the new config.
@@ -62,13 +81,13 @@ class SnakebidsArgs:
 
     force: bool
     outputdir: Path = attr.ib(converter=lambda p: Path(p).resolve())
-    snakemake_args: List[str]
-    args_dict: Dict[str, Any]
+    snakemake_args: list[str]
+    args_dict: dict[str, Any]
     pybidsdb_dir: Optional[Path] = None
     reset_db: bool = False
 
 
-def create_parser(include_snakemake=False):
+def create_parser(include_snakemake: bool = False) -> argparse.ArgumentParser:
     """Generate basic Snakebids Parser
 
     Includes the standard Snakebids arguments.
@@ -79,13 +98,13 @@ def create_parser(include_snakemake=False):
     # needed.
     if include_snakemake:
         # get snakemake parser
-        smk_parser = snakemake.get_argument_parser()
+        smk_parser = snakemake.get_argument_parser()  # type: ignore
 
         # create parser
         parser = argparse.ArgumentParser(
             description="Snakebids helps build BIDS Apps with Snakemake",
             add_help=False,
-            parents=[smk_parser],
+            parents=[smk_parser],  # type: ignore
         )
     else:
         parser = argparse.ArgumentParser(
@@ -160,9 +179,9 @@ def create_parser(include_snakemake=False):
 
 def add_dynamic_args(
     parser: argparse.ArgumentParser,
-    parse_args: Dict[str, Dict[str, str]],
-    pybids_inputs: Dict[str, Dict[str, Dict[str, Any]]],
-):
+    parse_args: Mapping[str, Mapping[str, str | Iterable[str] | bool]],
+    pybids_inputs: InputsConfig,
+) -> None:
     # create parser group for app options
     app_group = parser.add_argument_group("SNAKEBIDS", "Options for snakebids app")
 
@@ -172,16 +191,16 @@ def add_dynamic_args(
         # We first check that the type annotation is, in fact,
         # a str to allow the edge case where it's already
         # been converted
-        if "type" in arg and isinstance(arg["type"], str):
+        arg_copy = dict(arg)
+        if "type" in arg:
             try:
-                arg["type"] = globals()[arg["type"]]
+                arg_copy["type"] = globals()[str(arg["type"])]
             except KeyError as err:
                 raise TypeError(
                     f"{arg['type']} is not available " + f"as a type for {name}"
                 ) from err
 
-        names = _make_underscore_dash_aliases(name)
-        app_group.add_argument(*names, **arg)
+        app_group.add_argument(*_make_underscore_dash_aliases(name), **arg_copy)
 
     # general parser for
     # --filter_{input_type} {key1}={value1} {key2}={value2}...
@@ -193,17 +212,14 @@ def add_dynamic_args(
 
     for input_type in pybids_inputs.keys():
         argnames = (f"--filter-{input_type}", f"--filter_{input_type}")
-        arglist_default = [
-            f"{key}={value}"
-            for (key, value) in pybids_inputs[input_type]["filters"].items()
-        ]
-        arglist_default_string = " ".join(arglist_default)
+        filters = pybids_inputs[input_type].get("filters", {})
+        arglist_default = [f"{key}={value}" for (key, value) in filters.items()]
 
         filter_opts.add_argument(
             *argnames,
             nargs="+",
             action=KeyValue,
-            help=f"(default: {arglist_default_string})",
+            help=f"(default: {' '.join(arglist_default)})",
         )
 
     # general parser for
@@ -216,13 +232,14 @@ def add_dynamic_args(
 
     for input_type in pybids_inputs.keys():
         argnames = (f"--wildcards-{input_type}", f"--wildcards_{input_type}")
-        arglist_default = [f"{wc}" for wc in pybids_inputs[input_type]["wildcards"]]
-        arglist_default_string = " ".join(arglist_default)
+        arglist_default = [
+            f"{wc}" for wc in pybids_inputs[input_type].get("wildcards", [])
+        ]
 
         wildcards_opts.add_argument(
             *argnames,
             nargs="+",
-            help=f"(default: {arglist_default_string})",
+            help=f"(default: {' '.join(arglist_default)})",
         )
 
     override_opts = parser.add_argument_group(
@@ -240,7 +257,7 @@ def add_dynamic_args(
         override_opts.add_argument(*argnames, default=None)
 
 
-def parse_snakebids_args(parser: argparse.ArgumentParser):
+def parse_snakebids_args(parser: argparse.ArgumentParser) -> SnakebidsArgs:
     all_args = parser.parse_known_args()
     if all_args[0].workflow_mode:
         logger.warning(
@@ -271,7 +288,7 @@ def parse_snakebids_args(parser: argparse.ArgumentParser):
     )
 
 
-def _make_underscore_dash_aliases(name: str):
+def _make_underscore_dash_aliases(name: str) -> set[str]:
     """Generate --dash-arg aliases for --dash_args and vice versa
 
     If no dashes or underscores are in the argument name, a tuple containing just the
@@ -284,7 +301,7 @@ def _make_underscore_dash_aliases(name: str):
 
     Returns
     -------
-    tuple of strings
+    set of strings
         Converted args
     """
     match = re.match(r"^--(.+)$", name)
@@ -298,7 +315,9 @@ def _make_underscore_dash_aliases(name: str):
     return {name}
 
 
-def _resolve_path(path_candidate: Any) -> Any:
+def _resolve_path(
+    path_candidate: Iterable["os.PathLike[str] | str"] | "os.PathLike[str]" | str,
+) -> Any:
     """Helper function to resolve any paths or list
     of paths it's passed. Otherwise, returns the argument
     unchanged.
@@ -314,7 +333,8 @@ def _resolve_path(path_candidate: Any) -> Any:
         If os.Pathlike or list  of os.Pathlike, the same paths resolved.
         Otherwise, the argument unchanged.
     """
-    if isinstance(path_candidate, list):
+
+    if isinstance(path_candidate, Iterable) and not isinstance(path_candidate, str):
         return [_resolve_path(p) for p in path_candidate]
 
     if isinstance(path_candidate, os.PathLike):

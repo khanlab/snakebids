@@ -1,6 +1,10 @@
 # ruff: noqa
 
-pybids_inputs = {
+from __future__ import annotations
+
+from snakebids.types import InputsConfig
+
+pybids_inputs: InputsConfig = {
     "bold": {
         "filters": {"suffix": "bold", "extension": ".nii.gz", "datatype": "func"},
         "wildcards": ["subject", "session", "acquisition", "task", "run"],
