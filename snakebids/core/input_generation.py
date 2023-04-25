@@ -35,8 +35,8 @@ def generate_inputs(  # noqa: PLR0913
     limit_to: Iterable[str] | None = ...,
     participant_label: Iterable[str] | str | None = ...,
     exclude_participant_label: Iterable[str] | str | None = ...,
-    use_bids_inputs: Literal[False] = ...,
-) -> BidsDatasetDict:
+    use_bids_inputs: Literal[True] | None = ...,
+) -> BidsDataset:
     ...
 
 
@@ -51,8 +51,8 @@ def generate_inputs(  # noqa: PLR0913
     limit_to: Iterable[str] | None = ...,
     participant_label: Iterable[str] | str | None = ...,
     exclude_participant_label: Iterable[str] | str | None = ...,
-    use_bids_inputs: Literal[True] | None = ...,
-) -> BidsDataset:
+    use_bids_inputs: Literal[False] = ...,
+) -> BidsDatasetDict:
     ...
 
 
