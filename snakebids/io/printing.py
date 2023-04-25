@@ -8,7 +8,7 @@ from math import ceil, floor, inf
 
 import more_itertools as itx
 
-from snakebids.types import ZipLists
+from snakebids.types import ZipList
 
 
 def quote_wrap(val: str) -> str:
@@ -16,7 +16,7 @@ def quote_wrap(val: str) -> str:
 
 
 def format_zip_lists(
-    zip_list: ZipLists, max_width: int | float | None = None, tabstop: int = 4
+    zip_list: ZipList, max_width: int | float | None = None, tabstop: int = 4
 ) -> str:
     table = [_format_zip_row(key, row) for key, row in zip_list.items()]
     widths = [max(len(val) for val in col) for col in zip(*table)]

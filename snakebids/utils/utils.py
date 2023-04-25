@@ -13,7 +13,6 @@ import more_itertools as itx
 from typing_extensions import Protocol, Self
 
 from snakebids import types
-from snakebids.types import BinaryOperator, ZipListLike
 from snakebids.utils.user_property import UserProperty
 
 T = TypeVar("T")
@@ -161,7 +160,7 @@ class BidsEntity:
 def matches_any(
     item: T,
     match_list: Iterable[T],
-    match_func: BinaryOperator[T, object],
+    match_func: types.BinaryOperator[T, object],
     *args: Any,
 ) -> bool:
     for match in match_list:
@@ -339,13 +338,13 @@ class MultiSelectDict(types.UserDictPy37[_K, _V]):
         return super().__getitem__(__key)
 
 
-def zip_list_eq(__first: ZipListLike, __second: ZipListLike):
+def zip_list_eq(__first: types.ZipListLike, __second: types.ZipListLike):
     """Compare two zip lists, allowing the order of columns to be irrelevant"""
 
     def sorted_items(dictionary: Mapping[str, Sequence[str]]):
         return sorted(dictionary.items(), key=op.itemgetter(0))
 
-    def get_values(zlist: ZipListLike):
+    def get_values(zlist: types.ZipListLike):
         return cast("tuple[list[str]]", list(zip(*sorted_items(zlist)))[1])
 
     if not __first and not __second:

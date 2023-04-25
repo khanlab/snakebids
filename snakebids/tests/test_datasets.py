@@ -24,7 +24,7 @@ from snakebids.tests.helpers import (
     get_zip_list,
     setify,
 )
-from snakebids.types import ZipLists
+from snakebids.types import ZipList
 from snakebids.utils import sb_itertools as sb_it
 from snakebids.utils.snakemake_io import glob_wildcards
 from snakebids.utils.utils import BidsEntity, MultiSelectDict, zip_list_eq
@@ -58,7 +58,7 @@ class TestBidsComponentAliases:
 
 class TestBidsComponentValidation:
     @given(sb_st.zip_lists().filter(lambda v: len(v) > 1))
-    def test_zip_lists_must_be_same_length(self, zip_lists: ZipLists):
+    def test_zip_lists_must_be_same_length(self, zip_lists: ZipList):
         itx.first(zip_lists.values()).append("foo")
         with pytest.raises(ValueError) as err:
             BidsComponent("foo", get_bids_path(zip_lists), zip_lists)
@@ -66,7 +66,7 @@ class TestBidsComponentValidation:
 
     @given(sb_st.zip_lists(), sb_st.bids_entity())
     def test_path_cannot_have_extra_entities(
-        self, zip_lists: ZipLists, entity: BidsEntity
+        self, zip_lists: ZipList, entity: BidsEntity
     ):
         assume(entity.wildcard not in zip_lists)
         path = get_bids_path(it.chain(zip_lists, [entity.entity]))
@@ -78,7 +78,7 @@ class TestBidsComponentValidation:
         )
 
     @given(sb_st.zip_lists().filter(lambda v: len(v) > 1))
-    def test_path_cannot_have_missing_entities(self, zip_lists: ZipLists):
+    def test_path_cannot_have_missing_entities(self, zip_lists: ZipList):
         # Snakebids strategies won't return a zip_list with just datatype, but now that
         # we've dropped an entity we need to check again
         path_entities = sb_it.drop(1, zip_lists)

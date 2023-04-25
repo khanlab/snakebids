@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from snakebids.core.filtering import filter_list
-from snakebids.types import ZipLists
+from snakebids.types import ZipList
 
 
 @pytest.mark.parametrize(
@@ -85,7 +85,7 @@ from snakebids.types import ZipLists
     ],
 )
 def test_filter_list(
-    zip_list: ZipLists,
+    zip_list: ZipList,
     filters: dict[str, list[str] | str],
     output: dict[str, dict[str, list[str]]],
 ):

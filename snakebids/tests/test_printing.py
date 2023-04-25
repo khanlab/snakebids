@@ -8,7 +8,7 @@ from hypothesis import strategies as st
 import snakebids.tests.strategies as sb_st
 from snakebids.core.datasets import BidsComponent, BidsDataset
 from snakebids.io.printing import format_zip_lists
-from snakebids.types import ZipLists
+from snakebids.types import ZipList
 
 
 def zip_list_parser() -> pp.ParserElement:
@@ -24,7 +24,7 @@ def zip_list_parser() -> pp.ParserElement:
 
 
 @given(zip_list=sb_st.zip_lists(max_entities=1, restrict_patterns=True))
-def test_ellipses_appears_when_maxwidth_too_short(zip_list: ZipLists):
+def test_ellipses_appears_when_maxwidth_too_short(zip_list: ZipList):
     width = len(format_zip_lists(zip_list, tabstop=0).splitlines()[1])
     parsed = zip_list_parser().parse_string(
         format_zip_lists(zip_list, width - 1, tabstop=0)
@@ -38,7 +38,7 @@ def test_ellipses_appears_when_maxwidth_too_short(zip_list: ZipLists):
     ),
     width=st.integers(min_value=10, max_value=200),
 )
-def test_values_balanced_around_elision_correctly(zip_list: ZipLists, width: int):
+def test_values_balanced_around_elision_correctly(zip_list: ZipList, width: int):
     parsed: pp.ParseResults = zip_list_parser().parse_string(
         format_zip_lists(zip_list, max_width=width, tabstop=0)
     )
@@ -63,7 +63,7 @@ class TestCorrectNumberOfLinesCreated:
     @given(
         zip_list=sb_st.zip_lists(max_values=1, max_entities=6, restrict_patterns=True),
     )
-    def test_in_zip_list(self, zip_list: ZipLists):
+    def test_in_zip_list(self, zip_list: ZipList):
         assert (
             len(format_zip_lists(zip_list, tabstop=0).splitlines()) == len(zip_list) + 2
         )
@@ -90,7 +90,7 @@ class TestCorrectNumberOfLinesCreated:
 
 class TestIsValidPython:
     @given(zip_list=sb_st.zip_lists(restrict_patterns=True))
-    def test_in_zip_list(self, zip_list: ZipLists):
+    def test_in_zip_list(self, zip_list: ZipList):
         assert eval(format_zip_lists(zip_list)) == zip_list
 
     @given(component=sb_st.bids_components(restrict_patterns=True))
@@ -110,7 +110,7 @@ class TestIsValidPython:
     width=st.integers(10, 100),
     tab=st.integers(0, 10),
 )
-def test_line_never_longer_than_max_width(zip_list: ZipLists, width: int, tab: int):
+def test_line_never_longer_than_max_width(zip_list: ZipList, width: int, tab: int):
     assume(width > tab + 10)
     formatted = format_zip_lists(zip_list, width, tab)
     parsed = zip_list_parser().parse_string(formatted)
@@ -124,7 +124,7 @@ def get_indent_length(line: str):
 
 class TestIndentLengthMultipleOfTabStop:
     @given(zip_list=sb_st.zip_lists(restrict_patterns=True), tabstop=st.integers(1, 10))
-    def test_in_zip_list(self, zip_list: ZipLists, tabstop: int):
+    def test_in_zip_list(self, zip_list: ZipList, tabstop: int):
         for line in format_zip_lists(zip_list, tabstop=tabstop).splitlines():
             assert get_indent_length(line) / tabstop in {0, 1}
 

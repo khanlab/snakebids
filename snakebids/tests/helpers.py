@@ -13,7 +13,7 @@ from typing_extensions import ParamSpec, TypeAlias
 
 from snakebids import bids
 from snakebids.core.input_generation import BidsDataset, generate_inputs
-from snakebids.types import InputsConfig, UserDictPy37, ZipListLike, ZipLists
+from snakebids.types import InputsConfig, UserDictPy37, ZipList, ZipListLike
 from snakebids.utils.utils import BidsEntity, MultiSelectDict
 
 _T = TypeVar("_T")
@@ -21,7 +21,7 @@ _T = TypeVar("_T")
 
 def get_zip_list(
     entities: Iterable[BidsEntity | str], combinations: Iterable[tuple[str, ...]]
-) -> ZipLists:
+) -> ZipList:
     """Return a zip list from iterables of entities and value combinations
 
     Parameters

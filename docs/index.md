@@ -69,5 +69,6 @@ migration/0.7_to_0.8
 :hidden:
 :maxdepth: 1
 
-api
+api/main
+api/details
 ```

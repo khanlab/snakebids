@@ -1,21 +1,16 @@
 from __future__ import annotations
 
 from collections.abc import Hashable
-from typing import Dict, Generic, Mapping, Sequence
+from typing import Dict, Generic, List, Mapping, Sequence
 
 from typing_extensions import TYPE_CHECKING, Protocol, TypeAlias, TypedDict, TypeVar
-
-if TYPE_CHECKING:
-    # This TYPE_CHECKING guard can be removed when py37 support is dropped, as we won't
-    # have a circular import anymore
-    from snakebids.utils import utils
 
 _T_contra = TypeVar("_T_contra", contravariant=True)
 _S_co = TypeVar("_S_co", covariant=True)
 
 
 class InputConfig(TypedDict, total=False):
-    """Configuration passed in snakebids.yaml file"""
+    """Configuration for a single bids component"""
 
     filters: dict[str, str | bool | list[str]]
     """Filters to pass on to :class:`BIDSLayout.get() <bids.layout.BIDSLayout>`
@@ -56,11 +51,6 @@ class BinaryOperator(Protocol, Generic[_T_contra, _S_co]):
         ...
 
 
-InputsConfig: TypeAlias = "dict[str, InputConfig]"
-
-ZipLists: TypeAlias = "utils.MultiSelectDict[str, list[str]]"
-ZipListLike: TypeAlias = "Mapping[str, Sequence[str]]"
-
 # Hack to make userdicts subscriptable in python 3.7. Can remove when we drop support
 # for that version
 _K = TypeVar("_K", bound=Hashable)
@@ -74,3 +64,33 @@ else:
 
     class UserDictPy37(dict, Generic[_K, _V]):
         pass
+
+
+# for py37, we need to import this AFTER we initialize UserDictPy37 to avoid a circular
+# import
+from snakebids.utils import utils  # noqa: E402
+
+InputsConfig: TypeAlias = Dict[str, InputConfig]
+"""Configuration for all bids components to be parsed in the app
+
+Should be defined in the config.yaml file, by convention in a key called 'pybids_inputs'
+"""
+
+ZipList: TypeAlias = "utils.MultiSelectDict[str, List[str]]"
+"""Multiselectable dict mapping entity names to possible values.
+
+All lists must be the same length. Entries in each list with the same index correspond
+to the same path. Thus, the ZipList can be read like a table, where each row corresponds
+to an entity, and each "column" corresponds to a path.
+"""
+
+
+ZipListLike: TypeAlias = Mapping[str, Sequence[str]]
+"""
+Generic form of a :py:data:`ZipList`
+
+Useful for typing functions that won't mutate the ZipList or use
+:class:`~snakebids.utils.utils.MultiSelectDict` capabilities. Like :class:`ZipList`,
+each :class:`~typing.Sequence` must be the same length, and values in each with the same
+index must correspond to the same path.
+"""

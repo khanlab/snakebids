@@ -1,0 +1,6 @@
+#snakebids\.types\.InputsConfig,
+#snakebids\.types\.ZipList,
+#snakebids\.types\.ZipListLike {
+  visibility: hidden;
+  height: 0;
+}

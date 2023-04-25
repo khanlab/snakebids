@@ -46,13 +46,13 @@ We'd like to develop a new processing pipeline called SuperCorrect. We'll start 
     ├── code
     ├── dataset_description.json
     ├── derivatives
-    │   └── super_correct
-    │       ├── config
-    │       │   └── snakebids.yml
-    │       ├── pipeline_description.json
-    │       ├── run.py
-    │       └── workflow
-    │           └── Snakefile
+    │   └── super_correct
+    │       ├── config
+    │       │   └── snakebids.yml
+    │       ├── pipeline_description.json
+    │       ├── run.py
+    │       └── workflow
+    │           └── Snakefile
     ├── sub-001
     ├── sub-002
     ├── sub-003
@@ -67,7 +67,7 @@ We'd like to develop a new processing pipeline called SuperCorrect. We'll start 
 
     super_correct
     ├── config
-    │   └── snakebids.yml
+    │   └── snakebids.yml
     ├── pipeline_description.json
     ├── run.py
     └── workflow
@@ -81,20 +81,20 @@ We'll see a message telling us the app is running in snakemake mode and, if our 
 
     super_correct
     ├── config
-    │   └── snakebids.yml
+    │   └── snakebids.yml
     ├── pipeline_description.json
     ├── results
-    │   └── super_correct
-    │       ├── dataset_description.json
-    │       ├── sub-001
-    │       ├── sub-002
-    │       ├── sub-003
-    │       ├── sub-004
-    │       ├── sub-005
-    │       ├── sub-006
-    │       ├── sub-007
-    │       ├── sub-008
-    │       └── sub-009
+    │   └── super_correct
+    │       ├── dataset_description.json
+    │       ├── sub-001
+    │       ├── sub-002
+    │       ├── sub-003
+    │       ├── sub-004
+    │       ├── sub-005
+    │       ├── sub-006
+    │       ├── sub-007
+    │       ├── sub-008
+    │       └── sub-009
     ├── run.py
     └── workflow
         └── Snakefile
