@@ -607,9 +607,13 @@ def _get_lists_from_bids(
         zip_lists: dict[str, list[str]] = defaultdict(list)
         paths: set[str] = set()
         pybids_filters = {
-            key: Query.ANY if val is True else Query.NONE if val is False else val
-            for key, val in component.get("filters", {}).items()
+            key: [
+                Query.ANY if f is True else Query.NONE if f is False else f
+                for f in itx.always_iterable(filts)
+            ]
+            for key, filts in component.get("filters", {}).items()
         }
+
         try:
             matching_files: Iterable[BIDSFile] = bids_layout.get(
                 regex_search=regex_search, **pybids_filters, **filters

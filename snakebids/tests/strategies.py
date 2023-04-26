@@ -153,7 +153,11 @@ def input_configs(draw: st.DrawFn) -> InputConfig:
         st.one_of(
             st.dictionaries(
                 bids_entity().map(str),
-                st.one_of(st.booleans(), bids_value(), st.lists(bids_value())),
+                st.one_of(
+                    st.booleans(),
+                    bids_value(),
+                    st.lists(st.one_of(bids_value(), st.booleans())),
+                ),
             ),
             st.none(),
         )
