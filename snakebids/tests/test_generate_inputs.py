@@ -253,6 +253,116 @@ class TestFilterBools:
         data = generate_inputs(root, pybids_inputs)
         assert data == expected
 
+    @allow_function_scoped
+    @given(
+        template=sb_st.bids_components(
+            name="template", restrict_patterns=True, unique=True, extra_entities=False
+        ),
+        entity=sb_st.bids_entity(path_safe=True),
+        data=st.data(),
+    )
+    def test_filter_works_when_false_in_list(
+        self,
+        tmpdir: Path,
+        template: BidsComponent,
+        entity: BidsEntity,
+        data: st.DataObject,
+    ):
+        """Also test here that the filters can pick out a desired value from a decoy"""
+
+        def add_entity(component: BidsComponent, entity: str, value: str):
+            return get_bids_path(component.wildcards, **{entity: value})
+
+        assume(entity.wildcard not in template.wildcards)
+        root = tempfile.mkdtemp(dir=tmpdir)
+
+        target = data.draw(sb_st.bids_value(entity.match))
+        decoy = data.draw(sb_st.bids_value(entity.match))
+        assume(target != decoy)
+        dataset = BidsDataset.from_iterable(
+            [
+                attrs.evolve(
+                    template,
+                    name="target",
+                    path=os.path.join(
+                        root, add_entity(template, entity.wildcard, target)
+                    ),
+                ),
+                attrs.evolve(
+                    template,
+                    name="decoy",
+                    path=os.path.join(
+                        root, add_entity(template, entity.wildcard, decoy)
+                    ),
+                ),
+            ]
+        )
+        create_dataset("", dataset)
+        pybids_inputs: InputsConfig = {
+            "target": {
+                "wildcards": [
+                    BidsEntity.from_tag(wildcard).entity
+                    for wildcard in template.wildcards.keys()
+                ],
+                "filters": {entity.entity: [target, False]},
+            }
+        }
+
+        result = generate_inputs(root, pybids_inputs)
+        assert result == BidsDataset({"target": dataset["target"]})
+
+    @allow_function_scoped
+    @given(
+        template=sb_st.bids_components(
+            name="template", restrict_patterns=True, unique=True, extra_entities=False
+        ),
+        entity=sb_st.bids_entity(path_safe=True),
+        data=st.data(),
+    )
+    def test_filter_blank_paths_when_false_in_list(
+        self,
+        tmpdir: Path,
+        template: BidsComponent,
+        entity: BidsEntity,
+        data: st.DataObject,
+    ):
+        def add_entity(component: BidsComponent, entity: str, value: str):
+            return get_bids_path(component.wildcards, **{entity: value})
+
+        assume(entity.wildcard not in template.wildcards)
+        target = data.draw(sb_st.bids_value(entity.match))
+        decoy = data.draw(sb_st.bids_value(entity.match))
+        assume(target != decoy)
+        root = tempfile.mkdtemp(dir=tmpdir)
+        dataset = BidsDataset.from_iterable(
+            [
+                attrs.evolve(
+                    template,
+                    path=os.path.join(root, template.path),
+                ),
+                attrs.evolve(
+                    template,
+                    name="decoy",
+                    path=os.path.join(
+                        root, add_entity(template, entity.wildcard, decoy)
+                    ),
+                ),
+            ]
+        )
+        create_dataset("", dataset)
+        pybids_inputs: InputsConfig = {
+            "template": {
+                "wildcards": [
+                    BidsEntity.from_tag(wildcard).entity
+                    for wildcard in template.wildcards
+                ],
+                "filters": {entity.entity: [target, False]},
+            }
+        }
+
+        result = generate_inputs(root, pybids_inputs)
+        assert result == BidsDataset({"template": dataset["template"]})
+
 
 class TestAbsentConfigEntries:
     def get_entities(self, root: Path):
