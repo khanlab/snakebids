@@ -32,7 +32,7 @@ patterns = ["(^\\s+\"snakebids_version\":\\s*\")[^'\"]*(\")", "(^__version__\\s*
 python = ">=3.7,<3.12"
 pybids = [
     { version="^0.15.0", python = "^3.7" },
-    { version="^0.16.0", python = ">=3.8" },
+    { version=">=0.15.0", python = ">=3.8" },
 ]
 snakemake = [
     { version = ">=5.28.0", python = ">=3.7" },
