@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import functools as ft
 import itertools as it
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Sequence, TypeVar
 
@@ -217,6 +218,18 @@ def allow_tmpdir(__callable: _T) -> _T:
             HealthCheck.function_scoped_fixture,
         ],
     )(__callable)
+
+
+def deadline(time: int | float | timedelta | None) -> Callable[[_T], _T]:
+    """Change hypothesis deadline
+
+    Numbers refer to time in milliseconds. Set to None to disable entirely
+    """
+
+    def inner(__callable: _T) -> _T:
+        return settings(deadline=time)(__callable)
+
+    return inner
 
 
 def expand_zip_list(
