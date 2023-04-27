@@ -30,7 +30,10 @@ patterns = ["(^\\s+\"snakebids_version\":\\s*\")[^'\"]*(\")", "(^__version__\\s*
 
 [tool.poetry.dependencies]
 python = ">=3.7,<3.12"
-pybids = "^0.15.0"
+pybids = [
+    { version="^0.15.0", python = "^3.7" },
+    { version="^0.16.0", python = ">=3.8" },
+]
 snakemake = [
     { version = ">=5.28.0", python = ">=3.7" },
     { version = ">=7.18.2", python = ">=3.11" },
@@ -38,7 +41,7 @@ snakemake = [
 PyYAML = "^6"
 cookiecutter = "^2.1.1"
 typing-extensions = ">=3.10.0"
-attrs = ">=21.2.0,<23"
+attrs = ">=21.2.0,<24"
 boutiques = "^0.5.25"
 more-itertools = ">=8,<10"
 cached-property = "^1.5.2"
@@ -62,11 +65,15 @@ scipy = [
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
-pybids = "^0.15.2"
+# We need at least 0.15.2 just for testing
+pybids = [
+    { version="^0.15.2", python = "^3.7" },
+    { version="^0.16.0", python = ">=3.8" },
+]
 pytest = "^7.0.0"
 pytest-mock = "^3.7.0"
 isort = "^5.10.1"
-poethepoet = "^0.18.1"
+poethepoet = "^0.19.0"
 # pre-commit==3.0.0 requires py38 or greater
 pre-commit = "^2.17.0"
 mkinit = "^1.0.0"
@@ -75,7 +82,7 @@ pytest-benchmark = "^4.0.0"
 pyfakefs = "^5.1.0"
 pyparsing = "^3.0.9"
 pyright = "^1.1.302"
-ruff = "^0.0.261"
+ruff = "^0.0.263"
 
 [tool.poetry.scripts]
 snakebids = "snakebids.admin:main"
