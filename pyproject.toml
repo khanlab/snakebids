@@ -25,8 +25,14 @@ style = "pep440"
 bump = true
 
 [tool.poetry-dynamic-versioning.substitution]
-files = ['snakebids/project_template/cookiecutter.json', 'snakebids/__init__.py']
-patterns = ["(^\\s+\"snakebids_version\":\\s*\")[^'\"]*(\")", "(^__version__\\s*(?::.*?)?=\\s*['\"])[^'\"]*(['\"])"]
+files = [
+    'snakebids/project_template/cookiecutter.json',
+    'snakebids/__init__.py'
+]
+patterns = [
+    "(^\\s+\"snakebids_version\":\\s*\")[^'\"]*(\")",
+    "(^__version__\\s*(?::.*?)?=\\s*['\"])[^'\"]*(['\"])"
+]
 
 [tool.poetry.dependencies]
 python = ">=3.7,<3.12"
@@ -94,7 +100,11 @@ build-backend = "poetry_dynamic_versioning.backend"
 [tool.poe.tasks]
 setup = "pre-commit install"
 quality = { shell = "isort snakebids && black snakebids && ruff snakebids" }
-test = "pytest --doctest-modules --ignore=docs --ignore=snakebids/project_template --benchmark-disable"
+fix = { shell = "isort snakebids && black snakebids && ruff --fix snakebids"}
+test = """
+pytest --doctest-modules --ignore=docs \
+    --ignore=snakebids/project_template --benchmark-disable
+"""
 mkinit = "mkinit --recursive --nomods --black -i snakebids"
 benchmark = "pytest --benchmark-only --benchmark-autosave"
 
