@@ -49,6 +49,7 @@ from snakebids.tests.helpers import (
     BidsListCompare,
     allow_tmpdir,
     create_dataset,
+    deadline,
     get_bids_path,
     get_zip_list,
     reindex_dataset,
@@ -491,6 +492,7 @@ class TestCustomPaths:
             "foo", get_bids_path(zip_lists), zip_lists
         ) == BidsComponent("foo", get_bids_path(result), MultiSelectDict(result))
 
+    @deadline(400)
     @allow_tmpdir
     @given(path_entities=path_entities())
     def test_collects_only_filtered_entities(
@@ -515,6 +517,7 @@ class TestCustomPaths:
             "foo", get_bids_path(zip_lists), zip_lists
         ) == BidsComponent("foo", get_bids_path(result_filtered), result_filtered)
 
+    @deadline(400)
     @allow_tmpdir
     @given(path_entities=path_entities())
     def test_collect_all_but_filters_when_exclusion_filters_used(
