@@ -953,8 +953,11 @@ class TestGenBidsLayout:
     def bids_fs(self, bids_fs: Optional[FakeFilesystem]):
         return bids_fs
 
-    def test_gen_layout_returns_valid_dataset(self, tmpdir: Path):
-        dataset = sb_st.datasets().example()
+    @settings(
+        max_examples=1, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
+    @given(dataset=sb_st.datasets())
+    def test_gen_layout_returns_valid_dataset(self, dataset: BidsDataset, tmpdir: Path):
         create_dataset(tmpdir, dataset)
         assert _gen_bids_layout(tmpdir, False, None, False, None)
 
@@ -995,12 +998,14 @@ def test_generate_inputs(data: st.DataObject, bids_fs: Path, fakefs_tmpdir: Path
     assert reindexed.layout is not None
 
 
+# The content of the dataset is irrelevant to this test, so one example suffices
+@settings(max_examples=1, suppress_health_check=[HealthCheck.function_scoped_fixture])
+@given(data=st.data())
 def test_when_all_custom_paths_no_layout_indexed(
-    bids_fs: Path, fakefs_tmpdir: Path, mocker: MockerFixture
+    data: st.DataObject, bids_fs: Path, fakefs_tmpdir: Path, mocker: MockerFixture
 ):
     root = tempfile.mkdtemp(dir=fakefs_tmpdir)
-    # The content of the dataset is irrelevant to this test, so one example suffices
-    dataset = sb_st.datasets_one_comp(root=Path(root)).example()
+    dataset = data.draw(sb_st.datasets_one_comp(root=Path(root)))
 
     spy = mocker.spy(BIDSLayout, "__init__")
     reindexed = reindex_dataset(root, dataset, use_custom_paths=True)
