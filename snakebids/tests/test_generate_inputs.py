@@ -8,6 +8,7 @@ import keyword
 import os
 import re
 import shutil
+import sys
 import tempfile
 from collections import defaultdict
 from pathlib import Path
@@ -859,6 +860,13 @@ def test_t1w_with_dict():
     assert config["subj_wildcards"] == {"subject": "{subject}"}
 
 
+@pytest.mark.skipif(
+    sys.version_info >= (3, 8),
+    reason="""
+    Bug only surfaces on python 3.7 because higher python versions have access to the
+    latest pybids version
+    """,
+)
 def test_get_lists_from_bids_raises_pybids_error():
     """Test that we wrap a cryptic AttributeError from pybids with PybidsError.
 
