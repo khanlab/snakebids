@@ -19,7 +19,7 @@ from snakebids.core.datasets import BidsComponent, BidsDataset
 from snakebids.exceptions import DuplicateComponentError
 from snakebids.tests import strategies as sb_st
 from snakebids.tests.helpers import expand_zip_list, get_bids_path, get_zip_list, setify
-from snakebids.types import ZipList
+from snakebids.types import Expandable, ZipList
 from snakebids.utils import sb_itertools as sb_it
 from snakebids.utils.snakemake_io import glob_wildcards
 from snakebids.utils.utils import BidsEntity, get_wildcard_dict, zip_list_eq
@@ -237,39 +237,22 @@ class TestBidsDatasetLegacyAccess:
         assert isinstance(dataset[name], BidsComponent)
 
 
-class TestBidsComponentExpand:
-    """
-    `extension` is generally excluded from the generated components because its wildcard
-    is immediately adjacent to the previous wildcard (e.g.
-    sub-{subject}_{suffix}{extenions}), making it impossible to correctly parse using
-    `glob_wildcards`. Its absence does not affect the spirit of the tests.
-
-    We also exclude extra_entities from the generated Components for the same reason:
-    ``glob_wildcards`` would glob the extra entities found in the generated path, making
-    comparison impossible
-    """
-
-    def get_novel_path(self, component: BidsComponent):
-        # use the "comp-" prefix to give a constant part to the novel template,
-        # otherwise the trivial template "{foo}" globs everything
-        return Path(*map(lambda s: f"comp-{s}", component.wildcards.values()))
-
-    @given(
-        component=sb_st.bids_components(
-            blacklist_entities=["extension"],
-            restrict_patterns=True,
-            extra_entities=False,
+def _get_novel_path(prefix: str, component: Expandable):
+    # use the "comp-" prefix to give a constant part to the novel template,
+    # otherwise the trivial template "{foo}" globs everything
+    return Path(
+        *map(
+            lambda s: f"{prefix}-{s}",
+            get_wildcard_dict(component.zip_lists).values(),
         )
     )
-    def test_expand_with_no_args_returns_initial_paths(self, component: BidsComponent):
-        paths = component.expand()
-        assert zip_list_eq(glob_wildcards(component.path, paths), component.zip_lists)
 
+
+class TestExpandables:
     @given(
-        component=sb_st.bids_components(
+        component=sb_st.expandables(
             restrict_patterns=True,
             blacklist_entities=["extension"],
-            extra_entities=False,
         ),
         wildcards=st.lists(
             st.text(string.ascii_letters, min_size=1, max_size=10).filter(
@@ -281,7 +264,7 @@ class TestBidsComponentExpand:
         data=st.data(),
     )
     def test_expand_with_extra_args_returns_all_paths(
-        self, component: BidsComponent, wildcards: list[str], data: st.DataObject
+        self, component: Expandable, wildcards: list[str], data: st.DataObject
     ):
         num_wildcards = len(wildcards)
         values = data.draw(
@@ -296,7 +279,7 @@ class TestBidsComponentExpand:
             )
         )
         path_tpl = bids(
-            **component.wildcards,
+            **get_wildcard_dict(component.zip_lists),
             **get_wildcard_dict(wildcards),
         )
         wcard_dict = dict(zip(wildcards, values))
@@ -305,58 +288,77 @@ class TestBidsComponentExpand:
         assert zip_list_eq(glob_wildcards(path_tpl, paths), zlist)
 
     @given(
-        component=sb_st.bids_components(restrict_patterns=True, extra_entities=False)
-    )
-    def test_not_expand_over_internal_path_when_novel_given(
-        self, component: BidsComponent
-    ):
-        # We need at least one wildcard in addition to these three, as these have
-        # no fixed part and by themselves will glob everything
-        assume(set(component.wildcards) - {"datatype", "suffix", "extension"})
-        novel_path = self.get_novel_path(component)
-        paths = component.expand(novel_path)
-        assert not glob_wildcards(component.path, paths)
-
-    @given(
-        component=sb_st.bids_components(
-            restrict_patterns=True,
-            blacklist_entities=["extension"],
-            extra_entities=False,
+        component=sb_st.expandables(
+            restrict_patterns=True, blacklist_entities=["extension"]
         )
     )
-    def test_expand_over_multiple_paths(self, component: BidsComponent):
-        novel_path = self.get_novel_path(component)
-        paths = component.expand([component.path, novel_path])
-        assert zip_list_eq(
-            glob_wildcards(component.path, paths), glob_wildcards(novel_path, paths)
-        )
+    def test_expand_over_multiple_paths(self, component: Expandable):
+        path1 = _get_novel_path("first", component)
+        path2 = _get_novel_path("second", component)
+        paths = component.expand([path1, path2])
+        assert zip_list_eq(glob_wildcards(path1, paths), glob_wildcards(path2, paths))
 
     @given(
-        component=sb_st.bids_components(
-            min_entities=2, restrict_patterns=True, extra_entities=False
-        ),
+        component=sb_st.expandables(restrict_patterns=True),
         wildcard=st.text(string.ascii_letters, min_size=1, max_size=10).filter(
             lambda s: s not in sb_st.valid_entities
         ),
     )
-    def test_partial_expansion(self, component: BidsComponent, wildcard: str):
-        path_tpl = bids(**component.wildcards, **get_wildcard_dict(wildcard))
+    def test_partial_expansion(self, component: Expandable, wildcard: str):
+        path_tpl = bids(
+            **get_wildcard_dict(component.zip_lists), **get_wildcard_dict(wildcard)
+        )
         paths = component.expand(path_tpl, allow_missing=True)
         for path in paths:
             assert re.search(r"\{.+\}", path)
 
     @given(
-        component=sb_st.bids_components(
-            min_entities=2, restrict_patterns=True, extra_entities=False
-        ),
+        component=sb_st.expandables(restrict_patterns=True),
         wildcard=st.text(string.ascii_letters, min_size=1, max_size=10).filter(
             lambda s: s not in sb_st.valid_entities
         ),
     )
-    def test_prevent_partial_expansion(self, component: BidsComponent, wildcard: str):
-        path_tpl = bids(**component.wildcards, **get_wildcard_dict(wildcard))
+    def test_prevent_partial_expansion(self, component: Expandable, wildcard: str):
+        path_tpl = bids(
+            **get_wildcard_dict(component.zip_lists), **get_wildcard_dict(wildcard)
+        )
         with pytest.raises(WildcardError):
             component.expand(path_tpl)
+
+
+class TestBidsComponentExpand:
+    """
+    `extension` is generally excluded from the generated components because its wildcard
+    is immediately adjacent to the previous wildcard (e.g.
+    sub-{subject}_{suffix}{extenions}), making it impossible to correctly parse using
+    `glob_wildcards`. Its absence does not affect the spirit of the tests.
+
+    We also exclude extra_entities from the generated Components for the same reason:
+    ``glob_wildcards`` would glob the extra entities found in the generated path, making
+    comparison impossible
+    """
+
+    @given(
+        component=sb_st.bids_components(
+            blacklist_entities=["extension"],
+            restrict_patterns=True,
+            extra_entities=False,
+        )
+    )
+    def test_expand_with_no_args_returns_initial_paths(self, component: BidsComponent):
+        paths = component.expand()
+        assert zip_list_eq(glob_wildcards(component.path, paths), component.zip_lists)
+
+    @given(
+        component=sb_st.bids_components(restrict_patterns=True, extra_entities=False)
+    )
+    def test_not_expand_over_internal_path_when_novel_given(
+        self, component: BidsComponent
+    ):
+        assume(set(component.wildcards) - {"datatype", "suffix", "extension"})
+        novel_path = _get_novel_path("comp", component)
+        paths = component.expand(novel_path)
+        assert not glob_wildcards(component.path, paths)
 
 
 class TestFiltering:

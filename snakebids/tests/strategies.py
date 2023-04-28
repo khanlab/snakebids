@@ -358,7 +358,6 @@ def bids_components(  # noqa: PLR0913
 def expandables(  # noqa: PLR0913
     draw: st.DrawFn,
     *,
-    min_entities: int = 1,
     max_entities: int = 5,
     min_values: int = 1,
     max_values: int = 3,
@@ -375,7 +374,7 @@ def expandables(  # noqa: PLR0913
     return draw(
         st.one_of(
             bids_partial_components(
-                min_entities=min_entities,
+                min_entities=1,
                 max_entities=max_entities,
                 min_values=min_values,
                 max_values=max_values,
