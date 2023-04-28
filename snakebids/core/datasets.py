@@ -37,18 +37,22 @@ class BidsDatasetDict(TypedDict):
     subj_wildcards: dict[str, str]
 
 
-@attr.define
-class BidsComponent:
-    """Component of a BidsDataset mapping entities to their resolved values
+@attr.define(kw_only=True)
+class BidsPartialComponent:
+    """Primitive representation of a bids data component
 
-    BidsComponents are immutable: their values cannot be altered.
+    See :class:`BidsComponent` for an extended definition of a data component.
+
+    ``BidsPartialComponents`` are typically derived from :class:`BidsComponent`. They do
+    not store path information, and do not represent *real* data, only a table of
+    entity-values.
+
+    Despite this, ``BidsPartialComponents`` still allow you to expand the data table
+    over new paths, allowing you to derive paths from your source dataset.
+
+    ``BidsPartialComponents`` are immutable: their values cannot be altered.
     """
 
-    name: str = attr.field(on_setattr=attr.setters.frozen)
-    """Name of the component"""
-
-    path: str = attr.field(on_setattr=attr.setters.frozen)
-    """Wildcard-filled path that matches the files for this component."""
     zip_lists: ZipList = attr.field(
         on_setattr=attr.setters.frozen, converter=MultiSelectDict
     )
@@ -63,34 +67,30 @@ class BidsComponent:
     def __repr__(self) -> str:
         return self.pformat()
 
+    def _pformat_body(self) -> None | str | list[str]:
+        return None
+
     def pformat(self, max_width: int | float | None = None, tabstop: int = 4) -> str:
         width = max_width or get_console_size()[0] or inf
-        body = [
-            f"name={quote_wrap(self.name)},",
-            f"path={quote_wrap(self.path)},",
-            f"zip_lists={format_zip_lists(self.zip_lists, width - tabstop, tabstop)},",
-        ]
+        body = it.chain(
+            itx.always_iterable(self._pformat_body() or []),
+            [
+                "zip_lists="
+                f"{format_zip_lists(self.zip_lists, width - tabstop, tabstop)},",
+            ],
+        )
         output = [
-            "BidsComponent(",
+            f"{self.__class__.__name__}(",
             textwrap.indent("\n".join(body), " " * tabstop),
             ")",
         ]
         return "\n".join(output)
 
     @zip_lists.validator  # type: ignore
-    def _validate_zip_lists(self, _, value: dict[str, list[str]]) -> None:
+    def _validate_zip_lists(self, __attr: str, value: dict[str, list[str]]) -> None:
         lengths = {len(val) for val in value.values()}
         if len(lengths) > 1:
             raise ValueError("zip_lists must all be of equal length")
-        _, raw_fields, *_ = sb_it.unpack(
-            zip(*Formatter().parse(self.path)), [[], [], []]
-        )
-        fields = set(filter(None, raw_fields))
-        if fields != set(value):
-            raise ValueError(
-                "zip_lists entries must match the wildcards in input_path: "
-                f"{self.path}: {fields} != zip_lists: {set(value)}"
-            )
 
     # Note: we can't use cached property here because it's incompatible with slots.
     _input_lists: Optional[MultiSelectDict[str, list[str]]] = attr.field(
@@ -130,22 +130,6 @@ class BidsComponent:
         return self._input_wildcards
 
     @property
-    def input_name(self) -> str:
-        """Alias of :attr:`name <snakebids.BidsComponent.name>`
-
-        Name of the component
-        """
-        return self.name
-
-    @property
-    def input_path(self) -> str:
-        """Alias of :attr:`path <snakebids.BidsComponent.path>`
-
-        Wildcard-filled path that matches the files for this component.
-        """
-        return self.path
-
-    @property
     def input_zip_lists(self) -> ZipList:
         """Alias of :attr:`zip_lists <snakebids.BidsComponent.zip_lists>`
 
@@ -165,20 +149,14 @@ class BidsComponent:
         return self.wildcards
 
     def __eq__(self, other: BidsComponent | object) -> bool:
-        if not isinstance(other, BidsComponent):
-            return False
-
-        if self.name != other.name:
-            return False
-
-        if self.path != other.path:
+        if not isinstance(other, self.__class__):
             return False
 
         return zip_list_eq(self.zip_lists, other.zip_lists)
 
     def expand(
         self,
-        paths: Iterable[Path | str] | Path | str | None = None,
+        paths: Iterable[Path | str] | Path | str,
         allow_missing: bool = False,
         **wildcards: str | Iterable[str],
     ) -> list[str]:
@@ -196,7 +174,6 @@ class BidsComponent:
 
         Uses the snakemake :ref:`expand <snakemake:snakefiles_expand>` under the hood.
         """
-        paths = paths or self.path
         inner_expand = sn_expand(
             list(itx.always_iterable(paths)),
             zip,
@@ -249,6 +226,132 @@ class BidsComponent:
             self,
             zip_lists=filter_list(self.zip_lists, filters, regex_search=regex_search),
         )
+
+
+@attr.define(kw_only=True)
+class BidsComponent(BidsPartialComponent):
+    """Representation of a bids data component
+
+    A component is a set of data entries all corresponding to the same type of object.
+    Entries vary over a set of entities. For example, a component may represent all the
+    unprocessed, T1-weighted anatomical images aqcuired from a group of 100 subjects,
+    across 2 sessions, with three runs per session. Here, the subject, session, and run
+    are the entities over which the component varies. Each entry in the component has
+    a single value assigned for each of the three entities (e.g subject 002, session
+    01, run 1).
+
+    Each entry can be defined soley by its wildcard values. The complete collection of
+    entries can thus be stored as a table, where each row represents an entity and each
+    column represents an entry.
+
+    ``BidsComponent`` stores and indexes this table. It uses 'row-first' indexing,
+    meaning first an entity is selected, then an entry. It also has a number of
+    properties and methods making it easier to incorporate the data in a snakemake
+    workflow.
+
+    In addition, ``BidsComponent`` stores a template :attr:`~BidsComponent.path <path>`
+    derived from the source dataset. This path is used by the
+    :meth:`~BidsComponent.expand` method to recreate the original filesystem paths.
+
+    The real power of the ``BidsComponent``, however, is in creating derived paths based
+    on the original dataset. Using the :meth`~BidsComponent.expand` method, you can pass
+    new paths with ``{wildcard}`` placeholders wrapped in braces and named according to
+    the entities in the component. These placeholders will be substituted with the
+    entity values saved in the table, giving you a list of paths the same length as the
+    number of entries in the component.
+
+    BidsComponents are immutable: their values cannot be altered.
+    """
+
+    name: str = attr.field(on_setattr=attr.setters.frozen)
+    """Name of the component"""
+
+    path: str = attr.field(on_setattr=attr.setters.frozen)
+    """Wildcard-filled path that matches the files for this component."""
+
+    zip_lists: ZipList = attr.field(
+        on_setattr=attr.setters.frozen, converter=MultiSelectDict
+    )
+    """Table of unique wildcard groupings for each member in the component.
+
+    Dictionary where each key is a wildcard entity and each value is a list of the
+    values found for that entity. Each of these lists has length equal to the number
+    of images matched for this modality, so they can be zipped together to get a
+    list of the wildcard values for each file.
+    """
+
+    def __repr__(self) -> str:
+        return self.pformat()
+
+    def _pformat_body(self):
+        return [
+            f"name={quote_wrap(self.name)},",
+            f"path={quote_wrap(self.path)},",
+        ]
+
+    @zip_lists.validator  # type: ignore
+    def _validate_zip_lists(self, __attr: str, value: dict[str, list[str]]) -> None:
+        super()._validate_zip_lists(__attr, value)
+        _, raw_fields, *_ = sb_it.unpack(
+            zip(*Formatter().parse(self.path)), [[], [], []]
+        )
+        fields = set(filter(None, raw_fields))
+        if fields != set(value):
+            raise ValueError(
+                "zip_lists entries must match the wildcards in input_path: "
+                f"{self.path}: {fields} != zip_lists: {set(value)}"
+            )
+
+    @property
+    def input_name(self) -> str:
+        """Alias of :attr:`name <snakebids.BidsComponent.name>`
+
+        Name of the component
+        """
+        return self.name
+
+    @property
+    def input_path(self) -> str:
+        """Alias of :attr:`path <snakebids.BidsComponent.path>`
+
+        Wildcard-filled path that matches the files for this component.
+        """
+        return self.path
+
+    def __eq__(self, other: BidsComponent | object) -> bool:
+        if not isinstance(other, self.__class__):
+            return False
+
+        if self.name != other.name:
+            return False
+
+        if self.path != other.path:
+            return False
+
+        return super().__eq__(other)
+
+    def expand(
+        self,
+        paths: Iterable[Path | str] | Path | str | None = None,
+        allow_missing: bool = False,
+        **wildcards: str | Iterable[str],
+    ) -> list[str]:
+        """Safely expand over given paths with component wildcards
+
+        Uses the entity-value combinations found in the dataset to expand over the given
+        paths. If no path is provided, expands over the component
+        :attr:`~snakebids.BidsComponent.path` (thus returning the original files used to
+        create the component). Extra wildcards can be specifed as keyword arguments.
+
+        By default, expansion over paths with extra wildcards not accounted for by the
+        component causes an error. This prevents accidental partial expansion. To allow
+        the passage of extra wildcards without expansion,set ``allow_missing`` to
+        ``True``.
+
+        Uses the snakemake :ref:`expand <snakemake:snakefiles_expand>` under the hood.
+        """
+        paths = paths or self.path
+        return super().expand(paths, allow_missing, **wildcards)
 
 
 class BidsDataset(UserDictPy37[str, BidsComponent]):
