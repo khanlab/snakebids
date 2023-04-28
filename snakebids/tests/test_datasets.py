@@ -160,7 +160,7 @@ class TestBidsComponentProperties:
     def test_input_lists_derives_from_zip_lists(
         self, data: st.DataObject, min_size: int
     ):
-        input_lists = data.draw(sb_st.bids_input_lists(min_size, max_size=5))
+        input_lists = data.draw(sb_st.bids_input_lists(min_size=min_size, max_size=5))
 
         # Due to the product, we can delete some of the combinations and still
         # regenerate our input_lists
