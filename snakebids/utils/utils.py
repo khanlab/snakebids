@@ -5,14 +5,33 @@ import json
 import operator as op
 import os
 import re
+import sys
 from os import PathLike
 from pathlib import Path
-from typing import Any, Callable, Iterable, Mapping, Sequence, TypeVar, cast, overload
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Sequence,
+    TypeVar,
+    cast,
+    overload,
+)
 
 import attrs
 import importlib_resources as impr
 import more_itertools as itx
-from typing_extensions import NotRequired, Protocol, Self, TypeAlias, TypedDict
+from typing_extensions import (
+    NotRequired,
+    Protocol,
+    Self,
+    SupportsIndex,
+    TypeAlias,
+    TypedDict,
+)
 
 from snakebids import resources, types
 from snakebids.utils.user_property import UserProperty
@@ -404,3 +423,99 @@ def get_first_dir(path: str) -> str:
 
 def to_resolved_path(path: str | PathLike[str]):
     return Path(path).resolve()
+
+
+_T_co = TypeVar("_T_co", covariant=True)
+
+
+class ImmutableList(Sequence[_T_co], Generic[_T_co]):
+    def __init__(self, __iterable: Iterable[_T_co] = tuple()):
+        self._data = tuple(__iterable)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({list(self._data)})"
+
+    def __contains__(self, __item: object) -> bool:
+        return __item in self._data
+
+    def __hash__(self):
+        return hash(self._data)
+
+    def __iter__(self) -> Iterator[_T_co]:
+        return iter(self._data)
+
+    def __reversed__(self) -> Iterator[_T_co]:
+        return reversed(self._data)
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __bool__(self) -> bool:
+        return bool(self._data)
+
+    @overload
+    def __getitem__(self, __key: SupportsIndex) -> _T_co:
+        ...
+
+    @overload
+    def __getitem__(self, __key: slice) -> Self:
+        ...
+
+    def __getitem__(self, __item: SupportsIndex | slice) -> _T_co | Self:
+        if isinstance(__item, slice):
+            return self.__class__(self._data[__item])
+        return self._data[__item]
+
+    def __lt__(self, __value: tuple[_T_co, ...] | Self) -> bool:
+        if isinstance(__value, tuple):
+            return self._data < __value
+        if isinstance(__value, ImmutableList):
+            return self._data < __value._data
+        return False
+
+    def __le__(self, __value: tuple[_T_co, ...] | Self) -> bool:
+        if isinstance(__value, tuple):
+            return self._data <= __value
+        if isinstance(__value, ImmutableList):
+            return self._data <= __value._data
+        return False
+
+    def __gt__(self, __value: tuple[_T_co, ...] | Self) -> bool:
+        if isinstance(__value, tuple):
+            return self._data > __value
+        if isinstance(__value, ImmutableList):
+            return self._data > __value._data
+        return False
+
+    def __ge__(self, __value: tuple[_T_co, ...] | Self) -> bool:
+        if isinstance(__value, tuple):
+            return self._data >= __value
+        if isinstance(__value, ImmutableList):
+            return self._data >= __value._data
+        return False
+
+    def __eq__(self, __value: object) -> bool:
+        if isinstance(__value, tuple):
+            return self._data == __value
+        if isinstance(__value, ImmutableList):
+            return self._data == __value._data  # type: ignore
+        return False
+
+    def __add__(self, __value: tuple[_T_co, ...] | ImmutableList[_T_co]) -> Self:
+        if isinstance(__value, ImmutableList):
+            return self.__class__(self._data + __value._data)
+        return self.__class__(self._data + __value)
+
+    def __mul__(self, __value: SupportsIndex) -> Self:
+        return self.__class__(self._data * __value)
+
+    def __rmul__(self, __value: SupportsIndex) -> Self:
+        return self.__class__(__value * self._data)
+
+    def count(self, value: Any) -> int:
+        return self._data.count(value)
+
+    def index(
+        self, value: Any, start: SupportsIndex = 0, stop: SupportsIndex = sys.maxsize
+    ) -> int:
+        return self._data.index(value, start, stop)

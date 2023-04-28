@@ -6,7 +6,7 @@ import sys
 from os import PathLike
 from pathlib import Path
 from string import ascii_letters, digits
-from typing import Any, Container, Iterable, Optional, Type, TypeVar
+from typing import Any, Container, Hashable, Iterable, Optional, Type, TypeVar
 
 import hypothesis.strategies as st
 from bids.layout import Config as BidsConfig
@@ -359,3 +359,27 @@ def multiselect_dicts(
 
 def everything() -> st.SearchStrategy[Any]:
     return st.from_type(type).flatmap(st.from_type)
+
+
+def _is_hashable(__item: Any):
+    try:
+        hash(__item)
+        return True
+    except TypeError:
+        return False
+
+
+def _supports_eq(__item: Any):
+    try:
+        __item == 0  # type: ignore
+        return True
+    except Exception:
+        return False
+
+
+def hashables() -> st.SearchStrategy[Hashable]:
+    return everything().filter(_is_hashable)
+
+
+def partially_ordered() -> st.SearchStrategy[Any]:
+    return everything().filter(_supports_eq)
