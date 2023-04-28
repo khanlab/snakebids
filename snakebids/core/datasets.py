@@ -44,6 +44,23 @@ class BidsDatasetDict(TypedDict):
 
 
 class BidsComponentRow(ImmutableList[str]):
+    """A single row from a BidsComponent
+
+    This class is derived by indexing a single entity from a :class:`BidsComponent` or
+    :class:`BidsPartialComponent`. It should not be constructed manually.
+
+    The class is a subclass of :class:`ImmutableList` and can thus be treated as a
+    tuple. Indexing it via ``row[<int>]`` gives the entity-value of the selected entry.
+
+    The :attr:`~BidsComponentRow.entities` and :attr:`~BidsComponentRow.wildcards`
+    directly return the list of unique entity-values or the ``{brace-wrapped-entity}``
+    name corresponding to the row, rather than a dict.
+
+    The :meth:`~BidsComponentRow.expand` and :meth:`~BidsComponentRow.filter` methods
+    behave as they would in a :class:`BidsComponent` with a single entity.
+
+    """
+
     def __init__(self, __iterable: Iterable[str], entity: str):
         super().__init__(__iterable)
         self.entity = entity
@@ -82,10 +99,8 @@ class BidsComponentRow(ImmutableList[str]):
     ) -> list[str]:
         """Safely expand over given paths with component wildcards
 
-        Uses the entity-value combinations found in the dataset to expand over the given
-        paths. If no path is provided, expands over the component
-        :attr:`~snakebids.BidsComponent.path` (thus returning the original files used to
-        create the component). Extra wildcards can be specifed as keyword arguments.
+        Uses the entity-values represented by this row to expand over the given paths.
+        Extra wildcards can be specified as keyword arguments.
 
         By default, expansion over paths with extra wildcards not accounted for by the
         component causes an error. This prevents accidental partial expansion. To allow
@@ -93,6 +108,19 @@ class BidsComponentRow(ImmutableList[str]):
         ``True``.
 
         Uses the snakemake :ref:`expand <snakemake:snakefiles_expand>` under the hood.
+
+        Parameters
+        ==========
+        paths:
+            Path or list of paths to expand over
+        allow_missing:
+            If True, allow ``{wildcards}`` in the provided paths that are not present
+            either in the component or in the extra provided ``**wildcards``. These
+            wildcards will be preserved in the returned paths.
+        wildcards:
+            Each keyword should be the name of an wildcard in the provided paths.
+            Keywords not found in the path will be ignored. Keywords take values or
+            lists of values to be expanded over the provided paths.
         """
         return sn_expand(
             list(itx.always_iterable(paths)),
@@ -109,18 +137,15 @@ class BidsComponentRow(ImmutableList[str]):
     ) -> Self:
         """Filter component based on provided entity filters
 
-        This method allows you to expand over a subset of your wildcards. This could be
-        useful for extracting subjects from a specific patient group, running different
-        rules on different aquisitions, and any other reason you may need to filter your
-        data after the workflow has already started.
+        Extracts a subset of the entity-values present in the row.
 
         Takes entities as keyword arguments assigned to values or list of values to
         select from the component. Only columns containing the provided entity-values
         are kept. If no matches are found, a component with the all the original
         entities but with no values will be returned.
 
-        Returns a brand new :class:`~snakebids.BidsComponent`. The original component is
-        not modified.
+        Returns a brand new :class:`~snakebids.BidsComponentRow`. The original component
+        is not modified.
 
         Parameters
         ----------
@@ -146,12 +171,20 @@ class BidsPartialComponent:
 
     See :class:`BidsComponent` for an extended definition of a data component.
 
-    ``BidsPartialComponents`` are typically derived from :class:`BidsComponent`. They do
-    not store path information, and do not represent *real* data, only a table of
-    entity-values.
+    ``BidsPartialComponents`` are typically derived from a :class:`BidsComponent`. They
+    do not store path information, and do not represent real data files. They just have
+    a table of entity-values, typically a subset of those present in their source
+    :class:`BidsComponent`.
 
     Despite this, ``BidsPartialComponents`` still allow you to expand the data table
     over new paths, allowing you to derive paths from your source dataset.
+
+    The members of ``BidsPartialComponent`` are identical to :class:`BidsComponent` with
+    the following exceptions:
+
+    - No :attr:`~BidsComponent.name` or :attr:`~BidsComponent.path`
+    - :meth:`~BidsPartialComponent.expand` must be given a path or list of paths as the
+      first argument
 
     ``BidsPartialComponents`` are immutable: their values cannot be altered.
     """
@@ -200,6 +233,10 @@ class BidsPartialComponent:
         return bool(next(iter(self.zip_lists)))
 
     def _pformat_body(self) -> None | str | list[str]:
+        """Extra properties to be printed within pformat
+
+        Meant for implementation in subclasses
+        """
         return None
 
     def pformat(self, max_width: int | float | None = None, tabstop: int = 4) -> str:
@@ -293,9 +330,7 @@ class BidsPartialComponent:
         """Safely expand over given paths with component wildcards
 
         Uses the entity-value combinations found in the dataset to expand over the given
-        paths. If no path is provided, expands over the component
-        :attr:`~snakebids.BidsComponent.path` (thus returning the original files used to
-        create the component). Extra wildcards can be specifed as keyword arguments.
+        paths. Extra wildcards can be specifed as keyword arguments.
 
         By default, expansion over paths with extra wildcards not accounted for by the
         component causes an error. This prevents accidental partial expansion. To allow
@@ -303,6 +338,19 @@ class BidsPartialComponent:
         ``True``.
 
         Uses the snakemake :ref:`expand <snakemake:snakefiles_expand>` under the hood.
+
+        Parameters
+        ==========
+        paths:
+            Path or list of paths to expand over
+        allow_missing:
+            If True, allow ``{wildcards}`` in the provided paths that are not present
+            either in the component or in the extra provided ``**wildcards``. These
+            wildcards will be preserved in the returned paths.
+        wildcards:
+            Each keyword should be the name of an wildcard in the provided paths.
+            Keywords not found in the path will be ignored. Keywords take values or
+            lists of values to be expanded over the provided paths.
         """
         inner_expand = sn_expand(
             list(itx.always_iterable(paths)),
@@ -370,7 +418,7 @@ class BidsComponent(BidsPartialComponent):
     a single value assigned for each of the three entities (e.g subject 002, session
     01, run 1).
 
-    Each entry can be defined soley by its wildcard values. The complete collection of
+    Each entry can be defined solely by its wildcard values. The complete collection of
     entries can thus be stored as a table, where each row represents an entity and each
     column represents an entry.
 
@@ -432,22 +480,6 @@ class BidsComponent(BidsPartialComponent):
                 f"{self.path}: {fields} != zip_lists: {set(value)}"
             )
 
-    @property
-    def input_name(self) -> str:
-        """Alias of :attr:`name <snakebids.BidsComponent.name>`
-
-        Name of the component
-        """
-        return self.name
-
-    @property
-    def input_path(self) -> str:
-        """Alias of :attr:`path <snakebids.BidsComponent.path>`
-
-        Wildcard-filled path that matches the files for this component.
-        """
-        return self.path
-
     def __eq__(self, other: BidsComponent | object) -> bool:
         if not isinstance(other, self.__class__):
             return False
@@ -471,7 +503,7 @@ class BidsComponent(BidsPartialComponent):
         Uses the entity-value combinations found in the dataset to expand over the given
         paths. If no path is provided, expands over the component
         :attr:`~snakebids.BidsComponent.path` (thus returning the original files used to
-        create the component). Extra wildcards can be specifed as keyword arguments.
+        create the component). Extra wildcards can be specified as keyword arguments.
 
         By default, expansion over paths with extra wildcards not accounted for by the
         component causes an error. This prevents accidental partial expansion. To allow
@@ -479,9 +511,39 @@ class BidsComponent(BidsPartialComponent):
         ``True``.
 
         Uses the snakemake :ref:`expand <snakemake:snakefiles_expand>` under the hood.
+
+        Parameters
+        ==========
+        paths:
+            Path or list of paths to expand over. If not provided, the component's own
+            :attr:`~BidsComponent.path` will be expanded over.
+        allow_missing:
+            If True, allow ``{wildcards}`` in the provided paths that are not present
+            either in the component or in the extra provided ``**wildcards``. These
+            wildcards will be preserved in the returned paths.
+        wildcards:
+            Each keyword should be the name of an wildcard in the provided paths.
+            Keywords not found in the path will be ignored. Keywords take values or
+            lists of values to be expanded over the provided paths.
         """
         paths = paths or self.path
         return super().expand(paths, allow_missing, **wildcards)
+
+    @property
+    def input_name(self) -> str:
+        """Alias of :attr:`name <snakebids.BidsComponent.name>`
+
+        Name of the component
+        """
+        return self.name
+
+    @property
+    def input_path(self) -> str:
+        """Alias of :attr:`path <snakebids.BidsComponent.path>`
+
+        Wildcard-filled path that matches the files for this component.
+        """
+        return self.path
 
 
 class BidsDataset(UserDictPy37[str, BidsComponent]):

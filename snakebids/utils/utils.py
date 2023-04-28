@@ -429,6 +429,20 @@ _T_co = TypeVar("_T_co", covariant=True)
 
 
 class ImmutableList(Sequence[_T_co], Generic[_T_co]):
+    """Subclassable tuple equivalent
+
+    Mimics a tuple in every way, but readily supports subclassing. Data is stored on a
+    private attribute ``_data``. Subclasses must not override this attribute. To avoid
+    accidental modification, subclasses should avoid interacting with ``_data``, using
+    the relevant ``super()`` calls to access internal data instead (e.g. use
+    ``super().__getitem__(index)`` rather than ``self._data[index]``).
+
+    Unlike tuples, only a single type parameter is supported. In other words,
+    ``ImmutableList`` cannot be specified via type hints as a fixed length sequence
+    containing heterogenous items. A tuple specified as ``tuple[str, int, str]`` would
+    be specified as ``ImmutableList[str | int]``
+    """
+
     def __init__(self, __iterable: Iterable[_T_co] = tuple()):
         self._data = tuple(__iterable)
 

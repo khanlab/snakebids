@@ -41,6 +41,7 @@ extensions = [
     "myst_parser",
     "sphinx_copybutton",
     "sphinx_reredirects",
+    "sphinx_design",
 ]
 
 
