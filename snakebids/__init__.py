@@ -5,6 +5,7 @@ __version__ = "0.0.0"
 # <AUTOGEN_INIT>
 from snakebids.core import (
     BidsComponent,
+    BidsComponentRow,
     BidsDataset,
     BidsDatasetDict,
     BidsPartialComponent,
@@ -19,6 +20,7 @@ from snakebids.core import (
 
 __all__ = [
     "BidsComponent",
+    "BidsComponentRow",
     "BidsDataset",
     "BidsDatasetDict",
     "BidsPartialComponent",

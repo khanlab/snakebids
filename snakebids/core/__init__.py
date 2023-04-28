@@ -6,6 +6,7 @@ __ignore__ = ["T_co"]
 from snakebids.core.construct_bids import bids, print_boilerplate
 from snakebids.core.datasets import (
     BidsComponent,
+    BidsComponentRow,
     BidsDataset,
     BidsDatasetDict,
     BidsPartialComponent,
@@ -19,6 +20,7 @@ from snakebids.core.input_generation import (
 
 __all__ = [
     "BidsComponent",
+    "BidsComponentRow",
     "BidsDataset",
     "BidsDatasetDict",
     "BidsPartialComponent",
