@@ -12,7 +12,12 @@ from hypothesis import assume, given
 from hypothesis import strategies as st
 
 import snakebids.tests.strategies as sb_st
-from snakebids.utils.utils import ImmutableList, MultiSelectDict, matches_any
+from snakebids.utils.utils import (
+    ImmutableList,
+    MultiSelectDict,
+    get_wildcard_dict,
+    matches_any,
+)
 
 
 class TestMatchesAny:
@@ -316,3 +321,18 @@ class TestImmutableListsAreEquivalentToTuples:
     def test_bool(self, items: list[Any]):
         iml = ImmutableList(items)
         assert bool(iml) == bool(items)
+
+
+@given(
+    st.dictionaries(
+        sb_st.bids_entity().map(lambda e: e.wildcard),
+        sb_st.bids_value("[^.]*"),
+        min_size=1,
+    ).filter(lambda v: list(v) != ["datatype"])
+)
+def test_get_wildcard_dict(zip_list: dict[str, str]):
+    wildcards = get_wildcard_dict(zip_list)
+    wildstr = ".".join(wildcards.values())
+    first = wildstr.format(**wildcards)
+    second = first.format(**zip_list)
+    assert set(second.split(".")) == set(zip_list.values())

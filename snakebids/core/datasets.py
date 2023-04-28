@@ -25,6 +25,7 @@ from snakebids.types import UserDictPy37, ZipList
 from snakebids.utils.utils import (
     ImmutableList,
     MultiSelectDict,
+    get_wildcard_dict,
     property_alias,
     zip_list_eq,
 )
@@ -226,9 +227,7 @@ class BidsPartialComponent:
         the Snakemake wildcard used for that entity.
         """
         if self._input_wildcards is None:
-            self._input_wildcards = MultiSelectDict(
-                {entity: f"{{{entity}}}" for entity in self.zip_lists}
-            )
+            self._input_wildcards = MultiSelectDict(get_wildcard_dict(self.zip_lists))
         return self._input_wildcards
 
     @property
