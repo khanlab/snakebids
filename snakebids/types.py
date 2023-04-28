@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Hashable
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Generic, Iterable, List, Mapping, Sequence
+from typing import Dict, Generic, Iterable, List, Mapping, Sequence, overload
 
 from typing_extensions import (
     TYPE_CHECKING,
@@ -81,6 +81,21 @@ class Expandable(Protocol):
     def filter(
         self, *, regex_search: bool = False, **filters: str | Sequence[str]
     ) -> Self:
+        ...
+
+
+_K_contra = TypeVar("_K_contra", bound="str", contravariant=True)
+_V_co = TypeVar("_V_co", covariant=True)
+_Valt_co = TypeVar("_Valt_co", covariant=True)
+
+
+class MultiSelectable(Protocol, Generic[_K_contra, _V_co, _Valt_co]):
+    @overload
+    def __getitem__(self, __key: _K_contra) -> _V_co:
+        ...
+
+    @overload
+    def __getitem__(self, __key: tuple[_K_contra, ...]) -> _Valt_co:
         ...
 
 
