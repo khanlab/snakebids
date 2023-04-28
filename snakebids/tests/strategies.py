@@ -12,9 +12,14 @@ import hypothesis.strategies as st
 from bids.layout import Config as BidsConfig
 from hypothesis import assume
 
-from snakebids.core.datasets import BidsComponent, BidsDataset
+from snakebids.core.datasets import (
+    BidsComponent,
+    BidsComponentRow,
+    BidsDataset,
+    BidsPartialComponent,
+)
 from snakebids.tests import helpers
-from snakebids.types import InputConfig, InputsConfig, ZipList
+from snakebids.types import Expandable, InputConfig, InputsConfig, ZipList
 from snakebids.utils.utils import BidsEntity, MultiSelectDict
 
 _Ex_co = TypeVar("_Ex_co", bound=str, covariant=True)
@@ -25,6 +30,7 @@ valid_entities: tuple[str] = tuple(BidsConfig.load("bids").entities.keys())
 
 
 def bids_entity(
+    *,
     blacklist_entities: Optional[Container[BidsEntity | str]] = None,
     whitelist_entities: Optional[Container[BidsEntity | str]] = None,
 ) -> st.SearchStrategy[BidsEntity]:
@@ -115,6 +121,7 @@ def bids_path(  # noqa: PLR0913
 
 
 def bids_entity_lists(
+    *,
     min_size: int = 1,
     max_size: int = 5,
     blacklist_entities: Optional[Container[BidsEntity | str]] = None,
@@ -172,6 +179,7 @@ def inputs_configs() -> st.SearchStrategy[InputsConfig]:
 @st.composite
 def zip_lists(  # noqa: PLR0913
     draw: st.DrawFn,
+    *,
     min_entities: int = 1,
     max_entities: int = 5,
     min_values: int = 1,
@@ -218,8 +226,91 @@ def zip_lists(  # noqa: PLR0913
 
 
 @st.composite
+def bids_component_row(  # noqa: PLR0913
+    draw: st.DrawFn,
+    *,
+    min_values: int = 1,
+    max_values: int = 5,
+    entity: Optional[BidsEntity] = None,
+    blacklist_entities: Optional[Container[BidsEntity | str]] = None,
+    whitelist_entities: Optional[Container[BidsEntity | str]] = None,
+    restrict_patterns: bool = False,
+) -> BidsComponentRow:
+    entity = entity or draw(
+        bids_entity(
+            blacklist_entities=blacklist_entities, whitelist_entities=whitelist_entities
+        )
+    )
+    values = draw(
+        st.lists(
+            bids_value(entity.match if restrict_patterns else ".*"),
+            min_size=min_values,
+            max_size=max_values,
+        )
+    )
+    return BidsComponentRow(values, entity=entity.entity)
+
+
+@st.composite
+def bids_partial_components(  # noqa: PLR0913
+    draw: st.DrawFn,
+    *,
+    min_entities: int = 1,
+    max_entities: int = 5,
+    min_values: int = 1,
+    max_values: int = 3,
+    entities: Optional[list[BidsEntity]] = None,
+    blacklist_entities: Optional[Container[BidsEntity | str]] = None,
+    whitelist_entities: Optional[Container[BidsEntity | str]] = None,
+    restrict_patterns: bool = False,
+    _allow_subclasses: bool = True,
+) -> BidsPartialComponent:
+    if _allow_subclasses:
+        return draw(
+            st.one_of(
+                bids_components(
+                    min_entities=min_entities,
+                    max_entities=max_entities,
+                    min_values=min_values,
+                    max_values=max_values,
+                    entities=entities,
+                    blacklist_entities=blacklist_entities,
+                    whitelist_entities=whitelist_entities,
+                    restrict_patterns=restrict_patterns,
+                ),
+                bids_partial_components(
+                    min_entities=min_entities,
+                    max_entities=max_entities,
+                    min_values=min_values,
+                    max_values=max_values,
+                    entities=entities,
+                    blacklist_entities=blacklist_entities,
+                    whitelist_entities=whitelist_entities,
+                    restrict_patterns=restrict_patterns,
+                    _allow_subclasses=False,
+                ),
+            )
+        )
+    zip_list = draw(
+        zip_lists(
+            min_entities=min_entities,
+            max_entities=max_entities,
+            min_values=min_values,
+            max_values=max_values,
+            entities=entities,
+            blacklist_entities=blacklist_entities,
+            whitelist_entities=whitelist_entities,
+            restrict_patterns=restrict_patterns,
+        )
+    )
+
+    return BidsPartialComponent(zip_lists=zip_list)
+
+
+@st.composite
 def bids_components(  # noqa: PLR0913
     draw: st.DrawFn,
+    *,
     min_entities: int = 1,
     max_entities: int = 5,
     min_values: int = 1,
@@ -234,8 +325,8 @@ def bids_components(  # noqa: PLR0913
     blacklist_extra_entities: Optional[Container[BidsEntity | str]] = None,
     whitelist_extra_entities: Optional[Container[BidsEntity | str]] = None,
 ) -> BidsComponent:
-    zip_list = draw(
-        zip_lists(
+    partial = draw(
+        bids_partial_components(
             min_entities=min_entities,
             max_entities=max_entities,
             min_values=min_values,
@@ -244,36 +335,78 @@ def bids_components(  # noqa: PLR0913
             blacklist_entities=blacklist_entities,
             whitelist_entities=whitelist_entities,
             restrict_patterns=restrict_patterns,
+            _allow_subclasses=False,
         )
     )
-
     path = draw(
         bids_path(
             root=root,
-            entities=zip_list,
+            entities=partial.zip_lists,
             extra_entities=extra_entities,
             blacklist_entities=blacklist_extra_entities,
             whitelist_entities=whitelist_extra_entities,
         )
     )
-
     return BidsComponent(
         name=name or draw(bids_value()),
         path=str(path),
-        zip_lists=zip_list,
+        zip_lists=partial.zip_lists,
+    )
+
+
+@st.composite
+def expandables(  # noqa: PLR0913
+    draw: st.DrawFn,
+    *,
+    min_entities: int = 1,
+    max_entities: int = 5,
+    min_values: int = 1,
+    max_values: int = 3,
+    entities: Optional[list[BidsEntity]] = None,
+    blacklist_entities: Optional[Container[BidsEntity | str]] = None,
+    whitelist_entities: Optional[Container[BidsEntity | str]] = None,
+    restrict_patterns: bool = False,
+) -> Expandable:
+    def get_entity(_entities: Optional[list[BidsEntity]]) -> BidsEntity | None:
+        if not _entities:
+            return None
+        return draw(st.sampled_from(_entities))
+
+    return draw(
+        st.one_of(
+            bids_partial_components(
+                min_entities=min_entities,
+                max_entities=max_entities,
+                min_values=min_values,
+                max_values=max_values,
+                entities=entities,
+                blacklist_entities=blacklist_entities,
+                whitelist_entities=whitelist_entities,
+                restrict_patterns=restrict_patterns,
+            ),
+            bids_component_row(
+                min_values=min_values,
+                max_values=max_values,
+                entity=get_entity(entities),
+                blacklist_entities=blacklist_entities,
+                whitelist_entities=whitelist_entities,
+                restrict_patterns=restrict_patterns,
+            ),
+        )
     )
 
 
 @st.composite
 def bids_input_lists(
     draw: st.DrawFn,
+    *,
     min_size: int = 1,
     max_size: int = 5,
     entities: Optional[list[BidsEntity]] = None,
 ) -> dict[str, list[str]]:
     # Generate multiple entity sets for different "file types"
     if entities is None:
-        entities = draw(bids_entity_lists(min_size))
+        entities = draw(bids_entity_lists(min_size=min_size))
 
     return {
         entity.wildcard: draw(
@@ -283,17 +416,10 @@ def bids_input_lists(
     }
 
 
-def everything_except(*excluded_types: Type[Any]) -> st.SearchStrategy[Any]:
-    return (
-        st.from_type(type)
-        .flatmap(st.from_type)
-        .filter(lambda s: not isinstance(s, excluded_types))
-    )
-
-
 @st.composite
 def datasets(
     draw: st.DrawFn,
+    *,
     root: Optional[Path] = None,
 ) -> BidsDataset:
     ent1 = draw(bids_entity_lists(min_size=2, max_size=3))
@@ -359,6 +485,14 @@ def multiselect_dicts(
 
 def everything() -> st.SearchStrategy[Any]:
     return st.from_type(type).flatmap(st.from_type)
+
+
+def everything_except(*excluded_types: Type[Any]) -> st.SearchStrategy[Any]:
+    return (
+        st.from_type(type)
+        .flatmap(st.from_type)
+        .filter(lambda s: not isinstance(s, excluded_types))
+    )
 
 
 def _is_hashable(__item: Any):
