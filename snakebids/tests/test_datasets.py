@@ -355,7 +355,7 @@ class TestFiltering:
     def get_filter_dict(
         self,
         data: st.DataObject,
-        component: BidsComponent,
+        component: Expandable,
         allow_extra_filters: bool = False,
     ):
         filter_dict: dict[str, list[str] | str] = {}
@@ -374,11 +374,13 @@ class TestFiltering:
             )
         )
 
+        entities = {key: list(set(vals)) for key, vals in component.zip_lists.items()}
+
         def value_strat(filt: str):
             rand_text = st.text(sb_st.alphanum, min_size=1, max_size=10)
             return (
-                st.one_of([st.sampled_from(component.entities[filt]), rand_text])
-                if filt in component.entities
+                st.one_of([st.sampled_from(entities[filt]), rand_text])
+                if filt in entities
                 else rand_text
             )
 
@@ -403,7 +405,7 @@ class TestFiltering:
         data=st.data(),
     )
     def test_only_filter_values_in_output(
-        self, component: BidsComponent, data: st.DataObject
+        self, component: Expandable, data: st.DataObject
     ):
         filter_dict = self.get_filter_dict(data, component)
         filtered = component.filter(**filter_dict)
@@ -412,11 +414,11 @@ class TestFiltering:
                 assert val in filter_dict[filt]
 
     @given(
-        component=sb_st.bids_components(max_values=4, restrict_patterns=True),
+        component=sb_st.expandables(max_values=4, restrict_patterns=True),
         data=st.data(),
     )
     def test_zip_lists_rows_remain_of_equal_length(
-        self, component: BidsComponent, data: st.DataObject
+        self, component: Expandable, data: st.DataObject
     ):
         filter_dict = self.get_filter_dict(data, component)
         filtered = component.filter(**filter_dict)
@@ -426,11 +428,11 @@ class TestFiltering:
         assert len(lengths) == 1
 
     @given(
-        component=sb_st.bids_components(max_values=4, restrict_patterns=True),
+        component=sb_st.expandables(max_values=4, restrict_patterns=True),
         data=st.data(),
     )
     def test_all_columns_found_in_original_zip_list(
-        self, component: BidsComponent, data: st.DataObject
+        self, component: Expandable, data: st.DataObject
     ):
         filter_dict = self.get_filter_dict(data, component, allow_extra_filters=True)
         filtered = component.filter(**filter_dict)
@@ -439,22 +441,22 @@ class TestFiltering:
             assert col in cols
 
     @given(
-        component=sb_st.bids_components(max_values=4, restrict_patterns=True),
+        component=sb_st.expandables(max_values=4, restrict_patterns=True),
         data=st.data(),
     )
     def test_all_entities_remain_after_filtering(
-        self, component: BidsComponent, data: st.DataObject
+        self, component: Expandable, data: st.DataObject
     ):
         filter_dict = self.get_filter_dict(data, component, allow_extra_filters=True)
         filtered = component.filter(**filter_dict)
         assert set(component.zip_lists) == set(filtered.zip_lists)
 
     @given(
-        component=sb_st.bids_components(max_values=4, restrict_patterns=True),
+        component=sb_st.expandables(max_values=4, restrict_patterns=True),
         data=st.data(),
     )
     def test_no_columns_that_should_be_present_are_missing(
-        self, component: BidsComponent, data: st.DataObject
+        self, component: Expandable, data: st.DataObject
     ):
         filter_dict = self.get_filter_dict(data, component)
         filtered = component.filter(**filter_dict)

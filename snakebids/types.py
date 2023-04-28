@@ -2,9 +2,17 @@ from __future__ import annotations
 
 from collections.abc import Hashable
 from enum import Enum
-from typing import Dict, Generic, List, Mapping, Sequence
+from pathlib import Path
+from typing import Dict, Generic, Iterable, List, Mapping, Sequence
 
-from typing_extensions import TYPE_CHECKING, Protocol, TypeAlias, TypedDict, TypeVar
+from typing_extensions import (
+    TYPE_CHECKING,
+    Protocol,
+    Self,
+    TypeAlias,
+    TypedDict,
+    TypeVar,
+)
 
 _T_contra = TypeVar("_T_contra", contravariant=True)
 _S_co = TypeVar("_S_co", covariant=True)
@@ -49,6 +57,30 @@ class InputConfig(TypedDict, total=False):
 
 class BinaryOperator(Protocol, Generic[_T_contra, _S_co]):
     def __call__(self, __first: _T_contra, __second: _T_contra) -> _S_co:
+        ...
+
+
+class Expandable(Protocol):
+    """Protocol represents objects that hold an entity table and can expand over a path
+
+    Includes BidsComponent, BidsPartialComponent, and BidsComponentRow
+    """
+
+    @property
+    def zip_lists(self) -> ZipList:
+        ...
+
+    def expand(
+        self,
+        paths: Iterable[Path | str] | Path | str,
+        allow_missing: bool = False,
+        **wildcards: str | Iterable[str],
+    ) -> list[str]:
+        ...
+
+    def filter(
+        self, *, regex_search: bool = False, **filters: str | Sequence[str]
+    ) -> Self:
         ...
 
 
