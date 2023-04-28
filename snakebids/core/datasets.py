@@ -22,7 +22,12 @@ from snakebids.exceptions import DuplicateComponentError
 from snakebids.io.console import get_console_size
 from snakebids.io.printing import format_zip_lists, quote_wrap
 from snakebids.types import UserDictPy37, ZipList
-from snakebids.utils.utils import MultiSelectDict, property_alias, zip_list_eq
+from snakebids.utils.utils import (
+    ImmutableList,
+    MultiSelectDict,
+    property_alias,
+    zip_list_eq,
+)
 
 
 class BidsDatasetDict(TypedDict):
@@ -35,6 +40,103 @@ class BidsDatasetDict(TypedDict):
     subjects: list[str]
     sessions: list[str]
     subj_wildcards: dict[str, str]
+
+
+class BidsComponentRow(ImmutableList[str]):
+    def __init__(self, __iterable: Iterable[str], entity: str):
+        super().__init__(__iterable)
+        self.entity = entity
+
+    @property
+    def entities(self) -> tuple[str]:
+        """The unique values associated with the component"""
+        return tuple(set(self._data))
+
+    @property
+    def wildcards(self) -> str:
+        """The entity name wrapped in wildcard braces"""
+        return f"{{{self.entity}}}"
+
+    @property
+    def zip_lists(self) -> ZipList:
+        """
+        Dictionary where each key is a wildcard entity and each value is a list of the
+        values found for that entity. Each of these lists has length equal to the number
+        of images matched for this modality, so they can be zipped together to get a
+        list of the wildcard values for each file.
+        """
+        return MultiSelectDict({self.entity: list(self._data)})
+
+    def __eq__(self, other: BidsComponent | object) -> bool:
+        if not isinstance(other, self.__class__):
+            return False
+
+        return other == self
+
+    def expand(
+        self,
+        paths: Iterable[Path | str] | Path | str,
+        allow_missing: bool = False,
+        **wildcards: str | Iterable[str],
+    ) -> list[str]:
+        """Safely expand over given paths with component wildcards
+
+        Uses the entity-value combinations found in the dataset to expand over the given
+        paths. If no path is provided, expands over the component
+        :attr:`~snakebids.BidsComponent.path` (thus returning the original files used to
+        create the component). Extra wildcards can be specifed as keyword arguments.
+
+        By default, expansion over paths with extra wildcards not accounted for by the
+        component causes an error. This prevents accidental partial expansion. To allow
+        the passage of extra wildcards without expansion,set ``allow_missing`` to
+        ``True``.
+
+        Uses the snakemake :ref:`expand <snakemake:snakefiles_expand>` under the hood.
+        """
+        return sn_expand(
+            list(itx.always_iterable(paths)),
+            allow_missing=allow_missing,
+            **{self.entity: self._data},
+            **{
+                wildcard: list(itx.always_iterable(v))
+                for wildcard, v in wildcards.items()
+            },
+        )
+
+    def filter(
+        self, *, regex_search: bool = False, **filters: str | Sequence[str]
+    ) -> Self:
+        """Filter component based on provided entity filters
+
+        This method allows you to expand over a subset of your wildcards. This could be
+        useful for extracting subjects from a specific patient group, running different
+        rules on different aquisitions, and any other reason you may need to filter your
+        data after the workflow has already started.
+
+        Takes entities as keyword arguments assigned to values or list of values to
+        select from the component. Only columns containing the provided entity-values
+        are kept. If no matches are found, a component with the all the original
+        entities but with no values will be returned.
+
+        Returns a brand new :class:`~snakebids.BidsComponent`. The original component is
+        not modified.
+
+        Parameters
+        ----------
+        regex_search
+            Treat filters as regex patterns when matching with entity-values.
+        filters
+            Each keyword should be the name of an entity in the component. Entities not
+            found in the component will be ignored. Keywords take values or a list of
+            values to be matched with the component
+            :attr:`~snakebids.BidsComponent.zip_lists`
+        """
+        entity, data = itx.first(
+            filter_list(
+                {self.entity: self._data}, filters, regex_search=regex_search
+            ).items()
+        )
+        return self.__class__(data, entity=entity)
 
 
 @attr.define(kw_only=True)
