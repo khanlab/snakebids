@@ -15,7 +15,12 @@ from hypothesis import strategies as st
 from snakemake.exceptions import WildcardError
 
 from snakebids.core.construct_bids import bids
-from snakebids.core.datasets import BidsComponent, BidsDataset
+from snakebids.core.datasets import (
+    BidsComponent,
+    BidsComponentRow,
+    BidsDataset,
+    BidsPartialComponent,
+)
 from snakebids.exceptions import DuplicateComponentError
 from snakebids.tests import strategies as sb_st
 from snakebids.tests.helpers import expand_zip_list, get_bids_path, get_zip_list, setify
@@ -484,3 +489,86 @@ class TestFiltering:
                     break
             if should_be_present:
                 assert col in result
+
+
+class TestBidsComponentIndexing:
+    def get_selectors(
+        self,
+        data: st.DataObject,
+        dicts: BidsPartialComponent,
+        use_nonexistant_keys: bool = False,
+        unique: bool = False,
+    ) -> tuple[str, ...]:
+        if not dicts.zip_lists and not use_nonexistant_keys:
+            return tuple()
+        sampler = st.sampled_from(list(dicts.zip_lists))
+        val_strat = (
+            st.text().filter(lambda s: s not in dicts.zip_lists)
+            if use_nonexistant_keys
+            else sampler
+        )
+        return tuple(data.draw(st.lists(val_strat, unique=unique)))
+
+    @given(dicts=sb_st.bids_partial_components(), data=st.data())
+    def test_multiple_selection_returns_BidsPartialComponent(
+        self, dicts: BidsPartialComponent, data: st.DataObject
+    ):
+        selectors = self.get_selectors(data, dicts)
+        assert type(dicts[selectors]) == BidsPartialComponent
+
+    @given(dicts=sb_st.bids_partial_components(), data=st.data())
+    def test_single_selection_returns_BidsComponentRow(
+        self, dicts: BidsPartialComponent, data: st.DataObject
+    ):
+        selectors = data.draw(st.sampled_from(list(dicts.zip_lists)))
+        assert type(dicts[selectors]) == BidsComponentRow
+
+    @given(dicts=sb_st.bids_partial_components(), data=st.data())
+    def test_selected_items_in_original(
+        self, dicts: BidsPartialComponent, data: st.DataObject
+    ):
+        selectors = self.get_selectors(data, dicts)
+        selected = dicts[selectors]
+        for key in selected.zip_lists:
+            assert selected[key] == dicts[key]
+
+    @given(dicts=sb_st.bids_partial_components(), data=st.data())
+    def test_all_requested_items_received_and_no_others(
+        self, dicts: BidsPartialComponent, data: st.DataObject
+    ):
+        selectors = self.get_selectors(data, dicts)
+        selected = dicts[selectors]
+        assert set(selectors) == set(selected.zip_lists)
+        for selector in selectors:
+            assert selector in selected.zip_lists
+
+    @given(
+        dicts=sb_st.bids_partial_components(),
+        data=st.data(),
+    )
+    def test_single_missing_key_raises_error(
+        self, dicts: BidsPartialComponent, data: st.DataObject
+    ):
+        selector = data.draw(st.text().filter(lambda s: s not in dicts.zip_lists))
+        with pytest.raises(KeyError):
+            dicts[selector]
+
+    @given(dicts=sb_st.bids_partial_components(), data=st.data())
+    def test_multiple_missing_key_raises_error(
+        self, dicts: BidsPartialComponent, data: st.DataObject
+    ):
+        selectors = self.get_selectors(data, dicts, use_nonexistant_keys=True)
+        assume(len(selectors))
+        with pytest.raises(KeyError):
+            dicts[selectors]
+
+    @given(dicts=sb_st.bids_partial_components(), data=st.data())
+    def test_order_of_selectors_is_preserved(
+        self, dicts: BidsPartialComponent, data: st.DataObject
+    ):
+        selectors = self.get_selectors(data, dicts)
+        # Using the itx method for uniqueness to avoid calculating unique values in the
+        # test in the same way as the source code
+        assert tuple(dicts.zip_lists[selectors]) == tuple(
+            itx.unique_everseen(selectors)
+        )

@@ -106,22 +106,12 @@ class TestMultiselectDict:
             assert selected[key] is dicts[key]
 
     @given(dicts=sb_st.multiselect_dicts(st.text(), sb_st.everything()), data=st.data())
-    def test_all_requested_items_received(
+    def test_all_requested_items_received_and_no_others(
         self, dicts: MultiSelectDict[str, Any], data: st.DataObject
     ):
         selectors = self.get_selectors(data, dicts)
         selected = dicts[selectors]
-        for selector in selectors:
-            assert selector in selected
-
-    @given(dicts=sb_st.multiselect_dicts(st.text(), sb_st.everything()), data=st.data())
-    def test_no_extra_items_given(
-        self, dicts: MultiSelectDict[str, Any], data: st.DataObject
-    ):
-        selectors = self.get_selectors(data, dicts)
-        selected = dicts[selectors]
-        for selector in selected:
-            assert selector in selectors
+        assert set(selectors) == set(selected)
 
     @given(
         dicts=sb_st.multiselect_dicts(st.text(), sb_st.everything(), min_size=1),

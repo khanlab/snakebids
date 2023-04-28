@@ -6,7 +6,7 @@ import warnings
 from math import inf
 from pathlib import Path
 from string import Formatter
-from typing import Any, Iterable, NoReturn, Optional, Sequence
+from typing import Any, Iterable, NoReturn, Optional, Sequence, overload
 
 import attr
 import more_itertools as itx
@@ -68,11 +68,11 @@ class BidsComponentRow(ImmutableList[str]):
         """
         return MultiSelectDict({self.entity: list(self._data)})
 
-    def __eq__(self, other: BidsComponent | object) -> bool:
+    def __eq__(self, other: BidsComponentRow | object) -> bool:
         if not isinstance(other, self.__class__):
             return False
 
-        return other == self
+        return super().__eq__(other)
 
     def expand(
         self,
@@ -169,6 +169,37 @@ class BidsPartialComponent:
 
     def __repr__(self) -> str:
         return self.pformat()
+
+    @overload
+    def __getitem__(self, __key: str) -> BidsComponentRow:
+        ...
+
+    @overload
+    def __getitem__(self, __key: tuple[str, ...]) -> BidsPartialComponent:
+        ...
+
+    def __getitem__(
+        self, __key: str | tuple[str, ...]
+    ) -> BidsComponentRow | BidsPartialComponent:
+        if isinstance(__key, tuple):
+            # Use dict.fromkeys for de-duplication
+            return BidsPartialComponent(
+                zip_lists=MultiSelectDict(
+                    {key: self.zip_lists[key] for key in dict.fromkeys(__key)}
+                )
+            )
+        return BidsComponentRow(self.zip_lists[__key], entity=__key)
+
+    def __bool__(self) -> bool:
+        """Truth of a BidsComponent is based on whether it has values
+
+        It is not based on whether it has any entities. This is because
+        :meth:`~BidsPartialComponent.filter` returns a component retaining all entities
+        but with no values, making that the standard for emptiness. It also makes it
+        consistent with :class:`BidsComponentRow`, which always has an entity name
+        stored, but may or may not have values.
+        """
+        return bool(next(iter(self.zip_lists)))
 
     def _pformat_body(self) -> None | str | list[str]:
         return None
