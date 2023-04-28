@@ -519,3 +519,8 @@ class ImmutableList(Sequence[_T_co], Generic[_T_co]):
         self, value: Any, start: SupportsIndex = 0, stop: SupportsIndex = sys.maxsize
     ) -> int:
         return self._data.index(value, start, stop)
+
+
+def get_wildcard_dict(__entities: str | Iterable[str]) -> dict[str, str]:
+    """Turn entity strings into wildcard dicts as {"entity": "{entity}"}"""
+    return {entity: f"{{{entity}}}" for entity in itx.always_iterable(__entities)}

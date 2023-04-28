@@ -18,17 +18,11 @@ from snakebids.core.construct_bids import bids
 from snakebids.core.datasets import BidsComponent, BidsDataset
 from snakebids.exceptions import DuplicateComponentError
 from snakebids.tests import strategies as sb_st
-from snakebids.tests.helpers import (
-    entity_to_wildcard,
-    expand_zip_list,
-    get_bids_path,
-    get_zip_list,
-    setify,
-)
+from snakebids.tests.helpers import expand_zip_list, get_bids_path, get_zip_list, setify
 from snakebids.types import ZipList
 from snakebids.utils import sb_itertools as sb_it
 from snakebids.utils.snakemake_io import glob_wildcards
-from snakebids.utils.utils import BidsEntity, zip_list_eq
+from snakebids.utils.utils import BidsEntity, get_wildcard_dict, zip_list_eq
 
 
 def test_multiple_components_cannot_have_same_name():
@@ -303,7 +297,7 @@ class TestBidsComponentExpand:
         )
         path_tpl = bids(
             **component.wildcards,
-            **entity_to_wildcard(wildcards),
+            **get_wildcard_dict(wildcards),
         )
         wcard_dict = dict(zip(wildcards, values))
         zlist = expand_zip_list(component.zip_lists, wcard_dict)
@@ -346,7 +340,7 @@ class TestBidsComponentExpand:
         ),
     )
     def test_partial_expansion(self, component: BidsComponent, wildcard: str):
-        path_tpl = bids(**component.wildcards, **entity_to_wildcard(wildcard))
+        path_tpl = bids(**component.wildcards, **get_wildcard_dict(wildcard))
         paths = component.expand(path_tpl, allow_missing=True)
         for path in paths:
             assert re.search(r"\{.+\}", path)
@@ -360,7 +354,7 @@ class TestBidsComponentExpand:
         ),
     )
     def test_prevent_partial_expansion(self, component: BidsComponent, wildcard: str):
-        path_tpl = bids(**component.wildcards, **entity_to_wildcard(wildcard))
+        path_tpl = bids(**component.wildcards, **get_wildcard_dict(wildcard))
         with pytest.raises(WildcardError):
             component.expand(path_tpl)
 
