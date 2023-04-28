@@ -4,7 +4,12 @@ __ignore__ = ["T_co"]
 
 # <AUTOGEN_INIT>
 from snakebids.core.construct_bids import bids, print_boilerplate
-from snakebids.core.datasets import BidsComponent, BidsDataset, BidsDatasetDict
+from snakebids.core.datasets import (
+    BidsComponent,
+    BidsDataset,
+    BidsDatasetDict,
+    BidsPartialComponent,
+)
 from snakebids.core.filtering import filter_list, get_filtered_ziplist_index
 from snakebids.core.input_generation import (
     generate_inputs,
@@ -16,6 +21,7 @@ __all__ = [
     "BidsComponent",
     "BidsDataset",
     "BidsDatasetDict",
+    "BidsPartialComponent",
     "bids",
     "filter_list",
     "generate_inputs",

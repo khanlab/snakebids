@@ -286,7 +286,9 @@ class TestAbsentConfigEntries:
             derivatives=derivatives,
             pybids_config=str(Path(__file__).parent / "data" / "custom_config.json"),
         )
-        template = BidsDataset({"t1": BidsComponent("t1", config["t1"].path, zip_list)})
+        template = BidsDataset(
+            {"t1": BidsComponent(name="t1", path=config["t1"].path, zip_lists=zip_list)}
+        )
         # Order of the subjects is not deterministic
         assert template == config
         assert config.subj_wildcards == {"subject": "{subject}"}
@@ -309,7 +311,9 @@ class TestAbsentConfigEntries:
             derivatives=derivatives,
             pybids_config=str(Path(__file__).parent / "data" / "custom_config.json"),
         )
-        template = BidsDataset({"t1": BidsComponent("t1", config["t1"].path, {})})
+        template = BidsDataset(
+            {"t1": BidsComponent(name="t1", path=config["t1"].path, zip_lists={})}
+        )
         assert template == config
         assert config.subj_wildcards == {"subject": "{subject}"}
 
@@ -486,8 +490,10 @@ class TestCustomPaths:
         result = _parse_custom_path(test_path)
         zip_lists = get_zip_list(entities, it.product(*entities.values()))
         assert BidsComponent(
-            "foo", get_bids_path(zip_lists), zip_lists
-        ) == BidsComponent("foo", get_bids_path(result), MultiSelectDict(result))
+            name="foo", path=get_bids_path(zip_lists), zip_lists=zip_lists
+        ) == BidsComponent(
+            name="foo", path=get_bids_path(result), zip_lists=MultiSelectDict(result)
+        )
 
     @settings(deadline=400, suppress_health_check=[HealthCheck.function_scoped_fixture])
     @given(path_entities=path_entities())
@@ -510,8 +516,10 @@ class TestCustomPaths:
             }
         )
         assert BidsComponent(
-            "foo", get_bids_path(zip_lists), zip_lists
-        ) == BidsComponent("foo", get_bids_path(result_filtered), result_filtered)
+            name="foo", path=get_bids_path(zip_lists), zip_lists=zip_lists
+        ) == BidsComponent(
+            name="foo", path=get_bids_path(result_filtered), zip_lists=result_filtered
+        )
 
     @settings(deadline=400, suppress_health_check=[HealthCheck.function_scoped_fixture])
     @given(path_entities=path_entities())
@@ -547,8 +555,10 @@ class TestCustomPaths:
         )
 
         assert BidsComponent(
-            "foo", get_bids_path(zip_lists), zip_lists
-        ) == BidsComponent("foo", get_bids_path(result_excluded), result_excluded)
+            name="foo", path=get_bids_path(zip_lists), zip_lists=zip_lists
+        ) == BidsComponent(
+            name="foo", path=get_bids_path(result_excluded), zip_lists=result_excluded
+        )
 
 
 def test_custom_pybids_config(tmpdir: Path):
@@ -581,15 +591,15 @@ def test_custom_pybids_config(tmpdir: Path):
     template = BidsDataset(
         {
             "t1": BidsComponent(
-                "t1",
-                bids(
+                name="t1",
+                path=bids(
                     tmpdir,
                     datatype="anat",
                     subject="{subject}",
                     foo="{foo}",
                     suffix="T1w.nii.gz",
                 ),
-                ({"foo": ["0", "1"], "subject": ["001", "001"]}),
+                zip_lists={"foo": ["0", "1"], "subject": ["001", "001"]},
             )
         }
     )
@@ -665,9 +675,9 @@ def test_t1w():
     template = BidsDataset(
         {
             "t1": BidsComponent(
-                "t1",
-                result["t1"].path,
-                ({"acq": ["mprage", "mprage"], "subject": ["001", "002"]}),
+                name="t1",
+                path=result["t1"].path,
+                zip_lists={"acq": ["mprage", "mprage"], "subject": ["001", "002"]},
             )
         }
     )
@@ -704,21 +714,19 @@ def test_t1w():
     template = BidsDataset(
         {
             "scan": BidsComponent(
-                "scan",
-                result["scan"].path,
-                (
-                    {
-                        "acq": [
-                            "mprage",
-                        ],
-                        "subject": [
-                            "001",
-                        ],
-                        "suffix": [
-                            "T1w",
-                        ],
-                    }
-                ),
+                name="scan",
+                path=result["scan"].path,
+                zip_lists={
+                    "acq": [
+                        "mprage",
+                    ],
+                    "subject": [
+                        "001",
+                    ],
+                    "suffix": [
+                        "T1w",
+                    ],
+                },
             )
         }
     )
@@ -771,16 +779,18 @@ def test_t1w():
         template = BidsDataset(
             {
                 "t1": BidsComponent(
-                    "t1",
-                    result["t1"].path,
-                    (
-                        {
-                            "acq": ["mprage", "mprage"],
-                            "subject": ["001", "002"],
-                        }
-                    ),
+                    name="t1",
+                    path=result["t1"].path,
+                    zip_lists={
+                        "acq": ["mprage", "mprage"],
+                        "subject": ["001", "002"],
+                    },
                 ),
-                "t2": BidsComponent("t2", result["t2"].path, ({"subject": ["002"]})),
+                "t2": BidsComponent(
+                    name="t2",
+                    path=result["t2"].path,
+                    zip_lists={"subject": ["002"]},
+                ),
             }
         )
         # Order of the subjects is not deterministic
@@ -926,26 +936,22 @@ def test_get_lists_from_bids():
         for bids_lists in result:
             if bids_lists.input_name == "t1":
                 template = BidsComponent(
-                    "t1",
-                    wildcard_path_t1,
-                    (
-                        {
-                            "acq": ["mprage", "mprage"],
-                            "subject": ["001", "002"],
-                        }
-                    ),
+                    name="t1",
+                    path=wildcard_path_t1,
+                    zip_lists={
+                        "acq": ["mprage", "mprage"],
+                        "subject": ["001", "002"],
+                    },
                 )
                 assert template == bids_lists
             elif bids_lists.input_name == "t2":
                 assert bids_lists.input_path == wildcard_path_t2
                 template = BidsComponent(
-                    "t2",
-                    wildcard_path_t2,
-                    (
-                        {
-                            "subject": ["002"],
-                        }
-                    ),
+                    name="t2",
+                    path=wildcard_path_t2,
+                    zip_lists={
+                        "subject": ["002"],
+                    },
                 )
                 assert template == bids_lists
 

@@ -32,8 +32,8 @@ from snakebids.utils.utils import BidsEntity, zip_list_eq
 
 
 def test_multiple_components_cannot_have_same_name():
-    comp1 = BidsComponent("foo", path=".", zip_lists={})
-    comp2 = BidsComponent("foo", path=".", zip_lists={})
+    comp1 = BidsComponent(name="foo", path=".", zip_lists={})
+    comp2 = BidsComponent(name="foo", path=".", zip_lists={})
     with pytest.raises(DuplicateComponentError):
         BidsDataset.from_iterable([comp1, comp2])
 
@@ -62,7 +62,9 @@ class TestBidsComponentValidation:
     def test_zip_lists_must_be_same_length(self, zip_lists: ZipList):
         itx.first(zip_lists.values()).append("foo")
         with pytest.raises(ValueError) as err:
-            BidsComponent("foo", get_bids_path(zip_lists), zip_lists)
+            BidsComponent(
+                name="foo", path=get_bids_path(zip_lists), zip_lists=zip_lists
+            )
         assert err.value.args[0] == "zip_lists must all be of equal length"
 
     @given(sb_st.zip_lists(), sb_st.bids_entity())
@@ -72,7 +74,7 @@ class TestBidsComponentValidation:
         assume(entity.wildcard not in zip_lists)
         path = get_bids_path(it.chain(zip_lists, [entity.entity]))
         with pytest.raises(ValueError) as err:
-            BidsComponent("foo", path, zip_lists)
+            BidsComponent(name="foo", path=path, zip_lists=zip_lists)
         assert (
             "zip_lists entries must match the wildcards in input_path"
             in err.value.args[0]
@@ -87,7 +89,7 @@ class TestBidsComponentValidation:
 
         path = get_bids_path(path_entities)
         with pytest.raises(ValueError) as err:
-            BidsComponent("foo", path, zip_lists)
+            BidsComponent(name="foo", path=path, zip_lists=zip_lists)
         assert (
             "zip_lists entries must match the wildcards in input_path"
             in err.value.args[0]
@@ -100,10 +102,18 @@ class TestBidsComponentEq:
         assert input != other
 
     def test_empty_BidsInput_are_equal(self):
-        assert BidsComponent("", "", ({})) == BidsComponent("", "", ({}))
+        assert BidsComponent(name="", path="", zip_lists={}) == BidsComponent(
+            name="", path="", zip_lists={}
+        )
         assert BidsComponent(
-            "", "{foo}{bar}", ({"foo": [], "bar": []})
-        ) == BidsComponent("", "{foo}{bar}", ({"foo": [], "bar": []}))
+            name="",
+            path="{foo}{bar}",
+            zip_lists={"foo": [], "bar": []},
+        ) == BidsComponent(
+            name="",
+            path="{foo}{bar}",
+            zip_lists={"foo": [], "bar": []},
+        )
 
     @given(sb_st.bids_components())
     def test_copies_are_equal(self, input: BidsComponent):
@@ -137,7 +147,11 @@ class TestBidsComponentEq:
 
     @given(sb_st.bids_components())
     def test_paths_must_be_identical(self, input: BidsComponent):
-        cp = BidsComponent(input.input_name, input.input_path + "foo", input.zip_lists)
+        cp = BidsComponent(
+            name=input.input_name,
+            path=input.input_path + "foo",
+            zip_lists=input.zip_lists,
+        )
         assert cp != input
 
 
