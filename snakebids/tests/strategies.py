@@ -242,10 +242,17 @@ def bids_component_row(  # noqa: PLR0913
     whitelist_entities: Optional[Container[BidsEntity | str]] = None,
     restrict_patterns: bool = False,
     unique: bool = False,
+    path_safe: bool = False,
 ) -> BidsComponentRow:
     entity = entity or draw(
         bids_entity(
-            blacklist_entities=blacklist_entities, whitelist_entities=whitelist_entities
+            blacklist_entities=helpers.ContainerBag(
+                blacklist_entities if blacklist_entities is not None else {},
+                {"datatype", "suffix", "extension"},
+            )
+            if path_safe
+            else blacklist_entities,
+            whitelist_entities=whitelist_entities,
         )
     )
     values = draw(
@@ -387,6 +394,7 @@ def expandables(  # noqa: PLR0913
     restrict_patterns: bool = False,
     unique: bool = False,
     cull: bool = True,
+    path_safe: bool = False,
 ) -> Expandable:
     def get_entity(_entities: Optional[list[BidsEntity]]) -> BidsEntity | None:
         if not _entities:
@@ -415,6 +423,7 @@ def expandables(  # noqa: PLR0913
                 whitelist_entities=whitelist_entities,
                 restrict_patterns=restrict_patterns,
                 unique=unique,
+                path_safe=path_safe,
             ),
         )
     )
