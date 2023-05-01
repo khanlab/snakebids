@@ -188,6 +188,8 @@ def zip_lists(  # noqa: PLR0913
     blacklist_entities: Optional[Container[BidsEntity | str]] = None,
     whitelist_entities: Optional[Container[BidsEntity | str]] = None,
     restrict_patterns: bool = False,
+    unique: bool = False,
+    cull: bool = True,
 ) -> ZipList:
     # Generate multiple entity sets for different "file types"
 
@@ -207,20 +209,24 @@ def zip_lists(  # noqa: PLR0913
                 bids_value(entity.match if restrict_patterns else ".*"),
                 min_size=min_values,
                 max_size=max_values,
-                unique=True,
+                unique=(cull or unique),
             )
         )
         for entity in entities
     }
 
     combinations = list(it.product(*values.values()))
-    used_combinations = draw(
-        st.lists(
-            st.sampled_from(combinations),
-            min_size=1,
-            max_size=len(combinations),
-            unique=True,
+    used_combinations = (
+        draw(
+            st.lists(
+                st.sampled_from(combinations),
+                min_size=1,
+                max_size=len(combinations),
+                unique=unique,
+            )
         )
+        if cull
+        else combinations
     )
     return helpers.get_zip_list(values, used_combinations)
 
@@ -235,6 +241,7 @@ def bids_component_row(  # noqa: PLR0913
     blacklist_entities: Optional[Container[BidsEntity | str]] = None,
     whitelist_entities: Optional[Container[BidsEntity | str]] = None,
     restrict_patterns: bool = False,
+    unique: bool = False,
 ) -> BidsComponentRow:
     entity = entity or draw(
         bids_entity(
@@ -246,6 +253,7 @@ def bids_component_row(  # noqa: PLR0913
             bids_value(entity.match if restrict_patterns else ".*"),
             min_size=min_values,
             max_size=max_values,
+            unique=unique,
         )
     )
     return BidsComponentRow(values, entity=entity.entity)
@@ -263,6 +271,8 @@ def bids_partial_components(  # noqa: PLR0913
     blacklist_entities: Optional[Container[BidsEntity | str]] = None,
     whitelist_entities: Optional[Container[BidsEntity | str]] = None,
     restrict_patterns: bool = False,
+    unique: bool = False,
+    cull: bool = True,
     _allow_subclasses: bool = True,
 ) -> BidsPartialComponent:
     if _allow_subclasses:
@@ -277,6 +287,8 @@ def bids_partial_components(  # noqa: PLR0913
                     blacklist_entities=blacklist_entities,
                     whitelist_entities=whitelist_entities,
                     restrict_patterns=restrict_patterns,
+                    cull=cull,
+                    unique=unique,
                 ),
                 bids_partial_components(
                     min_entities=min_entities,
@@ -287,6 +299,8 @@ def bids_partial_components(  # noqa: PLR0913
                     blacklist_entities=blacklist_entities,
                     whitelist_entities=whitelist_entities,
                     restrict_patterns=restrict_patterns,
+                    cull=cull,
+                    unique=unique,
                     _allow_subclasses=False,
                 ),
             )
@@ -301,6 +315,8 @@ def bids_partial_components(  # noqa: PLR0913
             blacklist_entities=blacklist_entities,
             whitelist_entities=whitelist_entities,
             restrict_patterns=restrict_patterns,
+            cull=cull,
+            unique=unique,
         )
     )
 
@@ -324,6 +340,8 @@ def bids_components(  # noqa: PLR0913
     extra_entities: bool = True,
     blacklist_extra_entities: Optional[Container[BidsEntity | str]] = None,
     whitelist_extra_entities: Optional[Container[BidsEntity | str]] = None,
+    unique: bool = False,
+    cull: bool = True,
 ) -> BidsComponent:
     partial = draw(
         bids_partial_components(
@@ -335,6 +353,8 @@ def bids_components(  # noqa: PLR0913
             blacklist_entities=blacklist_entities,
             whitelist_entities=whitelist_entities,
             restrict_patterns=restrict_patterns,
+            cull=cull,
+            unique=unique,
             _allow_subclasses=False,
         )
     )
@@ -365,6 +385,8 @@ def expandables(  # noqa: PLR0913
     blacklist_entities: Optional[Container[BidsEntity | str]] = None,
     whitelist_entities: Optional[Container[BidsEntity | str]] = None,
     restrict_patterns: bool = False,
+    unique: bool = False,
+    cull: bool = True,
 ) -> Expandable:
     def get_entity(_entities: Optional[list[BidsEntity]]) -> BidsEntity | None:
         if not _entities:
@@ -382,6 +404,8 @@ def expandables(  # noqa: PLR0913
                 blacklist_entities=blacklist_entities,
                 whitelist_entities=whitelist_entities,
                 restrict_patterns=restrict_patterns,
+                cull=cull,
+                unique=unique,
             ),
             bids_component_row(
                 min_values=min_values,
@@ -390,6 +414,7 @@ def expandables(  # noqa: PLR0913
                 blacklist_entities=blacklist_entities,
                 whitelist_entities=whitelist_entities,
                 restrict_patterns=restrict_patterns,
+                unique=unique,
             ),
         )
     )
@@ -420,18 +445,26 @@ def datasets(
     draw: st.DrawFn,
     *,
     root: Optional[Path] = None,
+    unique: bool = False,
+    cull: bool = True,
 ) -> BidsDataset:
     ent1 = draw(bids_entity_lists(min_size=2, max_size=3))
     ent2 = copy.copy(ent1)
     extra = ent2.pop()
     assume(_filter_invalid_entity_lists(ent2))
-    comp1 = draw(bids_components(entities=ent1, restrict_patterns=True, root=root))
+    comp1 = draw(
+        bids_components(
+            entities=ent1, restrict_patterns=True, root=root, unique=unique, cull=cull
+        )
+    )
     comp2 = draw(
         bids_components(
             entities=ent2,
             restrict_patterns=True,
             root=root,
             blacklist_extra_entities=[extra],
+            unique=unique,
+            cull=cull,
         )
     )
     assume(comp1.input_name != comp2.input_name)
@@ -439,13 +472,15 @@ def datasets(
 
 
 @st.composite
-def datasets_one_comp(
+def datasets_one_comp(  # noqa: PLR0913
     draw: st.DrawFn,
     *,
     root: Optional[Path] = None,
     names: st.SearchStrategy[str] | None = None,
     blacklist_entities: Optional[Container[BidsEntity | str]] = None,
     whitelist_entities: Optional[Container[BidsEntity | str]] = None,
+    unique: bool = False,
+    cull: bool = True,
 ) -> BidsDataset:
     comp1 = draw(
         bids_components(
@@ -456,6 +491,8 @@ def datasets_one_comp(
             name=draw(names) if names is not None else None,
             blacklist_entities=blacklist_entities,
             whitelist_entities=whitelist_entities,
+            unique=unique,
+            cull=cull,
         )
     )
     return BidsDataset.from_iterable([comp1])

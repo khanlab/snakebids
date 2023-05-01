@@ -146,7 +146,7 @@ class TestFilterBools:
             HealthCheck.too_slow,
         ],
     )
-    @given(dataset=sb_st.datasets())
+    @given(dataset=sb_st.datasets(unique=True))
     def test_entity_excluded_when_filter_false(
         self, tmpdir: Path, dataset: BidsDataset
     ):
@@ -226,7 +226,7 @@ class TestFilterBools:
             HealthCheck.too_slow,
         ],
     )
-    @given(dataset=sb_st.datasets())
+    @given(dataset=sb_st.datasets(unique=True))
     def test_entity_excluded_when_filter_true(self, tmpdir: Path, dataset: BidsDataset):
         root = tempfile.mkdtemp(dir=tmpdir)
         create_dataset(root, dataset)
@@ -1025,7 +1025,7 @@ def test_all_custom_paths(count: int):
         HealthCheck.too_slow,
     ],
 )
-@given(dataset=sb_st.datasets())
+@given(dataset=sb_st.datasets(unique=True))
 def test_generate_inputs(dataset: BidsDataset, bids_fs: Path, fakefs_tmpdir: Path):
     root = tempfile.mkdtemp(dir=fakefs_tmpdir)
     rooted = BidsDataset.from_iterable(
@@ -1040,7 +1040,7 @@ def test_generate_inputs(dataset: BidsDataset, bids_fs: Path, fakefs_tmpdir: Pat
 # The content of the dataset is irrelevant to this test, so one example suffices
 # but can't use extension because the custom path won't glob properly
 @settings(max_examples=1, suppress_health_check=[HealthCheck.function_scoped_fixture])
-@given(dataset=sb_st.datasets_one_comp(blacklist_entities=["extension"]))
+@given(dataset=sb_st.datasets_one_comp(blacklist_entities=["extension"], unique=True))
 def test_when_all_custom_paths_no_layout_indexed(
     dataset: BidsDataset, bids_fs: Path, fakefs_tmpdir: Path, mocker: MockerFixture
 ):

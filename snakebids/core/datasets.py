@@ -184,9 +184,7 @@ class BidsPartialComponent:
         if isinstance(__key, tuple):
             # Use dict.fromkeys for de-duplication
             return BidsPartialComponent(
-                zip_lists=MultiSelectDict(
-                    {key: self.zip_lists[key] for key in dict.fromkeys(__key)}
-                )
+                zip_lists={key: self.zip_lists[key] for key in dict.fromkeys(__key)}
             )
         return BidsComponentRow(self.zip_lists[__key], entity=__key)
 
