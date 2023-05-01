@@ -404,7 +404,7 @@ def zip_list_eq(__first: types.ZipListLike, __second: types.ZipListLike):
     first_items = get_values(__first)
     second_items = get_values(__second)
 
-    return set(zip(*first_items)) == set(zip(*second_items))
+    return sorted(zip(*first_items)) == sorted(zip(*second_items))
 
 
 def get_first_dir(path: str) -> str:
