@@ -65,6 +65,9 @@ class BidsComponentRow(ImmutableList[str]):
         super().__init__(__iterable)
         self.entity = entity
 
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}({list(self._data)}, entity="{self.entity}")'
+
     @property
     def entities(self) -> tuple[str]:
         """The unique values associated with the component"""
@@ -125,7 +128,7 @@ class BidsComponentRow(ImmutableList[str]):
         return sn_expand(
             list(itx.always_iterable(paths)),
             allow_missing=allow_missing,
-            **{self.entity: self._data},
+            **{self.entity: list(set(self._data))},
             **{
                 wildcard: list(itx.always_iterable(v))
                 for wildcard, v in wildcards.items()
@@ -366,11 +369,15 @@ class BidsPartialComponent:
             Keywords not found in the path will be ignored. Keywords take values or
             lists of values to be expanded over the provided paths.
         """
-        inner_expand = sn_expand(
-            list(itx.always_iterable(paths)),
-            zip,
-            allow_missing=True if wildcards else allow_missing,
-            **self.zip_lists,
+        inner_expand = list(
+            set(
+                sn_expand(
+                    list(itx.always_iterable(paths)),
+                    zip,
+                    allow_missing=True if wildcards else allow_missing,
+                    **self.zip_lists,
+                )
+            )
         )
         if not wildcards:
             return inner_expand

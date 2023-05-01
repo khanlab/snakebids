@@ -256,8 +256,7 @@ def _get_novel_path(prefix: str, component: Expandable):
 class TestExpandables:
     @given(
         component=sb_st.expandables(
-            restrict_patterns=True,
-            blacklist_entities=["extension"],
+            restrict_patterns=True, unique=True, blacklist_entities=["extension"]
         ),
         wildcards=st.lists(
             st.text(string.ascii_letters, min_size=1, max_size=10).filter(
@@ -330,6 +329,12 @@ class TestExpandables:
         with pytest.raises(WildcardError):
             component.expand(path_tpl)
 
+    @given(component=sb_st.expandables(restrict_patterns=True, path_safe=True))
+    def test_expand_deduplicates_paths(self, component: Expandable):
+        path_tpl = bids(**get_wildcard_dict(component.zip_lists))
+        paths = component.expand(path_tpl)
+        assert len(paths) == len(set(paths))
+
 
 class TestBidsComponentExpand:
     """
@@ -348,6 +353,7 @@ class TestBidsComponentExpand:
             blacklist_entities=["extension"],
             restrict_patterns=True,
             extra_entities=False,
+            unique=True,
         )
     )
     def test_expand_with_no_args_returns_initial_paths(self, component: BidsComponent):
