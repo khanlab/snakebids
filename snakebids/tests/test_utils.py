@@ -6,7 +6,7 @@ from typing import Any
 
 import more_itertools as itx
 import pytest
-from hypothesis import assume, given, settings
+from hypothesis import assume, given
 from hypothesis import strategies as st
 
 import snakebids.tests.strategies as sb_st
@@ -126,9 +126,6 @@ class TestMultiselectDict:
         selector = data.draw(st.sampled_from(list(dicts)))
         assert not isinstance(dicts[selector], MultiSelectDict)
 
-    # This test has been flaky on github actions. No reason it should be long, so
-    # just disable deadline
-    @settings(deadline=None)
     @given(
         dicts=sb_st.multiselect_dicts(st.text(), sb_st.everything(), min_size=1),
         data=st.data(),

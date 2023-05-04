@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import pyparsing as pp
-from hypothesis import assume, given, settings
+from hypothesis import assume, given
 from hypothesis import strategies as st
 
 import snakebids.tests.strategies as sb_st
@@ -23,9 +23,6 @@ def zip_list_parser() -> pp.ParserElement:
     return pp.Suppress("{") + pp.Group(row)[1, ...] + pp.Suppress("}")
 
 
-# Test is often flaky for some reason on Github Actions. No known particular reason
-# why this test should take long (it should be quite fast), so just disable the deadline
-@settings(deadline=None)
 @given(zip_list=sb_st.zip_lists(max_entities=1, restrict_patterns=True))
 def test_ellipses_appears_when_maxwidth_too_short(zip_list: ZipList):
     width = len(format_zip_lists(zip_list, tabstop=0).splitlines()[1])

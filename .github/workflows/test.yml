@@ -117,6 +117,8 @@ jobs:
     - name: Install library
       run: poetry install --no-interaction
     - name: Test with pytest
+      env:
+        HYPOTHESIS_PROFILE: pr
       run: |
         poetry run pytest --doctest-modules --ignore=docs --ignore=snakebids/project_template --benchmark-disable
 
