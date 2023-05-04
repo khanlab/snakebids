@@ -316,7 +316,7 @@ def _make_underscore_dash_aliases(name: str) -> set[str]:
 
 
 def _resolve_path(
-    path_candidate: Iterable["os.PathLike[str] | str"] | "os.PathLike[str]" | str,
+    path_candidate: Sequence["os.PathLike[str] | str"] | "os.PathLike[str]" | str,
 ) -> Any:
     """Helper function to resolve any paths or list
     of paths it's passed. Otherwise, returns the argument
@@ -334,7 +334,7 @@ def _resolve_path(
         Otherwise, the argument unchanged.
     """
 
-    if isinstance(path_candidate, Iterable) and not isinstance(path_candidate, str):
+    if isinstance(path_candidate, Sequence) and not isinstance(path_candidate, str):
         return [_resolve_path(p) for p in path_candidate]
 
     if isinstance(path_candidate, os.PathLike):
