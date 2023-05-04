@@ -67,5 +67,4 @@ def bids_fs(fakefs: Optional[FakeFilesystem]) -> FakeFilesystem | None:
         fakefs.add_real_file(f / "bids.json")
         fakefs.add_real_file(f / "derivatives.json")
         fakefs.add_real_file(Path(*resources.__path__) / "bids_tags.json")
-
     return fakefs

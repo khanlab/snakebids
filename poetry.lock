@@ -726,14 +726,14 @@ pyreadline3 = {version = "*", markers = "sys_platform == \"win32\" and python_ve
 
 [[package]]
 name = "hypothesis"
-version = "6.79.1"
+version = "6.79.2"
 description = "A library for property-based testing"
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "hypothesis-6.79.1-py3-none-any.whl", hash = "sha256:7a0b8ca178f16720e96f11e96b71b6139db0e30727e9cf8bd8e3059710393fc7"},
-    {file = "hypothesis-6.79.1.tar.gz", hash = "sha256:de8fb599fc855d3006236ab58cd0edafd099d63837225aad848dac22e239475b"},
+    {file = "hypothesis-6.79.2-py3-none-any.whl", hash = "sha256:564d9860ed5e09b0434b7bafea392b0da8f67131190202c6002e58c2c96b7596"},
+    {file = "hypothesis-6.79.2.tar.gz", hash = "sha256:51fb2259489dc446d3edc04cbc8ebd5848d7d3f238121183bee5449b91f7a8d8"},
 ]
 
 [package.dependencies]
@@ -2635,14 +2635,14 @@ files = [
 
 [[package]]
 name = "snakemake"
-version = "7.28.3"
+version = "7.29.0"
 description = "Workflow management system to create reproducible and scalable data analyses"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "snakemake-7.28.3-py3-none-any.whl", hash = "sha256:b16e2ab7145cc0f791a49f27fe5335dfeed295bbc43400501b8bb92328fecd2e"},
-    {file = "snakemake-7.28.3.tar.gz", hash = "sha256:4d0d5f9643d97154cd8925830bdb3922e4bd9cfcf7f8b619df75e4ddfdbc3f9e"},
+    {file = "snakemake-7.29.0-py3-none-any.whl", hash = "sha256:882b429738f0ca818665c995bf58e158da49ba4ad9ccc297f204bb10a8fb91d1"},
+    {file = "snakemake-7.29.0.tar.gz", hash = "sha256:c420a545924b599390efe9e2fa7a07c01d167cceac63d1d06fa6eff5e7b43be0"},
 ]
 
 [package.dependencies]
@@ -2656,6 +2656,7 @@ humanfriendly = "*"
 jinja2 = ">=3.0,<4.0"
 jsonschema = "*"
 nbformat = "*"
+packaging = "*"
 psutil = "*"
 pulp = ">=2.0"
 pyyaml = "*"
