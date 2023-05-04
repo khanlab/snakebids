@@ -6,7 +6,7 @@ import os
 import pathlib
 import re
 from collections.abc import Sequence
-from typing import Any, Iterable, Mapping, Optional
+from typing import Any, Iterable, Mapping, Optional, TypeVar, overload
 
 import attr
 import snakemake
@@ -315,9 +315,20 @@ def _make_underscore_dash_aliases(name: str) -> set[str]:
     return {name}
 
 
-def _resolve_path(
-    path_candidate: Sequence["os.PathLike[str] | str"] | "os.PathLike[str]" | str,
-) -> Any:
+T = TypeVar("T")
+
+
+@overload
+def _resolve_path(path_candidate: Sequence[T]) -> list[T]:
+    ...
+
+
+@overload
+def _resolve_path(path_candidate: T) -> T:
+    ...
+
+
+def _resolve_path(path_candidate: Any) -> Any:
     """Helper function to resolve any paths or list
     of paths it's passed. Otherwise, returns the argument
     unchanged.
