@@ -6,7 +6,7 @@ from argparse import ArgumentParser, Namespace
 from collections.abc import Sequence
 from os import PathLike
 from pathlib import Path
-from typing import Iterable, Mapping
+from typing import Mapping
 
 import pytest
 from pytest_mock.plugin import MockerFixture
@@ -24,9 +24,7 @@ from .mock.config import parse_args, pybids_inputs
 @pytest.fixture
 def parser():
     p = create_parser()
-    add_dynamic_args(
-        p, copy.deepcopy(parse_args), copy.deepcopy(pybids_inputs)
-    )
+    add_dynamic_args(p, copy.deepcopy(parse_args), copy.deepcopy(pybids_inputs))
     return p
 
 
@@ -44,9 +42,7 @@ class TestResolvePath:
         self, arg_dict: Mapping[str, str | Sequence[str]]
     ):
         arg_dict_copy = copy.deepcopy(arg_dict)
-        resolved = {
-            key: _resolve_path(value) for key, value in arg_dict.items()
-        }
+        resolved = {key: _resolve_path(value) for key, value in arg_dict.items()}
         assert resolved == arg_dict_copy
 
     def test_resolves_all_paths(
@@ -55,12 +51,8 @@ class TestResolvePath:
         derivative_paths = [Path("path/to/deriv1"), Path("path/to/deriv2")]
         arg_dict["--derivatives"] = derivative_paths
         arg_dict_copy = copy.deepcopy(arg_dict)
-        arg_dict_copy["--derivatives"] = [
-            p.resolve() for p in derivative_paths
-        ]
-        resolved = {
-            key: _resolve_path(value) for key, value in arg_dict.items()
-        }
+        arg_dict_copy["--derivatives"] = [p.resolve() for p in derivative_paths]
+        resolved = {key: _resolve_path(value) for key, value in arg_dict.items()}
         assert resolved == arg_dict_copy
 
 
@@ -103,17 +95,13 @@ class TestAddDynamicArgs:
         with pytest.raises(TypeError):
             add_dynamic_args(create_parser(), parse_args_copy, pybids_inputs)
 
-    def test_resolves_paths(
-        self, parser: ArgumentParser, mocker: MockerFixture
-    ):
+    def test_resolves_paths(self, parser: ArgumentParser, mocker: MockerFixture):
         mocker.patch.object(sys, "argv", self.mock_all_args)
         args = parse_snakebids_args(parser).args_dict
         assert args["derivatives"][0] == Path.cwd() / "path/to/nowhere"
 
 
-def test_dash_syntax_in_config_cli_args(
-    parser: ArgumentParser, mocker: MockerFixture
-):
+def test_dash_syntax_in_config_cli_args(parser: ArgumentParser, mocker: MockerFixture):
     mocker.patch.object(
         sys,
         "argv",
