@@ -55,6 +55,13 @@ class TestResolvePath:
         resolved = {key: _resolve_path(value) for key, value in arg_dict.items()}
         assert resolved == arg_dict_copy
 
+    def test_filter_dict(self, arg_dict: dict[str, dict[str, str]]):
+        filter_dict = {"test_key": "test_value"}
+        arg_dict["filter_test"] = filter_dict
+        arg_dict_copy = copy.deepcopy(arg_dict)
+        resolved = {key: _resolve_path(value) for key, value in arg_dict.items()}
+        assert resolved == arg_dict_copy
+
 
 class TestAddDynamicArgs:
     mock_args_special = ["--derivatives", "path/to/nowhere"]
