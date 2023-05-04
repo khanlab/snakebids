@@ -1038,6 +1038,8 @@ def test_generate_inputs(dataset: BidsDataset, bids_fs: Path, fakefs_tmpdir: Pat
 def test_when_all_custom_paths_no_layout_indexed(
     dataset: BidsDataset, bids_fs: Path, fakefs_tmpdir: Path, mocker: MockerFixture
 ):
+    # Need to reset mocker at beginning because hypothesis may call this function
+    # multiple times
     mocker.stopall()
     root = tempfile.mkdtemp(dir=fakefs_tmpdir)
     rooted = BidsDataset.from_iterable(
