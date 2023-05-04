@@ -1,12 +1,24 @@
 from __future__ import annotations
 
+import os
 import tempfile
 from pathlib import Path
 from typing import Optional
 
 import bids.layout
 import pytest
+from hypothesis import settings
 from pyfakefs.fake_filesystem import FakeFilesystem
+
+## Hypothesis profiles
+
+# github-actions tends to have flaky runtimes, likely due to temporary slowdowns in the
+# runner, so just disable deadlines
+settings.register_profile("pr", deadline=None)
+
+settings.load_profile(os.getenv("HYPOTHESIS_PROFILE", "default"))
+
+# Fixtures
 
 
 @pytest.fixture
