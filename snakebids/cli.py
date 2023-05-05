@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import argparse
 import logging
-import os
 import pathlib
 import re
 from collections.abc import Sequence
-from typing import Any, Iterable, Mapping, Optional
+from typing import Any, Iterable, Mapping, Optional, TypeVar, overload
 
 import attr
 import snakemake
@@ -315,9 +314,20 @@ def _make_underscore_dash_aliases(name: str) -> set[str]:
     return {name}
 
 
-def _resolve_path(
-    path_candidate: Iterable["os.PathLike[str] | str"] | "os.PathLike[str]" | str,
-) -> Any:
+_T = TypeVar("_T")
+
+
+@overload
+def _resolve_path(path_candidate: Sequence[Any]) -> "list[Any]":
+    ...
+
+
+@overload
+def _resolve_path(path_candidate: _T) -> _T:
+    ...
+
+
+def _resolve_path(path_candidate: Any) -> Any:
     """Helper function to resolve any paths or list
     of paths it's passed. Otherwise, returns the argument
     unchanged.
@@ -334,10 +344,13 @@ def _resolve_path(
         Otherwise, the argument unchanged.
     """
 
-    if isinstance(path_candidate, Iterable) and not isinstance(path_candidate, str):
-        return [_resolve_path(p) for p in path_candidate]
+    if isinstance(path_candidate, Sequence) and not isinstance(path_candidate, str):
+        return [
+            _resolve_path(p)  # type: ignore[reportUnknownArgumentType]
+            for p in path_candidate  # type: ignore[reportUnknownVariableType]
+        ]
 
-    if isinstance(path_candidate, os.PathLike):
+    if isinstance(path_candidate, Path):
         return Path(path_candidate).resolve()
 
     return path_candidate

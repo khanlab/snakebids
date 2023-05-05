@@ -3,9 +3,10 @@ from __future__ import annotations
 import copy
 import sys
 from argparse import ArgumentParser, Namespace
+from collections.abc import Sequence
 from os import PathLike
 from pathlib import Path
-from typing import Iterable, Mapping
+from typing import Mapping
 
 import pytest
 from pytest_mock.plugin import MockerFixture
@@ -38,19 +39,26 @@ class TestResolvePath:
         }
 
     def test_does_not_change_dict_without_paths(
-        self, arg_dict: Mapping[str, str | Iterable[str]]
+        self, arg_dict: Mapping[str, str | Sequence[str]]
     ):
         arg_dict_copy = copy.deepcopy(arg_dict)
         resolved = {key: _resolve_path(value) for key, value in arg_dict.items()}
         assert resolved == arg_dict_copy
 
     def test_resolves_all_paths(
-        self, arg_dict: dict[str, str | Path | Iterable[str | Path]]
+        self, arg_dict: dict[str, str | Path | Sequence[str | Path]]
     ):
         derivative_paths = [Path("path/to/deriv1"), Path("path/to/deriv2")]
         arg_dict["--derivatives"] = derivative_paths
         arg_dict_copy = copy.deepcopy(arg_dict)
         arg_dict_copy["--derivatives"] = [p.resolve() for p in derivative_paths]
+        resolved = {key: _resolve_path(value) for key, value in arg_dict.items()}
+        assert resolved == arg_dict_copy
+
+    def test_filter_dict(self, arg_dict: dict[str, dict[str, str]]):
+        filter_dict = {"test_key": "test_value"}
+        arg_dict["filter_test"] = filter_dict
+        arg_dict_copy = copy.deepcopy(arg_dict)
         resolved = {key: _resolve_path(value) for key, value in arg_dict.items()}
         assert resolved == arg_dict_copy
 
