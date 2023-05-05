@@ -36,6 +36,14 @@ parse_args = {
         "type": "Path",
         "nargs": "+",
     },
+    "--skip_bids_validation": {
+        "help": "Skip validation of BIDS dataset. BIDS validation is performed by "
+        "default using the bids-validator (if installed) or with the pybids "
+        "validator implementation (if bids-validator is not installed). "
+        "(default: %(default)s)",
+        "action": "store_true",
+        "default": False,
+    },
     "--arg-using-dash-syntax": {
         "help": "A fake argument for testing purposes",
         "nargs": "+",

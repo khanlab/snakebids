@@ -111,7 +111,7 @@ class TestFilterBools:
         }
 
         with pytest.raises(ConfigError):
-            generate_inputs(root, pybids_inputs)
+            generate_inputs(root, pybids_inputs, validate=False)
 
     @settings(
         deadline=800,
@@ -137,7 +137,7 @@ class TestFilterBools:
         }
 
         with pytest.raises(ConfigError):
-            generate_inputs(root, pybids_inputs)
+            generate_inputs(root, pybids_inputs, validate=False)
 
     @settings(
         deadline=800,
@@ -172,7 +172,7 @@ class TestFilterBools:
             }
         )
 
-        data = generate_inputs(root, pybids_inputs)
+        data = generate_inputs(root, pybids_inputs, validate=False)
         assert data == expected
 
     @example(
@@ -250,7 +250,7 @@ class TestFilterBools:
             }
         )
 
-        data = generate_inputs(root, pybids_inputs)
+        data = generate_inputs(root, pybids_inputs, validate=False)
         assert data == expected
 
 
@@ -285,6 +285,7 @@ class TestAbsentConfigEntries:
             bids_dir=tmpdir,
             derivatives=derivatives,
             pybids_config=str(Path(__file__).parent / "data" / "custom_config.json"),
+            validate=False,
         )
         template = BidsDataset(
             {"t1": BidsComponent(name="t1", path=config["t1"].path, zip_lists=zip_list)}
@@ -310,6 +311,7 @@ class TestAbsentConfigEntries:
             pybids_inputs=pybids_inputs,
             derivatives=derivatives,
             pybids_config=str(Path(__file__).parent / "data" / "custom_config.json"),
+            validate=False,
         )
         template = BidsDataset(
             {"t1": BidsComponent(name="t1", path=config["t1"].path, zip_lists={})}
@@ -587,6 +589,7 @@ def test_custom_pybids_config(tmpdir: Path):
         bids_dir=tmpdir,
         derivatives=derivatives,
         pybids_config=str(Path(__file__).parent / "data" / "custom_config.json"),
+        validate=False,
     )
     template = BidsDataset(
         {
@@ -638,6 +641,7 @@ def test_nonstandard_custom_pybids_config(tmpdir: Path):
             pybids_config=(
                 str(Path(__file__).parent / "data" / "custom_config_nonstandard.json")
             ),
+            validate=False,
         )
 
 
@@ -660,6 +664,7 @@ def test_t1w():
             derivatives=derivatives,
             participant_label="001",
             exclude_participant_label="002",
+            validate=False,
         )
     assert v_error.value.args[0] == (
         "Cannot define both participant_label and "
@@ -671,6 +676,7 @@ def test_t1w():
         pybids_inputs=pybids_inputs,
         bids_dir=real_bids_dir,
         derivatives=derivatives,
+        validate=False,
     )
     template = BidsDataset(
         {
@@ -705,6 +711,7 @@ def test_t1w():
         bids_dir=real_bids_dir,
         derivatives=derivatives,
         participant_label="001",
+        validate=False,
     )
     assert result["scan"].entities == {
         "acq": ["mprage"],
@@ -775,6 +782,7 @@ def test_t1w():
             pybids_inputs=pybids_inputs,
             bids_dir=bids_dir,
             derivatives=derivatives,
+            validate=False,
         )
         template = BidsDataset(
             {
@@ -817,6 +825,7 @@ def test_t1w_with_dict():
         bids_dir=real_bids_dir,
         derivatives=derivatives,
         use_bids_inputs=False,
+        validate=False,
     )
     # Order of the subjects is not deterministic
     assert config["input_lists"] == BidsListCompare(
@@ -849,6 +858,7 @@ def test_t1w_with_dict():
         derivatives=derivatives,
         participant_label="001",
         use_bids_inputs=False,
+        validate=False,
     )
     assert config["input_lists"] == {
         "scan": {"acq": ["mprage"], "subject": ["001"], "suffix": ["T1w"]}
@@ -971,11 +981,11 @@ class TestGenBidsLayout:
     @given(dataset=sb_st.datasets())
     def test_gen_layout_returns_valid_dataset(self, dataset: BidsDataset, tmpdir: Path):
         create_dataset(tmpdir, dataset)
-        assert _gen_bids_layout(tmpdir, False, None, False, None)
+        assert _gen_bids_layout(tmpdir, False, None, False, None, validate=False)
 
     def test_invalid_path_raises_error(self, tmpdir: Path):
         with pytest.raises(ValueError):
-            _gen_bids_layout(tmpdir / "foo", False, None, False)
+            _gen_bids_layout(tmpdir / "foo", False, None, False, validate=False)
 
 
 @pytest.mark.parametrize("count", tuple(range(6)))

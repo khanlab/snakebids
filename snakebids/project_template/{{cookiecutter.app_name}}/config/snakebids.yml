@@ -75,11 +75,20 @@ parse_args:
     default: False
     nargs: '+'
 
- # custom command-line parameters can then be added, these will get added to the config
- # below is an example to override config['bet_frac']
+
+ # custom command-line parameters can then be added, these will get added to the config and also accessible to plugins
+ # below are an examples for plugin and custom parameters (e.g. config['smoothing_fwhm'])
+  --skip_bids_validation:
+    help: 'Skip validation of BIDS dataset. BIDS validation is performed by 
+          default using the bids-validator (if installed) or with the pybids
+          validator implementation (if bids-validator is not installed). 
+          (default: %(default)s)'
+    action: "store_true"
+    default: False
+
   --smoothing_fwhm:
-      nargs: '+'
-      required: True
+    nargs: '+'
+    required: True
 
 
 #--- workflow specific configuration -- below is just an example:

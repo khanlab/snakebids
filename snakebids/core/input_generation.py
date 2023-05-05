@@ -146,6 +146,10 @@ def generate_inputs(  # noqa: PLR0913
         :class`BidsDataset`. Setting to True is deprecated as of v0.8, as this is now
         the default behaviour
 
+    validate
+        If False, skips validation of BIDS directory. Otherwise use node.js 
+        implementation of bids-validator, falling back on pybids validation.
+
     Returns
     -------
     BidsDataset | BidsDatasetDict
@@ -307,12 +311,13 @@ def _all_custom_paths(config: InputsConfig):
     return all(comp.get("custom_path") for comp in config.values())
 
 
-def _gen_bids_layout(
+def _gen_bids_layout(  # noqa: PLR0913
     bids_dir: Path | str,
     derivatives: Path | str | bool,
     pybidsdb_dir: Path | str | None,
     pybidsdb_reset: bool,
     pybids_config: Path | str | None = None,
+    validate: bool = True,
 ) -> BIDSLayout:
     """Create (or reindex) the BIDSLayout if one doesn't exist,
     which is only saved if a database directory path is provided
@@ -335,6 +340,9 @@ def _gen_bids_layout(
         A boolean that determines whether to reset / overwrite
         existing database.
 
+    validate
+        A boolean that determines whether to validate the bids dataset
+
     Returns
     -------
     layout : BIDSLayout
@@ -353,7 +361,7 @@ def _gen_bids_layout(
     return BIDSLayout(
         str(bids_dir),
         derivatives=derivatives,
-        validate=False,
+        validate=validate,
         config=pybids_config,
         database_path=pybidsdb_dir,
         reset_database=pybidsdb_reset,
