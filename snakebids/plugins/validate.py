@@ -30,7 +30,7 @@ class BidsValidator:
         self.app = app
 
         # Skip bids validation
-        if self.app.config["skip_bids_validation"]:
+        if self.app.config["plugins.validator.skip"]:
             return
 
         validator_config_dict = {"ignoredFiles": ["/participants.tsv"]}
@@ -44,15 +44,15 @@ class BidsValidator:
                 )
 
                 # If successfully bids-validation performed, skip pybids validation
-                self.app.config["bids_validator_success"] = True
+                self.app.config["plugins.validator.success"] = True
             except FileNotFoundError:
                 # If the bids-validator call can't be made
-                self.app.config["bids_validator_success"] = False
+                self.app.config["plugins.validator.success"] = False
                 _logger.warning(
                     "Missing bids-validator installation - falling back to pybids "
                     "validation."
                 )
             # Any other bids-validator error
             except subprocess.CalledProcessError as err:
-                self.app.config["bids_validator_success"] = False
+                self.app.config["plugins.validator.success"] = False
                 raise InvalidBidsError from err

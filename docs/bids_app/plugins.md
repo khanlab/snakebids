@@ -12,7 +12,7 @@ import subprocess
 from snakebids.app import SnakeBidsApp
 
 def bids_validate(app: SnakeBidsApp) -> None:
-    if app.config["skip_bids_validation"]:
+    if app.config["plugin.validation.skip"]:
         return
 
     try:

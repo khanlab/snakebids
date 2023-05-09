@@ -73,6 +73,7 @@ parse_args:
           default using the bids-validator (if installed) or with the pybids
           validator implementation (if bids-validator is not installed). 
           (default: %(default)s)'
+    dest: "plugins.validator.skip"
     action: "store_true"
     default: False
 

@@ -9,8 +9,8 @@ import pytest
 from pytest_mock.plugin import MockerFixture
 
 from snakebids.app import SnakeBidsApp
-from snakebids.tests.mock.config import config
 from snakebids.plugins.validate import BidsValidator, InvalidBidsError
+from snakebids.tests.mock.config import config
 
 
 class TestBidsValidator:
@@ -28,22 +28,22 @@ class TestBidsValidator:
 
     def test_skip_validation(self, app: SnakeBidsApp):
         # Test if validation is skipped
-        app.config["skip_bids_validation"] = True
+        app.config["plugins.validator.skip"] = True
 
         validator = BidsValidator()
         validator(app)
-        assert "bids_validator_success" not in app.config
+        assert "plugins.validator.success" not in app.config
 
     def test_validation_successful(self, app: SnakeBidsApp, mocker: MockerFixture):
         # Test successful validation
         mocker.patch("subprocess.check_call", return_value=0)
 
         app.config["bids_dirs"] = "path/to/bids/dir"
-        app.config["skip_bids_validation"] = False
+        app.config["plugins.validator.skip"] = False
 
         validator = BidsValidator()
         validator(app)
-        assert app.config["bids_validator_success"]
+        assert app.config["plugins.validator.success"]
 
     def test_missing_bids_validator(
         self, app: SnakeBidsApp, mocker: MockerFixture, caplog: pytest.LogCaptureFixture
@@ -52,13 +52,13 @@ class TestBidsValidator:
         mocker.patch("subprocess.check_call", side_effect=FileNotFoundError)
 
         app.config["bids_dirs"] = "path/to/bids/dir"
-        app.config["skip_bids_validation"] = False
+        app.config["plugins.validator.skip"] = False
 
         validator = BidsValidator()
         validator(app)
 
         # Check validation failure
-        assert not app.config["bids_validator_success"]
+        assert not app.config["plugins.validator.success"]
 
         # Check logger message (should only have 1 warning message)
         assert len(caplog.records) == 1
@@ -72,10 +72,10 @@ class TestBidsValidator:
         )
 
         app.config["bids_dirs"] = "path/to/bids/dir"
-        app.config["skip_bids_validation"] = False
+        app.config["plugins.validator.skip"] = False
 
         validator = BidsValidator()
         with pytest.raises(InvalidBidsError):
             validator(app)
 
-        assert not app.config["bids_validator_success"]
+        assert not app.config["plugins.validator.success"]
