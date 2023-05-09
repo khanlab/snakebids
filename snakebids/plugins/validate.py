@@ -4,11 +4,12 @@ import subprocess
 import tempfile
 
 from snakebids.app import SnakeBidsApp
+from snakebids.exceptions import SnakebidsPluginError
 
 _logger = logging.getLogger(__name__)
 
 
-class InvalidBidsError(Exception):
+class InvalidBidsError(SnakebidsPluginError):
     """Error raised if an input BIDS dataset is invalid."""
 
 
