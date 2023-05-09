@@ -311,7 +311,8 @@ def _all_custom_paths(config: InputsConfig):
     return all(comp.get("custom_path") for comp in config.values())
 
 
-def _gen_bids_layout(  # noqa: PLR0913
+def _gen_bids_layout(
+    *,
     bids_dir: Path | str,
     derivatives: Path | str | bool,
     pybidsdb_dir: Path | str | None,
