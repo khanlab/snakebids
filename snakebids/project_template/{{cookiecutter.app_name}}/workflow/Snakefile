@@ -13,10 +13,7 @@ inputs = generate_inputs(
     derivatives=config.get("derivatives", None),
     participant_label=config.get("participant_label", None),
     exclude_participant_label=config.get("exclude_participant_label", None),
-    validate=not(
-        config.get("skip_bids_validation", False) or
-        config.get("bids_validator_success", False)
-    )
+    validate=True if "plugins.validator.success" in config else False,
 )
 
 

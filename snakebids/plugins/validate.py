@@ -44,7 +44,7 @@ class BidsValidator:
                     ["bids-validator", self.app.config["bids_dirs"], "-c", temp.name]
                 )
 
-                # If successfully bids-validation performed, skip pybids validation
+                # If successfully bids-validation performed
                 self.app.config["plugins.validator.success"] = True
             except FileNotFoundError:
                 # If the bids-validator call can't be made

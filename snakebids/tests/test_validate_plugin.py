@@ -74,8 +74,10 @@ class TestBidsValidator:
         app.config["bids_dirs"] = "path/to/bids/dir"
         app.config["plugins.validator.skip"] = False
 
+        # Check error raised
         validator = BidsValidator()
         with pytest.raises(InvalidBidsError):
             validator(app)
 
+        # Check validation failure
         assert not app.config["plugins.validator.success"]
