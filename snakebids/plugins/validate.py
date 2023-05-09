@@ -33,28 +33,26 @@ class BidsValidator:
         if self.app.config["skip_bids_validation"]:
             return
 
-        try:
-            validator_config_dict = {"ignoredFiles": ["/participants.tsv"]}
+        validator_config_dict = {"ignoredFiles": ["/participants.tsv"]}
 
-            with tempfile.NamedTemporaryFile(mode="w+", suffix=".json") as temp:
-                temp.write(json.dumps(validator_config_dict))
-                temp.flush()
+        with tempfile.NamedTemporaryFile(mode="w+", suffix=".json") as temp:
+            temp.write(json.dumps(validator_config_dict))
+            temp.flush()
+            try:
+                subprocess.check_call(
+                    ["bids-validator", self.app.config["bids_dirs"], "-c", temp.name]
+                )
 
-            subprocess.check_call(
-                ["bids-validator", self.app.config["bids_dirs"], "-c", temp.name]
-            )
-
-            # If successfully bids-validation performed, skip pybids validation
-            self.app.config["bids_validator_success"] = True
-
-        # If the bids-validator call can't be made
-        except FileNotFoundError:
-            self.app.config["bids_validator_success"] = False
-            _logger.warning(
-                "Missing bids-validator installation - falling back to pybids "
-                "validation."
-            )
-        # Any other bids-validator error
-        except subprocess.CalledProcessError as err:
-            self.app.config["bids_validator_success"] = False
-            raise InvalidBidsError from err
+                # If successfully bids-validation performed, skip pybids validation
+                self.app.config["bids_validator_success"] = True
+            except FileNotFoundError:
+                # If the bids-validator call can't be made
+                self.app.config["bids_validator_success"] = False
+                _logger.warning(
+                    "Missing bids-validator installation - falling back to pybids "
+                    "validation."
+                )
+            # Any other bids-validator error
+            except subprocess.CalledProcessError as err:
+                self.app.config["bids_validator_success"] = False
+                raise InvalidBidsError from err

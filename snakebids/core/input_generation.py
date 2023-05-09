@@ -317,7 +317,7 @@ def _gen_bids_layout(  # noqa: PLR0913
     pybidsdb_dir: Path | str | None,
     pybidsdb_reset: bool,
     pybids_config: Path | str | None = None,
-    validate: bool = True,
+    validate: bool = False,
 ) -> BIDSLayout:
     """Create (or reindex) the BIDSLayout if one doesn't exist,
     which is only saved if a database directory path is provided
