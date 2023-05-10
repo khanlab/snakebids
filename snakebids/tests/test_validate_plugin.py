@@ -62,7 +62,7 @@ class TestBidsValidator:
         assert caplog.records[0].levelname == "WARNING"
         assert "Missing bids-validator installation" in caplog.records[0].message
 
-    def test_validation_error(self, app: SnakeBidsApp, mocker: MockerFixture):
+    def test_raise_validation_error(self, app: SnakeBidsApp, mocker: MockerFixture):
         # Test for any other bids-validation error
         mocker.patch(
             "subprocess.check_call", side_effect=subprocess.CalledProcessError(1, "")
@@ -75,6 +75,22 @@ class TestBidsValidator:
         validator = BidsValidator()
         with pytest.raises(InvalidBidsError):
             validator(app)
+
+        # Check validation failure
+        assert not app.config["plugins.validator.success"]
+
+    def test_ignore_validation_error(self, app: SnakeBidsApp, mocker: MockerFixture):
+        # Test for any other bids-validation error
+        mocker.patch(
+            "subprocess.check_call", side_effect=subprocess.CalledProcessError(1, "")
+        )
+
+        app.config["bids_dirs"] = "path/to/bids/dir"
+        app.config["plugins.validator.skip"] = False
+
+        # Check if error is skipped on invalid
+        validator = BidsValidator(raise_invalid_bids=False)
+        validator(app)
 
         # Check validation failure
         assert not app.config["plugins.validator.success"]

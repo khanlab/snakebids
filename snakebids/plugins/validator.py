@@ -24,8 +24,8 @@ class BidsValidator:
         Snakebids application to be run
     """
 
-    def __init__(self) -> None:
-        pass
+    def __init__(self, raise_invalid_bids: bool = True) -> None:
+        self.raise_invalid_bids = raise_invalid_bids
 
     def __call__(self, app: SnakeBidsApp) -> None:
         # Skip bids validation
@@ -54,4 +54,5 @@ class BidsValidator:
             # Any other bids-validator error
             except subprocess.CalledProcessError as err:
                 app.config["plugins.validator.success"] = False
-                raise InvalidBidsError from err
+                if self.raise_invalid_bids:
+                    raise InvalidBidsError from err
