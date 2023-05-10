@@ -28,10 +28,8 @@ class BidsValidator:
         pass
 
     def __call__(self, app: SnakeBidsApp) -> None:
-        self.app = app
-
         # Skip bids validation
-        if self.app.config["plugins.validator.skip"]:
+        if app.config["plugins.validator.skip"]:
             return
 
         validator_config_dict = {"ignoredFiles": ["/participants.tsv"]}
@@ -41,19 +39,19 @@ class BidsValidator:
             temp.flush()
             try:
                 subprocess.check_call(
-                    ["bids-validator", self.app.config["bids_dirs"], "-c", temp.name]
+                    ["bids-validator", app.config["bids_dirs"], "-c", temp.name]
                 )
 
                 # If successfully bids-validation performed
-                self.app.config["plugins.validator.success"] = True
+                app.config["plugins.validator.success"] = True
             except FileNotFoundError:
                 # If the bids-validator call can't be made
-                self.app.config["plugins.validator.success"] = False
+                app.config["plugins.validator.success"] = False
                 _logger.warning(
                     "Missing bids-validator installation - falling back to pybids "
                     "validation."
                 )
             # Any other bids-validator error
             except subprocess.CalledProcessError as err:
-                self.app.config["plugins.validator.success"] = False
+                app.config["plugins.validator.success"] = False
                 raise InvalidBidsError from err

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-import logging
 import subprocess
 from pathlib import Path
 
@@ -23,8 +22,6 @@ class TestBidsValidator:
             configfile_path=Path("mock/config.yaml"),
             config=copy.deepcopy(config),
         )
-
-    _logger = logging.getLogger(__name__)
 
     def test_skip_validation(self, app: SnakeBidsApp):
         # Test if validation is skipped
