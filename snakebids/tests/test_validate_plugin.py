@@ -9,7 +9,7 @@ import pytest
 from pytest_mock.plugin import MockerFixture
 
 from snakebids.app import SnakeBidsApp
-from snakebids.plugins.validate import BidsValidator, InvalidBidsError
+from snakebids.plugins.validator import BidsValidator, InvalidBidsError
 from snakebids.tests.mock.config import config
 
 

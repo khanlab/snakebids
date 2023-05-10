@@ -2,7 +2,7 @@
 from pathlib import Path
 
 from snakebids.app import SnakeBidsApp
-from snakebids.plugins.validate import BidsValidator
+from snakebids.plugins.validator import BidsValidator
 
 
 def get_parser():

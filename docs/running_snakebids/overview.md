@@ -17,7 +17,7 @@ Indexing of large datasets can be a time-consuming process. Leveraging the funct
 1. `--pybidsdb-dir {dir}`: specify the path to the database directory
 1. `--pybidsdb-reset`: indicate that an existing database should be updated
 
-It's important to note that this indexing feature is **disabled by default**, meaning Snakebids does not create or expect to find a database unless it has been explictly set using the associated CLI arguments.
+Validation of input BIDS dataset is also enabled by default using the bids-validator plugin. By default, this feature uses the command-line (node.js) version of the [validator](https://www.npmjs.com/package/bids-validator). If this is not found to be installed on the system, the `pybids` version of validation will be performed instead. To opt-out of validation, invoke the `--skip-bids-validation` flag. Details related to using and creating plugins can be found on the [plugins](/bids_app/plugins) page.
 
 Workflow mode
 =============
