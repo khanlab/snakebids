@@ -10,7 +10,6 @@
 Snakebids is a Python package that facilitates the creation of reproducible and scalable data processing pipelines for neuroimaging data in the BIDS format (e.g. BIDS Apps). It leverages the power of Snakemake, a workflow management system, to automate the execution of complex pipelines.
 
 ## Features
-
 * **BIDS Compliance**: Helper function to ensure BIDS paths adhere to the BIDS specification, promoting data organization and sharing. Additionally, provide command-line invocations of your workflow with BIDS App compliance.
 * **Flexible Configuration**: Easily configure and customize your workflow using YAML configuration files.
 * **Plugin System**: Extend the functionality of Snakebids by creating and using plugins.
@@ -18,7 +17,6 @@ Snakebids is a Python package that facilitates the creation of reproducible and 
 * **Docker and Singularity Support**: Run your workflow in containerized environments, eliminating the need for installation of required software dependencies and improve reproducibility.
 
 ## Installation
-
 Snakebids can be installed using pip:
 
 ```bash 
@@ -26,7 +24,6 @@ pip install snakebids
 ```
 
 ## Usage
-
 To create and run a Snakebids workflow, you need to:
 
 1. **Create a Snakefile**: Define the steps of your workflow, including input / output files, processing rules, and dependencies
@@ -60,8 +57,10 @@ poetry run poe test
 Additionally, Snakebids uses pre-commit hooks (installed via the `poe setup` command above) to lint and format code (we use [black](https://github.com/psf/black), [isort](https://github.com/PyCQA/isort), [pylint](https://pylint.org/) and [ruff](https://beta.ruff.rs/docs/). By default, these hooks are run on every commit. Please be sure they all pass before making a PR.
 
 ## License
-
 Snakebids is distributed under the MIT License.
 
+## Acknowledgements
+Snakebids is built upon the Snakemake workflow management system and follows the guidelines outlined by the BIDS specification.
+
 ## Relevant papers
-* Mölder F, Jablonski KP, Letcher B et al. Sustainable data analysis with Snakemake [version 2; peer review: 2 approved]. F1000Research. 2021. doi: [10.12688/f1000research.29032.2](https://doi.org/10.12688/f1000research.29032.2){:target="_blank"} 
+* Mölder F, Jablonski KP, Letcher B et al. Sustainable data analysis with Snakemake [version 2; peer review: 2 approved]. F1000Research. 2021. doi: [10.12688/f1000research.29032.2](https://doi.org/10.12688/f1000research.29032.2)
