@@ -16,7 +16,12 @@ from typing_extensions import Literal
 
 from snakebids.core.datasets import BidsComponent, BidsDataset, BidsDatasetDict
 from snakebids.core.filtering import filter_list
-from snakebids.exceptions import ConfigError, DuplicateComponentError, PybidsError
+from snakebids.exceptions import (
+    ConfigError,
+    DuplicateComponentError,
+    PybidsError,
+    RunError,
+)
 from snakebids.types import InputsConfig, ZipList
 from snakebids.utils.snakemake_io import glob_wildcards
 from snakebids.utils.utils import BidsEntity, BidsParseError, MultiSelectDict
@@ -552,12 +557,10 @@ def _get_lists_from_bids(
             continue
 
         if bids_layout is None:
-            _logger.warning(
-                "No valid bids dir given, but %s does not have a custom_path specified "
-                "and will be skipped.",
-                input_name,
+            raise RunError(
+                f"No valid bids dir given, but {input_name} does not have a "
+                "custom_path specified and will be skipped."
             )
-            continue
 
         zip_lists: dict[str, list[str]] = defaultdict(list)
         paths: set[str] = set()
