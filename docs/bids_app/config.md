@@ -63,7 +63,7 @@ pybids_inputs:
       - run
 ```
 
-### `pybids_db_dir`
+### `pybidsdb_dir`
 
 PyBIDS allows for the use of a cached layout to be used in order to reduce the time required to index a BIDS dataset. A path (if provided) to save the *pybids* [layout](#bids.layout.BIDSLayout). If `None` or `''` is provided, the layout is not saved or used. The path provided must be absolute, otherwise the database will not be used.
 

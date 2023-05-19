@@ -1033,7 +1033,7 @@ class TestDB:
         _gen_bids_layout(
             bids_dir=self.bids_dir,
             derivatives=False,
-            pybids_database_dir=self.database_dir,
+            pybidsdb_dir=self.database_dir,
             pybids_reset_database=self.reset_database,
         )
         assert not os.path.exists(self.database_dir)
@@ -1046,7 +1046,7 @@ class TestDB:
         _gen_bids_layout(
             bids_dir=self.bids_dir,
             derivatives=False,
-            pybids_database_dir=self.database_dir,
+            pybidsdb_dir=self.database_dir,
             pybids_reset_database=self.reset_database,
         )
         assert not os.path.exists(f"{self.tmpdir}/data/.db/")
@@ -1060,7 +1060,7 @@ class TestDB:
         _gen_bids_layout(
             bids_dir=self.bids_dir,
             derivatives=False,
-            pybids_database_dir=self.database_dir,
+            pybidsdb_dir=self.database_dir,
             pybids_reset_database=self.reset_database,
         )
         assert os.path.exists(f"{self.tmpdir}/data/.db/")
@@ -1075,7 +1075,7 @@ class TestDB:
         layout = _gen_bids_layout(
             bids_dir=self.bids_dir,
             derivatives=False,
-            pybids_database_dir=self.database_dir,
+            pybidsdb_dir=self.database_dir,
             pybids_reset_database=self.reset_database,
         )
         assert not layout.get(subject="003")
@@ -1086,7 +1086,7 @@ class TestDB:
         layout = _gen_bids_layout(
             bids_dir=self.bids_dir,
             derivatives=False,
-            pybids_database_dir=self.database_dir,
+            pybidsdb_dir=self.database_dir,
             pybids_reset_database=self.reset_database,
         )
         assert layout.get(subject="003")

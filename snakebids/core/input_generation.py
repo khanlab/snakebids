@@ -28,7 +28,7 @@ _logger = logging.getLogger(__name__)
 def generate_inputs(  # noqa: PLR0913
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
-    pybids_database_dir: Path | str | None = ...,
+    pybidsdb_dir: Path | str | None = ...,
     pybids_reset_database: bool = ...,
     derivatives: bool | Path | str = ...,
     pybids_config: str | None = ...,
@@ -44,7 +44,7 @@ def generate_inputs(  # noqa: PLR0913
 def generate_inputs(  # noqa: PLR0913
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
-    pybids_database_dir: Path | str | None = ...,
+    pybidsdb_dir: Path | str | None = ...,
     pybids_reset_database: bool = ...,
     derivatives: bool | Path | str = ...,
     pybids_config: str | None = ...,
@@ -59,7 +59,7 @@ def generate_inputs(  # noqa: PLR0913
 def generate_inputs(  # noqa: PLR0913
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
-    pybids_database_dir: Path | str | None = None,
+    pybidsdb_dir: Path | str | None = None,
     pybids_reset_database: bool = False,
     derivatives: bool | Path | str = False,
     pybids_config: str | None = None,
@@ -100,7 +100,7 @@ def generate_inputs(  # noqa: PLR0913
           as in ``/path/to/sub-{subject}/{wildcard_1}-{wildcard_2}``. This path will be
           parsed without pybids, allowing the use of non-bids-compliant paths.
 
-    pybids_database_dir
+    pybidsdb_dir
         Path to database directory. If None is provided, database
         is not used
 
@@ -240,7 +240,7 @@ ses-{session}_run-{run}_T1w.nii.gz",
             bids_dir=bids_dir,
             derivatives=derivatives,
             pybids_config=pybids_config,
-            pybids_database_dir=pybids_database_dir,
+            pybidsdb_dir=pybidsdb_dir,
             pybids_reset_database=pybids_reset_database,
         )
         if not _all_custom_paths(pybids_inputs)
@@ -286,7 +286,7 @@ def _all_custom_paths(config: InputsConfig):
 def _gen_bids_layout(
     bids_dir: Path | str,
     derivatives: Path | str | bool,
-    pybids_database_dir: Path | str | None,
+    pybidsdb_dir: Path | str | None,
     pybids_reset_database: bool,
     pybids_config: Path | str | None = None,
 ) -> BIDSLayout:
@@ -303,7 +303,7 @@ def _gen_bids_layout(
         determines whether snakebids will search in the
         derivatives subdirectory of the input dataset.
 
-    pybids_database_dir
+    pybidsdb_dir
         Path to database directory. If None is provided, database
         is not used
 
@@ -319,11 +319,11 @@ def _gen_bids_layout(
 
     # Check for database_dir
     # If blank, assume db not to be used
-    if not pybids_database_dir:
-        pybids_database_dir = None
+    if not pybidsdb_dir:
+        pybidsdb_dir = None
     # Otherwise check for relative path and update
-    elif not Path(pybids_database_dir).is_absolute():
-        pybids_database_dir = None
+    elif not Path(pybidsdb_dir).is_absolute():
+        pybidsdb_dir = None
         _logger.warning("Absolute path must be provided, database will not be used")
 
     return BIDSLayout(
@@ -331,7 +331,7 @@ def _gen_bids_layout(
         derivatives=derivatives,
         validate=False,
         config=pybids_config,
-        database_path=pybids_database_dir,
+        database_path=pybidsdb_dir,
         reset_database=pybids_reset_database,
         indexer=BIDSLayoutIndexer(validate=False, index_metadata=False),
     )

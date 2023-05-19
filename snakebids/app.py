@@ -155,7 +155,7 @@ class SnakeBidsApp:
 
         # Update config with pybids settings
         if args.pybidsdb_dir:
-            self.config["pybids_db_dir"] = args.pybidsdb_dir
+            self.config["pybidsdb_dir"] = args.pybidsdb_dir
         self.config["pybids_db_reset"] = args.reset_db
 
         update_config(self.config, args)

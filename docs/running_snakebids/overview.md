@@ -14,7 +14,7 @@ Note that if any rules in the Snakebids workflow use Singularity containers, spe
 
 Indexing of large datasets can be a time-consuming process. Snakebids, through `PyBIDS` has the ability to create or leverage an existing database, requiring indexing of datasets to be only performed when user chooses to do so (usually if the dataset has changed)! Note, this feature is **opt-in**, meaning it is not used unless the associated config variables are used. To opt-in:
 
-1. Uncomment the lines in `snakebids.yml` containing `pybids_db_dir` and `pybids_db_reset`.
+1. Uncomment the lines in `snakebids.yml` containing `pybidsdb_dir` and `pybids_db_reset`.
 1. The variables can be updated directly in this file or through the CLI by using `-pybidsdb-dir {dir}` to specify the database path and `--reset-db` to indicate that the database should be updated. _Note: CLI arguments take precendence if both CLI and config variables are set._
 
 Workflow mode

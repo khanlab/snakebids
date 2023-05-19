@@ -97,7 +97,7 @@ class TestRunSnakemake:
             {
                 "root": "",
                 "snakemake_dir": Path("app").resolve(),
-                "pybids_db_dir": Path("/tmp/output/.db"),
+                "pybidsdb_dir": Path("/tmp/output/.db"),
                 "pybids_db_reset": True,
                 "snakefile": Path("Snakefile"),
                 "output_dir": outputdir.resolve(),
