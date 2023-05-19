@@ -559,7 +559,7 @@ def _get_lists_from_bids(
         if bids_layout is None:
             raise RunError(
                 f"No valid bids dir given, but {input_name} does not have a "
-                "custom_path specified and will be skipped."
+                "custom_path specified."
             )
 
         zip_lists: dict[str, list[str]] = defaultdict(list)
