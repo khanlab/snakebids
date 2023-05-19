@@ -20,7 +20,7 @@ pybids_inputs:
       - run
 
 pybidsdb_dir: '/path/to/db_dir'
-pybids_db_reset: False
+pybidsdb_reset: False
 
 targets_by_analysis_level:
   participant:

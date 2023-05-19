@@ -83,7 +83,7 @@ class SnakebidsArgs:
     snakemake_args: list[str]
     args_dict: dict[str, Any]
     pybidsdb_dir: Optional[Path] = None
-    reset_db: bool = False
+    pybidsdb_reset: bool = False
 
 
 def create_parser(include_snakemake: bool = False) -> argparse.ArgumentParser:
@@ -138,13 +138,13 @@ def create_parser(include_snakemake: bool = False) -> argparse.ArgumentParser:
         help=(
             "Optional path to directory of SQLite databasefile for PyBIDS. "
             "If directory is passed and folder exists, indexing is skipped. "
-            "If reset_db is called, indexing will persist"
+            "If pybidsdb_reset is called, indexing will persist"
         ),
     )
 
     standard_group.add_argument(
-        "--reset-db",
-        "--reset_db",
+        "--pybidsdb-reset",
+        "--pybidsdb_reset",
         action="store_true",
         help=("Reindex existing PyBIDS SQLite database"),
     )
@@ -283,7 +283,7 @@ def parse_snakebids_args(parser: argparse.ArgumentParser) -> SnakebidsArgs:
             if all_args[0].pybidsdb_dir is None
             else Path(all_args[0].pybidsdb_dir).resolve()
         ),
-        reset_db=all_args[0].reset_db,
+        pybidsdb_reset=all_args[0].pybidsdb_reset,
     )
 
 

@@ -29,7 +29,7 @@ def generate_inputs(  # noqa: PLR0913
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
     pybidsdb_dir: Path | str | None = ...,
-    pybids_reset_database: bool = ...,
+    pybidsdb_reset: bool = ...,
     derivatives: bool | Path | str = ...,
     pybids_config: str | None = ...,
     limit_to: Iterable[str] | None = ...,
@@ -45,7 +45,7 @@ def generate_inputs(  # noqa: PLR0913
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
     pybidsdb_dir: Path | str | None = ...,
-    pybids_reset_database: bool = ...,
+    pybidsdb_reset: bool = ...,
     derivatives: bool | Path | str = ...,
     pybids_config: str | None = ...,
     limit_to: Iterable[str] | None = ...,
@@ -60,7 +60,7 @@ def generate_inputs(  # noqa: PLR0913
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
     pybidsdb_dir: Path | str | None = None,
-    pybids_reset_database: bool = False,
+    pybidsdb_reset: bool = False,
     derivatives: bool | Path | str = False,
     pybids_config: str | None = None,
     limit_to: Iterable[str] | None = None,
@@ -104,7 +104,7 @@ def generate_inputs(  # noqa: PLR0913
         Path to database directory. If None is provided, database
         is not used
 
-    pybids_reset_database
+    pybidsdb_reset
         A boolean that determines whether to reset / overwrite
         existing database.
 
@@ -241,7 +241,7 @@ ses-{session}_run-{run}_T1w.nii.gz",
             derivatives=derivatives,
             pybids_config=pybids_config,
             pybidsdb_dir=pybidsdb_dir,
-            pybids_reset_database=pybids_reset_database,
+            pybidsdb_reset=pybidsdb_reset,
         )
         if not _all_custom_paths(pybids_inputs)
         else None
@@ -287,7 +287,7 @@ def _gen_bids_layout(
     bids_dir: Path | str,
     derivatives: Path | str | bool,
     pybidsdb_dir: Path | str | None,
-    pybids_reset_database: bool,
+    pybidsdb_reset: bool,
     pybids_config: Path | str | None = None,
 ) -> BIDSLayout:
     """Create (or reindex) the BIDSLayout if one doesn't exist,
@@ -307,7 +307,7 @@ def _gen_bids_layout(
         Path to database directory. If None is provided, database
         is not used
 
-    pybids_reset_database
+    pybidsdb_reset
         A boolean that determines whether to reset / overwrite
         existing database.
 
@@ -332,7 +332,7 @@ def _gen_bids_layout(
         validate=False,
         config=pybids_config,
         database_path=pybidsdb_dir,
-        reset_database=pybids_reset_database,
+        reset_database=pybidsdb_reset,
         indexer=BIDSLayoutIndexer(validate=False, index_metadata=False),
     )
 

@@ -38,7 +38,7 @@ pybids_inputs:
 # by default, database is not saved (uncomment to save)
 # NOTE: pybidsdb_dir must be an absolute path
 # pybidsdb_dir: '/path/to/db_dir' # Leave blank if you do not wish to use this
-# pybids_db_reset: False # Change this to true to update the database
+# pybidsdb_reset: False # Change this to true to update the database
 
 #configuration for the command-line parameters to make available
 # passed on the argparse add_argument()

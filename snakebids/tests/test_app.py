@@ -28,7 +28,7 @@ def app(mocker: MockerFixture):
     )
     app.config["analysis_level"] = "participant"
     app.config["snakemake_args"] = []
-    app.config["pybids_db_reset"] = False
+    app.config["pybidsdb_reset"] = False
     mocker.patch.object(sn_app, "update_config", return_value=app.config)
     return app
 
@@ -98,7 +98,7 @@ class TestRunSnakemake:
                 "root": "",
                 "snakemake_dir": Path("app").resolve(),
                 "pybidsdb_dir": Path("/tmp/output/.db"),
-                "pybids_db_reset": True,
+                "pybidsdb_reset": True,
                 "snakefile": Path("Snakefile"),
                 "output_dir": outputdir.resolve(),
             }
@@ -115,7 +115,7 @@ class TestRunSnakemake:
             # patched
             args_dict={"output_dir": outputdir.resolve()},
             pybidsdb_dir=Path("/tmp/output/.db"),
-            reset_db=True,
+            pybidsdb_reset=True,
         )
 
         try:
