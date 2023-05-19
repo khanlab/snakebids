@@ -1025,43 +1025,43 @@ class TestDB:
 
         # Create config
         self.bids_dir: str = f"{self.tmpdir}/data"
-        self.database_dir = ""
-        self.reset_database = False
+        self.pybidsdb_dir = ""
+        self.pybidsdb_reset = False
 
-    def test_database_dir_blank(self):
+    def test_pybidsdb_dir_blank(self):
         # Test non-saving (check db does not exist)
         _gen_bids_layout(
             bids_dir=self.bids_dir,
             derivatives=False,
-            pybidsdb_dir=self.database_dir,
-            pybidsdb_reset=self.reset_database,
+            pybidsdb_dir=self.pybidsdb_dir,
+            pybidsdb_reset=self.pybidsdb_reset,
         )
-        assert not os.path.exists(self.database_dir)
+        assert not os.path.exists(self.pybidsdb_dir)
 
-    def test_database_dir_relative(self):
+    def test_pybidsdb_dir_relative(self):
         # Update config
-        self.database_dir = "./.db"
+        self.pybidsdb_dir = "./.db"
 
         # Check to make sure db exists (relative path)
         _gen_bids_layout(
             bids_dir=self.bids_dir,
             derivatives=False,
-            pybidsdb_dir=self.database_dir,
-            pybidsdb_reset=self.reset_database,
+            pybidsdb_dir=self.pybidsdb_dir,
+            pybidsdb_reset=self.pybidsdb_reset,
         )
         assert not os.path.exists(f"{self.tmpdir}/data/.db/")
 
-    def test_database_dir_absolute(self):
+    def test_pybidsdb_dir_absolute(self):
         # Update config
-        self.database_dir = f"{self.tmpdir}/data/.db/"
-        self.reset_database = False
+        self.pybidsdb_dir = f"{self.tmpdir}/data/.db/"
+        self.pybidsdb_reset = False
 
         # Check to make sure db exists (absolute path)
         _gen_bids_layout(
             bids_dir=self.bids_dir,
             derivatives=False,
-            pybidsdb_dir=self.database_dir,
-            pybidsdb_reset=self.reset_database,
+            pybidsdb_dir=self.pybidsdb_dir,
+            pybidsdb_reset=self.pybidsdb_reset,
         )
         assert os.path.exists(f"{self.tmpdir}/data/.db/")
 
@@ -1075,18 +1075,18 @@ class TestDB:
         layout = _gen_bids_layout(
             bids_dir=self.bids_dir,
             derivatives=False,
-            pybidsdb_dir=self.database_dir,
-            pybidsdb_reset=self.reset_database,
+            pybidsdb_dir=self.pybidsdb_dir,
+            pybidsdb_reset=self.pybidsdb_reset,
         )
         assert not layout.get(subject="003")
 
         # Test updating of layout
-        self.reset_database = True
+        self.pybidsdb_reset = True
         # Check to see if new subject in updated layout
         layout = _gen_bids_layout(
             bids_dir=self.bids_dir,
             derivatives=False,
-            pybidsdb_dir=self.database_dir,
-            pybidsdb_reset=self.reset_database,
+            pybidsdb_dir=self.pybidsdb_dir,
+            pybidsdb_reset=self.pybidsdb_reset,
         )
         assert layout.get(subject="003")

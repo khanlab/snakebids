@@ -36,6 +36,8 @@ def generate_inputs(  # noqa: PLR0913
     participant_label: Iterable[str] | str | None = ...,
     exclude_participant_label: Iterable[str] | str | None = ...,
     use_bids_inputs: Literal[True] | None = ...,
+    pybids_database_dir: Path | str | None = ...,
+    pybids_reset_database: bool = ...,
 ) -> BidsDataset:
     ...
 
@@ -52,6 +54,8 @@ def generate_inputs(  # noqa: PLR0913
     participant_label: Iterable[str] | str | None = ...,
     exclude_participant_label: Iterable[str] | str | None = ...,
     use_bids_inputs: Literal[False] = ...,
+    pybids_database_dir: Path | str | None = ...,
+    pybids_reset_database: bool = ...,
 ) -> BidsDatasetDict:
     ...
 
@@ -67,6 +71,8 @@ def generate_inputs(  # noqa: PLR0913
     participant_label: Iterable[str] | str | None = None,
     exclude_participant_label: Iterable[str] | str | None = None,
     use_bids_inputs: bool | None = None,
+    pybids_database_dir: Path | str | None = None,
+    pybids_reset_database: bool = False,
 ) -> BidsDataset | BidsDatasetDict:
     """Dynamically generate snakemake inputs using pybids_inputs
 
@@ -234,14 +240,27 @@ ses-{session}_run-{run}_T1w.nii.gz",
         participant_label, exclude_participant_label
     )
 
+    if pybids_database_dir:
+        _logger.warning(
+            "The parameter `pybids_database_dir` in generate_inputs() is deprecated "
+            "and will be removed in the next release. To set the pybids database, use "
+            "the `pybidsdb_dir` parameter instead."
+        )
+    if pybids_reset_database:
+        _logger.warning(
+            "The parameter `pybids_reset_database` in generate_inputs() is deprecated "
+            "and will be removed in the next release. To reset the pybids database, use "
+            "the `pybidsdb_reset` parameter instead."
+        )
+
     # Generates a BIDSLayout
     layout = (
         _gen_bids_layout(
             bids_dir=bids_dir,
             derivatives=derivatives,
             pybids_config=pybids_config,
-            pybidsdb_dir=pybidsdb_dir,
-            pybidsdb_reset=pybidsdb_reset,
+            pybidsdb_dir=pybidsdb_dir or pybids_database_dir,
+            pybidsdb_reset=pybidsdb_reset or pybids_reset_database,
         )
         if not _all_custom_paths(pybids_inputs)
         else None
