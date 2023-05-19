@@ -12,9 +12,12 @@ Note that if any rules in the Snakebids workflow use Singularity containers, spe
 1. Inputs are copied into a working subdirectory of the output directory before any processing that requires a Singularity container is performed, or:
 2. The `SINGULARITY_BINDPATH` environment variable binds the location of the input dataset.
 
-Indexing of large datasets can be a time-consuming process. Snakebids, through `PyBIDS` has the ability to create or leverage an existing database, requiring indexing of datasets to be only performed when user chooses to do so (usually if the dataset has changed)! Note, this feature is **opt-in**, meaning it is not used unless the associated config variables are used. To opt-in:
+Indexing of large datasets can be a time-consuming process. Leveraging the functionality of `PyBIDS`, Snakebids offers a convenient solution by allowing you to create or utilize an existing database. With this approach, the indexing of datasets is only performed when explictly requested, typically when there are changes to the dataset. To create or use an existing database, you can invoke the following CLI arguments: 
 
-1. The variables can be updated directly in this file or through the CLI by using `-pybidsdb-dir {dir}` to specify the database path and `--pybidsdb-reset` to indicate that the database should be updated.
+1. `--pybidsdb-dir {dir}`: specify the path to the database directory
+1. `--pybidsdb-reset`: indicate that an existing database should be updated
+
+It's important to note that this indexing feature is **disabled by default**, meaning Snakebids does not create or expect to find a database unless it has been explictly set using the associated CLI arguments.
 
 Workflow mode
 =============

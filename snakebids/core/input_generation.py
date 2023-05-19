@@ -249,8 +249,8 @@ ses-{session}_run-{run}_T1w.nii.gz",
     if pybids_reset_database:
         _logger.warning(
             "The parameter `pybids_reset_database` in generate_inputs() is deprecated "
-            "and will be removed in the next release. To reset the pybids database, use "
-            "the `pybidsdb_reset` parameter instead."
+            "and will be removed in the next release. To reset the pybids database, "
+            "use the `pybidsdb_reset` parameter instead."
         )
 
     # Generates a BIDSLayout
