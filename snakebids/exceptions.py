@@ -29,5 +29,6 @@ class DuplicateComponentError(Exception):
     def __init__(self, duplicated_names: Iterable[str]):
         super().__init__(
             "A BidsDataset cannot be instantiated from BidsComponents with the same "
-            f"names. The following duplicate names were found: {duplicated_names}."
+            "names. The following duplicate names were found: "
+            f"{','.join(duplicated_names)}."
         )
