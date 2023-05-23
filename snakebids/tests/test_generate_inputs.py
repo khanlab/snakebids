@@ -43,7 +43,7 @@ from snakebids.core.input_generation import (
     _parse_custom_path,
     generate_inputs,
 )
-from snakebids.exceptions import ConfigError, PybidsError
+from snakebids.exceptions import ConfigError, PybidsError, RunError
 from snakebids.tests import strategies as sb_st
 from snakebids.tests.helpers import (
     BidsListCompare,
@@ -878,6 +878,18 @@ def test_get_lists_from_bids_raises_pybids_error():
     layout = BIDSLayout("snakebids/tests/data/bids_t1w", validate=False)
     with pytest.raises(PybidsError):
         next(_get_lists_from_bids(layout, {"t1": {"filters": {"scope": "raw"}}}))
+
+
+def test_get_lists_from_bids_raises_run_error():
+    bids_layout = None
+    pybids_inputs: InputsConfig = {
+        "t1": {
+            "filters": {"suffix": "T1w"},
+            "wildcards": ["acquisition", "subject", "session", "run"],
+        }
+    }
+    with pytest.raises(RunError):
+        next(_get_lists_from_bids(bids_layout, pybids_inputs))
 
 
 def test_get_lists_from_bids():
