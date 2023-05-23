@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+from collections.abc import Iterable
+
+
 class ConfigError(Exception):
     """Exception raised for errors with the Snakebids config."""
 
@@ -16,3 +21,13 @@ class RunError(Exception):
 
 class PybidsError(Exception):
     """Exception raised when pybids encounters a problem."""
+
+
+class DuplicateComponentError(Exception):
+    """Raised when a dataset is constructed from components with the same name."""
+
+    def __init__(self, duplicated_names: Iterable[str]):
+        super().__init__(
+            "A BidsDataset cannot be instantiated from BidsComponents with the same "
+            f"names. The following duplicate names were found: {duplicated_names}."
+        )

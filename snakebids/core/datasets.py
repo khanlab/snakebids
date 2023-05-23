@@ -18,6 +18,7 @@ from typing_extensions import Self, TypedDict
 
 import snakebids.utils.sb_itertools as sb_it
 from snakebids.core.filtering import filter_list
+from snakebids.exceptions import DuplicateComponentError
 from snakebids.io.console import get_console_size
 from snakebids.io.printing import format_zip_lists, quote_wrap
 from snakebids.types import UserDictPy37, ZipList
@@ -482,7 +483,7 @@ class BidsDataset(UserDictPy37[str, BidsComponent]):
         components = list(iterable)
         indexed = {bidsinput.name: bidsinput for bidsinput in components}
         if not len(components) == len(indexed):
-            raise ValueError(
+            raise DuplicateComponentError(
                 list(itx.duplicates_everseen([c.name for c in components]))
             )
         return cls(indexed, layout)
