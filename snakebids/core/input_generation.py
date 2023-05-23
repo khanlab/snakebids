@@ -16,10 +16,10 @@ from typing_extensions import Literal
 
 from snakebids.core.datasets import BidsComponent, BidsDataset, BidsDatasetDict
 from snakebids.core.filtering import filter_list
-from snakebids.exceptions import ConfigError, PybidsError
+from snakebids.exceptions import ConfigError, DuplicateComponentError, PybidsError
 from snakebids.types import InputsConfig, ZipList
 from snakebids.utils.snakemake_io import glob_wildcards
-from snakebids.utils.utils import BidsEntity, BidsParseError, MultiSelectDict, surround
+from snakebids.utils.utils import BidsEntity, BidsParseError, MultiSelectDict
 
 _logger = logging.getLogger(__name__)
 
@@ -267,10 +267,9 @@ ses-{session}_run-{run}_T1w.nii.gz",
 
     try:
         dataset = BidsDataset.from_iterable(bids_inputs, layout)
-    except ValueError as err:
+    except DuplicateComponentError as err:
         raise ConfigError(
-            "Multiple components found with the same name: "
-            + ", ".join(surround(err.args[0], "'"))
+            f"Multiple components found with the same name: {err.duplicated_names_str}"
         ) from err
 
     if use_bids_inputs:

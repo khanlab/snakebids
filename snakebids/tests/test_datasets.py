@@ -16,6 +16,7 @@ from snakemake.exceptions import WildcardError
 
 from snakebids.core.construct_bids import bids
 from snakebids.core.datasets import BidsComponent, BidsDataset
+from snakebids.exceptions import DuplicateComponentError
 from snakebids.tests import strategies as sb_st
 from snakebids.tests.helpers import (
     entity_to_wildcard,
@@ -33,7 +34,7 @@ from snakebids.utils.utils import BidsEntity, MultiSelectDict, zip_list_eq
 def test_multiple_components_cannot_have_same_name():
     comp1 = BidsComponent("foo", path=".", zip_lists=MultiSelectDict({}))
     comp2 = BidsComponent("foo", path=".", zip_lists=MultiSelectDict({}))
-    with pytest.raises(ValueError):
+    with pytest.raises(DuplicateComponentError):
         BidsDataset.from_iterable([comp1, comp2])
 
 
