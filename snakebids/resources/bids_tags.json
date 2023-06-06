@@ -186,5 +186,10 @@
         "tag": "desc",
         "before": "desc-",
         "match": "[a-zA-Z0-9]+"
+    },
+    "tracksys": {
+        "tag": "tracksys",
+        "before": "[_/\\\\]+tracksys-",
+        "match": "[a-zA-Z0-9]+"
     }
 }
