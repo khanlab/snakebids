@@ -23,6 +23,7 @@ from snakebids.exceptions import ConfigError, RunError
 from snakebids.types import OptionalFilter
 from snakebids.utils.output import write_config_file  # type: ignore
 from snakebids.utils.output import prepare_bidsapp_output, write_output_mode
+from snakebids.utils.utils import to_resolved_path
 
 logger = logging.Logger(__name__)
 
@@ -115,7 +116,7 @@ class SnakeBidsApp:
 
     """
 
-    snakemake_dir: Path = attr.ib(converter=lambda path: Path(path).resolve())
+    snakemake_dir: Path = attr.ib(converter=to_resolved_path)
     plugins: list[Callable[[SnakeBidsApp], None | SnakeBidsApp]] = attr.Factory(list)
     skip_parse_args: bool = False
     parser: argparse.ArgumentParser = create_parser()

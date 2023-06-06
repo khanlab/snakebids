@@ -14,7 +14,7 @@ def test_template_dry_runs_successfully(tmp_path: Path):
     cookiecutter(
         join(list(snakebids.__path__)[0], "project_template"),
         no_input=True,
-        output_dir=tmp_path,
+        output_dir=str(tmp_path),
         extra_context={"_output_dir": app_name},
     )
     app = SnakeBidsApp(

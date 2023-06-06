@@ -91,7 +91,7 @@ class TestUpdateConfig:
         config_copy["pybids_inputs"] = inputs_config
         args_dict: dict[str, Any] = {
             f"filter_{input_}": {
-                entity: OptionalFilter for entity in value.get("filters", [])
+                entity: OptionalFilter for entity in value.get("filters", {})
             }
             for input_, value in inputs_config.items()
         }

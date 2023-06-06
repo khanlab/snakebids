@@ -8,7 +8,7 @@ from argparse import ArgumentParser, Namespace
 from collections.abc import Sequence
 from os import PathLike
 from pathlib import Path
-from typing import Mapping
+from typing import ClassVar, Mapping
 
 import hypothesis.strategies as st
 import pytest
@@ -71,14 +71,14 @@ class TestResolvePath:
 
 
 class TestAddDynamicArgs:
-    mock_args_special = ["--derivatives", "path/to/nowhere"]
-    mock_basic_args = [
+    mock_args_special: ClassVar[list[str]] = ["--derivatives", "path/to/nowhere"]
+    mock_basic_args: ClassVar[list[str]] = [
         "script_name",
         "path/to/input",
         "path/to/output",
         "participant",
     ]
-    mock_all_args = mock_basic_args + mock_args_special
+    mock_all_args: ClassVar[list[str]] = mock_basic_args + mock_args_special
 
     @given(sb_st.inputs_configs())
     @allow_function_scoped
