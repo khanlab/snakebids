@@ -1,0 +1,1235 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.0, pytest-7.3.1, pluggy-1.0.0
+benchmark: 4.0.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: /home/pvandyken/projects/snakebids
+plugins: mock-3.10.0, benchmark-4.0.0, pyfakefs-5.2.2, hypothesis-6.75.1
+collected 1 item
+
+snakebids/tests/test_generate_inputs.py F                                [100%]
+
+=================================== FAILURES ===================================
+_____________________________ test_generate_inputs _____________________________
+
+bids_dir = '/tmp/tmpyonky3dn/tmpzl69deab'
+pybids_inputs = {'0': {'filters': {'extension': False, 'mt': ['on']}, 'wildcards': ['mt']}, '1': {'filters': {'extension': ['.0𐩀'], 'mt': ['on']}, 'wildcards': ['mt', 'extension']}}
+pybids_database_dir = None, pybids_reset_database = False, derivatives = False
+pybids_config = None, limit_to = None, participant_label = None
+exclude_participant_label = None, use_bids_inputs = True
+
+    def generate_inputs(  # noqa: PLR0913
+        bids_dir: Path | str,
+        pybids_inputs: InputsConfig,
+        pybids_database_dir: Path | str | None = None,
+        pybids_reset_database: bool = False,
+        derivatives: bool | Path | str = False,
+        pybids_config: str | None = None,
+        limit_to: Iterable[str] | None = None,
+        participant_label: Iterable[str] | str | None = None,
+        exclude_participant_label: Iterable[str] | str | None = None,
+        use_bids_inputs: bool | None = None,
+    ) -> BidsDataset | BidsDatasetDict:
+        """Dynamically generate snakemake inputs using pybids_inputs
+
+        Pybids is used to parse the bids_dir. Custom paths can also be parsed by including
+        the custom_paths entry under the pybids_inputs descriptor.
+
+        Parameters
+        ----------
+        bids_dir
+            Path to bids directory
+
+        pybids_inputs
+            Configuration for bids inputs, with keys as the names (``str``)
+
+            Nested `dicts` with the following required keys (for complete info, see
+            :class:`~snakebids.types.InputConfig`):
+
+            * ``"filters"``: Dictionary of entity: "values" (dict of str -> str or list of
+              str). The entity keywords should the bids tags on which to filter. The values
+              should be an acceptable str value for that entity, or a list of acceptable str
+              values.
+
+            * ``"wildcards"``: List of (str) bids tags to include as wildcards in
+              snakemake. At minimum this should usually include
+              ``['subject','session']``, plus any other wildcards that you may
+              want to make use of in your snakemake workflow, or want to retain
+              in the output paths. Any wildcards in this list that are not in the
+              filename will just be ignored.
+
+            * ``"custom_path"``: Custom path to be parsed with wildcards wrapped in braces,
+              as in ``/path/to/sub-{subject}/{wildcard_1}-{wildcard_2}``. This path will be
+              parsed without pybids, allowing the use of non-bids-compliant paths.
+
+        pybids_database_dir
+            Path to database directory. If None is provided, database
+            is not used
+
+        pybids_reset_database
+            A boolean that determines whether to reset / overwrite
+            existing database.
+
+        derivatives
+            Indicates whether pybids should look for derivative datasets under bids_dir.
+            These datasets must be properly formatted according to bids specs to be
+            recognized. Defaults to False.
+
+        limit_to
+            If provided, indicates which input descriptors from pybids_inputs should be
+            parsed. For example, if pybids_inputs describes ``"bold"`` and ``"dwi"`` inputs,
+            and ``limit_to = ["bold"]``, only the "bold" inputs will be parsed. "dwi" will
+            be ignored
+
+        participant_label
+            Indicate one or more participants to be included from input parsing. This may
+            cause errors if subject filters are also specified in pybids_inputs. It may not
+            be specified if exclude_participant_label is specified
+
+        exclude_participant_label
+            Indicate one or more participants to be excluded from input parsing. This may
+            cause errors if subject filters are also specified in pybids_inputs. It may not
+            be specified if participant_label is specified
+
+        use_bids_inputs
+            If False, returns the classic :class:`BidsDatasetDict` instead of
+            :class`BidsDataset`. Setting to True is deprecated as of v0.8, as this is now
+            the default behaviour
+
+        Returns
+        -------
+        BidsDataset | BidsDatasetDict
+            Object containing organized information about the bids inputs for consumption in
+            snakemake. See the documentation of :class:`BidsDataset` for details and
+            examples.
+
+        Example
+        -------
+        As an example, consider the following BIDS dataset::
+
+            example
+            ├── README.md
+            ├── dataset_description.json
+            ├── participant.tsv
+            ├── sub-001
+            │   ├── ses-01
+            │   │   ├── anat
+            │   │   │   ├── sub-001_ses-01_run-01_T1w.json
+            │   │   │   ├── sub-001_ses-01_run-01_T1w.nii.gz
+            │   │   │   ├── sub-001_ses-01_run-02_T1w.json
+            │   │   │   └── sub-001_ses-01_run-02_T1w.nii.gz
+            │   │   └── func
+            │   │       ├── sub-001_ses-01_task-nback_bold.json
+            │   │       ├── sub-001_ses-01_task-nback_bold.nii.gz
+            │   │       ├── sub-001_ses-01_task-rest_bold.json
+            │   │       └── sub-001_ses-01_task-rest_bold.nii.gz
+            │   └── ses-02
+            │       ├── anat
+            │       │   ├── sub-001_ses-02_run-01_T1w.json
+            │       │   └── sub-001_ses-02_run-01_T1w.nii.gz
+            │       └── func
+            │           ├── sub-001_ses-02_task-nback_bold.json
+            │           ├── sub-001_ses-02_task-nback_bold.nii.gz
+            │           ├── sub-001_ses-02_task-rest_bold.json
+            │           └── sub-001_ses-02_task-rest_bold.nii.gz
+            └── sub-002
+                ├── ses-01
+                │   ├── anat
+                │   │   ├── sub-002_ses-01_run-01_T1w.json
+                │   │   ├── sub-002_ses-01_run-01_T1w.nii.gz
+                │   │   ├── sub-002_ses-01_run-02_T1w.json
+                │   │   └── sub-002_ses-01_run-02_T1w.nii.gz
+                │   └── func
+                │       ├── sub-002_ses-01_task-nback_bold.json
+                │       ├── sub-002_ses-01_task-nback_bold.nii.gz
+                │       ├── sub-002_ses-01_task-rest_bold.json
+                │       └── sub-002_ses-01_task-rest_bold.nii.gz
+                └── ses-02
+                    └── anat
+                        ├── sub-002_ses-02_run-01_T1w.json
+                        ├── sub-002_ses-02_run-01_T1w.nii.gz
+                        ├── sub-002_ses-02_run-02_T1w.json
+                        └── sub-002_ses-02_run-02_T1w.nii.gz
+
+        With the following ``pybids_inputs`` defined in the config file::
+
+            pybids_inputs:
+              bold:
+                filters:
+                  suffix: 'bold'
+                  extension: '.nii.gz'
+                  datatype: 'func'
+                wildcards:
+                  - subject
+                  - session
+                  - acquisition
+                  - task
+                  - run
+
+        Then ``generate_inputs(bids_dir, pybids_input)`` would return the following values::
+
+            BidsDataset({
+                "bold": BidsComponent(
+                    name="bold",
+                    path="bids/sub-{subject}/ses-{session}/func/sub-{subject}_ses-{session}\
+    _task-{task}_bold.nii.gz",
+                    zip_lists={
+                        "subject": ["001",   "001",  "001",   "001",  "002",   "002" ],
+                        "session": ["01",    "01",   "02",    "02",   "01",    "01"  ],
+                        "task":    ["nback", "rest", "nback", "rest", "nback", "rest"],
+                    },
+                ),
+                "t1w": BidsComponent(
+                    name="t1w",
+                    path="example/sub-{subject}/ses-{session}/anat/sub-{subject}_\
+    ses-{session}_run-{run}_T1w.nii.gz",
+                    zip_lists={
+                        "subject": ["001", "001", "001", "002", "002", "002", "002"],
+                        "session": ["01",  "01",  "02",  "01",  "01",  "02",  "02" ],
+                        "run":     ["01",  "02",  "01",  "01",  "02",  "01",  "02" ],
+                    },
+                ),
+            })
+        """
+
+        subject_filter, regex_search = _generate_filters(
+            participant_label, exclude_participant_label
+        )
+
+        # Generates a BIDSLayout
+        layout = (
+            _gen_bids_layout(
+                bids_dir=bids_dir,
+                derivatives=derivatives,
+                pybids_config=pybids_config,
+                pybids_database_dir=pybids_database_dir,
+                pybids_reset_database=pybids_reset_database,
+            )
+            if not _all_custom_paths(pybids_inputs)
+            else None
+        )
+
+        filters = {"subject": subject_filter} if subject_filter else {}
+        bids_inputs = _get_lists_from_bids(
+            bids_layout=layout,
+            pybids_inputs=pybids_inputs,
+            limit_to=limit_to,
+            regex_search=regex_search,
+            **(filters),
+        )
+
+        if use_bids_inputs is True:
+            _logger.warning(
+                "The parameter `use_bids_inputs` in generate_inputs() is now set, by "
+                "default, to True. Manually setting it to True is deprecated as of version "
+                "0.8. "
+            )
+        elif use_bids_inputs is None:
+            use_bids_inputs = True
+
+        try:
+>           dataset = BidsDataset.from_iterable(bids_inputs, layout)
+
+/home/pvandyken/projects/snakebids/snakebids/core/input_generation.py:269:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+cls = <class 'snakebids.core.datasets.BidsDataset'>
+iterable = <generator object _get_lists_from_bids at 0x7f8077d7c040>
+layout = BIDS Layout: .../tmp/tmpyonky3dn/tmpzl69deab | Subjects: 0 | Sessions: 0 | Runs: 0
+
+    @classmethod
+    def from_iterable(
+        cls, iterable: Iterable[BidsComponent], layout: BIDSLayout | None = None
+    ) -> BidsDataset:
+        """Construct Dataset from iterable of BidsComponents
+
+        Parameters
+        ----------
+        iterable : Iterable[BidsComponent]
+
+        Returns
+        -------
+        BidsDataset
+        """
+>       components = list(iterable)
+
+/home/pvandyken/projects/snakebids/snakebids/core/datasets.py:482:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+bids_layout = BIDS Layout: .../tmp/tmpyonky3dn/tmpzl69deab | Subjects: 0 | Sessions: 0 | Runs: 0
+pybids_inputs = {'0': {'filters': {'extension': False, 'mt': ['on']}, 'wildcards': ['mt']}, '1': {'filters': {'extension': ['.0𐩀'], 'mt': ['on']}, 'wildcards': ['mt', 'extension']}}
+limit_to = None, regex_search = False, filters = {}, input_name = '1'
+component = {'filters': {'extension': ['.0𐩀'], 'mt': ['on']}, 'wildcards': ['mt', 'extension']}
+zip_lists = defaultdict(<class 'list'>, {}), paths = set()
+
+    def _get_lists_from_bids(
+        bids_layout: Optional[BIDSLayout],
+        pybids_inputs: InputsConfig,
+        *,
+        limit_to: Iterable[str] | None = None,
+        regex_search: bool = False,
+        **filters: str | Sequence[str],
+    ) -> Generator[BidsComponent, None, None]:
+        """Grabs files using pybids and creates snakemake-friendly lists
+
+        Parameters
+        ----------
+        bids_layout : BIDSLayout
+            Layout from pybids for accessing the BIDS dataset to grab paths
+
+        pybids_inputs : dict
+            Dictionary indexed by modality name, specifying the filters and
+            wildcards for each pybids input.
+
+        limit_to : list, optional
+            List of inputs to skip, this used by snakebids to exclude modalities
+            based on cmd-line args
+
+        filters : dict of str -> str or list of str, optional
+            Pybids filters to apply globally to all inputs.
+
+        Yields
+        ------
+        BidsComponent:
+            One BidsComponent is yielded for each modality described by ``pybids_inputs``.
+        """
+        for input_name in limit_to or list(pybids_inputs):
+            _logger.debug("Grabbing inputs for %s...", input_name)
+            component = pybids_inputs[input_name]
+
+            if "custom_path" in component:
+                # a custom path was specified for this input, skip pybids:
+                # get input_wildcards by parsing path for {} entries (using a set
+                # to get unique only)
+                # get zip_lists by using glob_wildcards (but need to modify
+                # to deal with multiple wildcards
+
+                path = component["custom_path"]
+                zip_lists = _parse_custom_path(
+                    path,
+                    regex_search=regex_search,
+                    **pybids_inputs[input_name].get("filters", {}),
+                    **filters,
+                )
+                yield BidsComponent(input_name, path, MultiSelectDict(zip_lists))
+                continue
+
+            if bids_layout is None:
+                _logger.warning(
+                    "No valid bids dir given, but %s does not have a custom_path specified "
+                    "and will be skipped.",
+                    input_name,
+                )
+                continue
+
+            zip_lists: dict[str, list[str]] = defaultdict(list)
+            paths: set[str] = set()
+            pybids_filters = {
+                key: Query.ANY if val is True else Query.NONE if val is False else val
+                for key, val in component.get("filters", {}).items()
+            }
+            try:
+>               matching_files: Iterable[BIDSFile] = bids_layout.get(
+                    regex_search=regex_search, **pybids_filters, **filters
+                )
+
+/home/pvandyken/projects/snakebids/snakebids/core/input_generation.py:570:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = BIDS Layout: .../tmp/tmpyonky3dn/tmpzl69deab | Subjects: 0 | Sessions: 0 | Runs: 0
+return_type = 'object', target = None, scope = 'all', regex_search = False
+absolute_paths = True, invalid_filters = 'error'
+filters = {'extension': ['.0𐩀'], 'mt': ['on']}
+layouts = [BIDS Layout: .../tmp/tmpyonky3dn/tmpzl69deab | Subjects: 0 | Sessions: 0 | Runs: 0]
+entities = {'acquisition': <Entity acquisition (pattern=[_/\\]+acq-([a-zA-Z0-9]+), dtype=<class 'str'>)>, 'ceagent': <Entity ceag...atype (pattern=[/\\]+(anat|beh|dwi|eeg|fmap|func|ieeg|meg|motion|micr|nirs|perf|pet)[/\\]+, dtype=<class 'str'>)>, ...}
+bad_filters = set()
+
+    def get(self, return_type='object', target=None, scope='all',
+            regex_search=False, absolute_paths=None, invalid_filters='error',
+            **filters):
+        """Retrieve files and/or metadata from the current Layout.
+
+        Parameters
+        ----------
+        return_type : str, optional
+            Type of result to return. Valid values:
+            'object' (default): return a list of matching BIDSFile objects.
+            'file' or 'filename': return a list of matching filenames.
+            'dir': return a list of directories.
+            'id': return a list of unique IDs. Must be used together
+                  with a valid target.
+        target : str, optional
+            Optional name of the target entity to get results for
+            (only used if return_type is 'dir' or 'id').
+        scope : str or list, optional
+            Scope of the search space. If passed, only
+            nodes/directories that match the specified scope will be
+            searched. Possible values include:
+            'all' (default): search all available directories.
+            'derivatives': search all derivatives directories.
+            'raw': search only BIDS-Raw directories.
+            'self': search only the directly called BIDSLayout.
+            <PipelineName>: the name of a BIDS-Derivatives pipeline.
+        regex_search : bool or None, optional
+            Whether to require exact matching
+            (False) or regex search (True) when comparing the query string
+            to each entity.
+        absolute_paths : bool, optional
+            Optionally override the instance-wide option
+            to report either absolute or relative (to the top of the
+            dataset) paths. If None, will fall back on the value specified
+            at BIDSLayout initialization.
+        invalid_filters (str): Controls behavior when named filters are
+            encountered that don't exist in the database (e.g., in the case of
+            a typo like subbject='0.1'). Valid values:
+                'error' (default): Raise an explicit error.
+                'drop': Silently drop invalid filters (equivalent to not having
+                    passed them as arguments in the first place).
+                'allow': Include the invalid filters in the query, resulting
+                    in no results being returned.
+        filters : dict
+            Any optional key/values to filter the entities on.
+            Keys are entity names, values are regexes to filter on. For
+            example, passing filters={'subject': 'sub-[12]'} would return
+            only files that match the first two subjects. In addition to
+            ordinary data types, the following enums are defined (in the
+            Query class):
+                * Query.NONE: The named entity must not be defined.
+                * Query.ANY: the named entity must be defined, but can have any
+                    value.
+
+        Returns
+        -------
+        list of :obj:`bids.layout.BIDSFile` or str
+            A list of BIDSFiles (default) or strings (see return_type).
+        """
+
+        if absolute_paths is False:
+            absolute_path_deprecation_warning()
+
+        layouts = self._get_layouts_in_scope(scope)
+
+        entities = self.get_entities()
+
+        # error check on users accidentally passing in filters
+        if isinstance(filters.get('filters'), dict):
+            raise RuntimeError('You passed in filters as a dictionary named '
+                               'filters; please pass the keys in as named '
+                               'keywords to the `get()` call. For example: '
+                               '`layout.get(**filters)`.')
+
+        # Ensure leading periods if extensions were passed
+        if 'extension' in filters and 'bids' in self.config:
+            filters['extension'] = ['.' + x.lstrip('.') if isinstance(x, str) else x
+                                    for x in listify(filters['extension'])]
+
+        if invalid_filters != 'allow':
+            bad_filters = set(filters.keys()) - set(entities.keys())
+            if bad_filters:
+                if invalid_filters == 'drop':
+                    for bad_filt in bad_filters:
+                        filters.pop(bad_filt)
+                elif invalid_filters == 'error':
+                    first_bad = list(bad_filters)[0]
+                    msg = "'{}' is not a recognized entity. ".format(first_bad)
+                    ents = list(entities.keys())
+                    suggestions = difflib.get_close_matches(first_bad, ents)
+                    if suggestions:
+                        msg += "Did you mean {}? ".format(suggestions)
+                    raise ValueError(msg + "If you're sure you want to impose "
+                                     "this constraint, set "
+                                     "invalid_filters='allow'.")
+
+        # Provide some suggestions if target is specified and invalid.
+        if target is not None and target not in entities:
+            potential = list(entities.keys())
+            suggestions = difflib.get_close_matches(target, potential)
+            if suggestions:
+                message = "Did you mean one of: {}?".format(suggestions)
+            else:
+                message = "Valid targets are: {}".format(potential)
+            raise TargetError(("Unknown target '{}'. " + message)
+                             .format(target))
+
+        results = []
+        for l in layouts:
+            query = l._build_file_query(filters=filters,
+                                        regex_search=regex_search)
+            # NOTE: The following line, when uncommented, eager loads
+            # associations. This was introduced in order to prevent sessions
+            # from randomly detaching. It should be fixed by setting
+            # expire_on_commit at session creation, but let's leave this here
+            # for another release or two to make sure we don't have any further
+            # problems.
+            # query = query.options(joinedload(BIDSFile.tags)
+            #                       .joinedload(Tag.entity))
+            results.extend(query.all())
+
+        # Convert to relative paths if needed
+        if absolute_paths is None:  # can be overloaded as option to .get
+            absolute_paths = self.absolute_paths
+
+        if not absolute_paths:
+            for i, fi in enumerate(results):
+                fi = copy.copy(fi)
+                fi.path = str(fi._path.relative_to(self._root))
+                results[i] = fi
+
+        if return_type.startswith('file'):
+            results = natural_sort([f.path for f in results])
+
+        elif return_type in ['id', 'dir']:
+            if target is None:
+                raise TargetError('If return_type is "id" or "dir", a valid '
+                                 'target entity must also be specified.')
+
+            if return_type == 'id':
+                results = list(dict.fromkeys(
+                    res.entities[target] for res in results
+                    if target in res.entities and isinstance(res.entities[target], Hashable)
+                ))
+
+            elif return_type == 'dir':
+                template = entities[target].directory
+                if template is None:
+                    raise ValueError('Return type set to directory, but no '
+                                     'directory template is defined for the '
+                                     'target entity (\"%s\").' % target)
+                # Construct regex search pattern from target directory template
+                # On Windows, the regex won't compile if, e.g., there is a folder starting with "U" on the path.
+                # Converting to a POSIX path with forward slashes solves this.
+                template = self._root.as_posix() + template
+                to_rep = re.findall(r'{(.*?)\}', template)
+                for ent in to_rep:
+                    patt = entities[ent].pattern
+                    template = template.replace('{%s}' % ent, patt)
+                # Avoid matching subfolders. We are working with POSIX paths here, so we explicitly use "/"
+                # as path separator.
+                template += r'[^/]*$'
+                matches = [
+                    f.dirname if absolute_paths else str(f._dirname.relative_to(self._root))  # noqa: E501
+                    for f in results
+                    if re.search(template, f._dirname.as_posix())
+                ]
+
+                results = natural_sort(list(set(matches)))
+
+            else:
+                raise ValueError("Invalid return_type specified (must be one "
+                                 "of 'tuple', 'filename', 'id', or 'dir'.")
+        else:
+>           results = natural_sort(results, 'path')
+
+/home/pvandyken/.pyenv/versions/3.11.0/envs/snakebids311/lib/python3.11/site-packages/bids/layout/layout.py:761:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+l = [<BIDSFile filename='/tmp/tmpyonky3dn/tmpzl69deab/mt-on.0𐩀'>]
+field = 'path'
+
+    def natural_sort(l, field=None):
+        '''
+        based on snippet found at https://stackoverflow.com/a/4836734/2445984
+        '''
+        convert = lambda text: int(text) if text.isdigit() else text.lower()
+
+        def alphanum_key(key):
+            if field is not None:
+                key = getattr(key, field)
+            if not isinstance(key, str):
+                key = str(key)
+            return [convert(c) for c in re.split('([0-9]+)', key)]
+>       return sorted(l, key=alphanum_key)
+
+/home/pvandyken/.pyenv/versions/3.11.0/envs/snakebids311/lib/python3.11/site-packages/bids/utils.py:43:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+key = '/tmp/tmpyonky3dn/tmpzl69deab/mt-on.0𐩀'
+
+    def alphanum_key(key):
+        if field is not None:
+            key = getattr(key, field)
+        if not isinstance(key, str):
+            key = str(key)
+>       return [convert(c) for c in re.split('([0-9]+)', key)]
+
+/home/pvandyken/.pyenv/versions/3.11.0/envs/snakebids311/lib/python3.11/site-packages/bids/utils.py:42:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+.0 = <list_iterator object at 0x7f8074dea590>
+
+>   return [convert(c) for c in re.split('([0-9]+)', key)]
+
+/home/pvandyken/.pyenv/versions/3.11.0/envs/snakebids311/lib/python3.11/site-packages/bids/utils.py:42:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+text = '𐩀'
+
+>   convert = lambda text: int(text) if text.isdigit() else text.lower()
+E   ValueError: invalid literal for int() with base 10: '𐩀'
+
+/home/pvandyken/.pyenv/versions/3.11.0/envs/snakebids311/lib/python3.11/site-packages/bids/utils.py:35: ValueError
+
+The above exception was the direct cause of the following exception:
+
+bids_fs = <pyfakefs.fake_filesystem.FakeFilesystem object at 0x7f807d424510>
+fakefs_tmpdir = PosixPath('/tmp/tmpyonky3dn')
+
+    @example_if(
+>       sys.version_info >= (3, 8),
+        dataset=BidsDataset(
+            {
+                "1": BidsComponent(
+                    name="1",
+                    path="sub-{subject}/sub-{subject}_{suffix}{extension}",
+                    zip_lists=MultiSelectDict(
+                        {
+                            "subject": ["0"],
+                            "suffix": ["0"],
+                            "extension": [".0"],
+                        }
+                    ),
+                ),
+                "0": BidsComponent(
+                    name="0",
+                    path="sub-{subject}/sub-{subject}{extension}",
+                    zip_lists=MultiSelectDict(
+                        {
+                            "subject": ["0"],
+                            "extension": [".0"],
+                        }
+                    ),
+                ),
+            }
+        ),
+    )
+
+/home/pvandyken/projects/snakebids/snakebids/tests/test_generate_inputs.py:988:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/home/pvandyken/projects/snakebids/snakebids/tests/test_generate_inputs.py:1030: in test_generate_inputs
+    reindexed = reindex_dataset(root, rooted)
+/home/pvandyken/projects/snakebids/snakebids/tests/helpers.py:207: in reindex_dataset
+    return generate_inputs(root, config)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+bids_dir = '/tmp/tmpyonky3dn/tmpzl69deab'
+pybids_inputs = {'0': {'filters': {'extension': False, 'mt': ['on']}, 'wildcards': ['mt']}, '1': {'filters': {'extension': ['.0𐩀'], 'mt': ['on']}, 'wildcards': ['mt', 'extension']}}
+pybids_database_dir = None, pybids_reset_database = False, derivatives = False
+pybids_config = None, limit_to = None, participant_label = None
+exclude_participant_label = None, use_bids_inputs = True
+
+    def generate_inputs(  # noqa: PLR0913
+        bids_dir: Path | str,
+        pybids_inputs: InputsConfig,
+        pybids_database_dir: Path | str | None = None,
+        pybids_reset_database: bool = False,
+        derivatives: bool | Path | str = False,
+        pybids_config: str | None = None,
+        limit_to: Iterable[str] | None = None,
+        participant_label: Iterable[str] | str | None = None,
+        exclude_participant_label: Iterable[str] | str | None = None,
+        use_bids_inputs: bool | None = None,
+    ) -> BidsDataset | BidsDatasetDict:
+        """Dynamically generate snakemake inputs using pybids_inputs
+
+        Pybids is used to parse the bids_dir. Custom paths can also be parsed by including
+        the custom_paths entry under the pybids_inputs descriptor.
+
+        Parameters
+        ----------
+        bids_dir
+            Path to bids directory
+
+        pybids_inputs
+            Configuration for bids inputs, with keys as the names (``str``)
+
+            Nested `dicts` with the following required keys (for complete info, see
+            :class:`~snakebids.types.InputConfig`):
+
+            * ``"filters"``: Dictionary of entity: "values" (dict of str -> str or list of
+              str). The entity keywords should the bids tags on which to filter. The values
+              should be an acceptable str value for that entity, or a list of acceptable str
+              values.
+
+            * ``"wildcards"``: List of (str) bids tags to include as wildcards in
+              snakemake. At minimum this should usually include
+              ``['subject','session']``, plus any other wildcards that you may
+              want to make use of in your snakemake workflow, or want to retain
+              in the output paths. Any wildcards in this list that are not in the
+              filename will just be ignored.
+
+            * ``"custom_path"``: Custom path to be parsed with wildcards wrapped in braces,
+              as in ``/path/to/sub-{subject}/{wildcard_1}-{wildcard_2}``. This path will be
+              parsed without pybids, allowing the use of non-bids-compliant paths.
+
+        pybids_database_dir
+            Path to database directory. If None is provided, database
+            is not used
+
+        pybids_reset_database
+            A boolean that determines whether to reset / overwrite
+            existing database.
+
+        derivatives
+            Indicates whether pybids should look for derivative datasets under bids_dir.
+            These datasets must be properly formatted according to bids specs to be
+            recognized. Defaults to False.
+
+        limit_to
+            If provided, indicates which input descriptors from pybids_inputs should be
+            parsed. For example, if pybids_inputs describes ``"bold"`` and ``"dwi"`` inputs,
+            and ``limit_to = ["bold"]``, only the "bold" inputs will be parsed. "dwi" will
+            be ignored
+
+        participant_label
+            Indicate one or more participants to be included from input parsing. This may
+            cause errors if subject filters are also specified in pybids_inputs. It may not
+            be specified if exclude_participant_label is specified
+
+        exclude_participant_label
+            Indicate one or more participants to be excluded from input parsing. This may
+            cause errors if subject filters are also specified in pybids_inputs. It may not
+            be specified if participant_label is specified
+
+        use_bids_inputs
+            If False, returns the classic :class:`BidsDatasetDict` instead of
+            :class`BidsDataset`. Setting to True is deprecated as of v0.8, as this is now
+            the default behaviour
+
+        Returns
+        -------
+        BidsDataset | BidsDatasetDict
+            Object containing organized information about the bids inputs for consumption in
+            snakemake. See the documentation of :class:`BidsDataset` for details and
+            examples.
+
+        Example
+        -------
+        As an example, consider the following BIDS dataset::
+
+            example
+            ├── README.md
+            ├── dataset_description.json
+            ├── participant.tsv
+            ├── sub-001
+            │   ├── ses-01
+            │   │   ├── anat
+            │   │   │   ├── sub-001_ses-01_run-01_T1w.json
+            │   │   │   ├── sub-001_ses-01_run-01_T1w.nii.gz
+            │   │   │   ├── sub-001_ses-01_run-02_T1w.json
+            │   │   │   └── sub-001_ses-01_run-02_T1w.nii.gz
+            │   │   └── func
+            │   │       ├── sub-001_ses-01_task-nback_bold.json
+            │   │       ├── sub-001_ses-01_task-nback_bold.nii.gz
+            │   │       ├── sub-001_ses-01_task-rest_bold.json
+            │   │       └── sub-001_ses-01_task-rest_bold.nii.gz
+            │   └── ses-02
+            │       ├── anat
+            │       │   ├── sub-001_ses-02_run-01_T1w.json
+            │       │   └── sub-001_ses-02_run-01_T1w.nii.gz
+            │       └── func
+            │           ├── sub-001_ses-02_task-nback_bold.json
+            │           ├── sub-001_ses-02_task-nback_bold.nii.gz
+            │           ├── sub-001_ses-02_task-rest_bold.json
+            │           └── sub-001_ses-02_task-rest_bold.nii.gz
+            └── sub-002
+                ├── ses-01
+                │   ├── anat
+                │   │   ├── sub-002_ses-01_run-01_T1w.json
+                │   │   ├── sub-002_ses-01_run-01_T1w.nii.gz
+                │   │   ├── sub-002_ses-01_run-02_T1w.json
+                │   │   └── sub-002_ses-01_run-02_T1w.nii.gz
+                │   └── func
+                │       ├── sub-002_ses-01_task-nback_bold.json
+                │       ├── sub-002_ses-01_task-nback_bold.nii.gz
+                │       ├── sub-002_ses-01_task-rest_bold.json
+                │       └── sub-002_ses-01_task-rest_bold.nii.gz
+                └── ses-02
+                    └── anat
+                        ├── sub-002_ses-02_run-01_T1w.json
+                        ├── sub-002_ses-02_run-01_T1w.nii.gz
+                        ├── sub-002_ses-02_run-02_T1w.json
+                        └── sub-002_ses-02_run-02_T1w.nii.gz
+
+        With the following ``pybids_inputs`` defined in the config file::
+
+            pybids_inputs:
+              bold:
+                filters:
+                  suffix: 'bold'
+                  extension: '.nii.gz'
+                  datatype: 'func'
+                wildcards:
+                  - subject
+                  - session
+                  - acquisition
+                  - task
+                  - run
+
+        Then ``generate_inputs(bids_dir, pybids_input)`` would return the following values::
+
+            BidsDataset({
+                "bold": BidsComponent(
+                    name="bold",
+                    path="bids/sub-{subject}/ses-{session}/func/sub-{subject}_ses-{session}\
+    _task-{task}_bold.nii.gz",
+                    zip_lists={
+                        "subject": ["001",   "001",  "001",   "001",  "002",   "002" ],
+                        "session": ["01",    "01",   "02",    "02",   "01",    "01"  ],
+                        "task":    ["nback", "rest", "nback", "rest", "nback", "rest"],
+                    },
+                ),
+                "t1w": BidsComponent(
+                    name="t1w",
+                    path="example/sub-{subject}/ses-{session}/anat/sub-{subject}_\
+    ses-{session}_run-{run}_T1w.nii.gz",
+                    zip_lists={
+                        "subject": ["001", "001", "001", "002", "002", "002", "002"],
+                        "session": ["01",  "01",  "02",  "01",  "01",  "02",  "02" ],
+                        "run":     ["01",  "02",  "01",  "01",  "02",  "01",  "02" ],
+                    },
+                ),
+            })
+        """
+
+        subject_filter, regex_search = _generate_filters(
+            participant_label, exclude_participant_label
+        )
+
+        # Generates a BIDSLayout
+        layout = (
+            _gen_bids_layout(
+                bids_dir=bids_dir,
+                derivatives=derivatives,
+                pybids_config=pybids_config,
+                pybids_database_dir=pybids_database_dir,
+                pybids_reset_database=pybids_reset_database,
+            )
+            if not _all_custom_paths(pybids_inputs)
+            else None
+        )
+
+        filters = {"subject": subject_filter} if subject_filter else {}
+        bids_inputs = _get_lists_from_bids(
+            bids_layout=layout,
+            pybids_inputs=pybids_inputs,
+            limit_to=limit_to,
+            regex_search=regex_search,
+            **(filters),
+        )
+
+        if use_bids_inputs is True:
+            _logger.warning(
+                "The parameter `use_bids_inputs` in generate_inputs() is now set, by "
+                "default, to True. Manually setting it to True is deprecated as of version "
+                "0.8. "
+            )
+        elif use_bids_inputs is None:
+            use_bids_inputs = True
+
+        try:
+            dataset = BidsDataset.from_iterable(bids_inputs, layout)
+        except ValueError as err:
+>           raise ConfigError(
+                "Multiple components found with the same name: "
+                + ", ".join(map(repr, err.args[0]))
+            ) from err
+E           snakebids.exceptions.ConfigError: Multiple components found with the same name: 'i', 'n', 'v', 'a', 'l', 'i', 'd', ' ', 'l', 'i', 't', 'e', 'r', 'a', 'l', ' ', 'f', 'o', 'r', ' ', 'i', 'n', 't', '(', ')', ' ', 'w', 'i', 't', 'h', ' ', 'b', 'a', 's', 'e', ' ', '1', '0', ':', ' ', "'", '𐩀', "'"
+E           Falsifying example: test_generate_inputs(
+E               bids_fs=<pyfakefs.fake_filesystem.FakeFilesystem object at 0x7f807d424510>,
+E               fakefs_tmpdir=PosixPath('/tmp/tmpyonky3dn'),
+E               dataset=BidsDataset({
+E               "1": BidsComponent(
+E                   name="1",
+E                   path="mt-{mt}{extension}",
+E                   zip_lists={
+E                       "mt":        ["on" ],
+E                       "extension": [".0𐩀"],
+E                   },
+E               ),
+E               "0": BidsComponent(
+E                   name="0",
+E                   path="mt-{mt}",
+E                   zip_lists={
+E                       "mt": ["on"],
+E                   },
+E               ),
+E           }),
+E           )
+
+/home/pvandyken/projects/snakebids/snakebids/core/input_generation.py:271: ConfigError
+------------------------------ Captured log call -------------------------------
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component ®çĭĀÄļ0Í$Ĕ󡸈Ã񠄓.I©:
+    filters:
+       datatype: ['perf']
+       extension: ['.ĝeĜ\U00097db5', '.ø*pü\U00097e49ãr\U000b6f97\U000a2886ëĦĬÙ']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component ®çĭĀÄļ0Í$Ĕ󡸈Ã񠄓.I©:
+    filters:
+       datatype: ['perf']
+       extension: ['.ĝeĜ\U00097db5', '.ø*pü\U00097e49ãr\U000b6f97\U000a2886ëĦĬÙ']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component ®çĭĀÄļ0Í$Ĕ󡸈Ã񠄓.I©:
+    filters:
+       datatype: ['perf']
+       extension: ['.ĝeĜ\U00097db5', '.ø*pü\U00097e49ãr\U000b6f97\U000a2886ëĦĬÙ']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component ®çĭĀÄļ0Í$Ĕ󡸈Ã񠄓.:
+    filters:
+       datatype: ['perf']
+       extension: ['.ĝeĜ\U00097db5', '.ø*pü\U00097e49ãr\U000b6f97\U000a2886ëĦĬÙ']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component ®çĭĀÄļ0Í$Ĕ𐼸.:
+    filters:
+       datatype: ['perf']
+       extension: ['.ĝeĜ\U00097db5', '.ø*pü\U00097e49ãr\U000b6f97\U000a2886ëĦĬÙ']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component ®çĭĀÄļ0Í$2.:
+    filters:
+       datatype: ['perf']
+       extension: ['.ĝeĜ\U00097db5', '.ø*pü\U00097e49ãr\U000b6f97\U000a2886ëĦĬÙ']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component ®çĭĀÄļ0񐥃.:
+    filters:
+       datatype: ['perf']
+       extension: ['.ĝeĜ\U00097db5', '.ø*pü\U00097e49ãr\U000b6f97\U000a2886ëĦĬÙ']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component ®çĭĀÄ𐹁.:
+    filters:
+       datatype: ['perf']
+       extension: ['.ĝeĜ\U00097db5', '.ø*pü\U00097e49ãr\U000b6f97\U000a2886ëĦĬÙ']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component ®çĭ12.:
+    filters:
+       datatype: ['perf']
+       extension: ['.ĝeĜ\U00097db5', '.ø*pü\U00097e49ãr\U000b6f97\U000a2886ëĦĬÙ']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component ®ç񐥃.:
+    filters:
+       datatype: ['perf']
+       extension: ['.ĝeĜ\U00097db5', '.ø*pü\U00097e49ãr\U000b6f97\U000a2886ëĦĬÙ']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 𐹁.:
+    filters:
+       datatype: ['perf']
+       extension: ['.ĝeĜ\U00097db5', '.ø*pü\U00097e49ãr\U000b6f97\U000a2886ëĦĬÙ']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component .:
+    filters:
+       datatype: ['perf', 'anat']
+       extension: ['.ø*pü\U00097e49ãr\U000b6f97\U000a2886ëĦĬÙ', '.\U000fcefeKÔĲxĒ×ľddýÿ_']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component .:
+    filters:
+       datatype: ['perf', 'anat']
+       extension: ['.\U000fcefeKÔĲxĒ×ľdd㹃뙄', '.0𑊸ãr\U000b6f97\U000a2886ëĦĬÙ']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component .:
+    filters:
+       datatype: ['perf', 'anat']
+       extension: ['.\U000fcefeKÔĲxĒ×ľ1', '.𐧸3\U00060943𑊸ãr\U000b6f97\U000a2886ëĦĬÙ']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component .:
+    filters:
+       datatype: ['perf', 'anat']
+       extension: ['.\U000fcefeKÔĲxĒ×ľ1', '.3\U00060943𑊸ãr\U000b6f97\U000a2886ëĦĬÙ']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component éĤĪ×:
+    filters:
+       datatype: ['beh']
+       extension: ['.1ꅄ']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 7éĤĪ×:
+    filters:
+       datatype: ['beh']
+       extension: ['.\U000fcefeKÔĲxĒ×ľ1ꅄ']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 7éĤĪ×:
+    filters:
+       datatype: ['beh']
+       extension: ['.\U000fcefeKÔĲxĒ×ľꅄ']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       extension: ['.\U000fcefeKÔĲxĒ1']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       extension: ['.\U000fcefeKÔĲ\U00050944']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       extension: ['.\U000fcefeK\U00050944']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       extension: ['.\U000fcefe1']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       extension: ['.\U000119081']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       extension: ['.\U000119081']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       extension: ['.𐩄\U00050944']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       extension: ['.𐩄']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       extension: ['.𐩄']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       extension: ['.𐩄']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       extension: ['.𐩄']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['beh']
+       extension: ['.𐩄']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       extension: ['.Ń']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       extension: ['.Ń']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       extension: ['.Ń']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       extension: ['.Ń']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       extension: ['.Ń']
+       run: False
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       subject: False
+       extension: ['.Ń']
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['beh']
+       subject: False
+       extension: ['.0']
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       subject: False
+       extension: ['.0']
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['beh']
+       subject: False
+       extension: ['.0']
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       subject: False
+       extension: ['.0']
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       subject: False
+       extension: ['.0']
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['func']
+       subject: False
+       extension: ['.0']
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       subject: False
+       extension: ['.5']
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       subject: False
+       extension: ['.0']
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       subject: False
+       extension: ['.0']
+    wildcards:
+       extension
+       datatype
+WARNING  snakebids.core.input_generation:input_generation.py:615 No input files found for snakebids component 0:
+    filters:
+       datatype: ['anat']
+       subject: False
+       extension: ['.0']
+    wildcards:
+       extension
+       datatype
+=============================== warnings summary ===============================
+snakebids/tests/test_generate_inputs.py::test_generate_inputs
+  /home/pvandyken/projects/snakebids/snakebids/utils/utils.py:44: DeprecationWarning: open_text is deprecated. Use files() instead. Refer to https://importlib-resources.readthedocs.io/en/latest/using.html#migrating-from-legacy for migration advice.
+    with importlib.resources.open_text("snakebids.resources", "bids_tags.json") as file:
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED snakebids/tests/test_generate_inputs.py::test_generate_inputs - snakeb...
+=================== 1 failed, 1 warning in 241.88s (0:04:01) ===================

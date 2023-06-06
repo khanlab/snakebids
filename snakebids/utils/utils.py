@@ -11,16 +11,27 @@ from typing import Any, Callable, Iterable, Mapping, Sequence, TypeVar, cast, ov
 import attrs
 import importlib_resources as impr
 import more_itertools as itx
-from typing_extensions import Protocol, Self
+from typing_extensions import NotRequired, Protocol, Self, TypeAlias, TypedDict
 
 from snakebids import resources, types
 from snakebids.utils.user_property import UserProperty
 
-T = TypeVar("T")
+_T = TypeVar("_T")
+
+
+class BidsTag(TypedDict):
+    tag: str
+    before: NotRequired[str]
+    match: str
+    after: NotRequired[str]
+    leader: NotRequired[bool]
+
+
+BidsTags: TypeAlias = "dict[str, BidsTag]"
 
 
 @ft.lru_cache(None)
-def read_bids_tags(bids_json: Path | None = None) -> dict[str, dict[str, str]]:
+def read_bids_tags(bids_json: Path | None = None) -> BidsTags:
     """Read the bids tags we are aware of from a JSON file.
 
     This is used specifically for compatibility with pybids, since some tag keys
@@ -93,21 +104,13 @@ class BidsEntity:
     def before(self) -> str:
         """regex str to search before value in paths"""
         tags = read_bids_tags()
-        return (
-            tags[self.entity]["before"]
-            if self.entity in tags and "before" in tags[self.entity]
-            else f"{self.tag}-"
-        )
+        return tags.get(self.entity, {}).get("before", f"{self.tag}-")
 
     @property
     def after(self) -> str:
         """regex str to search after value in paths"""
         tags = read_bids_tags()
-        return (
-            tags[self.entity]["after"]
-            if self.entity in tags and "after" in tags[self.entity]
-            else ""
-        )
+        return tags.get(self.entity, {}).get("after", "")
 
     @property
     def regex(self) -> re.Pattern[str]:
@@ -157,9 +160,9 @@ class BidsEntity:
 
 
 def matches_any(
-    item: T,
-    match_list: Iterable[T],
-    match_func: types.BinaryOperator[T, object],
+    item: _T,
+    match_list: Iterable[_T],
+    match_func: types.BinaryOperator[_T, object],
     *args: Any,
 ) -> bool:
     for match in match_list:
@@ -213,7 +216,7 @@ def property_alias(
     label: str | None = None,
     ref: str | None = None,
     copy_extended_docstring: bool = False,
-) -> Callable[[Callable[[Any], T]], "UserProperty[T]"]:
+) -> Callable[[Callable[[Any], _T]], "UserProperty[_T]"]:
     """Set property as an alias for another property
 
     Copies the docstring from the aliased property to the alias
@@ -234,7 +237,7 @@ def property_alias(
     property
     """
 
-    def inner(__func: Callable[[Any], T]) -> "UserProperty[T]":
+    def inner(__func: Callable[[Any], _T]) -> "UserProperty[_T]":
         alias = UserProperty(__func)
         if label:
             link = f":attr:`{label} <{ref}>`" if ref else label
