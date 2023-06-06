@@ -1,18 +1,19 @@
 from __future__ import annotations
 
 import functools as ft
-import importlib.resources
 import json
 import operator as op
 import re
+from os import PathLike
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, Sequence, TypeVar, cast, overload
 
 import attrs
+import importlib_resources as impr
 import more_itertools as itx
 from typing_extensions import Protocol, Self
 
-from snakebids import types
+from snakebids import resources, types
 from snakebids.utils.user_property import UserProperty
 
 T = TypeVar("T")
@@ -41,9 +42,7 @@ def read_bids_tags(bids_json: Path | None = None) -> dict[str, dict[str, str]]:
         with bids_json.open("r") as infile:
             bids_tags = json.load(infile)
         return bids_tags
-    with importlib.resources.open_text("snakebids.resources", "bids_tags.json") as file:
-        bids_tags = json.load(file)
-    return bids_tags
+    return json.loads(impr.files(resources).joinpath("bids_tags.json").read_text())
 
 
 @attrs.frozen(hash=True)
@@ -357,3 +356,7 @@ def zip_list_eq(__first: types.ZipListLike, __second: types.ZipListLike):
     second_items = get_values(__second)
 
     return set(zip(*first_items)) == set(zip(*second_items))
+
+
+def to_resolved_path(path: str | PathLike[str]):
+    return Path(path).resolve()

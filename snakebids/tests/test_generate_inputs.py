@@ -179,11 +179,9 @@ class TestFilterBools:
                 "0": BidsComponent(
                     name="0",
                     path="ce-{ce}_space-{space}",
-                    zip_lists=MultiSelectDict({"ce": ["0"], "space": ["0"]}),
+                    zip_lists={"ce": ["0"], "space": ["0"]},
                 ),
-                "1": BidsComponent(
-                    name="1", path="ce-{ce}", zip_lists=MultiSelectDict({"ce": ["0"]})
-                ),
+                "1": BidsComponent(name="1", path="ce-{ce}", zip_lists={"ce": ["0"]}),
             }
         )
     )
@@ -193,12 +191,12 @@ class TestFilterBools:
                 "1": BidsComponent(
                     name="1",
                     path="sub-{subject}/{datatype}/sub-{subject}",
-                    zip_lists=MultiSelectDict({"subject": ["0"], "datatype": ["anat"]}),
+                    zip_lists={"subject": ["0"], "datatype": ["anat"]},
                 ),
                 "0": BidsComponent(
                     name="0",
                     path="sub-{subject}/sub-{subject}",
-                    zip_lists=MultiSelectDict({"subject": ["0"]}),
+                    zip_lists={"subject": ["0"]},
                 ),
             }
         )
@@ -209,12 +207,12 @@ class TestFilterBools:
                 "1": BidsComponent(
                     name="1",
                     path="sub-{subject}/sub-{subject}_{suffix}.foo",
-                    zip_lists=MultiSelectDict({"subject": ["0"], "suffix": ["bar"]}),
+                    zip_lists={"subject": ["0"], "suffix": ["bar"]},
                 ),
                 "0": BidsComponent(
                     name="0",
                     path="{suffix}.foo",
-                    zip_lists=MultiSelectDict({"suffix": ["bar"]}),
+                    zip_lists={"suffix": ["bar"]},
                 ),
             }
         )
@@ -309,9 +307,7 @@ class TestAbsentConfigEntries:
             derivatives=derivatives,
             pybids_config=str(Path(__file__).parent / "data" / "custom_config.json"),
         )
-        template = BidsDataset(
-            {"t1": BidsComponent("t1", config["t1"].path, MultiSelectDict({}))}
-        )
+        template = BidsDataset({"t1": BidsComponent("t1", config["t1"].path, {})})
         assert template == config
         assert config.subj_wildcards == {"subject": "{subject}"}
 
@@ -591,7 +587,7 @@ def test_custom_pybids_config(tmpdir: Path):
                     foo="{foo}",
                     suffix="T1w.nii.gz",
                 ),
-                MultiSelectDict({"foo": ["0", "1"], "subject": ["001", "001"]}),
+                ({"foo": ["0", "1"], "subject": ["001", "001"]}),
             )
         }
     )
@@ -669,9 +665,7 @@ def test_t1w():
             "t1": BidsComponent(
                 "t1",
                 result["t1"].path,
-                MultiSelectDict(
-                    {"acq": ["mprage", "mprage"], "subject": ["001", "002"]}
-                ),
+                ({"acq": ["mprage", "mprage"], "subject": ["001", "002"]}),
             )
         }
     )
@@ -710,7 +704,7 @@ def test_t1w():
             "scan": BidsComponent(
                 "scan",
                 result["scan"].path,
-                MultiSelectDict(
+                (
                     {
                         "acq": [
                             "mprage",
@@ -777,16 +771,14 @@ def test_t1w():
                 "t1": BidsComponent(
                     "t1",
                     result["t1"].path,
-                    MultiSelectDict(
+                    (
                         {
                             "acq": ["mprage", "mprage"],
                             "subject": ["001", "002"],
                         }
                     ),
                 ),
-                "t2": BidsComponent(
-                    "t2", result["t2"].path, MultiSelectDict({"subject": ["002"]})
-                ),
+                "t2": BidsComponent("t2", result["t2"].path, ({"subject": ["002"]})),
             }
         )
         # Order of the subjects is not deterministic
@@ -934,7 +926,7 @@ def test_get_lists_from_bids():
                 template = BidsComponent(
                     "t1",
                     wildcard_path_t1,
-                    MultiSelectDict(
+                    (
                         {
                             "acq": ["mprage", "mprage"],
                             "subject": ["001", "002"],
@@ -947,7 +939,7 @@ def test_get_lists_from_bids():
                 template = BidsComponent(
                     "t2",
                     wildcard_path_t2,
-                    MultiSelectDict(
+                    (
                         {
                             "subject": ["002"],
                         }

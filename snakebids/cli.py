@@ -12,6 +12,7 @@ import snakemake
 
 from snakebids.exceptions import MisspecifiedCliFilterError
 from snakebids.types import InputsConfig, OptionalFilter
+from snakebids.utils.utils import to_resolved_path
 
 # We define Path here in addition to pathlib to put both variables in globals()
 # This way, users specifying a path type in their config.yaml can indicate
@@ -96,7 +97,7 @@ class SnakebidsArgs:
     """
 
     force: bool
-    outputdir: Path = attr.ib(converter=lambda p: Path(p).resolve())
+    outputdir: Path = attr.ib(converter=to_resolved_path)
     snakemake_args: list[str]
     args_dict: dict[str, Any]
     pybidsdb_dir: Optional[Path] = None

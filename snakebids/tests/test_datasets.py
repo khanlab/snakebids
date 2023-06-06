@@ -28,12 +28,12 @@ from snakebids.tests.helpers import (
 from snakebids.types import ZipList
 from snakebids.utils import sb_itertools as sb_it
 from snakebids.utils.snakemake_io import glob_wildcards
-from snakebids.utils.utils import BidsEntity, MultiSelectDict, zip_list_eq
+from snakebids.utils.utils import BidsEntity, zip_list_eq
 
 
 def test_multiple_components_cannot_have_same_name():
-    comp1 = BidsComponent("foo", path=".", zip_lists=MultiSelectDict({}))
-    comp2 = BidsComponent("foo", path=".", zip_lists=MultiSelectDict({}))
+    comp1 = BidsComponent("foo", path=".", zip_lists={})
+    comp2 = BidsComponent("foo", path=".", zip_lists={})
     with pytest.raises(DuplicateComponentError):
         BidsDataset.from_iterable([comp1, comp2])
 
@@ -100,12 +100,10 @@ class TestBidsComponentEq:
         assert input != other
 
     def test_empty_BidsInput_are_equal(self):
-        assert BidsComponent("", "", MultiSelectDict({})) == BidsComponent(
-            "", "", MultiSelectDict({})
-        )
+        assert BidsComponent("", "", ({})) == BidsComponent("", "", ({}))
         assert BidsComponent(
-            "", "{foo}{bar}", MultiSelectDict({"foo": [], "bar": []})
-        ) == BidsComponent("", "{foo}{bar}", MultiSelectDict({"foo": [], "bar": []}))
+            "", "{foo}{bar}", ({"foo": [], "bar": []})
+        ) == BidsComponent("", "{foo}{bar}", ({"foo": [], "bar": []}))
 
     @given(sb_st.bids_components())
     def test_copies_are_equal(self, input: BidsComponent):
@@ -175,7 +173,7 @@ class TestBidsComponentProperties:
         bids_input = BidsComponent(
             name="foo",
             path=get_bids_path(zip_lists),
-            zip_lists=MultiSelectDict(zip_lists),
+            zip_lists=zip_lists,
         )
 
         wildstr = ".".join(bids_input.input_wildcards.values())
@@ -277,7 +275,9 @@ class TestBidsComponentExpand:
         paths = component.expand(path_tpl, **wcard_dict)
         assert zip_list_eq(glob_wildcards(path_tpl, paths), zlist)
 
-    @given(component=sb_st.bids_components(restrict_patterns=True))
+    @given(
+        component=sb_st.bids_components(restrict_patterns=True, extra_entities=False)
+    )
     def test_not_expand_over_internal_path_when_novel_given(
         self, component: BidsComponent
     ):
@@ -294,7 +294,9 @@ class TestBidsComponentExpand:
         )
 
     @given(
-        component=sb_st.bids_components(min_entities=2, restrict_patterns=True),
+        component=sb_st.bids_components(
+            min_entities=2, restrict_patterns=True, extra_entities=False
+        ),
         wildcard=st.text(string.ascii_letters, min_size=1, max_size=10).filter(
             lambda s: s not in sb_st.valid_entities
         ),
@@ -306,7 +308,9 @@ class TestBidsComponentExpand:
             assert re.search(r"\{.+\}", path)
 
     @given(
-        component=sb_st.bids_components(min_entities=2, restrict_patterns=True),
+        component=sb_st.bids_components(
+            min_entities=2, restrict_patterns=True, extra_entities=False
+        ),
         wildcard=st.text(string.ascii_letters, min_size=1, max_size=10).filter(
             lambda s: s not in sb_st.valid_entities
         ),
