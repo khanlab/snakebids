@@ -415,6 +415,12 @@ class TestFiltering:
             )
         return filter_dict
 
+    def filter_iter(self, filters: dict[str, str | list[str]]):
+        return {
+            key: iter(val) if isinstance(val, list) else val
+            for key, val in filters.items()
+        }
+
     @given(
         component=sb_st.bids_components(max_values=4, restrict_patterns=True),
         data=st.data(),
@@ -423,7 +429,7 @@ class TestFiltering:
         self, component: Expandable, data: st.DataObject
     ):
         filter_dict = self.get_filter_dict(data, component)
-        filtered = component.filter(**filter_dict)
+        filtered = component.filter(**self.filter_iter(filter_dict))
         for filt in filter_dict:
             for val in filtered.zip_lists[filt]:
                 assert val in filter_dict[filt]
@@ -436,7 +442,7 @@ class TestFiltering:
         self, component: Expandable, data: st.DataObject
     ):
         filter_dict = self.get_filter_dict(data, component)
-        filtered = component.filter(**filter_dict)
+        filtered = component.filter(**self.filter_iter(filter_dict))
         lengths: set[int] = set()
         for row in filtered.zip_lists.values():
             lengths.add(len(row))
@@ -450,7 +456,7 @@ class TestFiltering:
         self, component: Expandable, data: st.DataObject
     ):
         filter_dict = self.get_filter_dict(data, component, allow_extra_filters=True)
-        filtered = component.filter(**filter_dict)
+        filtered = component.filter(**self.filter_iter(filter_dict))
         cols = set(zip(*component.zip_lists.values()))
         for col in zip(*filtered.zip_lists.values()):
             assert col in cols
@@ -463,7 +469,7 @@ class TestFiltering:
         self, component: Expandable, data: st.DataObject
     ):
         filter_dict = self.get_filter_dict(data, component, allow_extra_filters=True)
-        filtered = component.filter(**filter_dict)
+        filtered = component.filter(**self.filter_iter(filter_dict))
         assert set(component.zip_lists) == set(filtered.zip_lists)
 
     @given(
@@ -471,10 +477,12 @@ class TestFiltering:
         data=st.data(),
     )
     def test_no_columns_that_should_be_present_are_missing(
-        self, component: Expandable, data: st.DataObject
+        self,
+        component: Expandable,
+        data: st.DataObject,
     ):
         filter_dict = self.get_filter_dict(data, component)
-        filtered = component.filter(**filter_dict)
+        filtered = component.filter(**self.filter_iter(filter_dict))
         keys = list(component.zip_lists)
         cols = set(zip(*component.zip_lists.values()))
         result = set(zip(*filtered.zip_lists.values()))
