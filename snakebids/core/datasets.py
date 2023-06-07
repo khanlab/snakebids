@@ -133,7 +133,11 @@ class BidsComponentRow(ImmutableList[str]):
         )
 
     def filter(
-        self, *, regex_search: bool = False, **filters: str | Iterable[str]
+        self,
+        __spec: str | Iterable[str] | None = None,
+        *,
+        regex_search: bool = False,
+        **filters: str | Iterable[str],
     ) -> Self:
         """Filter component based on provided entity filters
 
@@ -149,14 +153,24 @@ class BidsComponentRow(ImmutableList[str]):
 
         Parameters
         ----------
+        __spec
+            Value or iterable of values assocatiated with the ComponentRow's
+            :attr:`~snakebids.BidsComponentRow.entity`. Equivalent to specifying
+            ``.filter(entity=value)``
         regex_search
             Treat filters as regex patterns when matching with entity-values.
         filters
-            Each keyword should be the name of an entity in the component. Entities not
-            found in the component will be ignored. Keywords take values or a list of
-            values to be matched with the component
-            :attr:`~snakebids.BidsComponent.zip_lists`
+            Keyword-value(s) filters as in :meth:`~snakebids.BidsComponent.filter`.
+            Here, the only valid filter is the
+            :attr:`~snakebids.BidsComponentRow.entity` of the
+            :class:`~snakebids.BidsComponentRow`; all others will be ignored.
         """
+        if __spec is not None:
+            if filters:
+                raise ValueError(
+                    "Both __spec and filters cannot be used simultaneously"
+                )
+            filters = {self.entity: __spec}
         entity, data = itx.first(
             filter_list(
                 {self.entity: self._data}, filters, regex_search=regex_search

@@ -499,6 +499,89 @@ class TestFiltering:
                 assert col in result
 
 
+class TestFilteringBidsComponentRowWithSpec:
+    def get_filter_spec(
+        self,
+        data: st.DataObject,
+        component: BidsComponentRow,
+    ):
+        rand_text = st.text(sb_st.alphanum, min_size=1, max_size=10)
+        value_strat = st.one_of(st.sampled_from(component.entities), rand_text)
+
+        return data.draw(
+            st.one_of(
+                st.lists(
+                    value_strat,
+                    unique=True,
+                    min_size=1,
+                    max_size=5,
+                ),
+                value_strat,
+            )
+        )
+
+    @given(
+        component=sb_st.bids_component_row(max_values=4, restrict_patterns=True),
+        data=st.data(),
+    )
+    def test_only_filter_values_in_output(
+        self, component: BidsComponentRow, data: st.DataObject
+    ):
+        spec = self.get_filter_spec(data, component)
+        filtered = component.filter(spec)
+        for val in filtered.entities:
+            assert val in list(itx.always_iterable(spec))
+
+    @given(
+        component=sb_st.bids_component_row(max_values=4, restrict_patterns=True),
+        data=st.data(),
+    )
+    def test_all_columns_found_in_original_zip_list(
+        self, component: BidsComponentRow, data: st.DataObject
+    ):
+        spec = self.get_filter_spec(data, component)
+        filtered = component.filter(spec)
+        cols = set(zip(*component.zip_lists.values()))
+        for col in zip(*filtered.zip_lists.values()):
+            assert col in cols
+
+    @given(
+        component=sb_st.bids_component_row(max_values=4, restrict_patterns=True),
+        data=st.data(),
+    )
+    def test_all_entities_remain_after_filtering(
+        self, component: BidsComponentRow, data: st.DataObject
+    ):
+        spec = self.get_filter_spec(data, component)
+        filtered = component.filter(spec)
+        assert set(component.zip_lists) == set(filtered.zip_lists)
+
+    @given(
+        component=sb_st.bids_component_row(max_values=4, restrict_patterns=True),
+        data=st.data(),
+    )
+    def test_all_valid_values_in_spec_in_result(
+        self, component: BidsComponentRow, data: st.DataObject
+    ):
+        spec = self.get_filter_spec(data, component)
+        filtered = component.filter(itx.always_iterable(spec))
+        for val in itx.always_iterable(spec):
+            if val in component.entities:
+                assert val in filtered.entities
+
+    @given(
+        component=sb_st.bids_component_row(max_values=4, restrict_patterns=True),
+        data=st.data(),
+    )
+    def test_providing_both_spec_and_filters_gives_error(
+        self, component: BidsComponentRow, data: st.DataObject
+    ):
+        spec = self.get_filter_spec(data, component)
+        with pytest.raises(ValueError) as err:
+            component.filter(spec, foo="bar")
+        assert "__spec and filters cannot" in err.value.args[0]
+
+
 class TestBidsComponentIndexing:
     def get_selectors(
         self,
