@@ -42,6 +42,7 @@ def generate_inputs(  # noqa: PLR0913
     participant_label: Iterable[str] | str | None = ...,
     exclude_participant_label: Iterable[str] | str | None = ...,
     use_bids_inputs: Literal[True] | None = ...,
+    validate: bool = ...,
     pybids_database_dir: Path | str | None = ...,
     pybids_reset_database: bool = ...,
 ) -> BidsDataset:
@@ -60,6 +61,7 @@ def generate_inputs(  # noqa: PLR0913
     participant_label: Iterable[str] | str | None = ...,
     exclude_participant_label: Iterable[str] | str | None = ...,
     use_bids_inputs: Literal[False] = ...,
+    validate: bool = ...,
     pybids_database_dir: Path | str | None = ...,
     pybids_reset_database: bool = ...,
 ) -> BidsDatasetDict:
@@ -77,6 +79,7 @@ def generate_inputs(  # noqa: PLR0913
     participant_label: Iterable[str] | str | None = None,
     exclude_participant_label: Iterable[str] | str | None = None,
     use_bids_inputs: bool | None = None,
+    validate: bool = False,
     pybids_database_dir: Path | str | None = None,
     pybids_reset_database: bool = False,
 ) -> BidsDataset | BidsDatasetDict:
@@ -271,6 +274,7 @@ ses-{session}_run-{run}_T1w.nii.gz",
             pybids_config=pybids_config,
             pybidsdb_dir=pybidsdb_dir or pybids_database_dir,
             pybidsdb_reset=pybidsdb_reset or pybids_reset_database,
+            validate=validate,
         )
         if not _all_custom_paths(pybids_inputs)
         else None

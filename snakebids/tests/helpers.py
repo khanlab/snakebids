@@ -219,7 +219,7 @@ def reindex_dataset(
     if use_custom_paths:
         for comp in config:
             config[comp]["custom_path"] = dataset[comp].path
-    return generate_inputs(root, config, validate=False)
+    return generate_inputs(root, config)
 
 
 def allow_function_scoped(__callable: _T) -> _T:
