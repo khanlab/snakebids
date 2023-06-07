@@ -33,14 +33,16 @@ _logger = logging.getLogger(__name__)
 def generate_inputs(  # noqa: PLR0913
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
-    pybids_database_dir: Path | str | None = ...,
-    pybids_reset_database: bool = ...,
+    pybidsdb_dir: Path | str | None = ...,
+    pybidsdb_reset: bool = ...,
     derivatives: bool | Path | str = ...,
     pybids_config: str | None = ...,
     limit_to: Iterable[str] | None = ...,
     participant_label: Iterable[str] | str | None = ...,
     exclude_participant_label: Iterable[str] | str | None = ...,
     use_bids_inputs: Literal[True] | None = ...,
+    pybids_database_dir: Path | str | None = ...,
+    pybids_reset_database: bool = ...,
 ) -> BidsDataset:
     ...
 
@@ -49,14 +51,16 @@ def generate_inputs(  # noqa: PLR0913
 def generate_inputs(  # noqa: PLR0913
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
-    pybids_database_dir: Path | str | None = ...,
-    pybids_reset_database: bool = ...,
+    pybidsdb_dir: Path | str | None = ...,
+    pybidsdb_reset: bool = ...,
     derivatives: bool | Path | str = ...,
     pybids_config: str | None = ...,
     limit_to: Iterable[str] | None = ...,
     participant_label: Iterable[str] | str | None = ...,
     exclude_participant_label: Iterable[str] | str | None = ...,
     use_bids_inputs: Literal[False] = ...,
+    pybids_database_dir: Path | str | None = ...,
+    pybids_reset_database: bool = ...,
 ) -> BidsDatasetDict:
     ...
 
@@ -64,14 +68,16 @@ def generate_inputs(  # noqa: PLR0913
 def generate_inputs(  # noqa: PLR0913
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
-    pybids_database_dir: Path | str | None = None,
-    pybids_reset_database: bool = False,
+    pybidsdb_dir: Path | str | None = None,
+    pybidsdb_reset: bool = False,
     derivatives: bool | Path | str = False,
     pybids_config: str | None = None,
     limit_to: Iterable[str] | None = None,
     participant_label: Iterable[str] | str | None = None,
     exclude_participant_label: Iterable[str] | str | None = None,
     use_bids_inputs: bool | None = None,
+    pybids_database_dir: Path | str | None = None,
+    pybids_reset_database: bool = False,
 ) -> BidsDataset | BidsDatasetDict:
     """Dynamically generate snakemake inputs using pybids_inputs
 
@@ -105,11 +111,11 @@ def generate_inputs(  # noqa: PLR0913
           as in ``/path/to/sub-{subject}/{wildcard_1}-{wildcard_2}``. This path will be
           parsed without pybids, allowing the use of non-bids-compliant paths.
 
-    pybids_database_dir
+    pybidsdb_dir
         Path to database directory. If None is provided, database
         is not used
 
-    pybids_reset_database
+    pybidsdb_reset
         A boolean that determines whether to reset / overwrite
         existing database.
 
@@ -239,14 +245,27 @@ ses-{session}_run-{run}_T1w.nii.gz",
         participant_label, exclude_participant_label
     )
 
+    if pybids_database_dir:
+        _logger.warning(
+            "The parameter `pybids_database_dir` in generate_inputs() is deprecated "
+            "and will be removed in the next release. To set the pybids database, use "
+            "the `pybidsdb_dir` parameter instead."
+        )
+    if pybids_reset_database:
+        _logger.warning(
+            "The parameter `pybids_reset_database` in generate_inputs() is deprecated "
+            "and will be removed in the next release. To reset the pybids database, "
+            "use the `pybidsdb_reset` parameter instead."
+        )
+
     # Generates a BIDSLayout
     layout = (
         _gen_bids_layout(
             bids_dir=bids_dir,
             derivatives=derivatives,
             pybids_config=pybids_config,
-            pybids_database_dir=pybids_database_dir,
-            pybids_reset_database=pybids_reset_database,
+            pybidsdb_dir=pybidsdb_dir or pybids_database_dir,
+            pybidsdb_reset=pybidsdb_reset or pybids_reset_database,
         )
         if not _all_custom_paths(pybids_inputs)
         else None
@@ -290,8 +309,8 @@ def _all_custom_paths(config: InputsConfig):
 def _gen_bids_layout(
     bids_dir: Path | str,
     derivatives: Path | str | bool,
-    pybids_database_dir: Path | str | None,
-    pybids_reset_database: bool,
+    pybidsdb_dir: Path | str | None,
+    pybidsdb_reset: bool,
     pybids_config: Path | str | None = None,
 ) -> BIDSLayout:
     """Create (or reindex) the BIDSLayout if one doesn't exist,
@@ -307,11 +326,11 @@ def _gen_bids_layout(
         determines whether snakebids will search in the
         derivatives subdirectory of the input dataset.
 
-    pybids_database_dir
+    pybidsdb_dir
         Path to database directory. If None is provided, database
         is not used
 
-    pybids_reset_database
+    pybidsdb_reset
         A boolean that determines whether to reset / overwrite
         existing database.
 
@@ -323,11 +342,11 @@ def _gen_bids_layout(
 
     # Check for database_dir
     # If blank, assume db not to be used
-    if not pybids_database_dir:
-        pybids_database_dir = None
+    if not pybidsdb_dir:
+        pybidsdb_dir = None
     # Otherwise check for relative path and update
-    elif not Path(pybids_database_dir).is_absolute():
-        pybids_database_dir = None
+    elif not Path(pybidsdb_dir).is_absolute():
+        pybidsdb_dir = None
         _logger.warning("Absolute path must be provided, database will not be used")
 
     return BIDSLayout(
@@ -335,8 +354,8 @@ def _gen_bids_layout(
         derivatives=derivatives,
         validate=False,
         config=pybids_config,
-        database_path=pybids_database_dir,
-        reset_database=pybids_reset_database,
+        database_path=pybidsdb_dir,
+        reset_database=pybidsdb_reset,
         indexer=BIDSLayoutIndexer(validate=False, index_metadata=False),
     )
 

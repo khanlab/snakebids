@@ -83,7 +83,7 @@ class SnakebidsArgs:
     snakemake_args: list[str]
     args_dict: dict[str, Any]
     pybidsdb_dir: Optional[Path] = None
-    reset_db: bool = False
+    pybidsdb_reset: bool = False
 
 
 def create_parser(include_snakemake: bool = False) -> argparse.ArgumentParser:
@@ -138,15 +138,23 @@ def create_parser(include_snakemake: bool = False) -> argparse.ArgumentParser:
         help=(
             "Optional path to directory of SQLite databasefile for PyBIDS. "
             "If directory is passed and folder exists, indexing is skipped. "
-            "If reset_db is called, indexing will persist"
+            "If pybidsdb_reset is called, indexing will persist"
         ),
     )
 
     standard_group.add_argument(
+        "--pybidsdb-reset",
+        "--pybidsdb_reset",
+        action="store_true",
+        help=("Reindex existing PyBIDS SQLite database"),
+    )
+
+    # To be deprecated
+    standard_group.add_argument(
         "--reset-db",
         "--reset_db",
         action="store_true",
-        help=("Reindex existing PyBIDS SQLite database"),
+        help=argparse.SUPPRESS,
     )
 
     standard_group.add_argument(
@@ -272,6 +280,11 @@ def parse_snakebids_args(parser: argparse.ArgumentParser) -> SnakebidsArgs:
         )
     if all_args[0].force_conversion:
         logger.warning("--force-conversion is deprecated and no longer has any effect.")
+    if all_args[0].reset_db:
+        logger.warning(
+            "--reset-db/--reset_db will be deprecated in a future release. To reset "
+            "the pybids database, use the new --pybidsdb-reset flag instead."
+        )
     return SnakebidsArgs(
         snakemake_args=all_args[1],
         # resolve all path items to get absolute paths
@@ -283,7 +296,7 @@ def parse_snakebids_args(parser: argparse.ArgumentParser) -> SnakebidsArgs:
             if all_args[0].pybidsdb_dir is None
             else Path(all_args[0].pybidsdb_dir).resolve()
         ),
-        reset_db=all_args[0].reset_db,
+        pybidsdb_reset=all_args[0].pybidsdb_reset or all_args[0].reset_db,
     )
 
 

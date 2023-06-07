@@ -34,12 +34,6 @@ pybids_inputs:
       - task
       - run
 
-#this configures the options to save the BIDSLayout
-# by default, database is not saved (uncomment to save)
-# NOTE: pybids_db_dir must be an absolute path
-# pybids_db_dir: '/path/to/db_dir' # Leave blank if you do not wish to use this
-# pybids_db_reset: False # Change this to true to update the database
-
 #configuration for the command-line parameters to make available
 # passed on the argparse add_argument()
 parse_args:

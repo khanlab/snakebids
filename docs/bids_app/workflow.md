@@ -15,8 +15,8 @@ configfile: 'config/snakebids.yml'
 inputs = snakebids.generate_inputs(
     bids_dir=config["bids_dir"],
     pybids_inputs=config["pybids_inputs"],
-    pybids_database_dir=config.get("pybids_db_dir"),
-    pybids_reset_database=config.get("pybids_db_reset"),
+    pybidsdb_dir=config.get("pybidsdb_dir"),
+    pybidsdb_reset=config.get("pybidsdb_reset"),
     derivatives=config.get("derivatives"),
     participant_label=config.get("participant_label"),
     exclude_participant_label=config.get("exclude_participant_label"),
