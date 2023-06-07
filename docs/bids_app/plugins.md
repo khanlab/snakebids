@@ -20,7 +20,7 @@ SnakeBidsApp(
 ```
 
 ## Creating plugins
-A plugin is a callable class that accepts a {class}`SnakeBidsApp <snakebids.app.SnakeBidsApp>` as input and returns a modified {class}`SnakeBidsApp` or `None`.
+A plugin is a function or callable class that accepts a {class}`SnakeBidsApp <snakebids.app.SnakeBidsApp>` as input and returns a modified {class}`SnakeBidsApp` or `None`.
 
 As an example, a simplified version of the bids-validator plugin that runs the [BIDS Validator](https://github.com/bids-standard/bids-validator) could be defined as follows:
 
@@ -57,7 +57,7 @@ class InvalidBidsError(SnakebidsPluginError):
 ```
 
 ```{note}
-When adding plugin-specific parmaters to the config dictionary, it is recommended to use namespaced keys (e.g. ``plugin.validator.skip``). This will help ensure plugin-specific parameters do not conflict with other parameters already defined in the dictionary or by other plugins.
+When adding plugin-specific parameters to the config dictionary, it is recommended to use namespaced keys (e.g. ``plugins.validator.skip``). This will help ensure plugin-specific parameters do not conflict with other parameters already defined in the dictionary or by other plugins.
 ```
 
 
