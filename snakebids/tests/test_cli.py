@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import itertools
 import sys
 from argparse import ArgumentParser, Namespace
 from collections.abc import Sequence
@@ -9,6 +10,7 @@ from pathlib import Path
 from typing import Mapping
 
 import pytest
+from hypothesis import HealthCheck, given, settings
 from pytest_mock.plugin import MockerFixture
 
 from snakebids.cli import (
@@ -17,6 +19,8 @@ from snakebids.cli import (
     create_parser,
     parse_snakebids_args,
 )
+from snakebids.tests import strategies as sb_st
+from snakebids.types import InputsConfig
 
 from .mock.config import parse_args, pybids_inputs
 
@@ -72,6 +76,38 @@ class TestAddDynamicArgs:
         "participant",
     ]
     mock_all_args = mock_basic_args + mock_args_special
+
+    @given(sb_st.inputs_config())
+    @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+    def test_dynamic_inputs(self, mocker: MockerFixture, pybids_inputs: InputsConfig):
+        p = create_parser()
+        add_dynamic_args(p, copy.deepcopy(parse_args), pybids_inputs)
+        magic_filters = list(
+            itertools.chain.from_iterable(
+                [[f"--filter-{key}", "entity=value"] for key in pybids_inputs]
+            )
+        )
+        magic_wildcards = list(
+            itertools.chain.from_iterable(
+                [[f"--wildcards-{key}", "test"] for key in pybids_inputs]
+            )
+        )
+        magic_path = list(
+            itertools.chain.from_iterable(
+                [[f"--path-{key}", "test"] for key in pybids_inputs]
+            )
+        )
+        mocker.patch.object(
+            sys,
+            "argv",
+            self.mock_all_args + magic_filters + magic_wildcards + magic_path,
+        )
+        args = parse_snakebids_args(p)
+        for key in pybids_inputs:
+            key_identifier = key.replace("-", "_")  # argparse does this
+            assert isinstance(args.args_dict[f"path_{key_identifier}"], str)
+            assert isinstance(args.args_dict.get(f"filter_{key_identifier}"), dict)
+            assert isinstance(args.args_dict.get(f"wildcards_{key_identifier}"), list)
 
     def test_fails_if_missing_arguments(
         self, parser: ArgumentParser, mocker: MockerFixture

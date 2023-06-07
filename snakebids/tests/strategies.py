@@ -13,7 +13,7 @@ from hypothesis import assume
 from snakebids.core.datasets import BidsComponent
 from snakebids.core.input_generation import BidsDataset
 from snakebids.tests import helpers
-from snakebids.types import ZipList
+from snakebids.types import InputConfig, InputsConfig, ZipList
 from snakebids.utils.utils import BidsEntity, MultiSelectDict
 
 _Ex_co = TypeVar("_Ex_co", bound=str, covariant=True)
@@ -49,6 +49,42 @@ def bids_entity_lists(
         unique=True,
         # bids_paths aren't formed correctly if only datatype is provided
     ).filter(lambda v: v != ["datatype"])
+
+
+@st.composite
+def input_config(draw: st.DrawFn) -> InputConfig:
+    filtered_entities = draw(st.one_of(st.lists(bids_entity()), st.none()))
+    filters = (
+        {
+            entity.entity: draw(
+                st.one_of(st.booleans(), bids_value(), st.lists(bids_value()))
+            )
+            for entity in filtered_entities
+        }
+        if filtered_entities is not None
+        else None
+    )
+    wildcard_entities = draw(st.one_of(st.lists(bids_entity()), st.none()))
+
+    wildcards = (
+        [entity.entity for entity in wildcard_entities]
+        if wildcard_entities is not None
+        else None
+    )
+    custom_path = draw(st.one_of(st.text(), st.none()))
+
+    pybids_inputs: InputConfig = {}
+    if wildcards is not None:
+        pybids_inputs.update({"wildcards": wildcards})
+    if filters is not None:
+        pybids_inputs.update({"filters": filters})
+    if custom_path is not None:
+        pybids_inputs.update({"custom_path": custom_path})
+    return pybids_inputs
+
+
+def inputs_config() -> st.SearchStrategy[InputsConfig]:
+    return st.dictionaries(st.text(min_size=1), input_config())
 
 
 @st.composite
