@@ -96,7 +96,7 @@ class BidsComponentRow(ImmutableList[str]):
 
     def expand(
         self,
-        paths: Iterable[Path | str] | Path | str,
+        __paths: Iterable[Path | str] | Path | str,
         allow_missing: bool = False,
         **wildcards: str | Iterable[str],
     ) -> list[str]:
@@ -114,7 +114,7 @@ class BidsComponentRow(ImmutableList[str]):
 
         Parameters
         ==========
-        paths:
+        __paths:
             Path or list of paths to expand over
         allow_missing:
             If True, allow ``{wildcards}`` in the provided paths that are not present
@@ -126,7 +126,7 @@ class BidsComponentRow(ImmutableList[str]):
             lists of values to be expanded over the provided paths.
         """
         return sn_expand(
-            list(itx.always_iterable(paths)),
+            list(itx.always_iterable(__paths)),
             allow_missing=allow_missing,
             **{self.entity: list(set(self._data))},
             **{
@@ -340,7 +340,7 @@ class BidsPartialComponent:
 
     def expand(
         self,
-        paths: Iterable[Path | str] | Path | str,
+        __paths: Iterable[Path | str] | Path | str,
         allow_missing: bool = False,
         **wildcards: str | Iterable[str],
     ) -> list[str]:
@@ -358,7 +358,7 @@ class BidsPartialComponent:
 
         Parameters
         ==========
-        paths:
+        __paths:
             Path or list of paths to expand over
         allow_missing:
             If True, allow ``{wildcards}`` in the provided paths that are not present
@@ -372,7 +372,7 @@ class BidsPartialComponent:
         inner_expand = list(
             set(
                 sn_expand(
-                    list(itx.always_iterable(paths)),
+                    list(itx.always_iterable(__paths)),
                     zip,
                     allow_missing=True if wildcards else allow_missing,
                     **self.zip_lists,
@@ -515,7 +515,7 @@ class BidsComponent(BidsPartialComponent):
 
     def expand(
         self,
-        paths: Iterable[Path | str] | Path | str | None = None,
+        __paths: Iterable[Path | str] | Path | str | None = None,
         allow_missing: bool = False,
         **wildcards: str | Iterable[str],
     ) -> list[str]:
@@ -535,7 +535,7 @@ class BidsComponent(BidsPartialComponent):
 
         Parameters
         ==========
-        paths:
+        __paths:
             Path or list of paths to expand over. If not provided, the component's own
             :attr:`~BidsComponent.path` will be expanded over.
         allow_missing:
@@ -547,7 +547,7 @@ class BidsComponent(BidsPartialComponent):
             Keywords not found in the path will be ignored. Keywords take values or
             lists of values to be expanded over the provided paths.
         """
-        paths = paths or self.path
+        paths = __paths or self.path
         return super().expand(paths, allow_missing, **wildcards)
 
     @property
