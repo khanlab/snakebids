@@ -154,7 +154,7 @@ def create_parser(include_snakemake: bool = False) -> argparse.ArgumentParser:
         "--reset-db",
         "--reset_db",
         action="store_true",
-        help=("Reindex existing PyBIDS SQLite database"),
+        help=argparse.SUPPRESS,
     )
 
     standard_group.add_argument(
