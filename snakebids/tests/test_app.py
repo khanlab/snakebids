@@ -1,8 +1,9 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, annotations
 
 import copy
 import json
 from pathlib import Path
+from typing import Iterable, cast
 
 import hypothesis.strategies as st
 import pytest
@@ -10,7 +11,11 @@ import snakemake
 from hypothesis import HealthCheck, assume, example, given, settings
 from pytest_mock.plugin import MockerFixture
 
+from snakebids.app import update_config
 from snakebids.cli import SnakebidsArgs
+from snakebids.tests import strategies as sb_st
+from snakebids.types import InputsConfig
+from snakebids.utils.utils import BidsEntity
 
 from .. import app as sn_app
 from ..app import SnakeBidsApp
@@ -31,6 +36,64 @@ def app(mocker: MockerFixture):
     app.config["pybids_db_reset"] = False
     mocker.patch.object(sn_app, "update_config", return_value=app.config)
     return app
+
+
+class TestUpdateConfig:
+    @given(
+        st.one_of(
+            st.none(),
+            st.tuples(
+                sb_st.bids_entity(),
+                st.one_of(
+                    sb_st.bids_value(),
+                    st.booleans(),
+                    st.lists(sb_st.bids_value(), min_size=1),
+                ),
+            ),
+        ),
+        st.one_of(st.none(), st.lists(sb_st.bids_entity())),
+        st.one_of(
+            st.none(),
+            st.text(
+                alphabet=st.characters(
+                    blacklist_categories=("Cs",), blacklist_characters=("\x00",)
+                )
+            ),
+        ),
+    )
+    def test_magic_args(
+        self,
+        filters: tuple[BidsEntity, Iterable[str]] | None,
+        wildcards: Iterable[BidsEntity] | None,
+        path: str | None,
+    ):
+        config_copy = copy.deepcopy(config)
+        config_copy["bids_dir"] = "root"  # type: ignore
+        config_copy["output_dir"] = "app"  # type: ignore
+        args = SnakebidsArgs(
+            force=False,
+            outputdir=Path("app"),
+            snakemake_args=[],
+            args_dict={
+                "filter_bold": {filters[0].entity: filters[1]} if filters else None,
+                "wildcards_bold": [wildcard.entity for wildcard in wildcards]
+                if wildcards
+                else None,
+                "path_bold": path,
+            },
+        )
+        update_config(config_copy, args)
+        inputs_config: InputsConfig = cast(InputsConfig, config_copy["pybids_inputs"])
+        if filters:
+            assert (
+                inputs_config["bold"].get("filters", {}).get(filters[0].entity)
+                == filters[1]
+            )
+        if wildcards:
+            for entity in [wildcard.entity for wildcard in wildcards]:
+                assert entity in inputs_config["bold"].get("wildcards", [])
+        if path:
+            assert inputs_config["bold"].get("custom_path", "") == Path(path).resolve()
 
 
 class TestRunSnakemake:
