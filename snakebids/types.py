@@ -72,7 +72,7 @@ class Expandable(Protocol):
 
     def expand(
         self,
-        paths: Iterable[Path | str] | Path | str,
+        __paths: Iterable[Path | str] | Path | str,
         allow_missing: bool = False,
         **wildcards: str | Iterable[str],
     ) -> list[str]:
