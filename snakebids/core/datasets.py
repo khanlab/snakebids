@@ -133,7 +133,7 @@ class BidsComponentRow(ImmutableList[str]):
         )
 
     def filter(
-        self, *, regex_search: bool = False, **filters: str | Sequence[str]
+        self, *, regex_search: bool = False, **filters: str | Iterable[str]
     ) -> Self:
         """Filter component based on provided entity filters
 
