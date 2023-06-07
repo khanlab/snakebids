@@ -13,7 +13,7 @@ inputs = generate_inputs(
     derivatives=config.get("derivatives", None),
     participant_label=config.get("participant_label", None),
     exclude_participant_label=config.get("exclude_participant_label", None),
-    validate=True if "plugins.validator.success" in config else False,
+    validate=config.get("plugins.validator.success", False),
 )
 
 
