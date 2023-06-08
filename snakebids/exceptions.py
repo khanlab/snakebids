@@ -45,6 +45,6 @@ class MisspecifiedCliFilterError(Exception):
             "{entity}={filter} or {entity}:{REQUIRED|OPTIONAL|NONE} (case-insensitive)."
         )
 
-        
+
 class SnakebidsPluginError(Exception):
     """Exception raised when a Snakebids plugin encounters a problem"""

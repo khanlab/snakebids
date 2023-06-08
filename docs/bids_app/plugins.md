@@ -61,7 +61,7 @@ When adding plugin-specific parameters to the config dictionary, it is recommend
 ```
 
 
-A plugin can be used to implement any logic that can be handled by a Python function. In the above example, you may also want to add some logic to check if the BIDS Validator is installed and pass along a custom error message if it is not. Created plugins can then be used within a Snakebids workflow, similar to the example provided in [Using plugins](#using-plugins) section. Prospective plugin developers can take a look at the source of the `~snakebids.plugins` module for examples.
+A plugin can be used to implement any logic that can be handled by a Python function. In the above example, you may also want to add some logic to check if the BIDS Validator is installed and pass along a custom error message if it is not. Created plugins can then be used within a Snakebids workflow, similar to the example provided in [Using plugins](#using-plugins) section. Prospective plugin developers can take a look at the source of the `snakebids.plugins` module for examples.
 
 
 ```{note}

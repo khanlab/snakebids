@@ -38,8 +38,8 @@ parse_args = {
     },
     "--skip_bids_validation": {
         "help": "Skip validation of BIDS dataset. BIDS validation is performed by "
-        "default using the bids-validator (if installed) or with the pybids "
-        "validator implementation (if bids-validator is not installed). "
+        "default using the bids-validator plugin (if installed/enabled) or with the pybids "
+        "validator implementation (if bids-validator is not installed/enabled). "
         "(default: %(default)s)",
         "dest": "plugins.validator.skip",
         "action": "store_true",

@@ -3,6 +3,8 @@ import logging
 import subprocess
 import tempfile
 
+import attr
+
 from snakebids.app import SnakeBidsApp
 from snakebids.exceptions import SnakebidsPluginError
 
@@ -13,21 +15,36 @@ class InvalidBidsError(SnakebidsPluginError):
     """Error raised if an input BIDS dataset is invalid."""
 
 
+@attr.define
 class BidsValidator:
-    """Perform BIDS validation of dataset, falling back to the pybids
-    version of validation if the node-version of bids-validator is
-    not found.
+    """Snakebids plugin to perform validation of a BIDS dataset using the
+    bids-validator. If the dataset is not valid according to the BIDS
+    specifications, an InvalidBidsError is raised.
 
     Parameters
     ----------
-    app
-        Snakebids application to be run
+    raise_invalid_bids : bool
+        Flag to indicate whether InvalidBidsError should be raised if BIDS
+        validation fails. Default to True.
+
     """
 
-    def __init__(self, raise_invalid_bids: bool = True) -> None:
-        self.raise_invalid_bids = raise_invalid_bids
+    raise_invalid_bids: bool = attr.field(default=True)
 
     def __call__(self, app: SnakeBidsApp) -> None:
+        """Perform BIDS validation of dataset.
+
+        Parameters
+        ----------
+        app
+            Snakebids application to be run
+
+        Raises
+        ------
+        InvalidBidsError
+            Raised when the input BIDS directory does not pass validation with
+            the bids-validator
+        """
         # Skip bids validation
         if app.config["plugins.validator.skip"]:
             return

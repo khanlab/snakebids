@@ -13,10 +13,8 @@ inputs = generate_inputs(
     derivatives=config.get("derivatives", None),
     participant_label=config.get("participant_label", None),
     exclude_participant_label=config.get("exclude_participant_label", None),
-    validate=config.get("plugins.validator.success", False),
+    validate=not config.get("plugins.validator.skip", False)
 )
-
-
 
 #this adds constraints to the bids naming
 wildcard_constraints:  **get_wildcard_constraints(config['pybids_inputs'])

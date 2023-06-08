@@ -79,10 +79,9 @@ parse_args:
  # custom command-line parameters can then be added, these will get added to the config and also accessible to plugins
  # below are examples for plugin and custom parameters (e.g. config['smoothing_fwhm'])
   --skip_bids_validation:
-    help: 'Skip validation of BIDS dataset. BIDS validation is performed by 
-          default using the bids-validator (if installed) or with the pybids
-          validator implementation (if bids-validator is not installed). 
-          (default: %(default)s)'
+    help: 'Skip validation of BIDS dataset. BIDS validation is performed by
+          default using the bids-validator plugin (if installed/enabled) or with the pybids 
+          validator implementation (if bids-validator is not installed/enabled).'
     dest: "plugins.validator.skip"
     action: "store_true"
     default: False

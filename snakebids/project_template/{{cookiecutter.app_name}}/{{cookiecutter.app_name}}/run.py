@@ -14,7 +14,7 @@ def get_parser():
 def main():
     app = SnakeBidsApp(
         Path(__file__).resolve().parent.parent,  # to get repository root
-        plugins=[BidsValidator],
+        plugins=[BidsValidator()],
     )
     app.run_snakemake()
 

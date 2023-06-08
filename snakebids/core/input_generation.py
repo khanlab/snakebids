@@ -31,7 +31,7 @@ _logger = logging.getLogger(__name__)
 
 
 @overload
-def generate_inputs(  # noqa: PLR0913
+def generate_inputs(
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
     pybidsdb_dir: Path | str | None = ...,
@@ -50,7 +50,7 @@ def generate_inputs(  # noqa: PLR0913
 
 
 @overload
-def generate_inputs(  # noqa: PLR0913
+def generate_inputs(
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
     pybidsdb_dir: Path | str | None = ...,
@@ -68,7 +68,7 @@ def generate_inputs(  # noqa: PLR0913
     ...
 
 
-def generate_inputs(  # noqa: PLR0913
+def generate_inputs(
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
     pybidsdb_dir: Path | str | None = None,
@@ -150,8 +150,8 @@ def generate_inputs(  # noqa: PLR0913
         the default behaviour
 
     validate
-        If False, skips validation of BIDS directory. Otherwise use node.js 
-        implementation of bids-validator, falling back on pybids validation.
+        If True performs validation of BIDS directory using pybids, otherwise 
+        skips validation.
 
     Returns
     -------

@@ -33,7 +33,7 @@ def test_template_dry_runs_successfully(tmp_path: Path):
                 "path_bold": None,
                 "participant_label": None,
                 "exclude_participant_label": None,
-                "skip_bids_validation": True,
+                "plugins.validator.skip": True,
             },
         ),
     )
