@@ -1,10 +1,11 @@
 {
-  "full_name": "",
+  "full_name": "FirstName LastName",
   "email": "",
-  "github_username": "",
-  "app_full_name": "",
-  "_output_dir": "",
-  "app_name": "{{ cookiecutter.app_full_name.lower().replace(' ', '_').replace('-', '_') if cookiecutter.app_full_name else cookiecutter._output_dir }}",
-  "app_description": "",
-  "snakebids_version": "0.0.0"
+  "github": "",
+  "app_full_name": "Snakebids App",
+  "__app_name": "{{ cookiecutter.app_full_name|lower|replace(' ', '_')|replace('-', '_') }}",
+  "app_description": "Short application description",
+  "_app_version": "0.1.0",
+  "_snakebids_version": "0.0.0",
+  "bids_version": "1.8.0"
 }

@@ -121,3 +121,6 @@ reportImportCycles = false
 
 [tool.ruff]
 select = ["E", "F", "PL", "RUF"]
+exclude = [
+    "snakebids/project_template/"
+]

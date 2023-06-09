@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "{{ cookiecutter.app_full_name }}"
+version = "{{ cookiecutter._app_version }}"
+description = "{{ cookiecutter.app_description }}"
+authors = [
+    "{{ cookiecutter.full_name }}{% if cookiecutter.email %} <{{ cookiecutter.email }}> {% endif %}",
+]
+readme = "README.md"{% if cookiecutter.github %}
+repository = "https://github.com/{{ cookiecutter.github }}/{{ cookiecutter.__app_name }}"{% endif %}
+packages = [
+  { include = "{{ cookiecutter.__app_name }}" },
+]
+
+[tool.poetry.metadata]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent"
+]
+
+[tool.poetry.dependencies]
+python = ">=3.7, <4.0",
+snakebids = ">={{ cookiecutter._snakebids_version }}",
+
+[tool.poetry.scripts]
+{{ cookiecutter.__app_name }} = '{{ cookiecutter.__app_name }}.run:main'
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api""
