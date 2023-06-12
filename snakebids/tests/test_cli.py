@@ -77,7 +77,7 @@ class TestAddDynamicArgs:
     ]
     mock_all_args = mock_basic_args + mock_args_special
 
-    @given(sb_st.inputs_config())
+    @given(sb_st.inputs_configs())
     @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
     def test_dynamic_inputs(self, mocker: MockerFixture, pybids_inputs: InputsConfig):
         p = create_parser()

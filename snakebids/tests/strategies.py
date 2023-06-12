@@ -52,7 +52,7 @@ def bids_entity_lists(
 
 
 @st.composite
-def input_config(draw: st.DrawFn) -> InputConfig:
+def input_configs(draw: st.DrawFn) -> InputConfig:
     filtered_entities = draw(st.one_of(st.lists(bids_entity()), st.none()))
     filters = (
         {
@@ -83,8 +83,8 @@ def input_config(draw: st.DrawFn) -> InputConfig:
     return pybids_inputs
 
 
-def inputs_config() -> st.SearchStrategy[InputsConfig]:
-    return st.dictionaries(st.text(min_size=1), input_config())
+def inputs_configs() -> st.SearchStrategy[InputsConfig]:
+    return st.dictionaries(st.text(min_size=1), input_configs())
 
 
 @st.composite
