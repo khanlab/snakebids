@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import copy
-import itertools
+import itertools as it
 import sys
 from argparse import ArgumentParser, Namespace
 from collections.abc import Sequence
@@ -83,19 +83,17 @@ class TestAddDynamicArgs:
         p = create_parser()
         add_dynamic_args(p, copy.deepcopy(parse_args), pybids_inputs)
         magic_filters = list(
-            itertools.chain.from_iterable(
+            it.chain.from_iterable(
                 [[f"--filter-{key}", "entity=value"] for key in pybids_inputs]
             )
         )
         magic_wildcards = list(
-            itertools.chain.from_iterable(
+            it.chain.from_iterable(
                 [[f"--wildcards-{key}", "test"] for key in pybids_inputs]
             )
         )
         magic_path = list(
-            itertools.chain.from_iterable(
-                [[f"--path-{key}", "test"] for key in pybids_inputs]
-            )
+            it.chain.from_iterable([[f"--path-{key}", "test"] for key in pybids_inputs])
         )
         mocker.patch.object(
             sys,
@@ -106,8 +104,8 @@ class TestAddDynamicArgs:
         for key in pybids_inputs:
             key_identifier = key.replace("-", "_")  # argparse does this
             assert isinstance(args.args_dict[f"path_{key_identifier}"], str)
-            assert isinstance(args.args_dict.get(f"filter_{key_identifier}"), dict)
-            assert isinstance(args.args_dict.get(f"wildcards_{key_identifier}"), list)
+            assert isinstance(args.args_dict[f"filter_{key_identifier}"], dict)
+            assert isinstance(args.args_dict[f"wildcards_{key_identifier}"], list)
 
     def test_fails_if_missing_arguments(
         self, parser: ArgumentParser, mocker: MockerFixture
