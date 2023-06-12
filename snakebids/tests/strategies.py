@@ -64,7 +64,16 @@ def input_configs(draw: st.DrawFn) -> InputConfig:
     )
 
     wildcards = draw(st.one_of(st.lists(bids_entity().map(str)), st.none()))
-    custom_path = draw(st.one_of(st.text(), st.none()))
+    custom_path = draw(
+        st.one_of(
+            st.text(
+                alphabet=st.characters(
+                    blacklist_categories=("Cs",), blacklist_characters=("\x00",)
+                )
+            ),
+            st.none(),
+        )
+    )
 
     pybids_inputs: InputConfig = {}
     if wildcards is not None:
