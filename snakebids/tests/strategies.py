@@ -53,24 +53,17 @@ def bids_entity_lists(
 
 @st.composite
 def input_configs(draw: st.DrawFn) -> InputConfig:
-    filtered_entities = draw(st.one_of(st.lists(bids_entity()), st.none()))
-    filters = (
-        {
-            entity.entity: draw(
-                st.one_of(st.booleans(), bids_value(), st.lists(bids_value()))
-            )
-            for entity in filtered_entities
-        }
-        if filtered_entities is not None
-        else None
+    filters = draw(
+        st.one_of(
+            st.dictionaries(
+                bids_entity().map(str),
+                st.one_of(st.booleans(), bids_value(), st.lists(bids_value())),
+            ),
+            st.none(),
+        )
     )
-    wildcard_entities = draw(st.one_of(st.lists(bids_entity()), st.none()))
 
-    wildcards = (
-        [entity.entity for entity in wildcard_entities]
-        if wildcard_entities is not None
-        else None
-    )
+    wildcards = draw(st.one_of(st.lists(bids_entity().map(str)), st.none()))
     custom_path = draw(st.one_of(st.text(), st.none()))
 
     pybids_inputs: InputConfig = {}
