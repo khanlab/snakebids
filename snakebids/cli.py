@@ -356,7 +356,6 @@ def _resolve_path(path_candidate: Any) -> Any:
         If os.Pathlike or list  of os.Pathlike, the same paths resolved.
         Otherwise, the argument unchanged.
     """
-
     if isinstance(path_candidate, Sequence) and not isinstance(path_candidate, str):
         return [
             _resolve_path(p)  # type: ignore[reportUnknownArgumentType]

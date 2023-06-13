@@ -1,8 +1,9 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, annotations
 
 import copy
 import json
 from pathlib import Path
+from typing import Any, cast
 
 import hypothesis.strategies as st
 import pytest
@@ -10,7 +11,10 @@ import snakemake
 from hypothesis import HealthCheck, assume, example, given, settings
 from pytest_mock.plugin import MockerFixture
 
+from snakebids.app import update_config
 from snakebids.cli import SnakebidsArgs
+from snakebids.tests import strategies as sb_st
+from snakebids.types import InputConfig, InputsConfig
 
 from .. import app as sn_app
 from ..app import SnakeBidsApp
@@ -31,6 +35,43 @@ def app(mocker: MockerFixture):
     app.config["pybidsdb_reset"] = False
     mocker.patch.object(sn_app, "update_config", return_value=app.config)
     return app
+
+
+class TestUpdateConfig:
+    @given(
+        input_config=sb_st.input_configs(),
+    )
+    def test_magic_args(
+        self,
+        input_config: InputConfig,
+    ):
+        config_copy: dict[str, Any] = copy.deepcopy(config)
+        config_copy["bids_dir"] = "root"
+        config_copy["output_dir"] = "app"
+        args = SnakebidsArgs(
+            force=False,
+            outputdir=Path("app"),
+            snakemake_args=[],
+            args_dict={
+                "filter_bold": input_config.get("filters"),
+                "wildcards_bold": input_config.get("wildcards"),
+                "path_bold": input_config.get("custom_path"),
+            },
+        )
+        update_config(config_copy, args)
+        inputs_config: InputsConfig = cast(InputsConfig, config_copy["pybids_inputs"])
+        if "filters" in input_config:
+            for key, value in input_config["filters"].items():
+                assert inputs_config["bold"].get("filters", {}).get(key) == value
+        if "wildcards" in input_config:
+            assert set(input_config["wildcards"]) <= set(
+                inputs_config["bold"].get("wildcards", [])
+            )
+        if "custom_path" in input_config:
+            assert (
+                inputs_config["bold"].get("custom_path", "")
+                == Path(input_config["custom_path"]).resolve()
+            )
 
 
 class TestRunSnakemake:
