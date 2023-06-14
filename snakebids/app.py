@@ -13,6 +13,11 @@ import boutiques.creator as bc  # type: ignore
 import snakemake
 from snakemake.io import load_configfile
 
+if sys.version_info >= (3, 8):
+    from importlib import metadata
+else:
+    import importlib_metadata as metadata
+
 from snakebids.cli import (
     SnakebidsArgs,
     add_dynamic_args,
@@ -207,7 +212,12 @@ class SnakeBidsApp:
         # Write the config file
         write_config_file(
             config_file=new_config_file,
-            data=app.config,
+            data=dict(
+                app.config,
+                snakemake_version=metadata.version("snakemake"),
+                snakebids_version=metadata.version("snakebids"),
+                app_version=app.get_app_version() or "unknown",
+            ),
             force_overwrite=True,
         )
 
@@ -239,6 +249,13 @@ class SnakeBidsApp:
             self.parser, execname="run.py"
         )
         new_descriptor.save(out_file)  # type: ignore
+
+    def get_app_version(self) -> str | None:
+        """Attempt to get the app version, returning None if we can't."""
+        try:
+            return metadata.version(self.snakemake_dir.name)
+        except metadata.PackageNotFoundError:
+            return None
 
 
 def update_config(config: dict[str, Any], snakebids_args: SnakebidsArgs) -> None:
