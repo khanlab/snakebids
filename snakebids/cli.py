@@ -21,8 +21,8 @@ Path = pathlib.Path
 logger = logging.Logger(__name__)
 
 
-class KeyValue(argparse.Action):
-    """Class for accepting key=value pairs in argparse"""
+class FilterParse(argparse.Action):
+    """Class for parsing CLI filters in argparse"""
 
     # Constructor calling
     def __call__(
@@ -232,7 +232,9 @@ def add_dynamic_args(
     # create filter parsers, one for each input_type
     filter_opts = parser.add_argument_group(
         "BIDS FILTERS",
-        "Filters to customize PyBIDS get() as key=value pairs",
+        "Filters to customize PyBIDS get() as key=value pairs, or as "
+        "key.{REQUIRED|OPTIONAL|NONE}, to enforce the presence or absence of values for"
+        "that key.",
     )
 
     for input_type in pybids_inputs.keys():
@@ -243,7 +245,7 @@ def add_dynamic_args(
         filter_opts.add_argument(
             *argnames,
             nargs="+",
-            action=KeyValue,
+            action=FilterParse,
             help=f"(default: {' '.join(arglist_default)})",
         )
 

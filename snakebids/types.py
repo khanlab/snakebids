@@ -98,6 +98,11 @@ index must correspond to the same path.
 
 
 class OptionalFilterType(Enum):
+    """Sentinel value for CLI OPTIONAL filtering.
+
+    This is necessary because None means no CLI filter was added.
+    """
+
     OptionalFilter = "OptionalFilter"
 
 
