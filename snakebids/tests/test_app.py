@@ -2,6 +2,7 @@ from __future__ import absolute_import, annotations
 
 import copy
 import json
+import sys
 from pathlib import Path
 from typing import Any, cast
 
@@ -203,6 +204,33 @@ class TestRunSnakemake:
                 str(new_config),
             ]
         )
+
+    def test_plugin_args(self, mocker: MockerFixture, app: SnakeBidsApp):
+        """Test that plugins have access to args parsed from the CLI."""
+        # Get mocks for all the io functions
+        self.io_mocks(mocker)
+        mocker.patch.object(
+            sn_app,
+            "update_config",
+            side_effect=(
+                lambda config, sn_args: config.update(sn_args.args_dict)  # type: ignore
+            ),
+        )
+        mocker.patch.object(
+            sys, "argv", ["script_name", "path/to/input", "app/results", "participant"]
+        )
+
+        def plugin(my_app: SnakeBidsApp):
+            my_app.foo = my_app.args.outputdir  # type: ignore
+
+        app.plugins.extend([plugin])
+        try:
+            app.run_snakemake()
+        except SystemExit as e:
+            print("System exited prematurely")
+            print(e)
+
+        assert app.foo == Path("app/results").resolve()  # type: ignore
 
     def test_plugins(self, mocker: MockerFixture, app: SnakeBidsApp):
         # Get mocks for all the io functions

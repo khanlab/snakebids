@@ -135,15 +135,13 @@ class SnakeBidsApp:
 
         # If no SnakebidsArgs were provided on class instantiation, we compute args
         # using the provided parser
-        if self.args:
-            args = self.args
-        else:
+        if not self.args:
             # Dynamic args include --filter-... and --wildcards-... . They depend on the
             # config
             add_dynamic_args(
                 self.parser, self.config["parse_args"], self.config["pybids_inputs"]
             )
-            args = parse_snakebids_args(self.parser)
+            self.args = parse_snakebids_args(self.parser)
 
         # Update our config file:
         # - Add path to snakefile to the config so workflows can grab files relative to
@@ -154,21 +152,21 @@ class SnakeBidsApp:
         self.config["snakefile"] = self.snakefile_path
 
         # Update config with pybids settings
-        self.config["pybidsdb_dir"] = args.pybidsdb_dir
-        self.config["pybidsdb_reset"] = args.pybidsdb_reset
+        self.config["pybidsdb_dir"] = self.args.pybidsdb_dir
+        self.config["pybidsdb_reset"] = self.args.pybidsdb_reset
 
-        update_config(self.config, args)
+        update_config(self.config, self.args)
 
         # First, handle outputs in snakebids_root or results folder
         try:
             # py3.9 has the Path.is_relative() function. But as long as we support py38
             # and lower, this is the easiest way
-            args.outputdir.resolve().relative_to(self.snakemake_dir / "results")
+            self.args.outputdir.resolve().relative_to(self.snakemake_dir / "results")
             relative_to_results = True
         except ValueError:
             relative_to_results = False
 
-        if self.snakemake_dir == args.outputdir.resolve() or relative_to_results:
+        if self.snakemake_dir == self.args.outputdir.resolve() or relative_to_results:
             write_output_mode(self.snakemake_dir / ".snakebids", "workflow")
 
             new_config_file = self.snakemake_dir / self.configfile_path
@@ -192,12 +190,12 @@ class SnakeBidsApp:
             # Attempt to prepare the output folder. Anything going wrong will raise a
             # RunError, as described in the docstring
             try:
-                prepare_bidsapp_output(args.outputdir, args.force)
+                prepare_bidsapp_output(self.args.outputdir, self.args.force)
             except RunError as err:
                 print(err.msg)
                 sys.exit(1)
-            cwd = args.outputdir
-            new_config_file = args.outputdir / self.configfile_path
+            cwd = self.args.outputdir
+            new_config_file = self.args.outputdir / self.configfile_path
             self.config["root"] = ""
 
         app = self
