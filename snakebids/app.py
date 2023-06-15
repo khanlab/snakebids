@@ -251,7 +251,15 @@ class SnakeBidsApp:
         new_descriptor.save(out_file)  # type: ignore
 
     def get_app_version(self) -> str | None:
-        """Attempt to get the app version, returning None if we can't."""
+        """Attempt to get the app version, returning None if we can't.
+
+        This will succeed only if the following conditions are true:
+
+        1. The Snakebids app is a distribution package installed in the current
+           environment.
+        2. The app's distribution package has the same name as this
+           SnakeBidsApp's snakemake_dir
+        """
         try:
             return metadata.version(self.snakemake_dir.name)
         except metadata.PackageNotFoundError:
