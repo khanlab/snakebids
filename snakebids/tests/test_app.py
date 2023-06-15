@@ -14,7 +14,7 @@ from pytest_mock.plugin import MockerFixture
 from snakebids.app import update_config
 from snakebids.cli import SnakebidsArgs
 from snakebids.tests import strategies as sb_st
-from snakebids.types import InputConfig, InputsConfig
+from snakebids.types import InputConfig, InputsConfig, OptionalFilter
 
 from .. import app as sn_app
 from ..app import SnakeBidsApp
@@ -84,16 +84,20 @@ class TestUpdateConfig:
         config_copy["bids_dir"] = "root"
         config_copy["output_dir"] = "app"
         config_copy["pybids_inputs"] = inputs_config
+        args_dict: dict[str, Any] = {
+            f"filter_{input_}": {
+                entity: OptionalFilter for entity in value.get("filters", [])
+            }
+            for input_, value in inputs_config.items()
+        }
+        for input_ in inputs_config:
+            args_dict[f"wildcards_{input_}"] = None
+            args_dict[f"path_{input_}"] = None
         args = SnakebidsArgs(
             force=False,
             outputdir=Path("app"),
             snakemake_args=[],
-            args_dict={
-                f"filter_{input_}": [
-                    f"{entity}.OPTIONAL" for entity in value.get("filters", [])
-                ]
-                for input_, value in inputs_config.items()
-            },
+            args_dict=args_dict,
         )
         update_config(config_copy, args)
         inputs_config = config_copy["pybids_inputs"]

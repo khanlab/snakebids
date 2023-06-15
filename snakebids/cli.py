@@ -10,7 +10,8 @@ from typing import Any, Iterable, Mapping, Optional, TypeVar, overload
 import attr
 import snakemake
 
-from snakebids.types import InputsConfig
+from snakebids.exceptions import MisspecifiedCliFilterError
+from snakebids.types import InputsConfig, OptionalFilter
 
 # We define Path here in addition to pathlib to put both variables in globals()
 # This way, users specifying a path type in their config.yaml can indicate
@@ -36,8 +37,25 @@ class KeyValue(argparse.Action):
             return
 
         for pair in values:
-            # split it into key and value
-            key, value = pair.split("=")
+            match_ = re.fullmatch("([a-zA-Z0-9]+).(OPTIONAL|REQUIRED|NONE)", pair)
+            if match_:
+                key = match_.group(1)
+                spec = match_.group(2)
+                if spec == "OPTIONAL":
+                    value = OptionalFilter
+                elif spec == "REQUIRED":
+                    value = True
+                elif spec == "NONE":
+                    value = False
+                else:
+                    # Should never happen
+                    raise MisspecifiedCliFilterError(pair)
+            elif "=" in pair:
+                # split it into key and value
+                key, value = pair.split("=")
+            else:
+                raise MisspecifiedCliFilterError(pair)
+
             # assign into dictionary
             getattr(namespace, self.dest)[key] = value
 

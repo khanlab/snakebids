@@ -122,7 +122,7 @@ class TestAddDynamicArgs:
         args = parse_snakebids_args(p)
         for key in pybids_inputs:
             key_identifier = key.replace("-", "_")
-            assert args.args_dict[f"filter_{key_identifier}"] is True
+            assert args.args_dict[f"filter_{key_identifier}"]["entity"] is True
 
     @given(pybids_inputs=sb_st.inputs_configs())
     @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
@@ -139,7 +139,9 @@ class TestAddDynamicArgs:
         args = parse_snakebids_args(p)
         for key in pybids_inputs:
             key_identifier = key.replace("-", "_")
-            assert args.args_dict[f"filter_{key_identifier}"] is OptionalFilter
+            assert (
+                args.args_dict[f"filter_{key_identifier}"]["entity"] is OptionalFilter
+            )
 
     @given(pybids_inputs=sb_st.inputs_configs())
     @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
@@ -156,7 +158,7 @@ class TestAddDynamicArgs:
         args = parse_snakebids_args(p)
         for key in pybids_inputs:
             key_identifier = key.replace("-", "_")
-            assert args.args_dict[f"filter_{key_identifier}"] is False
+            assert args.args_dict[f"filter_{key_identifier}"]["entity"] is False
 
     def test_fails_if_missing_arguments(
         self, parser: ArgumentParser, mocker: MockerFixture
