@@ -52,7 +52,7 @@ class FilterParse(argparse.Action):
                     raise MisspecifiedCliFilterError(pair)
             elif "=" in pair:
                 # split it into key and value
-                key, value = pair.split("=")
+                key, value = pair.split("=", 1)
             else:
                 raise MisspecifiedCliFilterError(pair)
 

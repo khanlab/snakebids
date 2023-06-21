@@ -256,7 +256,7 @@ def update_config(config: dict[str, Any], snakebids_args: SnakebidsArgs) -> None
         if arg_filter_dict is not None:
             pybids_inputs[input_type].setdefault("filters", {})
             for entity, filter_ in arg_filter_dict.items():
-                if filter_ == OptionalFilter:
+                if filter_ is OptionalFilter:
                     pybids_inputs[input_type]["filters"].pop(entity, None)
                 else:
                     pybids_inputs[input_type]["filters"][entity] = filter_
