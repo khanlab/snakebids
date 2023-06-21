@@ -15,7 +15,7 @@ from pytest_mock.plugin import MockerFixture
 from snakebids.app import update_config
 from snakebids.cli import SnakebidsArgs
 from snakebids.tests import strategies as sb_st
-from snakebids.types import InputConfig, InputsConfig
+from snakebids.types import InputConfig, InputsConfig, OptionalFilter
 
 from .. import app as sn_app
 from ..app import SnakeBidsApp
@@ -41,14 +41,18 @@ def app(mocker: MockerFixture):
 class TestUpdateConfig:
     @given(
         input_config=sb_st.input_configs(),
+        drop_wildcards=st.booleans(),
     )
     def test_magic_args(
         self,
         input_config: InputConfig,
+        drop_wildcards: bool,
     ):
         config_copy: dict[str, Any] = copy.deepcopy(config)
         config_copy["bids_dir"] = "root"
         config_copy["output_dir"] = "app"
+        if drop_wildcards:
+            del config_copy["pybids_inputs"]["bold"]["wildcards"]
         args = SnakebidsArgs(
             force=False,
             outputdir=Path("app"),
@@ -73,6 +77,37 @@ class TestUpdateConfig:
                 inputs_config["bold"].get("custom_path", "")
                 == Path(input_config["custom_path"]).resolve()
             )
+
+    @given(
+        inputs_config=sb_st.inputs_configs(),
+    )
+    def test_magic_optional_filter(
+        self,
+        inputs_config: InputsConfig,
+    ):
+        config_copy: dict[str, Any] = copy.deepcopy(config)
+        config_copy["bids_dir"] = "root"
+        config_copy["output_dir"] = "app"
+        config_copy["pybids_inputs"] = inputs_config
+        args_dict: dict[str, Any] = {
+            f"filter_{input_}": {
+                entity: OptionalFilter for entity in value.get("filters", [])
+            }
+            for input_, value in inputs_config.items()
+        }
+        for input_ in inputs_config:
+            args_dict[f"wildcards_{input_}"] = None
+            args_dict[f"path_{input_}"] = None
+        args = SnakebidsArgs(
+            force=False,
+            outputdir=Path("app"),
+            snakemake_args=[],
+            args_dict=args_dict,
+        )
+        update_config(config_copy, args)
+        inputs_config = config_copy["pybids_inputs"]
+        for input_config in inputs_config.values():
+            assert len(input_config.get("filters", {})) == 0
 
 
 class TestRunSnakemake:

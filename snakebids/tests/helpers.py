@@ -208,7 +208,7 @@ def reindex_dataset(
     return generate_inputs(root, config)
 
 
-def allow_tmpdir(__callable: _T) -> _T:
+def allow_function_scoped(__callable: _T) -> _T:
     """Allow function_scoped fixtures in hypothesis tests
 
     This is primarily useful for using tmpdirs, hence, the name

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Hashable
+from enum import Enum
 from typing import Dict, Generic, List, Mapping, Sequence
 
 from typing_extensions import TYPE_CHECKING, Protocol, TypeAlias, TypedDict, TypeVar
@@ -94,3 +95,15 @@ Useful for typing functions that won't mutate the ZipList or use
 each :class:`~typing.Sequence` must be the same length, and values in each with the same
 index must correspond to the same path.
 """
+
+
+class OptionalFilterType(Enum):
+    """Sentinel value for CLI OPTIONAL filtering.
+
+    This is necessary because None means no CLI filter was added.
+    """
+
+    OptionalFilter = "OptionalFilter"
+
+
+OptionalFilter = OptionalFilterType.OptionalFilter

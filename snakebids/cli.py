@@ -10,7 +10,8 @@ from typing import Any, Iterable, Mapping, Optional, TypeVar, overload
 import attr
 import snakemake
 
-from snakebids.types import InputsConfig
+from snakebids.exceptions import MisspecifiedCliFilterError
+from snakebids.types import InputsConfig, OptionalFilter
 
 # We define Path here in addition to pathlib to put both variables in globals()
 # This way, users specifying a path type in their config.yaml can indicate
@@ -20,8 +21,8 @@ Path = pathlib.Path
 logger = logging.Logger(__name__)
 
 
-class KeyValue(argparse.Action):
-    """Class for accepting key=value pairs in argparse"""
+class FilterParse(argparse.Action):
+    """Class for parsing CLI filters in argparse"""
 
     # Constructor calling
     def __call__(
@@ -36,8 +37,24 @@ class KeyValue(argparse.Action):
             return
 
         for pair in values:
-            # split it into key and value
-            key, value = pair.split("=")
+            if "=" in pair:
+                # split it into key and value
+                key, value = pair.split("=", 1)
+            elif ":" in pair:
+                key, spec = pair.split(":", 1)
+                spec = spec.lower()
+                if spec == "optional":
+                    value = OptionalFilter
+                elif spec in ["required", "any"]:
+                    value = True
+                elif spec == "none":
+                    value = False
+                else:
+                    # The flag isn't recognized
+                    raise MisspecifiedCliFilterError(pair)
+            else:
+                raise MisspecifiedCliFilterError(pair)
+
             # assign into dictionary
             getattr(namespace, self.dest)[key] = value
 
@@ -214,7 +231,9 @@ def add_dynamic_args(
     # create filter parsers, one for each input_type
     filter_opts = parser.add_argument_group(
         "BIDS FILTERS",
-        "Filters to customize PyBIDS get() as key=value pairs",
+        "Filters to customize PyBIDS get() as key=value pairs, or as "
+        "key:{REQUIRED|OPTIONAL|NONE} (case-insensitive), to enforce the presence or "
+        "absence of values for that key.",
     )
 
     for input_type in pybids_inputs.keys():
@@ -225,7 +244,7 @@ def add_dynamic_args(
         filter_opts.add_argument(
             *argnames,
             nargs="+",
-            action=KeyValue,
+            action=FilterParse,
             help=f"(default: {' '.join(arglist_default)})",
         )
 

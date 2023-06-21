@@ -20,6 +20,7 @@ from snakebids.cli import (
     parse_snakebids_args,
 )
 from snakebids.exceptions import ConfigError, RunError
+from snakebids.types import OptionalFilter
 from snakebids.utils.output import write_config_file  # type: ignore
 from snakebids.utils.output import prepare_bidsapp_output, write_output_mode
 
@@ -251,7 +252,12 @@ def update_config(config: dict[str, Any], snakebids_args: SnakebidsArgs) -> None
     for input_type in pybids_inputs.keys():
         arg_filter_dict = args[f"filter_{input_type}"]
         if arg_filter_dict is not None:
-            pybids_inputs[input_type]["filters"].update(arg_filter_dict)
+            pybids_inputs[input_type].setdefault("filters", {})
+            for entity, filter_ in arg_filter_dict.items():
+                if filter_ is OptionalFilter:
+                    pybids_inputs[input_type]["filters"].pop(entity, None)
+                else:
+                    pybids_inputs[input_type]["filters"][entity] = filter_
         del args[f"filter_{input_type}"]
 
     # add cmdline defined wildcards from the list:
@@ -259,6 +265,7 @@ def update_config(config: dict[str, Any], snakebids_args: SnakebidsArgs) -> None
     for input_type in pybids_inputs.keys():
         wildcards_list = args[f"wildcards_{input_type}"]
         if wildcards_list is not None:
+            pybids_inputs[input_type].setdefault("wildcards", [])
             pybids_inputs[input_type]["wildcards"] += wildcards_list
         del args[f"wildcards_{input_type}"]
 

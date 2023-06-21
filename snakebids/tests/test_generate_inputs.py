@@ -47,7 +47,7 @@ from snakebids.exceptions import ConfigError, PybidsError, RunError
 from snakebids.tests import strategies as sb_st
 from snakebids.tests.helpers import (
     BidsListCompare,
-    allow_tmpdir,
+    allow_function_scoped,
     create_dataset,
     get_bids_path,
     get_zip_list,
@@ -474,7 +474,7 @@ class TestCustomPaths:
         test_path = self.generate_test_directory(entities, template, tmp_path)
         benchmark(_parse_custom_path, test_path)
 
-    @allow_tmpdir
+    @allow_function_scoped
     @given(path_entities=path_entities())
     def test_collects_all_paths_when_no_filters(
         self,
