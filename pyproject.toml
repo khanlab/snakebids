@@ -52,7 +52,7 @@ boutiques = "^0.5.25"
 more-itertools = ">=8,<10"
 cached-property = "^1.5.2"
 pvandyken-deprecated = "0.0.3"
-importlib_metadata = [ { version = "^6.6.0", python = "<3.8" } ]
+importlib_metadata = [ { version = "==1.4", python = "<3.8" } ]
 
 #  Below are non-direct dependencies (i.e. dependencies of other depenencies)
 #  specified to ensure a version with a pre-built wheel is installed depending
