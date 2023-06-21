@@ -244,16 +244,21 @@ class TestRunSnakemake:
         assert app.foo == "bar"  # type: ignore
 
     def test_get_app_version_no_package(self, app: SnakeBidsApp):
-        assert app.get_app_version() is None
+        assert app.version is None
 
-    def test_get_app_version_package(self, mocker: MockerFixture, app: SnakeBidsApp):
-        app.snakemake_dir = Path("my_app")
-
+    def test_get_app_version_package(self, mocker: MockerFixture):
         metadata_pkg = (
             "importlib.metadata" if sys.version_info >= (3, 8) else "importlib_metadata"
         )
         mock = mocker.patch(f"{metadata_pkg}.version", return_value="0.1.0")
-        assert app.get_app_version() == "0.1.0"
+        app = SnakeBidsApp(
+            Path("my_app"),
+            snakefile_path=Path("Snakefile"),
+            configfile_path=Path("mock/config.yaml"),
+            config=copy.deepcopy(config),
+        )
+
+        assert app.version == "0.1.0"
         mock.assert_called_once_with("my_app")
 
 
