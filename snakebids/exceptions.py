@@ -44,5 +44,5 @@ class MisspecifiedCliFilterError(Exception):
         super().__init__(
             "The following filter provided by the CLI could not be parsed: "
             f"{misspecified_filter}. Filters must be of the form "
-            "{entity}={filter} or {entity}.{REQUIRED|OPTIONAL|NONE}."
+            "{entity}={filter} or {entity}:{REQUIRED|OPTIONAL|NONE} (case-insensitive)."
         )

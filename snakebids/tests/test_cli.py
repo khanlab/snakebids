@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import itertools as it
+import re
 import sys
 from argparse import ArgumentParser, Namespace
 from collections.abc import Sequence
@@ -9,6 +10,7 @@ from os import PathLike
 from pathlib import Path
 from typing import Mapping
 
+import hypothesis.strategies as st
 import pytest
 from hypothesis import HealthCheck, given, settings
 from pytest_mock.plugin import MockerFixture
@@ -107,14 +109,21 @@ class TestAddDynamicArgs:
             assert isinstance(args.args_dict[f"filter_{key_identifier}"], dict)
             assert isinstance(args.args_dict[f"wildcards_{key_identifier}"], list)
 
-    @given(pybids_inputs=sb_st.inputs_configs())
+    @given(
+        pybids_inputs=sb_st.inputs_configs(),
+        flag=st.from_regex(
+            re.compile(r"(?:required)|(?:any)", re.IGNORECASE), fullmatch=True
+        ),
+    )
     @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
-    def test_required_filters(self, mocker: MockerFixture, pybids_inputs: InputsConfig):
+    def test_required_filters(
+        self, mocker: MockerFixture, pybids_inputs: InputsConfig, flag: str
+    ):
         p = create_parser()
         add_dynamic_args(p, copy.deepcopy(parse_args), pybids_inputs)
         magic_filters = list(
             it.chain.from_iterable(
-                [[f"--filter-{key}", "entity.REQUIRED"] for key in pybids_inputs]
+                [[f"--filter-{key}", f"entity:{flag}"] for key in pybids_inputs]
             )
         )
         mocker.patch.object(sys, "argv", self.mock_all_args + magic_filters)
@@ -124,14 +133,19 @@ class TestAddDynamicArgs:
             key_identifier = key.replace("-", "_")
             assert args.args_dict[f"filter_{key_identifier}"]["entity"] is True
 
-    @given(pybids_inputs=sb_st.inputs_configs())
+    @given(
+        pybids_inputs=sb_st.inputs_configs(),
+        flag=st.from_regex(re.compile(r"optional", re.IGNORECASE), fullmatch=True),
+    )
     @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
-    def test_optional_filters(self, mocker: MockerFixture, pybids_inputs: InputsConfig):
+    def test_optional_filters(
+        self, mocker: MockerFixture, pybids_inputs: InputsConfig, flag: str
+    ):
         p = create_parser()
         add_dynamic_args(p, copy.deepcopy(parse_args), pybids_inputs)
         magic_filters = list(
             it.chain.from_iterable(
-                [[f"--filter-{key}", "entity.OPTIONAL"] for key in pybids_inputs]
+                [[f"--filter-{key}", f"entity:{flag}"] for key in pybids_inputs]
             )
         )
         mocker.patch.object(sys, "argv", self.mock_all_args + magic_filters)
@@ -143,14 +157,19 @@ class TestAddDynamicArgs:
                 args.args_dict[f"filter_{key_identifier}"]["entity"] is OptionalFilter
             )
 
-    @given(pybids_inputs=sb_st.inputs_configs())
+    @given(
+        pybids_inputs=sb_st.inputs_configs(),
+        flag=st.from_regex(re.compile(r"none", re.IGNORECASE), fullmatch=True),
+    )
     @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
-    def test_none_filters(self, mocker: MockerFixture, pybids_inputs: InputsConfig):
+    def test_none_filters(
+        self, mocker: MockerFixture, pybids_inputs: InputsConfig, flag: str
+    ):
         p = create_parser()
         add_dynamic_args(p, copy.deepcopy(parse_args), pybids_inputs)
         magic_filters = list(
             it.chain.from_iterable(
-                [[f"--filter-{key}", "entity.NONE"] for key in pybids_inputs]
+                [[f"--filter-{key}", f"entity:{flag}"] for key in pybids_inputs]
             )
         )
         mocker.patch.object(sys, "argv", self.mock_all_args + magic_filters)

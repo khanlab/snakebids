@@ -37,22 +37,21 @@ class FilterParse(argparse.Action):
             return
 
         for pair in values:
-            match_ = re.fullmatch("([a-zA-Z0-9]+).(OPTIONAL|REQUIRED|NONE)", pair)
-            if match_:
-                key = match_.group(1)
-                spec = match_.group(2)
-                if spec == "OPTIONAL":
-                    value = OptionalFilter
-                elif spec == "REQUIRED":
-                    value = True
-                elif spec == "NONE":
-                    value = False
-                else:
-                    # Should never happen
-                    raise MisspecifiedCliFilterError(pair)
-            elif "=" in pair:
+            if "=" in pair:
                 # split it into key and value
                 key, value = pair.split("=", 1)
+            elif ":" in pair:
+                key, spec = pair.split(":", 1)
+                spec = spec.lower()
+                if spec == "optional":
+                    value = OptionalFilter
+                elif spec in ["required", "any"]:
+                    value = True
+                elif spec == "none":
+                    value = False
+                else:
+                    # The flag isn't recognized
+                    raise MisspecifiedCliFilterError(pair)
             else:
                 raise MisspecifiedCliFilterError(pair)
 
@@ -233,8 +232,8 @@ def add_dynamic_args(
     filter_opts = parser.add_argument_group(
         "BIDS FILTERS",
         "Filters to customize PyBIDS get() as key=value pairs, or as "
-        "key.{REQUIRED|OPTIONAL|NONE}, to enforce the presence or absence of values for"
-        "that key.",
+        "key:{REQUIRED|OPTIONAL|NONE} (case-insensitive), to enforce the presence or "
+        "absence of values for that key.",
     )
 
     for input_type in pybids_inputs.keys():
