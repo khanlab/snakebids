@@ -149,7 +149,7 @@ class TestRunSnakemake:
                 "snakefile": Path("Snakefile"),
                 "output_dir": outputdir.resolve(),
                 "snakemake_version": metadata.version("snakemake"),
-                "snakebids_version": "0.0.0",  # poetry-dynamic-versioning
+                "snakebids_version": metadata.version("snakebids"),
                 "app_version": "unknown",  # not installing a snakebids app here
             }
         )
