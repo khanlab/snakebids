@@ -40,14 +40,18 @@ def app(mocker: MockerFixture):
 class TestUpdateConfig:
     @given(
         input_config=sb_st.input_configs(),
+        drop_wildcards=st.booleans(),
     )
     def test_magic_args(
         self,
         input_config: InputConfig,
+        drop_wildcards: bool,
     ):
         config_copy: dict[str, Any] = copy.deepcopy(config)
         config_copy["bids_dir"] = "root"
         config_copy["output_dir"] = "app"
+        if drop_wildcards:
+            del config_copy["pybids_inputs"]["bold"]["wildcards"]
         args = SnakebidsArgs(
             force=False,
             outputdir=Path("app"),
