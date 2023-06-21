@@ -12,7 +12,7 @@ from typing import Mapping
 
 import hypothesis.strategies as st
 import pytest
-from hypothesis import HealthCheck, given, settings
+from hypothesis import given
 from pytest_mock.plugin import MockerFixture
 
 from snakebids.cli import (
@@ -22,6 +22,7 @@ from snakebids.cli import (
     parse_snakebids_args,
 )
 from snakebids.tests import strategies as sb_st
+from snakebids.tests.helpers import allow_function_scoped
 from snakebids.types import InputsConfig, OptionalFilter
 
 from .mock.config import parse_args, pybids_inputs
@@ -80,7 +81,7 @@ class TestAddDynamicArgs:
     mock_all_args = mock_basic_args + mock_args_special
 
     @given(sb_st.inputs_configs())
-    @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @allow_function_scoped
     def test_dynamic_inputs(self, mocker: MockerFixture, pybids_inputs: InputsConfig):
         p = create_parser()
         add_dynamic_args(p, copy.deepcopy(parse_args), pybids_inputs)
@@ -115,7 +116,7 @@ class TestAddDynamicArgs:
             re.compile(r"(?:required)|(?:any)", re.IGNORECASE), fullmatch=True
         ),
     )
-    @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @allow_function_scoped
     def test_required_filters(
         self, mocker: MockerFixture, pybids_inputs: InputsConfig, flag: str
     ):
@@ -137,7 +138,7 @@ class TestAddDynamicArgs:
         pybids_inputs=sb_st.inputs_configs(),
         flag=st.from_regex(re.compile(r"optional", re.IGNORECASE), fullmatch=True),
     )
-    @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @allow_function_scoped
     def test_optional_filters(
         self, mocker: MockerFixture, pybids_inputs: InputsConfig, flag: str
     ):
@@ -161,7 +162,7 @@ class TestAddDynamicArgs:
         pybids_inputs=sb_st.inputs_configs(),
         flag=st.from_regex(re.compile(r"none", re.IGNORECASE), fullmatch=True),
     )
-    @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @allow_function_scoped
     def test_none_filters(
         self, mocker: MockerFixture, pybids_inputs: InputsConfig, flag: str
     ):
