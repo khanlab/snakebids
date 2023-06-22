@@ -3,6 +3,7 @@ from __future__ import annotations
 import functools as ft
 import json
 import operator as op
+import os
 import re
 from os import PathLike
 from pathlib import Path
@@ -385,6 +386,20 @@ def zip_list_eq(__first: types.ZipListLike, __second: types.ZipListLike):
     second_items = get_values(__second)
 
     return set(zip(*first_items)) == set(zip(*second_items))
+
+
+def get_first_dir(path: str) -> str:
+    """Return the top level directory in a path
+
+    If absolute, return the root. This function is necessary to handle paths with
+    ``./``, as ``pathlib.Path`` filters this out.
+    """
+    if os.path.isabs(path):
+        return Path(path).root
+    parent, child = os.path.split(path)
+    if parent:
+        return get_first_dir(parent)
+    return child
 
 
 def to_resolved_path(path: str | PathLike[str]):

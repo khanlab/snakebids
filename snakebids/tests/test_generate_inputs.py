@@ -40,6 +40,7 @@ from snakebids.core.input_generation import (
     _gen_bids_layout,
     _generate_filters,
     _get_lists_from_bids,
+    _parse_bids_path,
     _parse_custom_path,
     generate_inputs,
 )
@@ -49,12 +50,13 @@ from snakebids.tests.helpers import (
     BidsListCompare,
     allow_function_scoped,
     create_dataset,
+    example_if,
     get_bids_path,
     get_zip_list,
     reindex_dataset,
 )
 from snakebids.types import InputsConfig
-from snakebids.utils.utils import BidsEntity, MultiSelectDict
+from snakebids.utils.utils import BidsEntity, BidsParseError, MultiSelectDict
 
 T = TypeVar("T")
 
@@ -986,7 +988,8 @@ def test_all_custom_paths(count: int):
         assert not _all_custom_paths(config)
 
 
-@example(
+@example_if(
+    sys.version_info >= (3, 8),
     dataset=BidsDataset(
         {
             "1": BidsComponent(
@@ -1007,7 +1010,7 @@ def test_all_custom_paths(count: int):
                 },
             ),
         }
-    )
+    ),
 )
 @settings(
     deadline=800,
@@ -1029,19 +1032,58 @@ def test_generate_inputs(dataset: BidsDataset, bids_fs: Path, fakefs_tmpdir: Pat
 
 
 # The content of the dataset is irrelevant to this test, so one example suffices
+# but can't use extension because the custom path won't glob properly
 @settings(max_examples=1, suppress_health_check=[HealthCheck.function_scoped_fixture])
-@given(data=st.data())
+@given(dataset=sb_st.datasets_one_comp(blacklist_entities=["extension"]))
 def test_when_all_custom_paths_no_layout_indexed(
-    data: st.DataObject, bids_fs: Path, fakefs_tmpdir: Path, mocker: MockerFixture
+    dataset: BidsDataset, bids_fs: Path, fakefs_tmpdir: Path, mocker: MockerFixture
 ):
+    mocker.stopall()
     root = tempfile.mkdtemp(dir=fakefs_tmpdir)
-    dataset = data.draw(sb_st.datasets_one_comp(root=Path(root)))
+    rooted = BidsDataset.from_iterable(
+        attrs.evolve(comp, path=os.path.join(root, comp.path))
+        for comp in dataset.values()
+    )
 
     spy = mocker.spy(BIDSLayout, "__init__")
-    reindexed = reindex_dataset(root, dataset, use_custom_paths=True)
-    assert reindexed == dataset
+    reindexed = reindex_dataset(root, rooted, use_custom_paths=True)
+    assert reindexed == rooted
     assert reindexed.layout is None
     spy.assert_not_called()
+
+
+class TestParseBidsPath:
+    @given(component=sb_st.bids_components(max_values=1, restrict_patterns=True))
+    def test_splits_wildcards_from_path(self, component: BidsComponent):
+        path = component.expand()[0]
+        entities = [BidsEntity.normalize(e).entity for e in component.zip_lists]
+        tpl_path, matches = _parse_bids_path(path, entities)
+        assert tpl_path.format(**matches) == path
+
+    @given(component=sb_st.bids_components(max_values=1, restrict_patterns=True))
+    def test_one_match_found_for_each_entity(self, component: BidsComponent):
+        path = component.expand()[0]
+        entities = [BidsEntity.normalize(e).entity for e in component.zip_lists]
+        _, matches = _parse_bids_path(path, entities)
+        assert {(key, val) for key, val in matches.items()} == {
+            (key, val[0]) for key, val in component.zip_lists.items()
+        }
+
+    @given(
+        component=sb_st.bids_components(
+            max_values=1, restrict_patterns=True, extra_entities=False
+        ),
+        entity=sb_st.bids_entity(),
+    )
+    def test_missing_match_leads_to_error(
+        self, component: BidsComponent, entity: BidsEntity
+    ):
+        path = component.expand()[0]
+        entities = [BidsEntity.normalize(e).entity for e in component.zip_lists]
+        assume(entity.entity not in entities)
+        with pytest.raises(BidsParseError) as err:
+            _parse_bids_path(path, it.chain(entities, [entity.entity]))
+        assert err.value.entity == entity
 
 
 class TestDB:
