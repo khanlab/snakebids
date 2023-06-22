@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import copy
 import itertools as it
+from os import PathLike
 from pathlib import Path
 from string import ascii_letters, digits
-from typing import Any, Optional, Type, TypeVar
+from typing import Any, Container, Iterable, Optional, Type, TypeVar
 
 import hypothesis.strategies as st
 from bids.layout import Config as BidsConfig
 from hypothesis import assume
 
-from snakebids.core.datasets import BidsComponent
-from snakebids.core.input_generation import BidsDataset
+from snakebids.core.datasets import BidsComponent, BidsDataset
 from snakebids.tests import helpers
 from snakebids.types import InputConfig, InputsConfig, ZipList
 from snakebids.utils.utils import BidsEntity, MultiSelectDict
@@ -23,14 +23,17 @@ alphanum = ascii_letters + digits
 valid_entities: tuple[str] = tuple(BidsConfig.load("bids").entities.keys())
 
 
-def bids_entity() -> st.SearchStrategy[BidsEntity]:
-    bidsconfig = BidsConfig.load("bids")
-    # Generate inputs and bids does not properly handle 'extension', so exclude it
+def bids_entity(
+    blacklist_entities: Optional[Container[BidsEntity | str]] = None,
+    whitelist_entities: Optional[Container[BidsEntity | str]] = None,
+) -> st.SearchStrategy[BidsEntity]:
     return st.sampled_from(
         [
             BidsEntity(key)
-            for key in bidsconfig.entities.keys()
+            for key in valid_entities
             if key not in ["extension", "fmap", "scans"]
+            and key not in (blacklist_entities or [])
+            and (not whitelist_entities or key in whitelist_entities)
         ],
     )
 
@@ -39,16 +42,80 @@ def bids_value(pattern: str = r"[^\n\r]*") -> st.SearchStrategy[str]:
     return st.from_regex(pattern, fullmatch=True).filter(len)
 
 
+def _filter_invalid_entity_lists(entities: Container[BidsEntity | str]):
+    """Entity lists may not consist of just a datatype or extension.
+
+    If suffix is in the entity list, so must extension
+    """
+    return all(
+        [
+            # If suffix is in the path, extension must be too
+            ("suffix" not in entities or "extension" in entities),
+            # Cannot have paths with just datatype, just extension, or just datatype and
+            # extension
+            entities not in [["datatype"], ["extension"], ["datatype", "extension"]],
+        ]
+    )
+
+
+@st.composite
+def bids_path(  # noqa: PLR0913
+    draw: st.DrawFn,
+    *,
+    root: PathLike[str] | str | None = None,
+    entities: Iterable[BidsEntity | str] | None = None,
+    blacklist_entities: Optional[Container[BidsEntity | str]] = None,
+    whitelist_entities: Optional[Container[BidsEntity | str]] = None,
+    extra_entities: bool = True,
+):
+    entities = (
+        draw(
+            bids_entity_lists(
+                whitelist_entities=whitelist_entities,
+                blacklist_entities=blacklist_entities,
+            )
+        )
+        if entities is None
+        else list(entities)
+    )
+
+    extras = (
+        {
+            k: v[0].replace("{", "{{").replace("}", "}}")
+            for k, v in draw(
+                zip_lists(
+                    max_values=1,
+                    max_entities=2,
+                    blacklist_entities=helpers.ContainerBag(
+                        blacklist_entities if blacklist_entities is not None else [],
+                        [BidsEntity.normalize(e) for e in entities],
+                    ),
+                    restrict_patterns=True,
+                )
+            ).items()
+        }
+        if extra_entities
+        else {}
+    )
+
+    return Path(root or ".") / helpers.get_bids_path(entities, **extras)
+
+
 def bids_entity_lists(
-    min_size: int = 1, max_size: int = 5
+    min_size: int = 1,
+    max_size: int = 5,
+    blacklist_entities: Optional[Container[BidsEntity | str]] = None,
+    whitelist_entities: Optional[Container[BidsEntity | str]] = None,
 ) -> st.SearchStrategy[list[BidsEntity]]:
     return st.lists(
-        bids_entity(),
+        bids_entity(
+            whitelist_entities=whitelist_entities,
+            blacklist_entities=blacklist_entities,
+        ),
         min_size=min_size,
         max_size=max_size,
         unique=True,
-        # bids_paths aren't formed correctly if only datatype is provided
-    ).filter(lambda v: v != ["datatype"])
+    ).filter(_filter_invalid_entity_lists)
 
 
 @st.composite
@@ -97,12 +164,21 @@ def zip_lists(  # noqa: PLR0913
     min_values: int = 1,
     max_values: int = 3,
     entities: Optional[list[BidsEntity]] = None,
+    blacklist_entities: Optional[Container[BidsEntity | str]] = None,
+    whitelist_entities: Optional[Container[BidsEntity | str]] = None,
     restrict_patterns: bool = False,
 ) -> ZipList:
     # Generate multiple entity sets for different "file types"
 
     if entities is None:
-        entities = draw(bids_entity_lists(min_size=min_entities, max_size=max_entities))
+        entities = draw(
+            bids_entity_lists(
+                min_size=min_entities,
+                max_size=max_entities,
+                blacklist_entities=blacklist_entities,
+                whitelist_entities=whitelist_entities,
+            )
+        )
 
     values = {
         entity: draw(
@@ -136,9 +212,14 @@ def bids_components(  # noqa: PLR0913
     min_values: int = 1,
     max_values: int = 3,
     entities: Optional[list[BidsEntity]] = None,
+    blacklist_entities: Optional[Container[BidsEntity | str]] = None,
+    whitelist_entities: Optional[Container[BidsEntity | str]] = None,
     root: Optional[Path] = None,
     name: str | None = None,
     restrict_patterns: bool = False,
+    extra_entities: bool = True,
+    blacklist_extra_entities: Optional[Container[BidsEntity | str]] = None,
+    whitelist_extra_entities: Optional[Container[BidsEntity | str]] = None,
 ) -> BidsComponent:
     zip_list = draw(
         zip_lists(
@@ -147,11 +228,21 @@ def bids_components(  # noqa: PLR0913
             min_values=min_values,
             max_values=max_values,
             entities=entities,
+            blacklist_entities=blacklist_entities,
+            whitelist_entities=whitelist_entities,
             restrict_patterns=restrict_patterns,
         )
     )
 
-    path = (root or Path()) / helpers.get_bids_path(zip_list)
+    path = draw(
+        bids_path(
+            root=root,
+            entities=zip_list,
+            extra_entities=extra_entities,
+            blacklist_entities=blacklist_extra_entities,
+            whitelist_entities=whitelist_extra_entities,
+        )
+    )
 
     return BidsComponent(
         name=name or draw(bids_value()),
@@ -194,11 +285,17 @@ def datasets(
 ) -> BidsDataset:
     ent1 = draw(bids_entity_lists(min_size=2, max_size=3))
     ent2 = copy.copy(ent1)
-    ent2.pop()
-    # BUG: need better controlling if 'datatype' is the only arg
-    assume(ent2 != ["datatype"])
+    extra = ent2.pop()
+    assume(_filter_invalid_entity_lists(ent2))
     comp1 = draw(bids_components(entities=ent1, restrict_patterns=True, root=root))
-    comp2 = draw(bids_components(entities=ent2, restrict_patterns=True, root=root))
+    comp2 = draw(
+        bids_components(
+            entities=ent2,
+            restrict_patterns=True,
+            root=root,
+            blacklist_extra_entities=[extra],
+        )
+    )
     assume(comp1.input_name != comp2.input_name)
     return BidsDataset.from_iterable([comp1, comp2])
 

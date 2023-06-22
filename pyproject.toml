@@ -103,7 +103,7 @@ build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poe.tasks]
 setup = "pre-commit install"
-quality = { shell = "isort snakebids && black snakebids && ruff snakebids" }
+quality = { shell = "isort snakebids && black snakebids && ruff snakebids && pyright" }
 fix = { shell = "isort snakebids && black snakebids && ruff --fix snakebids"}
 test = """
 pytest --doctest-modules --ignore=docs \

@@ -72,6 +72,11 @@ class BidsEntity:
             return self.entity == other.entity
         return False
 
+    def __lt__(self, other: BidsEntity | str):
+        if isinstance(other, str):
+            return self.entity < other
+        return self.entity < other.entity
+
     @property
     def tag(self) -> str:
         """Get the bids tag version of the entity
@@ -157,6 +162,27 @@ class BidsEntity:
             if props.get("tag", None) == tag:
                 return cls(entity)
         return cls(tag)
+
+    @classmethod
+    def normalize(cls, __item: str | BidsEntity) -> BidsEntity:
+        """Return the entity associated with the given item, if found
+
+        Supports both strings and BidsEntities as input. Unlike the constructor, if a
+        tag name is given, the associated entity will be returned. If no associated
+        entity is found, the tag itself is used as the entity name
+
+        Parameters
+        ----------
+        tag : str
+            tag to search
+
+        Returns
+        -------
+        BidsEntity
+        """
+        if isinstance(__item, BidsEntity):
+            return __item
+        return cls.from_tag(__item)
 
 
 def matches_any(

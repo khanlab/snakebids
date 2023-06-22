@@ -5,15 +5,26 @@ import functools as ft
 import itertools as it
 from datetime import timedelta
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Sequence, TypeVar
+from typing import (
+    Any,
+    Callable,
+    Container,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Sequence,
+    TypeVar,
+)
 
 import more_itertools as itx
 import pytest
-from hypothesis import HealthCheck, settings
+from hypothesis import HealthCheck, example, settings
 from typing_extensions import ParamSpec, TypeAlias
 
 from snakebids import bids
-from snakebids.core.input_generation import BidsDataset, generate_inputs
+from snakebids.core.datasets import BidsDataset
+from snakebids.core.input_generation import generate_inputs
 from snakebids.types import InputsConfig, UserDictPy37, ZipList, ZipListLike
 from snakebids.utils.utils import BidsEntity, MultiSelectDict
 
@@ -62,13 +73,15 @@ def setify(dic: dict[Any, list[Any]]) -> dict[Any, set[Any]]:
     return {key: set(val) for key, val in dic.items()}
 
 
-def get_bids_path(entities: Iterable[str]) -> str:
+def get_bids_path(entities: Iterable[str | BidsEntity], **extras: str) -> str:
     """Get consistently ordered bids path for a group of entities
 
     Parameters
     ----------
     entities : Iterable[str]
         Entities to convert into a bids path
+    extras
+        Extra entity-value pairs to include in the path
 
     Returns
     -------
@@ -84,7 +97,11 @@ def get_bids_path(entities: Iterable[str]) -> str:
         return entity.wildcard, f"{{{entity.wildcard}}}{extension}"
 
     return bids(
-        root=".", **dict(get_tag(BidsEntity(entity)) for entity in sorted(entities))
+        root=".",
+        **dict(get_tag(BidsEntity(entity)) for entity in sorted(entities)),
+        **dict(
+            (BidsEntity(entity).wildcard, value) for entity, value in extras.items()
+        ),
     )
 
 
@@ -125,6 +142,9 @@ def debug(**overrides: Any):
     """
 
     def inner(func: _FuncT[_P, _T]) -> _FuncT[_P, _T]:
+        if not hasattr(func, "hypothesis"):
+            raise TypeError(f"{func} is not decorated with hypothesis.given")
+
         test = getattr(func, "hypothesis").inner_test
 
         @pytest.mark.disable_fakefs(True)
@@ -132,8 +152,6 @@ def debug(**overrides: Any):
         def inner_test(*args: _P.args, **kwargs: _P.kwargs):
             return test(*args, **{**kwargs, **overrides})
 
-        if not hasattr(func, "hypothesis"):
-            raise TypeError(f"{func} is not decorated with hypothesis.given")
         return inner_test
 
     return inner
@@ -255,3 +273,34 @@ def expand_zip_list(
 def entity_to_wildcard(__entities: str | Iterable[str]):
     """Turn entity strings into wildcard dicts as {"entity": "{entity}"}"""
     return {entity: f"{{{entity}}}" for entity in itx.always_iterable(__entities)}
+
+
+def identity(obj: _T) -> _T:
+    return obj
+
+
+def example_if(condition: bool, *args: Any, **kwargs: Any):
+    def inner(func: _FuncT[_P, _T]) -> _FuncT[_P, _T]:
+        return example(*args, **kwargs)(func)
+
+    if condition:
+        return inner
+
+    return identity
+
+
+class ContainerBag(Container[_T]):
+    """Container to hold other containers
+
+    Useful because list(Container) isn't guarenteed to work, so this lets us merge
+    Containers in a type safe way.
+    """
+
+    def __init__(self, *entries: Container[_T]):
+        self.entries = entries
+
+    def __contains__(self, __x: object) -> bool:
+        for entry in self.entries:
+            if __x in entry:
+                return True
+        return False
