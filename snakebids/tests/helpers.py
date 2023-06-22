@@ -90,11 +90,7 @@ def get_bids_path(entities: Iterable[str | BidsEntity], **extras: str) -> str:
     """
 
     def get_tag(entity: BidsEntity) -> tuple[str, str]:
-        # For pybids, suffixes MUST be followed by extensions, but we don't yet support
-        # separate indexing of extensions, so add a dummy extension any time there's a
-        # suffix
-        extension = ".foo" if entity == "suffix" else ""
-        return entity.wildcard, f"{{{entity.wildcard}}}{extension}"
+        return entity.wildcard, f"{{{entity.wildcard}}}"
 
     return bids(
         root=".",

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import itertools as it
+import sys
 from os import PathLike
 from pathlib import Path
 from string import ascii_letters, digits
@@ -31,7 +32,7 @@ def bids_entity(
         [
             BidsEntity(key)
             for key in valid_entities
-            if key not in ["extension", "fmap", "scans"]
+            if key not in ["fmap", "scans"]
             and key not in (blacklist_entities or [])
             and (not whitelist_entities or key in whitelist_entities)
         ],
@@ -39,7 +40,15 @@ def bids_entity(
 
 
 def bids_value(pattern: str = r"[^\n\r]*") -> st.SearchStrategy[str]:
-    return st.from_regex(pattern, fullmatch=True).filter(len)
+    # Need the isdigit == isdecimal check to work around a pybids bug
+    return (
+        st.from_regex(pattern, fullmatch=True)
+        .filter(len)
+        .filter(lambda s: all(c.isdigit() == c.isdecimal() for c in s))
+        # remove values leading with multiple dots ".." because pybids doesn't handle
+        # them correctly when applied to the "extension" entity
+        .filter(lambda s: s[:2] != "..")
+    )
 
 
 def _filter_invalid_entity_lists(entities: Container[BidsEntity | str]):
@@ -47,6 +56,10 @@ def _filter_invalid_entity_lists(entities: Container[BidsEntity | str]):
 
     If suffix is in the entity list, so must extension
     """
+    # The versions of pybids available from py37 have bugs in the indexing of suffix
+    # and extension, so just exclude these entries from our tests
+    if sys.version_info < (3, 8) and ("extension" in entities or "suffix" in entities):
+        return False
     return all(
         [
             # If suffix is in the path, extension must be too
@@ -67,7 +80,7 @@ def bids_path(  # noqa: PLR0913
     blacklist_entities: Optional[Container[BidsEntity | str]] = None,
     whitelist_entities: Optional[Container[BidsEntity | str]] = None,
     extra_entities: bool = True,
-):
+) -> Path:
     entities = (
         draw(
             bids_entity_lists(
@@ -303,16 +316,21 @@ def datasets(
 @st.composite
 def datasets_one_comp(
     draw: st.DrawFn,
+    *,
     root: Optional[Path] = None,
     names: st.SearchStrategy[str] | None = None,
+    blacklist_entities: Optional[Container[BidsEntity | str]] = None,
+    whitelist_entities: Optional[Container[BidsEntity | str]] = None,
 ) -> BidsDataset:
-    ent1 = draw(bids_entity_lists(min_size=2, max_size=3))
     comp1 = draw(
         bids_components(
-            entities=ent1,
+            min_entities=2,
+            max_entities=3,
             restrict_patterns=True,
             root=root,
             name=draw(names) if names is not None else None,
+            blacklist_entities=blacklist_entities,
+            whitelist_entities=whitelist_entities,
         )
     )
     return BidsDataset.from_iterable([comp1])

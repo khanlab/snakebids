@@ -11,6 +11,7 @@ def bids(  # noqa: PLR0913
     datatype: Optional[str] = None,
     prefix: Optional[str] = None,
     suffix: Optional[str] = None,
+    extension: Optional[str] = None,
     subject: Optional[str] = None,
     session: Optional[str] = None,
     include_subject_dir: bool = True,
@@ -126,10 +127,12 @@ def bids(  # noqa: PLR0913
     * Some code adapted from mne-bids, specifically
       https://mne.tools/mne-bids/stable/_modules/mne_bids/utils.html
     """
-    if not any([entities, suffix, subject, session]) and any([datatype, prefix]):
+    if not any([entities, suffix, subject, session, extension]) and any(
+        [datatype, prefix]
+    ):
         raise ValueError(
-            "At least one of subject, session, suffix, or an entity must be supplied.\n"
-            "\tGot only: "
+            "At least one of subject, session, suffix, extension, or an entity must be "
+            "supplied.\n\tGot only: "
             + " and ".join(
                 filter(
                     None,
@@ -186,7 +189,7 @@ def bids(  # noqa: PLR0913
                 suffix,
             ],
         )
-    )
+    ) + (extension or "")
 
     # If all entities were `None`, the list will be empty and filename == ""
     if not filename:

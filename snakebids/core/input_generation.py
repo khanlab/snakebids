@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from collections import defaultdict
 from pathlib import Path
@@ -24,7 +25,12 @@ from snakebids.exceptions import (
 )
 from snakebids.types import InputsConfig, ZipList
 from snakebids.utils.snakemake_io import glob_wildcards
-from snakebids.utils.utils import BidsEntity, BidsParseError, MultiSelectDict
+from snakebids.utils.utils import (
+    BidsEntity,
+    BidsParseError,
+    MultiSelectDict,
+    get_first_dir,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -504,23 +510,45 @@ def _parse_bids_path(path: str, entities: Iterable[str]) -> tuple[str, dict[str,
     matches : iterable of (wildcard, value)
         The values matched with each wildcard
     """
+    # If path is relative, we need to get a slash in front of it to ensure parsing works
+    # correctly. So prepend "./" or ".\" and run function again, then strip before
+    # returning
+    if not os.path.isabs(path) and not get_first_dir(path) == ".":
+        path_, wildcard_values = _parse_bids_path(os.path.join(".", path), entities)
+        return str(Path(path_)), wildcard_values
 
-    wildcard_values: dict[str, str] = {}
+    entities = list(entities)
 
-    for entity in map(BidsEntity, entities):
-        # Iterate over wildcards, slowly updating the path as each entity is replaced
+    matches = sorted(
+        (
+            (entity, match)
+            for entity in map(BidsEntity, entities)
+            for match in re.finditer(entity.regex, path)
+        ),
+        key=lambda match: match[1].start(2),
+    )
 
-        wildcard = entity.wildcard
-        match = re.search(entity.regex, path)
-        if not match or not match.group(2):
-            raise BidsParseError(path=path, entity=entity)
+    wildcard_values: dict[str, str] = {
+        entity.wildcard: match.group(2) for entity, match in matches
+    }
+    if len(wildcard_values) != len(entities):
+        unmatched = (
+            set(map(BidsEntity, entities))
+            .difference(set(match[0] for match in matches))
+            .pop()
+        )
+        raise BidsParseError(path=path, entity=unmatched)
 
-        # overwrite path one wildcard at a time
-        path = re.sub(entity.regex, rf"\1{{{wildcard}}}\3", path)
-        value = match.group(2)
-        wildcard_values[wildcard] = value
-
-    return path, wildcard_values
+    num_matches = len(matches)
+    new_path: list[str] = []
+    for i in range(num_matches + 1):
+        start = matches[i - 1][1].end(2) if i else 0
+        end = len(path) if i == num_matches else matches[i][1].start(2)
+        # Pybids technically allows `{` in the extension, so we escape it
+        new_path.append(path[start:end].replace("{", "{{").replace("}", "}}"))
+        if i < num_matches:
+            new_path.append(f"{{{matches[i][0].wildcard}}}")
+    return "".join(new_path), wildcard_values
 
 
 def _get_lists_from_bids(
