@@ -986,6 +986,29 @@ def test_all_custom_paths(count: int):
         assert not _all_custom_paths(config)
 
 
+@example(
+    dataset=BidsDataset(
+        {
+            "1": BidsComponent(
+                name="1",
+                path="sub-{subject}/sub-{subject}_{suffix}{extension}",
+                zip_lists={
+                    "subject": ["0"],
+                    "suffix": ["0"],
+                    "extension": [".0"],
+                },
+            ),
+            "0": BidsComponent(
+                name="0",
+                path="sub-{subject}/sub-{subject}{extension}",
+                zip_lists={
+                    "subject": ["0"],
+                    "extension": [".0"],
+                },
+            ),
+        }
+    )
+)
 @settings(
     deadline=800,
     suppress_health_check=[
@@ -993,12 +1016,15 @@ def test_all_custom_paths(count: int):
         HealthCheck.too_slow,
     ],
 )
-@given(data=st.data())
-def test_generate_inputs(data: st.DataObject, bids_fs: Path, fakefs_tmpdir: Path):
+@given(dataset=sb_st.datasets())
+def test_generate_inputs(dataset: BidsDataset, bids_fs: Path, fakefs_tmpdir: Path):
     root = tempfile.mkdtemp(dir=fakefs_tmpdir)
-    dataset = data.draw(sb_st.datasets(root=Path(root)))
-    reindexed = reindex_dataset(root, dataset)
-    assert reindexed == dataset
+    rooted = BidsDataset.from_iterable(
+        attrs.evolve(comp, path=os.path.join(root, comp.path))
+        for comp in dataset.values()
+    )
+    reindexed = reindex_dataset(root, rooted)
+    assert reindexed == rooted
     assert reindexed.layout is not None
 
 
