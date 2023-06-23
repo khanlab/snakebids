@@ -78,7 +78,7 @@ def _filter_invalid_entity_lists(entities: Container[BidsEntity | str]):
 
 
 @st.composite
-def bids_path(  # noqa: PLR0913
+def bids_path(
     draw: st.DrawFn,
     *,
     root: PathLike[str] | str | None = None,
@@ -177,7 +177,7 @@ def inputs_configs() -> st.SearchStrategy[InputsConfig]:
 
 
 @st.composite
-def zip_lists(  # noqa: PLR0913
+def zip_lists(
     draw: st.DrawFn,
     *,
     min_entities: int = 1,
@@ -232,7 +232,7 @@ def zip_lists(  # noqa: PLR0913
 
 
 @st.composite
-def bids_component_row(  # noqa: PLR0913
+def bids_component_row(
     draw: st.DrawFn,
     *,
     min_values: int = 1,
@@ -267,7 +267,7 @@ def bids_component_row(  # noqa: PLR0913
 
 
 @st.composite
-def bids_partial_components(  # noqa: PLR0913
+def bids_partial_components(
     draw: st.DrawFn,
     *,
     min_entities: int = 1,
@@ -331,7 +331,7 @@ def bids_partial_components(  # noqa: PLR0913
 
 
 @st.composite
-def bids_components(  # noqa: PLR0913
+def bids_components(
     draw: st.DrawFn,
     *,
     min_entities: int = 1,
@@ -382,7 +382,7 @@ def bids_components(  # noqa: PLR0913
 
 
 @st.composite
-def expandables(  # noqa: PLR0913
+def expandables(
     draw: st.DrawFn,
     *,
     max_entities: int = 5,
@@ -481,7 +481,7 @@ def datasets(
 
 
 @st.composite
-def datasets_one_comp(  # noqa: PLR0913
+def datasets_one_comp(
     draw: st.DrawFn,
     *,
     root: Optional[Path] = None,

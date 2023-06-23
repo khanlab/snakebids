@@ -971,11 +971,22 @@ class TestGenBidsLayout:
     @given(dataset=sb_st.datasets())
     def test_gen_layout_returns_valid_dataset(self, dataset: BidsDataset, tmpdir: Path):
         create_dataset(tmpdir, dataset)
-        assert _gen_bids_layout(tmpdir, False, None, False, None)
+        assert _gen_bids_layout(
+            bids_dir=tmpdir,
+            derivatives=False,
+            pybidsdb_dir=None,
+            pybidsdb_reset=False,
+            pybids_config=None,
+        )
 
     def test_invalid_path_raises_error(self, tmpdir: Path):
         with pytest.raises(ValueError):
-            _gen_bids_layout(tmpdir / "foo", False, None, False)
+            _gen_bids_layout(
+                bids_dir=tmpdir / "foo",
+                derivatives=False,
+                pybidsdb_dir=None,
+                pybidsdb_reset=False,
+            )
 
 
 @pytest.mark.parametrize("count", tuple(range(6)))

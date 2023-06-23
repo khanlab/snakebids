@@ -31,7 +31,7 @@ _logger = logging.getLogger(__name__)
 
 
 @overload
-def generate_inputs(  # noqa: PLR0913
+def generate_inputs(
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
     pybidsdb_dir: Path | str | None = ...,
@@ -42,6 +42,7 @@ def generate_inputs(  # noqa: PLR0913
     participant_label: Iterable[str] | str | None = ...,
     exclude_participant_label: Iterable[str] | str | None = ...,
     use_bids_inputs: Literal[True] | None = ...,
+    validate: bool = ...,
     pybids_database_dir: Path | str | None = ...,
     pybids_reset_database: bool = ...,
 ) -> BidsDataset:
@@ -49,7 +50,7 @@ def generate_inputs(  # noqa: PLR0913
 
 
 @overload
-def generate_inputs(  # noqa: PLR0913
+def generate_inputs(
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
     pybidsdb_dir: Path | str | None = ...,
@@ -60,13 +61,14 @@ def generate_inputs(  # noqa: PLR0913
     participant_label: Iterable[str] | str | None = ...,
     exclude_participant_label: Iterable[str] | str | None = ...,
     use_bids_inputs: Literal[False] = ...,
+    validate: bool = ...,
     pybids_database_dir: Path | str | None = ...,
     pybids_reset_database: bool = ...,
 ) -> BidsDatasetDict:
     ...
 
 
-def generate_inputs(  # noqa: PLR0913
+def generate_inputs(
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
     pybidsdb_dir: Path | str | None = None,
@@ -77,6 +79,7 @@ def generate_inputs(  # noqa: PLR0913
     participant_label: Iterable[str] | str | None = None,
     exclude_participant_label: Iterable[str] | str | None = None,
     use_bids_inputs: bool | None = None,
+    validate: bool = False,
     pybids_database_dir: Path | str | None = None,
     pybids_reset_database: bool = False,
 ) -> BidsDataset | BidsDatasetDict:
@@ -145,6 +148,10 @@ def generate_inputs(  # noqa: PLR0913
         If False, returns the classic :class:`BidsDatasetDict` instead of
         :class`BidsDataset`. Setting to True is deprecated as of v0.8, as this is now
         the default behaviour
+
+    validate
+        If True performs validation of BIDS directory using pybids, otherwise 
+        skips validation.
 
     Returns
     -------
@@ -267,6 +274,7 @@ ses-{session}_run-{run}_T1w.nii.gz",
             pybids_config=pybids_config,
             pybidsdb_dir=pybidsdb_dir or pybids_database_dir,
             pybidsdb_reset=pybidsdb_reset or pybids_reset_database,
+            validate=validate,
         )
         if not _all_custom_paths(pybids_inputs)
         else None
@@ -308,11 +316,13 @@ def _all_custom_paths(config: InputsConfig):
 
 
 def _gen_bids_layout(
+    *,
     bids_dir: Path | str,
     derivatives: Path | str | bool,
     pybidsdb_dir: Path | str | None,
     pybidsdb_reset: bool,
     pybids_config: Path | str | None = None,
+    validate: bool = False,
 ) -> BIDSLayout:
     """Create (or reindex) the BIDSLayout if one doesn't exist,
     which is only saved if a database directory path is provided
@@ -335,6 +345,9 @@ def _gen_bids_layout(
         A boolean that determines whether to reset / overwrite
         existing database.
 
+    validate
+        A boolean that determines whether to validate the bids dataset
+
     Returns
     -------
     layout : BIDSLayout
@@ -353,7 +366,7 @@ def _gen_bids_layout(
     return BIDSLayout(
         str(bids_dir),
         derivatives=derivatives,
-        validate=False,
+        validate=validate,
         config=pybids_config,
         database_path=pybidsdb_dir,
         reset_database=pybidsdb_reset,

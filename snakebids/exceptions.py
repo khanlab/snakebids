@@ -44,3 +44,7 @@ class MisspecifiedCliFilterError(Exception):
             f"{misspecified_filter}. Filters must be of the form "
             "{entity}={filter} or {entity}:{REQUIRED|OPTIONAL|NONE} (case-insensitive)."
         )
+
+
+class SnakebidsPluginError(Exception):
+    """Exception raised when a Snakebids plugin encounters a problem"""

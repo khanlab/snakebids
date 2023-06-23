@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 
-def bids(  # noqa: PLR0913
+def bids(
     root: Optional[str | Path] = None,
     datatype: Optional[str] = None,
     prefix: Optional[str] = None,
