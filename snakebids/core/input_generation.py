@@ -5,10 +5,12 @@ import json
 import logging
 import os
 import re
+import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Generator, Iterable, Optional, Sequence, overload
+from typing import Any, Generator, Iterable, Mapping, Optional, Sequence, overload
 
+import attrs
 import more_itertools as itx
 from bids import BIDSLayout, BIDSLayoutIndexer
 from bids.layout import BIDSFile, Query
@@ -559,6 +561,50 @@ def _parse_bids_path(path: str, entities: Iterable[str]) -> tuple[str, dict[str,
     return "".join(new_path), wildcard_values
 
 
+@attrs.define
+class _GetListsFromBidsSteps:
+    input_name: str
+
+    def prepare_bids_filters(
+        self, filters: Mapping[str, str | bool | Sequence[str | bool]]
+    ) -> dict[str, str | Query | list[str | Query]]:
+        if sys.version_info < (3, 8):
+            for key, filts in filters.items():
+                filts_ = list(itx.always_iterable(filts))
+                if True in filts_ or False in filts_:
+                    raise ConfigError(
+                        "Booleans may not be included in filter lists in Python 3.7.x "
+                        "or lower. Please upgrade to Python 3.8.x or greater for this "
+                        f"feature.\n\tComponent: {self.input_name}\n\t{key}: {filts}"
+                    )
+            return {
+                key: Query.ANY if f is True else Query.NONE if f is False else f
+                for key, f in filters.items()
+            }  # type: ignore
+        return {
+            key: [
+                Query.ANY if f is True else Query.NONE if f is False else f
+                for f in itx.always_iterable(filts)
+            ]
+            for key, filts in filters.items()
+        }
+
+    def get_matching_files(
+        self,
+        bids_layout: BIDSLayout,
+        regex_search: bool,
+        filters: Mapping[str, str | Query | Sequence[str | Query]],
+    ) -> Iterable[BIDSFile]:
+        try:
+            return bids_layout.get(regex_search=regex_search, **filters)
+        except AttributeError as err:
+            raise PybidsError(
+                "Pybids has encountered a problem that Snakebids cannot handle. This "
+                "may indicate a missing or invalid dataset_description.json for this "
+                "dataset."
+            ) from err
+
+
 def _get_lists_from_bids(
     bids_layout: Optional[BIDSLayout],
     pybids_inputs: InputsConfig,
@@ -591,6 +637,7 @@ def _get_lists_from_bids(
         One BidsComponent is yielded for each modality described by ``pybids_inputs``.
     """
     for input_name in limit_to or list(pybids_inputs):
+        steps = _GetListsFromBidsSteps(input_name)
         _logger.debug("Grabbing inputs for %s...", input_name)
         component = pybids_inputs[input_name]
 
@@ -619,24 +666,11 @@ def _get_lists_from_bids(
 
         zip_lists: dict[str, list[str]] = defaultdict(list)
         paths: set[str] = set()
-        pybids_filters = {
-            key: [
-                Query.ANY if f is True else Query.NONE if f is False else f
-                for f in itx.always_iterable(filts)
-            ]
-            for key, filts in component.get("filters", {}).items()
-        }
+        pybids_filters = steps.prepare_bids_filters(component.get("filters", {}))
+        matching_files = steps.get_matching_files(
+            bids_layout, regex_search, {**pybids_filters, **filters}
+        )
 
-        try:
-            matching_files: Iterable[BIDSFile] = bids_layout.get(
-                regex_search=regex_search, **pybids_filters, **filters
-            )
-        except AttributeError as err:
-            raise PybidsError(
-                "Pybids has encountered a problem that Snakebids cannot handle. This "
-                "may indicate a missing or invalid dataset_description.json for this "
-                "dataset."
-            ) from err
         for img in matching_files:
             wildcards: list[str] = [
                 wildcard
