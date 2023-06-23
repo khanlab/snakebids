@@ -2,6 +2,10 @@
 
 Plugins are a feature in Snakebids that enables you to add custom functionality to your Snakebids application after parsing CLI arguments but before invoking Snakemake. For example, you can use a plugin to perform BIDS validation of your Snakebids app's input, which ensures your app is only executed if the input dataset is valid. You can either use those that are distributed with Snakebids (see [Using plugins](#using-plugins)) or create your own plugins (see [Creating plugins](#creating-plugins)).
 
+```{note}
+For a full list of plugins distributed with Snakebids, see the [Plugins reference](/api/plugins) page.
+```
+
 ## Using plugins
 To add one or more plugins to your {class}`SnakeBidsApp <snakebids.app.SnakeBidsApp>`, pass them to the {class}`~snakebids.app.SnakeBidsApp` constructor via the {attr}`~snakebids.app.SnakeBidsApp.plugins` parameter. Your plugin will have access to CLI parameters (after they've been parsed) via their names in {attr}`SnakeBidsApp.config <snakebids.app.SnakeBidsApp.config>`. Any modifications to that config dictionary made by the plugin will be carried forward into the workflow.
 

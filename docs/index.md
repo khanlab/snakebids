@@ -70,5 +70,6 @@ migration/0.7_to_0.8
 :maxdepth: 1
 
 api/main
-api/details
+api/internals
+api/plugins
 ```
