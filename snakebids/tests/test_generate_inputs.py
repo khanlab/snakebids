@@ -253,6 +253,11 @@ class TestFilterBools:
         data = generate_inputs(root, pybids_inputs)
         assert data == expected
 
+    @pytest.mark.skipif(
+        sys.version_info < (3, 8),
+        reason="Filter lists with booleans does not work on pybids versions available "
+        "to py37",
+    )
     @allow_function_scoped
     @given(
         template=sb_st.bids_components(
@@ -311,6 +316,36 @@ class TestFilterBools:
         result = generate_inputs(root, pybids_inputs)
         assert result == BidsDataset({"target": dataset["target"]})
 
+    @pytest.mark.skipif(
+        sys.version_info >= (3, 8), reason="Just a compatability check for py37"
+    )
+    @given(
+        dataset=sb_st.datasets_one_comp(),
+        entity=sb_st.bids_entity(path_safe=True),
+    )
+    @allow_function_scoped
+    def test_filter_lists_with_bools_fail_on_py37(
+        self,
+        tmpdir: Path,
+        dataset: BidsDataset,
+        entity: BidsEntity,
+    ):
+        root = tempfile.mkdtemp(dir=tmpdir)
+        create_dataset(root, dataset)
+        pybids_inputs: InputsConfig = {
+            "template": {
+                "filters": {entity.entity: [False]},
+            }
+        }
+
+        with pytest.raises(ConfigError):
+            generate_inputs(root, pybids_inputs)
+
+    @pytest.mark.skipif(
+        sys.version_info < (3, 8),
+        reason="Filter lists with booleans does not work on pybids versions available "
+        "to py37",
+    )
     @allow_function_scoped
     @given(
         template=sb_st.bids_components(
