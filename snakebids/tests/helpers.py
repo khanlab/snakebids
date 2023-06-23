@@ -179,9 +179,7 @@ def create_dataset(root: str | Path, dataset: BidsDataset) -> None:
     touched: they will have no contents.
     """
     for component in dataset.values():
-        entities = list(component.zip_lists.keys())
-        for values in zip(*component.zip_lists.values()):
-            path = Path(root, component.path.format(**dict(zip(entities, values))))
+        for path in map(Path(root).joinpath, component.expand()):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.touch()
 
@@ -194,7 +192,7 @@ def create_snakebids_config(dataset: BidsDataset) -> InputsConfig:
     return {
         comp.name: {
             "filters": {
-                BidsEntity.from_tag(entity).entity: comp.entities[entity]
+                BidsEntity.from_tag(entity).entity: list(comp.entities[entity])
                 if entity in comp.entities
                 else False
                 for entity in all_entities

@@ -33,13 +33,22 @@ def bids_entity(
     *,
     blacklist_entities: Optional[Container[BidsEntity | str]] = None,
     whitelist_entities: Optional[Container[BidsEntity | str]] = None,
+    path_safe: bool = False,
 ) -> st.SearchStrategy[BidsEntity]:
+    blacklist = (
+        helpers.ContainerBag(
+            blacklist_entities if blacklist_entities is not None else set(),
+            {"datatype", "suffix", "extension"},
+        )
+        if path_safe
+        else blacklist_entities or set()
+    )
     return st.sampled_from(
         [
             BidsEntity(key)
             for key in valid_entities
             if key not in ["fmap", "scans"]
-            and key not in (blacklist_entities or [])
+            and key not in (blacklist)
             and (not whitelist_entities or key in whitelist_entities)
         ],
     )
@@ -246,13 +255,9 @@ def bids_component_row(
 ) -> BidsComponentRow:
     entity = entity or draw(
         bids_entity(
-            blacklist_entities=helpers.ContainerBag(
-                blacklist_entities if blacklist_entities is not None else {},
-                {"datatype", "suffix", "extension"},
-            )
-            if path_safe
-            else blacklist_entities,
+            blacklist_entities=blacklist_entities,
             whitelist_entities=whitelist_entities,
+            path_safe=path_safe,
         )
     )
     values = draw(
