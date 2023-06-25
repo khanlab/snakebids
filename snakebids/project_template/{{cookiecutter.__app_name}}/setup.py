@@ -2,7 +2,7 @@ import json
 
 import setuptools
 
-with open("README.rst", "r", encoding="utf-8") as fh:
+with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 with open("pipeline_description.json", "r", encoding="utf-8") as fh:
@@ -34,10 +34,13 @@ setuptools.setup(
     ],
     entry_points={
         "console_scripts": [
-            "{{cookiecutter.app_name}}={{cookiecutter.app_name}}.run:main"
+            "{{cookiecutter.__app_name}}={{cookiecutter.__app_name}}.run:main"
         ]
     },
-    install_requires=["snakebids>={{cookiecutter.snakebids_version}}", "snakemake"],
+    install_requires=[
+        "snakebids>={{cookiecutter._snakebids_version}}",
+        "snakemake",
+    ],
     python_requires=">=3.7",
     **optional_vals,
 )
