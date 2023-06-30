@@ -15,7 +15,7 @@ import more_itertools as itx
 from bids import BIDSLayout, BIDSLayoutIndexer
 from bids.layout import BIDSFile, Query
 from snakemake.script import Snakemake
-from typing_extensions import Literal
+from typing_extensions import Literal, TypeAlias
 
 from snakebids.core.datasets import BidsComponent, BidsDataset, BidsDatasetDict
 from snakebids.core.filtering import filter_list
@@ -565,18 +565,30 @@ def _parse_bids_path(path: str, entities: Iterable[str]) -> tuple[str, dict[str,
 class _GetListsFromBidsSteps:
     input_name: str
 
+    FilterType: TypeAlias = "Mapping[str, str | bool | Sequence[str | bool]]"
+
+    def _get_invalid_filters(self, filters: FilterType):
+        for key, filts in filters.items():
+            try:
+                if True in filts or False in filts:  # type: ignore
+                    yield key, filts
+            except TypeError:
+                pass
+
     def prepare_bids_filters(
         self, filters: Mapping[str, str | bool | Sequence[str | bool]]
     ) -> dict[str, str | Query | list[str | Query]]:
         if sys.version_info < (3, 8):
-            for key, filts in filters.items():
-                filts_ = list(itx.always_iterable(filts))
-                if True in filts_ or False in filts_:
-                    raise ConfigError(
-                        "Booleans may not be included in filter lists in Python 3.7.x "
-                        "or lower. Please upgrade to Python 3.8.x or greater for this "
-                        f"feature.\n\tComponent: {self.input_name}\n\t{key}: {filts}"
-                    )
+            invalid_filters = list(self._get_invalid_filters(filters))
+            if invalid_filters:
+                msg = (
+                    f"Invalid filters in component: '{self.input_name}'. Booleans "
+                    "may not be included in filter lists in Python 3.7.x "
+                    "or lower. Please upgrade to Python 3.8.x or greater for this "
+                    f"feature. Invalid filters:\n\t"
+                ) + "\n\t".join(f"{key}: {val}" for key, val in invalid_filters)
+
+                raise ConfigError(msg)
             return {
                 key: Query.ANY if f is True else Query.NONE if f is False else f
                 for key, f in filters.items()
