@@ -1,7 +1,11 @@
-__submodules__ = ["core"]
-
 __version__ = "0.0.0"
 
+__submodules__ = ["core", "paths"]
+__explicit__ = ["factory_specs"]
+
+from snakebids.paths import specs as factory_specs
+
+# isort: split
 # <AUTOGEN_INIT>
 from snakebids.core import (
     BidsComponent,
@@ -9,14 +13,13 @@ from snakebids.core import (
     BidsDataset,
     BidsDatasetDict,
     BidsPartialComponent,
-    bids,
     filter_list,
     generate_inputs,
     get_filtered_ziplist_index,
     get_wildcard_constraints,
-    print_boilerplate,
     write_derivative_json,
 )
+from snakebids.paths import bids
 
 __all__ = [
     "BidsComponent",
@@ -25,11 +28,11 @@ __all__ = [
     "BidsDatasetDict",
     "BidsPartialComponent",
     "bids",
+    "factory_specs",
     "filter_list",
     "generate_inputs",
     "get_filtered_ziplist_index",
     "get_wildcard_constraints",
-    "print_boilerplate",
     "write_derivative_json",
 ]
 

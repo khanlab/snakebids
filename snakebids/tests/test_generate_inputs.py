@@ -23,7 +23,6 @@ from hypothesis import strategies as st
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
-from snakebids.core.construct_bids import bids
 from snakebids.core.datasets import BidsComponent, BidsDataset
 from snakebids.core.input_generation import (
     _all_custom_paths,
@@ -35,6 +34,7 @@ from snakebids.core.input_generation import (
     generate_inputs,
 )
 from snakebids.exceptions import ConfigError, PybidsError, RunError
+from snakebids.paths.presets import bids
 from snakebids.tests import strategies as sb_st
 from snakebids.tests.helpers import (
     BidsListCompare,

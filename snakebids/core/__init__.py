@@ -1,9 +1,7 @@
-__submodules__ = ["construct_bids", "filtering", "input_generation", "datasets"]
+__submodules__ = ["filtering", "input_generation", "datasets"]
 
 __ignore__ = ["T_co"]
 
-# <AUTOGEN_INIT>
-from snakebids.core.construct_bids import bids, print_boilerplate
 from snakebids.core.datasets import (
     BidsComponent,
     BidsComponentRow,
@@ -11,6 +9,8 @@ from snakebids.core.datasets import (
     BidsDatasetDict,
     BidsPartialComponent,
 )
+
+# <AUTOGEN_INIT>
 from snakebids.core.filtering import filter_list, get_filtered_ziplist_index
 from snakebids.core.input_generation import (
     generate_inputs,
@@ -24,12 +24,10 @@ __all__ = [
     "BidsDataset",
     "BidsDatasetDict",
     "BidsPartialComponent",
-    "bids",
     "filter_list",
     "generate_inputs",
     "get_filtered_ziplist_index",
     "get_wildcard_constraints",
-    "print_boilerplate",
     "write_derivative_json",
 ]
 
