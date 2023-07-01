@@ -209,34 +209,3 @@ def bids(
     )
 
     return str(folder / filename)
-
-
-def print_boilerplate() -> None:
-    """Function to print out boilerplate to add to Snakefile. (not used
-    anywhere yet)"""
-
-    print(
-        """
-# ---- begin snakebids boilerplate ------------------------------------------
-
-import snakebids
-from snakebids import bids
-
-configfile: 'config/snakebids.yml'
-
-#writes inputs_config.yml and updates config dict
-config.update(snakebids.generate_inputs(bids_dir=config['bids_dir'],
-                            pybids_inputs=config['pybids_inputs'],
-                            derivatives=config['derivatives'],
-                            participant_label=config['participant_label'],
-                            exclude_participant_label=config['exclude_participant_label']))
-
-
-#this adds constraints to the bids naming
-wildcard_constraints:  **snakebids.get_wildcard_constraints(
-    config['pybids_inputs']
-)
-
-# ---- end snakebids boilerplate --------------------------------------------
-"""
-    )

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from snakebids.core.construct_bids import bids
+from snakebids.paths.presets import bids
 
 
 def test_bids_subj():
