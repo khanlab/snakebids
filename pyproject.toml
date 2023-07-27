@@ -35,11 +35,8 @@ patterns = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.7,<3.12"
-pybids = [
-    { version="^0.15.0", python = "<3.8" },
-    { version="^0.16.0", python = ">=3.8" },
-]
+python = ">=3.8,<3.12"
+pybids = "^0.16.0"
 snakemake = [
     { version = ">=5.28.0", python = ">=3.7" },
     { version = ">=7.18.2", python = ">=3.11" },
@@ -49,42 +46,32 @@ cookiecutter = "^2.1.1"
 typing-extensions = ">=3.10.0"
 attrs = ">=21.2.0,<24"
 boutiques = "^0.5.25"
-more-itertools = ">=8,<10"
+more-itertools = ">=8,<11"
 cached-property = "^1.5.2"
 pvandyken-deprecated = "0.0.3"
-importlib_metadata = [ { version = "==1.4", python = "<3.8" } ]
+# Need this until py39
+importlib-resources = ">=5.12.0,<7"
 
 #  Below are non-direct dependencies (i.e. dependencies of other depenencies)
 #  specified to ensure a version with a pre-built wheel is installed depending
 #  on the python version being used.
-pandas = [
-    { version = ">=1.3", python = ">=3.7.1" },
-    { version = ">=1.5", python = ">=3.11" }
-]
 numpy = [
-    { version = ">=1.21.2", python = "3.10" },
+    { version = "<=1.24.4", python = "<3.9" },
     { version = ">=1.23.2", python = ">=3.11" }
 ]
 scipy = [
-    { version = "<1.8", python = "<3.8"},
-    { version = ">=1.9.2", python = ">=3.8" }
+    { version = "<=1.10.1", python = "<3.9" },
+    { version = ">=1.9.2", python = ">=3.9" }
 ]
-importlib-resources = "^5.12.0"
+
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
-# We need at least 0.15.2 just for testing
-pybids = [
-    { version="^0.15.2", python = "<3.8" },
-    { version="^0.16.0", python = ">=3.8" },
-]
-pytest = ">=7.3.2, <7.4"
+pytest = "^7.0.0"
 pytest-mock = "^3.7.0"
 isort = "^5.10.1"
-# poethepoet==0.20.0 requires py38 or greater
-poethepoet = "^0.19.0"
-# pre-commit==3.0.0 requires py38 or greater
-pre-commit = "^2.17.0"
+poethepoet = "^0.21.1"
+pre-commit = "^3.0.0"
 mkinit = "^1.0.0"
 hypothesis = "^6.34.1"
 pytest-benchmark = "^4.0.0"
@@ -93,7 +80,7 @@ pyparsing = "^3.0.9"
 # Version 1.1.312-1.1.315 have a false positive handling some nested function
 # calls
 pyright = ">=1.1.307,<1.1.312"
-ruff = "^0.0.274"
+ruff = "^0.0.280"
 
 [tool.poetry.scripts]
 snakebids = "snakebids.admin:main"
