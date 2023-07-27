@@ -25,7 +25,7 @@ from typing_extensions import ParamSpec, TypeAlias
 from snakebids import bids
 from snakebids.core.datasets import BidsDataset
 from snakebids.core.input_generation import generate_inputs
-from snakebids.types import InputsConfig, UserDictPy37, ZipList, ZipListLike
+from snakebids.types import InputsConfig, UserDictPy38, ZipList, ZipListLike
 from snakebids.utils.utils import BidsEntity, MultiSelectDict
 
 _T = TypeVar("_T")
@@ -101,7 +101,7 @@ def get_bids_path(entities: Iterable[str | BidsEntity], **extras: str) -> str:
     )
 
 
-class BidsListCompare(UserDictPy37[str, Dict[str, List[str]]]):
+class BidsListCompare(UserDictPy38[str, Dict[str, List[str]]]):
     """Dict override specifically for comparing input_lists
 
     When comparing, all lists are converted into sets so that order doesn't matter for

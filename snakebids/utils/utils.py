@@ -309,7 +309,7 @@ _K = TypeVar("_K", bound="str")
 _V = TypeVar("_V")
 
 
-class MultiSelectDict(types.UserDictPy37[_K, _V]):
+class MultiSelectDict(types.UserDictPy38[_K, _V]):
     """Dict supporting selection of multiple keys using tuples
 
     If a single key is given, the item associated with that key is returned just as in a
