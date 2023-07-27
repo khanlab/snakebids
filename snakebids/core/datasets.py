@@ -21,7 +21,7 @@ from snakebids.core.filtering import filter_list
 from snakebids.exceptions import DuplicateComponentError
 from snakebids.io.console import get_console_size
 from snakebids.io.printing import format_zip_lists, quote_wrap
-from snakebids.types import UserDictPy37, ZipList
+from snakebids.types import UserDictPy38, ZipList
 from snakebids.utils.utils import (
     ImmutableList,
     MultiSelectDict,
@@ -567,7 +567,7 @@ class BidsComponent(BidsPartialComponent):
         return self.path
 
 
-class BidsDataset(UserDictPy37[str, BidsComponent]):
+class BidsDataset(UserDictPy38[str, BidsComponent]):
     """A bids dataset parsed by pybids, organized into BidsComponents.
 
     BidsDatasets are typically generated using :func:`generate_inputs()

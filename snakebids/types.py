@@ -99,18 +99,18 @@ class MultiSelectable(Protocol, Generic[_K_contra, _V_co, _Valt_co]):
         ...
 
 
-# Hack to make userdicts subscriptable in python 3.7. Can remove when we drop support
+# Hack to make dicts subscriptable in python 3.8. Can remove when we drop support
 # for that version
 _K = TypeVar("_K", bound=Hashable)
 _V = TypeVar("_V")
 if TYPE_CHECKING:
 
-    class UserDictPy37(Dict[_K, _V]):
+    class UserDictPy38(Dict[_K, _V]):
         pass
 
 else:
 
-    class UserDictPy37(dict, Generic[_K, _V]):
+    class UserDictPy38(dict, Generic[_K, _V]):
         pass
 
 
