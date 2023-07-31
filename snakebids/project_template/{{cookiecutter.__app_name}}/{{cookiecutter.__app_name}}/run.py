@@ -7,7 +7,7 @@ from snakebids.plugins.validator import BidsValidator
 
 def get_parser():
     """Exposes parser for sphinx doc generation, cwd is the docs dir"""
-    app = SnakeBidsApp("../")
+    app = SnakeBidsApp("../{{ cookiecutter.__app_name }}")
     return app.parser
 
 

@@ -14,7 +14,6 @@ def create_app(args: argparse.Namespace) -> None:
     cookiecutter(
         str(Path(list(snakebids.__path__)[0]) / "project_template"),
         output_dir=args.output_dir,
-        extra_context={"_output_dir": Path(args.output_dir).resolve().name},
     )
 
 
@@ -37,7 +36,8 @@ def gen_parser() -> argparse.ArgumentParser:
     parser_create.set_defaults(func=create_app)
 
     parser_boutiques = subparsers.add_parser(
-        "boutiques", help="Create a Boutiques descriptor for an existing Snakebids app."
+        "boutiques",
+        help="Create a Boutiques descriptor for an existing Snakebids app.",
     )
     parser_boutiques.add_argument(
         "out_path",
