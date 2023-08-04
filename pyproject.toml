@@ -65,8 +65,8 @@ numpy = [
     { version = ">=1.23.2", python = ">=3.11" }
 ]
 scipy = [
-    { version = "<1.8", python = "3.7"},
-    { version = ">=1.9.2", python = ">=3.11" }
+    { version = "<1.8", python = "<3.8"},
+    { version = ">=1.9.2", python = ">=3.8" }
 ]
 importlib-resources = "^5.12.0"
 
@@ -77,7 +77,7 @@ pybids = [
     { version="^0.15.2", python = "<3.8" },
     { version="^0.16.0", python = ">=3.8" },
 ]
-pytest = "^7.0.0"
+pytest = ">=7.3.2, <7.4"
 pytest-mock = "^3.7.0"
 isort = "^5.10.1"
 # poethepoet==0.20.0 requires py38 or greater
