@@ -336,8 +336,7 @@ def _make_underscore_dash_aliases(name: str) -> set[str]:
     set of strings
         Converted args
     """
-    match = re.match(r"^--(.+)$", name)
-    if match:
+    if match := re.match(r"^--(.+)$", name):
         name_part = match.group(1)
         return {
             name,

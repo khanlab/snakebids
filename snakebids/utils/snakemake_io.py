@@ -110,8 +110,7 @@ def glob_wildcards(
     )
 
     for f in file_iter:
-        match = re.match(re_pattern, str(f))
-        if match:
+        if match := re.match(re_pattern, str(f)):
             for name, value in match.groupdict().items():
                 wildcards[name].append(value)
     return MultiSelectDict(wildcards)
