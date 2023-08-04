@@ -1,4 +1,4 @@
-from __future__ import absolute_import, annotations
+from __future__ import annotations
 
 import copy
 import json
@@ -21,10 +21,7 @@ from .. import app as sn_app
 from ..app import SnakeBidsApp
 from .mock.config import config
 
-if sys.version_info >= (3, 8):
-    from importlib import metadata
-else:
-    import importlib_metadata as metadata
+from importlib import metadata
 
 
 @pytest.fixture

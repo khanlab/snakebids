@@ -5,7 +5,7 @@ import logging
 import pathlib
 import re
 from collections.abc import Sequence
-from typing import Any, Iterable, Mapping, Optional, TypeVar, overload
+from typing import Any, Iterable, Mapping, TypeVar, overload
 
 import attr
 import snakemake
@@ -100,7 +100,7 @@ class SnakebidsArgs:
     outputdir: Path = attr.ib(converter=to_resolved_path)
     snakemake_args: list[str]
     args_dict: dict[str, Any]
-    pybidsdb_dir: Optional[Path] = None
+    pybidsdb_dir: Path | None = None
     pybidsdb_reset: bool = False
 
 
@@ -350,7 +350,7 @@ _T = TypeVar("_T")
 
 
 @overload
-def _resolve_path(path_candidate: Sequence[Any]) -> "list[Any]":
+def _resolve_path(path_candidate: Sequence[Any]) -> list[Any]:
     ...
 
 

@@ -5,7 +5,7 @@ import itertools as it
 from os import PathLike
 from pathlib import Path
 from string import ascii_letters, digits
-from typing import Any, Container, Hashable, Iterable, Optional, Sequence, Type, TypeVar
+from typing import Any, Container, Hashable, Iterable, Sequence, TypeVar
 
 import hypothesis.strategies as st
 from bids.layout import Config as BidsConfig
@@ -30,8 +30,8 @@ valid_entities: tuple[str] = tuple(BidsConfig.load("bids").entities.keys())
 
 def bids_entity(
     *,
-    blacklist_entities: Optional[Container[BidsEntity | str]] = None,
-    whitelist_entities: Optional[Container[BidsEntity | str]] = None,
+    blacklist_entities: Container[BidsEntity | str] | None = None,
+    whitelist_entities: Container[BidsEntity | str] | None = None,
     path_safe: bool = False,
 ) -> st.SearchStrategy[BidsEntity]:
     blacklist = (
@@ -92,8 +92,8 @@ def bids_path(
     *,
     root: PathLike[str] | str | None = None,
     entities: Iterable[BidsEntity | str] | None = None,
-    blacklist_entities: Optional[Container[BidsEntity | str]] = None,
-    whitelist_entities: Optional[Container[BidsEntity | str]] = None,
+    blacklist_entities: Container[BidsEntity | str] | None = None,
+    whitelist_entities: Container[BidsEntity | str] | None = None,
     extra_entities: bool = True,
 ) -> Path:
     entities = (
@@ -133,8 +133,8 @@ def bids_entity_lists(
     *,
     min_size: int = 1,
     max_size: int = 5,
-    blacklist_entities: Optional[Container[BidsEntity | str]] = None,
-    whitelist_entities: Optional[Container[BidsEntity | str]] = None,
+    blacklist_entities: Container[BidsEntity | str] | None = None,
+    whitelist_entities: Container[BidsEntity | str] | None = None,
 ) -> st.SearchStrategy[list[BidsEntity]]:
     return st.lists(
         bids_entity(
@@ -197,9 +197,9 @@ def zip_lists(
     max_entities: int = 5,
     min_values: int = 1,
     max_values: int = 3,
-    entities: Optional[list[BidsEntity]] = None,
-    blacklist_entities: Optional[Container[BidsEntity | str]] = None,
-    whitelist_entities: Optional[Container[BidsEntity | str]] = None,
+    entities: list[BidsEntity] | None = None,
+    blacklist_entities: Container[BidsEntity | str] | None = None,
+    whitelist_entities: Container[BidsEntity | str] | None = None,
     restrict_patterns: bool = False,
     unique: bool = False,
     cull: bool = True,
@@ -250,9 +250,9 @@ def bids_component_row(
     *,
     min_values: int = 1,
     max_values: int = 5,
-    entity: Optional[BidsEntity] = None,
-    blacklist_entities: Optional[Container[BidsEntity | str]] = None,
-    whitelist_entities: Optional[Container[BidsEntity | str]] = None,
+    entity: BidsEntity | None = None,
+    blacklist_entities: Container[BidsEntity | str] | None = None,
+    whitelist_entities: Container[BidsEntity | str] | None = None,
     restrict_patterns: bool = False,
     unique: bool = False,
     path_safe: bool = False,
@@ -283,9 +283,9 @@ def bids_partial_components(
     max_entities: int = 5,
     min_values: int = 1,
     max_values: int = 3,
-    entities: Optional[list[BidsEntity]] = None,
-    blacklist_entities: Optional[Container[BidsEntity | str]] = None,
-    whitelist_entities: Optional[Container[BidsEntity | str]] = None,
+    entities: list[BidsEntity] | None = None,
+    blacklist_entities: Container[BidsEntity | str] | None = None,
+    whitelist_entities: Container[BidsEntity | str] | None = None,
     restrict_patterns: bool = False,
     unique: bool = False,
     cull: bool = True,
@@ -347,15 +347,15 @@ def bids_components(
     max_entities: int = 5,
     min_values: int = 1,
     max_values: int = 3,
-    entities: Optional[list[BidsEntity]] = None,
-    blacklist_entities: Optional[Container[BidsEntity | str]] = None,
-    whitelist_entities: Optional[Container[BidsEntity | str]] = None,
-    root: Optional[Path] = None,
+    entities: list[BidsEntity] | None = None,
+    blacklist_entities: Container[BidsEntity | str] | None = None,
+    whitelist_entities: Container[BidsEntity | str] | None = None,
+    root: Path | None = None,
     name: str | None = None,
     restrict_patterns: bool = False,
     extra_entities: bool = True,
-    blacklist_extra_entities: Optional[Container[BidsEntity | str]] = None,
-    whitelist_extra_entities: Optional[Container[BidsEntity | str]] = None,
+    blacklist_extra_entities: Container[BidsEntity | str] | None = None,
+    whitelist_extra_entities: Container[BidsEntity | str] | None = None,
     unique: bool = False,
     cull: bool = True,
 ) -> BidsComponent:
@@ -397,15 +397,15 @@ def expandables(
     max_entities: int = 5,
     min_values: int = 1,
     max_values: int = 3,
-    entities: Optional[list[BidsEntity]] = None,
-    blacklist_entities: Optional[Container[BidsEntity | str]] = None,
-    whitelist_entities: Optional[Container[BidsEntity | str]] = None,
+    entities: list[BidsEntity] | None = None,
+    blacklist_entities: Container[BidsEntity | str] | None = None,
+    whitelist_entities: Container[BidsEntity | str] | None = None,
     restrict_patterns: bool = False,
     unique: bool = False,
     cull: bool = True,
     path_safe: bool = False,
 ) -> Expandable:
-    def get_entity(_entities: Optional[list[BidsEntity]]) -> BidsEntity | None:
+    def get_entity(_entities: list[BidsEntity] | None) -> BidsEntity | None:
         if not _entities:
             return None
         return draw(st.sampled_from(_entities))
@@ -444,7 +444,7 @@ def bids_input_lists(
     *,
     min_size: int = 1,
     max_size: int = 5,
-    entities: Optional[list[BidsEntity]] = None,
+    entities: list[BidsEntity] | None = None,
 ) -> dict[str, list[str]]:
     # Generate multiple entity sets for different "file types"
     if entities is None:
@@ -462,7 +462,7 @@ def bids_input_lists(
 def datasets(
     draw: st.DrawFn,
     *,
-    root: Optional[Path] = None,
+    root: Path | None = None,
     unique: bool = False,
     cull: bool = True,
 ) -> BidsDataset:
@@ -493,10 +493,10 @@ def datasets(
 def datasets_one_comp(
     draw: st.DrawFn,
     *,
-    root: Optional[Path] = None,
+    root: Path | None = None,
     names: st.SearchStrategy[str] | None = None,
-    blacklist_entities: Optional[Container[BidsEntity | str]] = None,
-    whitelist_entities: Optional[Container[BidsEntity | str]] = None,
+    blacklist_entities: Container[BidsEntity | str] | None = None,
+    whitelist_entities: Container[BidsEntity | str] | None = None,
     unique: bool = False,
     cull: bool = True,
 ) -> BidsDataset:
@@ -523,7 +523,7 @@ def multiselect_dicts(
     values: st.SearchStrategy[_T],
     *,
     min_size: int = 0,
-    max_size: Optional[int] = None,
+    max_size: int | None = None,
 ) -> MultiSelectDict[_Ex_co, _T]:
     return MultiSelectDict(
         draw(
@@ -541,7 +541,7 @@ def everything() -> st.SearchStrategy[Any]:
     return st.from_type(type).flatmap(st.from_type)
 
 
-def everything_except(*excluded_types: Type[Any]) -> st.SearchStrategy[Any]:
+def everything_except(*excluded_types: type[Any]) -> st.SearchStrategy[Any]:
     return (
         st.from_type(type)
         .flatmap(st.from_type)

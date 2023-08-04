@@ -1,5 +1,4 @@
 # ruff: noqa: PLR2004
-from __future__ import absolute_import
 
 import json
 from pathlib import Path

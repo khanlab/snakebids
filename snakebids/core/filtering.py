@@ -3,10 +3,9 @@ from __future__ import annotations
 import operator as op
 import re
 from collections.abc import Iterator, Mapping
-from typing import Iterable, List, TypeVar, Union, overload
+from typing import Iterable, List, Literal, TypeVar, Union, overload
 
 import more_itertools as itx
-from typing_extensions import Literal
 
 from snakebids.types import ZipList, ZipListLike
 from snakebids.utils.utils import MultiSelectDict, matches_any

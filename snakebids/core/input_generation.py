@@ -7,14 +7,14 @@ import os
 import re
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Generator, Iterable, Mapping, Optional, Sequence, overload
+from typing import Any, Generator, Iterable, Literal, Mapping, Sequence, overload
 
 import attrs
 import more_itertools as itx
 from bids import BIDSLayout, BIDSLayoutIndexer
 from bids.layout import BIDSFile, Query
 from snakemake.script import Snakemake
-from typing_extensions import Literal, TypeAlias
+from typing_extensions import TypeAlias
 
 from snakebids.core.datasets import BidsComponent, BidsDataset, BidsDatasetDict
 from snakebids.core.filtering import filter_list
@@ -388,7 +388,7 @@ def write_derivative_json(snakemake: Snakemake, **kwargs: dict[str, Any]) -> Non
         it will read and write json files
     """
 
-    with open(snakemake.input.json, "r", encoding="utf-8") as input_json:
+    with open(snakemake.input.json, encoding="utf-8") as input_json:
         sidecar = json.load(input_json)
 
     sidecar.update(
@@ -600,7 +600,7 @@ class _GetListsFromBidsSteps:
 
 
 def _get_lists_from_bids(
-    bids_layout: Optional[BIDSLayout],
+    bids_layout: BIDSLayout | None,
     pybids_inputs: InputsConfig,
     *,
     limit_to: Iterable[str] | None = None,

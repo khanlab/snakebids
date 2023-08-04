@@ -95,7 +95,7 @@ class TestIsValidPython:
 
     @given(component=sb_st.bids_components(restrict_patterns=True))
     def test_in_component(self, component: BidsComponent):
-        assert eval((component.pformat())) == component
+        assert eval(component.pformat()) == component
 
     @given(dataset=sb_st.datasets())
     def test_in_dataset(self, dataset: BidsDataset):

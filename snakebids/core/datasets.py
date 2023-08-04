@@ -6,7 +6,7 @@ import warnings
 from math import inf
 from pathlib import Path
 from string import Formatter
-from typing import Any, Iterable, NoReturn, Optional, Sequence, overload
+from typing import Any, Iterable, NoReturn, Sequence, overload
 
 import attr
 import more_itertools as itx
@@ -281,13 +281,13 @@ class BidsPartialComponent:
             raise ValueError("zip_lists must all be of equal length")
 
     # Note: we can't use cached property here because it's incompatible with slots.
-    _input_lists: Optional[MultiSelectDict[str, list[str]]] = attr.field(
+    _input_lists: MultiSelectDict[str, list[str]] | None = attr.field(
         default=None, init=False, eq=False, repr=False
     )
-    _input_wildcards: Optional[MultiSelectDict[str, str]] = attr.field(
+    _input_wildcards: MultiSelectDict[str, str] | None = attr.field(
         default=None, init=False, eq=False, repr=False
     )
-    _entities: Optional[list[str]] = attr.field(
+    _entities: list[str] | None = attr.field(
         default=None, init=False, eq=False, repr=False
     )
 
@@ -585,7 +585,7 @@ class BidsDataset(UserDictPy38[str, BidsComponent]):
     sessions found in the dataset.
     """
 
-    layout: Optional[BIDSLayout]
+    layout: BIDSLayout | None
     """
     Underlying layout generated from pybids. Note that this will be set to None if
     custom paths are used to generate every :class:`component <BidsComponent>`

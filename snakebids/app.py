@@ -4,19 +4,15 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from importlib import metadata
 from os import PathLike
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 import attr
 import boutiques.creator as bc  # type: ignore
 import snakemake
 from snakemake.io import load_configfile
-
-if sys.version_info >= (3, 8):
-    from importlib import metadata
-else:
-    import importlib_metadata as metadata
 
 from snakebids.cli import (
     SnakebidsArgs,
@@ -60,7 +56,7 @@ CONFIGFILE_CHOICES = [
 def _get_file_paths(
     choices: list[str], file_name: str
 ) -> Callable[[SnakeBidsApp], Path]:
-    def wrapper(self: "SnakeBidsApp"):
+    def wrapper(self: SnakeBidsApp):
         for path in choices:
             if (self.snakemake_dir / path).exists():
                 if file_name == "config":
@@ -155,8 +151,8 @@ class SnakeBidsApp:
         lambda self: load_configfile(self.snakemake_dir / self.configfile_path),
         takes_self=True,
     )
-    version: Optional[str] = attr.Factory(_get_app_version, takes_self=True)
-    args: Optional[SnakebidsArgs] = None
+    version: str | None = attr.Factory(_get_app_version, takes_self=True)
+    args: SnakebidsArgs | None = None
 
     def run_snakemake(self) -> None:
         """Run snakemake with the given config, after applying plugins"""

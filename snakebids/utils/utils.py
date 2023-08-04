@@ -15,7 +15,9 @@ from typing import (
     Iterable,
     Iterator,
     Mapping,
+    Protocol,
     Sequence,
+    SupportsIndex,
     TypeVar,
     cast,
     overload,
@@ -24,14 +26,7 @@ from typing import (
 import attrs
 import importlib_resources as impr
 import more_itertools as itx
-from typing_extensions import (
-    NotRequired,
-    Protocol,
-    Self,
-    SupportsIndex,
-    TypeAlias,
-    TypedDict,
-)
+from typing_extensions import NotRequired, Self, TypeAlias, TypedDict
 
 from snakebids import resources, types
 from snakebids.utils.user_property import UserProperty
@@ -262,7 +257,7 @@ def property_alias(
     label: str | None = None,
     ref: str | None = None,
     copy_extended_docstring: bool = False,
-) -> Callable[[Callable[[Any], _T]], "UserProperty[_T]"]:
+) -> Callable[[Callable[[Any], _T]], UserProperty[_T]]:
     """Set property as an alias for another property
 
     Copies the docstring from the aliased property to the alias
@@ -283,7 +278,7 @@ def property_alias(
     property
     """
 
-    def inner(func: Callable[[Any], _T], /) -> "UserProperty[_T]":
+    def inner(func: Callable[[Any], _T], /) -> UserProperty[_T]:
         alias = UserProperty(func)
         if label:
             link = f":attr:`{label} <{ref}>`" if ref else label
