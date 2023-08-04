@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import copy
 import itertools as it
-import sys
 from os import PathLike
 from pathlib import Path
 from string import ascii_letters, digits
@@ -71,10 +70,6 @@ def _filter_invalid_entity_lists(entities: Sequence[BidsEntity | str]):
 
     If suffix is in the entity list, so must extension
     """
-    # The versions of pybids available from py37 have bugs in the indexing of suffix
-    # and extension, so just exclude these entries from our tests
-    if sys.version_info < (3, 8) and ("extension" in entities or "suffix" in entities):
-        return False
     return all(
         [
             # If suffix is in the path, extension must be too

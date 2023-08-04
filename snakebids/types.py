@@ -114,7 +114,7 @@ else:
         pass
 
 
-# for py37, we need to import this AFTER we initialize UserDictPy37 to avoid a circular
+# for py38, we need to import this AFTER we initialize UserDictPy38 to avoid a circular
 # import
 from snakebids.utils import utils  # noqa: E402
 
