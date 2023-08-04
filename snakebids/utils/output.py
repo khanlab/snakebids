@@ -7,11 +7,10 @@ import json
 import time
 from collections import OrderedDict
 from pathlib import Path, PosixPath, WindowsPath
-from typing import Any
+from typing import Any, Literal
 
 import more_itertools as itx
 import yaml
-from typing_extensions import Literal
 
 from snakebids.exceptions import RunError
 

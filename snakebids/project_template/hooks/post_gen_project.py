@@ -1,12 +1,8 @@
 from __future__ import annotations
 
 from shutil import rmtree
-from sys import version_info as py_version
 
-if py_version >= (3, 8):
-    from importlib import metadata
-else:
-    import importlib_metadata as metadata
+from importlib import metadata
 
 
 def update_files(files: list[str] | str, replacement_str: str, cc_variable: str):
@@ -23,7 +19,7 @@ def update_files(files: list[str] | str, replacement_str: str, cc_variable: str)
         {{ cookiecutter._snakebids_version }})
     """
     for fpath in files:
-        with open(fpath, "r", encoding="utf-8") as fcontent:
+        with open(fpath, encoding="utf-8") as fcontent:
             content = fcontent.read()
 
         content = content.replace(cc_variable, replacement_str)

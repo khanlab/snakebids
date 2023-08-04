@@ -3,17 +3,16 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from pathlib import Path
-from typing import Optional
 
 
 def bids(
-    root: Optional[str | Path] = None,
-    datatype: Optional[str] = None,
-    prefix: Optional[str] = None,
-    suffix: Optional[str] = None,
-    extension: Optional[str] = None,
-    subject: Optional[str] = None,
-    session: Optional[str] = None,
+    root: str | Path | None = None,
+    datatype: str | None = None,
+    prefix: str | None = None,
+    suffix: str | None = None,
+    extension: str | None = None,
+    subject: str | None = None,
+    session: str | None = None,
     include_subject_dir: bool = True,
     include_session_dir: bool = True,
     **entities: str,
@@ -149,7 +148,7 @@ def bids(
     entities = {k.replace("_", ""): v for k, v in entities.items()}
 
     # strict ordering of bids entities is specified here:
-    order: OrderedDict[str, Optional[str]] = OrderedDict(
+    order: OrderedDict[str, str | None] = OrderedDict(
         [
             ("task", None),
             ("acq", None),

@@ -3,16 +3,19 @@ from __future__ import annotations
 from collections.abc import Hashable
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Generic, Iterable, List, Mapping, Sequence, overload
-
-from typing_extensions import (
+from typing import (
     TYPE_CHECKING,
+    Dict,
+    Generic,
+    Iterable,
+    List,
+    Mapping,
     Protocol,
-    Self,
-    TypeAlias,
-    TypedDict,
-    TypeVar,
+    Sequence,
+    overload,
 )
+
+from typing_extensions import Self, TypeAlias, TypedDict, TypeVar
 
 _T_contra = TypeVar("_T_contra", contravariant=True)
 _S_co = TypeVar("_S_co", covariant=True)

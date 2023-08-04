@@ -112,5 +112,6 @@ reportPrivateUsage = false
 reportImportCycles = false
 
 [tool.ruff]
-select = ["E", "F", "PL", "RUF"]
+select = ["E", "F", "PL", "RUF", "UP"]
 ignore = ["PLR0913"]
+target-version = "py38"

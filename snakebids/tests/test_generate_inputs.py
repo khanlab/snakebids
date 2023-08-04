@@ -12,17 +12,7 @@ import sys
 import tempfile
 from collections import defaultdict
 from pathlib import Path
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    NamedTuple,
-    Optional,
-    TypeVar,
-    cast,
-)
+from typing import Any, Callable, Iterable, NamedTuple, TypeVar, cast
 
 import attrs
 import more_itertools as itx
@@ -63,7 +53,7 @@ T = TypeVar("T")
 
 class TestFilterBools:
     @pytest.fixture(autouse=True)
-    def bids_fs(self, bids_fs: Optional[FakeFilesystem]):
+    def bids_fs(self, bids_fs: FakeFilesystem | None):
         return bids_fs
 
     @pytest.fixture
@@ -480,14 +470,10 @@ class TestGenerateFilter:
             assert re.match(result[0][0], padding + exclude + padding)
 
 
-PathEntities = NamedTuple(
-    "PathEntities",
-    [
-        ("entities", Dict[str, List[str]]),
-        ("template", Path),
-        ("filters", Dict[str, List[str]]),
-    ],
-)
+class PathEntities(NamedTuple):
+    entities: dict[str, list[str]]
+    template: Path
+    filters: dict[str, list[str]]
 
 
 @st.composite
@@ -1072,7 +1058,7 @@ class TestGenBidsLayout:
         return fakefs_tmpdir
 
     @pytest.fixture(autouse=True)
-    def bids_fs(self, bids_fs: Optional[FakeFilesystem]):
+    def bids_fs(self, bids_fs: FakeFilesystem | None):
         return bids_fs
 
     @settings(

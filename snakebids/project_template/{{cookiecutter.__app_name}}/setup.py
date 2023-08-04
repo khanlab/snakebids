@@ -2,10 +2,10 @@ import json
 
 import setuptools
 
-with open("README.md", "r", encoding="utf-8") as fh:
+with open("README.md", encoding="utf-8") as fh:
     long_description = fh.read()
 
-with open("pipeline_description.json", "r", encoding="utf-8") as fh:
+with open("pipeline_description.json", encoding="utf-8") as fh:
     pipeline = json.load(fh)
 name = pipeline["GeneratedBy"][0]["Name"]
 description = pipeline["Name"]
