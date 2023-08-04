@@ -61,8 +61,8 @@ class BidsComponentRow(ImmutableList[str]):
 
     """
 
-    def __init__(self, __iterable: Iterable[str], entity: str):
-        super().__init__(__iterable)
+    def __init__(self, iterable: Iterable[str], /, entity: str):
+        super().__init__(iterable)
         self.entity = entity
 
     def __repr__(self) -> str:
@@ -96,7 +96,8 @@ class BidsComponentRow(ImmutableList[str]):
 
     def expand(
         self,
-        __paths: Iterable[Path | str] | Path | str,
+        paths: Iterable[Path | str] | Path | str,
+        /,
         allow_missing: bool = False,
         **wildcards: str | Iterable[str],
     ) -> list[str]:
@@ -114,7 +115,7 @@ class BidsComponentRow(ImmutableList[str]):
 
         Parameters
         ==========
-        __paths:
+        paths:
             Path or list of paths to expand over
         allow_missing:
             If True, allow ``{wildcards}`` in the provided paths that are not present
@@ -126,7 +127,7 @@ class BidsComponentRow(ImmutableList[str]):
             lists of values to be expanded over the provided paths.
         """
         return sn_expand(
-            list(itx.always_iterable(__paths)),
+            list(itx.always_iterable(paths)),
             allow_missing=allow_missing,
             **{self.entity: list(set(self._data))},
             **{
@@ -137,7 +138,8 @@ class BidsComponentRow(ImmutableList[str]):
 
     def filter(
         self,
-        __spec: str | Iterable[str] | None = None,
+        spec: str | Iterable[str] | None = None,
+        /,
         *,
         regex_search: bool = False,
         **filters: str | Iterable[str],
@@ -156,7 +158,7 @@ class BidsComponentRow(ImmutableList[str]):
 
         Parameters
         ----------
-        __spec
+        spec
             Value or iterable of values assocatiated with the ComponentRow's
             :attr:`~snakebids.BidsComponentRow.entity`. Equivalent to specifying
             ``.filter(entity=value)``
@@ -168,12 +170,12 @@ class BidsComponentRow(ImmutableList[str]):
             :attr:`~snakebids.BidsComponentRow.entity` of the
             :class:`~snakebids.BidsComponentRow`; all others will be ignored.
         """
-        if __spec is not None:
+        if spec is not None:
             if filters:
                 raise ValueError(
                     "Both __spec and filters cannot be used simultaneously"
                 )
-            filters = {self.entity: __spec}
+            filters = {self.entity: spec}
         entity, data = itx.first(
             filter_list(
                 {self.entity: self._data}, filters, regex_search=regex_search
@@ -221,22 +223,22 @@ class BidsPartialComponent:
         return self.pformat()
 
     @overload
-    def __getitem__(self, __key: str) -> BidsComponentRow:
+    def __getitem__(self, key: str, /) -> BidsComponentRow:
         ...
 
     @overload
-    def __getitem__(self, __key: tuple[str, ...]) -> BidsPartialComponent:
+    def __getitem__(self, key: tuple[str, ...], /) -> BidsPartialComponent:
         ...
 
     def __getitem__(
-        self, __key: str | tuple[str, ...]
+        self, key: str | tuple[str, ...], /
     ) -> BidsComponentRow | BidsPartialComponent:
-        if isinstance(__key, tuple):
+        if isinstance(key, tuple):
             # Use dict.fromkeys for de-duplication
             return BidsPartialComponent(
-                zip_lists={key: self.zip_lists[key] for key in dict.fromkeys(__key)}
+                zip_lists={key: self.zip_lists[key] for key in dict.fromkeys(key)}
             )
-        return BidsComponentRow(self.zip_lists[__key], entity=__key)
+        return BidsComponentRow(self.zip_lists[key], entity=key)
 
     def __bool__(self) -> bool:
         """Truth of a BidsComponent is based on whether it has values
@@ -340,7 +342,8 @@ class BidsPartialComponent:
 
     def expand(
         self,
-        __paths: Iterable[Path | str] | Path | str,
+        paths: Iterable[Path | str] | Path | str,
+        /,
         allow_missing: bool = False,
         **wildcards: str | Iterable[str],
     ) -> list[str]:
@@ -358,7 +361,7 @@ class BidsPartialComponent:
 
         Parameters
         ==========
-        __paths:
+        paths:
             Path or list of paths to expand over
         allow_missing:
             If True, allow ``{wildcards}`` in the provided paths that are not present
@@ -372,7 +375,7 @@ class BidsPartialComponent:
         inner_expand = list(
             set(
                 sn_expand(
-                    list(itx.always_iterable(__paths)),
+                    list(itx.always_iterable(paths)),
                     zip,
                     allow_missing=True if wildcards else allow_missing,
                     **self.zip_lists,
@@ -515,7 +518,8 @@ class BidsComponent(BidsPartialComponent):
 
     def expand(
         self,
-        __paths: Iterable[Path | str] | Path | str | None = None,
+        paths: Iterable[Path | str] | Path | str | None = None,
+        /,
         allow_missing: bool = False,
         **wildcards: str | Iterable[str],
     ) -> list[str]:
@@ -535,7 +539,7 @@ class BidsComponent(BidsPartialComponent):
 
         Parameters
         ==========
-        __paths:
+        paths:
             Path or list of paths to expand over. If not provided, the component's own
             :attr:`~BidsComponent.path` will be expanded over.
         allow_missing:
@@ -547,7 +551,7 @@ class BidsComponent(BidsPartialComponent):
             Keywords not found in the path will be ignored. Keywords take values or
             lists of values to be expanded over the provided paths.
         """
-        paths = __paths or self.path
+        paths = paths or self.path
         return super().expand(paths, allow_missing, **wildcards)
 
     @property

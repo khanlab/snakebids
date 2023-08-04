@@ -56,7 +56,7 @@ class InputConfig(TypedDict, total=False):
 
 
 class BinaryOperator(Protocol, Generic[_T_contra, _S_co]):
-    def __call__(self, __first: _T_contra, __second: _T_contra) -> _S_co:
+    def __call__(self, first: _T_contra, second: _T_contra, /) -> _S_co:
         ...
 
 
@@ -72,7 +72,8 @@ class Expandable(Protocol):
 
     def expand(
         self,
-        __paths: Iterable[Path | str] | Path | str,
+        paths: Iterable[Path | str] | Path | str,
+        /,
         allow_missing: bool = False,
         **wildcards: str | Iterable[str],
     ) -> list[str]:
@@ -91,11 +92,11 @@ _Valt_co = TypeVar("_Valt_co", covariant=True)
 
 class MultiSelectable(Protocol, Generic[_K_contra, _V_co, _Valt_co]):
     @overload
-    def __getitem__(self, __key: _K_contra) -> _V_co:
+    def __getitem__(self, key: _K_contra, /) -> _V_co:
         ...
 
     @overload
-    def __getitem__(self, __key: tuple[_K_contra, ...]) -> _Valt_co:
+    def __getitem__(self, key: tuple[_K_contra, ...], /) -> _Valt_co:
         ...
 
 

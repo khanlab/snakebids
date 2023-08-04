@@ -549,17 +549,17 @@ def everything_except(*excluded_types: Type[Any]) -> st.SearchStrategy[Any]:
     )
 
 
-def _is_hashable(__item: Any):
+def _is_hashable(item: Any, /):
     try:
-        hash(__item)
+        hash(item)
         return True
     except TypeError:
         return False
 
 
-def _supports_eq(__item: Any):
+def _supports_eq(item: Any, /):
     try:
-        __item == 0  # type: ignore
+        item == 0  # type: ignore
         return True
     except Exception:
         return False

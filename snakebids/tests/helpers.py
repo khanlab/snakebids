@@ -220,7 +220,7 @@ def reindex_dataset(
     return generate_inputs(root, config)
 
 
-def allow_function_scoped(__callable: _T) -> _T:
+def allow_function_scoped(callable: _T, /) -> _T:
     """Allow function_scoped fixtures in hypothesis tests
 
     This is primarily useful for using tmpdirs, hence, the name
@@ -229,7 +229,7 @@ def allow_function_scoped(__callable: _T) -> _T:
         suppress_health_check=[
             HealthCheck.function_scoped_fixture,
         ],
-    )(__callable)
+    )(callable)
 
 
 def deadline(time: int | float | timedelta | None) -> Callable[[_T], _T]:
@@ -238,8 +238,8 @@ def deadline(time: int | float | timedelta | None) -> Callable[[_T], _T]:
     Numbers refer to time in milliseconds. Set to None to disable entirely
     """
 
-    def inner(__callable: _T) -> _T:
-        return settings(deadline=time)(__callable)
+    def inner(callable: _T, /) -> _T:
+        return settings(deadline=time)(callable)
 
     return inner
 
@@ -264,9 +264,9 @@ def expand_zip_list(
     return dict(zip(it.chain(zip_list.keys(), new_values.keys()), zip(*new_cols)))
 
 
-def entity_to_wildcard(__entities: str | Iterable[str]):
+def entity_to_wildcard(entities: str | Iterable[str], /):
     """Turn entity strings into wildcard dicts as {"entity": "{entity}"}"""
-    return {entity: f"{{{entity}}}" for entity in itx.always_iterable(__entities)}
+    return {entity: f"{{{entity}}}" for entity in itx.always_iterable(entities)}
 
 
 def identity(obj: _T) -> _T:
@@ -293,8 +293,8 @@ class ContainerBag(Container[_T]):
     def __init__(self, *entries: Container[_T]):
         self.entries = entries
 
-    def __contains__(self, __x: object) -> bool:
+    def __contains__(self, x: object, /) -> bool:
         for entry in self.entries:
-            if __x in entry:
+            if x in entry:
                 return True
         return False

@@ -184,7 +184,7 @@ class BidsEntity:
         return cls(tag)
 
     @classmethod
-    def normalize(cls, __item: str | BidsEntity) -> BidsEntity:
+    def normalize(cls, item: str | BidsEntity, /) -> BidsEntity:
         """Return the entity associated with the given item, if found
 
         Supports both strings and BidsEntities as input. Unlike the constructor, if a
@@ -200,9 +200,9 @@ class BidsEntity:
         -------
         BidsEntity
         """
-        if isinstance(__item, BidsEntity):
-            return __item
-        return cls.from_tag(__item)
+        if isinstance(item, BidsEntity):
+            return item
+        return cls.from_tag(item)
 
 
 def matches_any(
@@ -283,8 +283,8 @@ def property_alias(
     property
     """
 
-    def inner(__func: Callable[[Any], _T]) -> "UserProperty[_T]":
-        alias = UserProperty(__func)
+    def inner(func: Callable[[Any], _T], /) -> "UserProperty[_T]":
+        alias = UserProperty(func)
         if label:
             link = f":attr:`{label} <{ref}>`" if ref else label
         else:
@@ -299,10 +299,10 @@ def property_alias(
     return inner
 
 
-def surround(__s: Iterable[str] | str, __object: str) -> Iterable[str]:
+def surround(s: Iterable[str] | str, object_: str, /) -> Iterable[str]:
     """Surround a string or each string in an iterable with characters"""
-    for item in itx.always_iterable(__s):
-        yield __object + item + __object
+    for item in itx.always_iterable(s):
+        yield object_ + item + object_
 
 
 _K = TypeVar("_K", bound="str")
@@ -372,21 +372,21 @@ class MultiSelectDict(types.UserDictPy38[_K, _V]):
     """
 
     @overload
-    def __getitem__(self, __key: _K) -> _V:
+    def __getitem__(self, key: _K, /) -> _V:
         ...
 
     @overload
-    def __getitem__(self, __key: tuple[_K]) -> Self:
+    def __getitem__(self, key: tuple[_K], /) -> Self:
         ...
 
-    def __getitem__(self, __key: _K | tuple[_K]) -> _V | Self:
-        if isinstance(__key, tuple):
+    def __getitem__(self, key: _K | tuple[_K], /) -> _V | Self:
+        if isinstance(key, tuple):
             # Use dict.fromkeys for de-duplication
-            return self.__class__({key: self[key] for key in dict.fromkeys(__key)})
-        return super().__getitem__(__key)
+            return self.__class__({key: self[key] for key in dict.fromkeys(key)})
+        return super().__getitem__(key)
 
 
-def zip_list_eq(__first: types.ZipListLike, __second: types.ZipListLike):
+def zip_list_eq(first: types.ZipListLike, second: types.ZipListLike, /):
     """Compare two zip lists, allowing the order of columns to be irrelevant"""
 
     def sorted_items(dictionary: Mapping[str, Sequence[str]]):
@@ -395,14 +395,14 @@ def zip_list_eq(__first: types.ZipListLike, __second: types.ZipListLike):
     def get_values(zlist: types.ZipListLike):
         return cast("tuple[list[str]]", list(zip(*sorted_items(zlist)))[1])
 
-    if not __first and not __second:
+    if not first and not second:
         return True
 
-    if set(__first) != set(__second):
+    if set(first) != set(second):
         return False
 
-    first_items = get_values(__first)
-    second_items = get_values(__second)
+    first_items = get_values(first)
+    second_items = get_values(second)
 
     return sorted(zip(*first_items)) == sorted(zip(*second_items))
 
@@ -443,14 +443,14 @@ class ImmutableList(Sequence[_T_co], Generic[_T_co]):
     be specified as ``ImmutableList[str | int]``
     """
 
-    def __init__(self, __iterable: Iterable[_T_co] = tuple()):
-        self._data = tuple(__iterable)
+    def __init__(self, iterable: Iterable[_T_co] = tuple(), /):
+        self._data = tuple(iterable)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({list(self._data)})"
 
-    def __contains__(self, __item: object) -> bool:
-        return __item in self._data
+    def __contains__(self, item: object, /) -> bool:
+        return item in self._data
 
     def __hash__(self):
         return hash(self._data)
@@ -468,63 +468,63 @@ class ImmutableList(Sequence[_T_co], Generic[_T_co]):
         return bool(self._data)
 
     @overload
-    def __getitem__(self, __key: SupportsIndex) -> _T_co:
+    def __getitem__(self, key: SupportsIndex, /) -> _T_co:
         ...
 
     @overload
-    def __getitem__(self, __key: slice) -> Self:
+    def __getitem__(self, key: slice, /) -> Self:
         ...
 
-    def __getitem__(self, __item: SupportsIndex | slice) -> _T_co | Self:
-        if isinstance(__item, slice):
-            return self.__class__(self._data[__item])
-        return self._data[__item]
+    def __getitem__(self, item: SupportsIndex | slice, /) -> _T_co | Self:
+        if isinstance(item, slice):
+            return self.__class__(self._data[item])
+        return self._data[item]
 
-    def __lt__(self, __value: tuple[_T_co, ...] | Self) -> bool:
-        if isinstance(__value, tuple):
-            return self._data < __value
-        if isinstance(__value, ImmutableList):
-            return self._data < __value._data
+    def __lt__(self, value: tuple[_T_co, ...] | Self, /) -> bool:
+        if isinstance(value, tuple):
+            return self._data < value
+        if isinstance(value, ImmutableList):
+            return self._data < value._data
         return False
 
-    def __le__(self, __value: tuple[_T_co, ...] | Self) -> bool:
-        if isinstance(__value, tuple):
-            return self._data <= __value
-        if isinstance(__value, ImmutableList):
-            return self._data <= __value._data
+    def __le__(self, value: tuple[_T_co, ...] | Self, /) -> bool:
+        if isinstance(value, tuple):
+            return self._data <= value
+        if isinstance(value, ImmutableList):
+            return self._data <= value._data
         return False
 
-    def __gt__(self, __value: tuple[_T_co, ...] | Self) -> bool:
-        if isinstance(__value, tuple):
-            return self._data > __value
-        if isinstance(__value, ImmutableList):
-            return self._data > __value._data
+    def __gt__(self, value: tuple[_T_co, ...] | Self, /) -> bool:
+        if isinstance(value, tuple):
+            return self._data > value
+        if isinstance(value, ImmutableList):
+            return self._data > value._data
         return False
 
-    def __ge__(self, __value: tuple[_T_co, ...] | Self) -> bool:
-        if isinstance(__value, tuple):
-            return self._data >= __value
-        if isinstance(__value, ImmutableList):
-            return self._data >= __value._data
+    def __ge__(self, value: tuple[_T_co, ...] | Self, /) -> bool:
+        if isinstance(value, tuple):
+            return self._data >= value
+        if isinstance(value, ImmutableList):
+            return self._data >= value._data
         return False
 
-    def __eq__(self, __value: object) -> bool:
-        if isinstance(__value, tuple):
-            return self._data == __value
-        if isinstance(__value, ImmutableList):
-            return self._data == __value._data  # type: ignore
+    def __eq__(self, value: object, /) -> bool:
+        if isinstance(value, tuple):
+            return self._data == value
+        if isinstance(value, ImmutableList):
+            return self._data == value._data  # type: ignore
         return False
 
-    def __add__(self, __value: tuple[_T_co, ...] | ImmutableList[_T_co]) -> Self:
-        if isinstance(__value, ImmutableList):
-            return self.__class__(self._data + __value._data)
-        return self.__class__(self._data + __value)
+    def __add__(self, value: tuple[_T_co, ...] | ImmutableList[_T_co], /) -> Self:
+        if isinstance(value, ImmutableList):
+            return self.__class__(self._data + value._data)
+        return self.__class__(self._data + value)
 
-    def __mul__(self, __value: SupportsIndex) -> Self:
-        return self.__class__(self._data * __value)
+    def __mul__(self, value: SupportsIndex, /) -> Self:
+        return self.__class__(self._data * value)
 
-    def __rmul__(self, __value: SupportsIndex) -> Self:
-        return self.__class__(__value * self._data)
+    def __rmul__(self, value: SupportsIndex, /) -> Self:
+        return self.__class__(value * self._data)
 
     def count(self, value: Any) -> int:
         return self._data.count(value)
@@ -535,6 +535,6 @@ class ImmutableList(Sequence[_T_co], Generic[_T_co]):
         return self._data.index(value, start, stop)
 
 
-def get_wildcard_dict(__entities: str | Iterable[str]) -> dict[str, str]:
+def get_wildcard_dict(entities: str | Iterable[str], /) -> dict[str, str]:
     """Turn entity strings into wildcard dicts as {"entity": "{entity}"}"""
-    return {entity: f"{{{entity}}}" for entity in itx.always_iterable(__entities)}
+    return {entity: f"{{{entity}}}" for entity in itx.always_iterable(entities)}
