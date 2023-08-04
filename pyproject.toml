@@ -38,7 +38,7 @@ patterns = [
 python = ">=3.8,<3.12"
 pybids = "^0.16.0"
 snakemake = [
-    { version = ">=5.28.0", python = ">=3.7" },
+    { version = ">=5.28.0", python = ">=3.8" },
     { version = ">=7.18.2", python = ">=3.11" },
 ]
 PyYAML = "^6"
