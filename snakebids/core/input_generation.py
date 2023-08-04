@@ -5,7 +5,6 @@ import json
 import logging
 import os
 import re
-import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Generator, Iterable, Mapping, Optional, Sequence, overload
@@ -152,7 +151,7 @@ def generate_inputs(
         the default behaviour
 
     validate
-        If True performs validation of BIDS directory using pybids, otherwise 
+        If True performs validation of BIDS directory using pybids, otherwise
         skips validation.
 
     Returns
@@ -578,21 +577,6 @@ class _GetListsFromBidsSteps:
     def prepare_bids_filters(
         self, filters: Mapping[str, str | bool | Sequence[str | bool]]
     ) -> dict[str, str | Query | list[str | Query]]:
-        if sys.version_info < (3, 8):
-            invalid_filters = list(self._get_invalid_filters(filters))
-            if invalid_filters:
-                msg = (
-                    f"Invalid filters in component: '{self.input_name}'. Booleans "
-                    "may not be included in filter lists in Python 3.7.x "
-                    "or lower. Please upgrade to Python 3.8.x or greater for this "
-                    f"feature. Invalid filters:\n\t"
-                ) + "\n\t".join(f"{key}: {val}" for key, val in invalid_filters)
-
-                raise ConfigError(msg)
-            return {
-                key: Query.ANY if f is True else Query.NONE if f is False else f
-                for key, f in filters.items()
-            }  # type: ignore
         return {
             key: [
                 Query.ANY if f is True else Query.NONE if f is False else f
