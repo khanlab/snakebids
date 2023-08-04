@@ -486,13 +486,11 @@ def _parse_custom_path(
     -------
     input_zip_list, input_list, input_wildcards
     """
-    wildcards = glob_wildcards(input_path)
-
-    if not wildcards:
+    if not (wildcards := glob_wildcards(input_path)):
         _logger.warning("No wildcards defined in %s", input_path)
 
     # Log an error if no matches found
-    if len(next(iter(wildcards.values()))) == 0:
+    if len(itx.first(wildcards.values())) == 0:
         _logger.error("No matching files for %s", input_path)
         return wildcards
 

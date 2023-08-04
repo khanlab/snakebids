@@ -497,8 +497,7 @@ class BidsComponent(BidsPartialComponent):
         _, raw_fields, *_ = sb_it.unpack(
             zip(*Formatter().parse(self.path)), [[], [], []]
         )
-        fields = set(filter(None, raw_fields))
-        if fields != set(value):
+        if (fields := set(filter(None, raw_fields))) != set(value):
             raise ValueError(
                 "zip_lists entries must match the wildcards in input_path: "
                 f"{self.path}: {fields} != zip_lists: {set(value)}"
