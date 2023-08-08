@@ -3,6 +3,7 @@
 import argparse
 from pathlib import Path
 
+import more_itertools as itx
 from cookiecutter.main import cookiecutter  # type: ignore
 
 import snakebids
@@ -12,7 +13,7 @@ from snakebids.cli import add_dynamic_args
 
 def create_app(args: argparse.Namespace) -> None:
     cookiecutter(
-        str(Path(list(snakebids.__path__)[0]) / "project_template"),
+        str(Path(itx.first(snakebids.__path__)) / "project_template"),
         output_dir=args.output_dir,
     )
 
