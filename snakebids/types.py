@@ -1,9 +1,18 @@
 from __future__ import annotations
 
 from collections.abc import Hashable
-from typing import Dict, Generic, List, Mapping, Sequence
+from enum import Enum
+from pathlib import Path
+from typing import Dict, Generic, Iterable, List, Mapping, Sequence, overload
 
-from typing_extensions import TYPE_CHECKING, Protocol, TypeAlias, TypedDict, TypeVar
+from typing_extensions import (
+    TYPE_CHECKING,
+    Protocol,
+    Self,
+    TypeAlias,
+    TypedDict,
+    TypeVar,
+)
 
 _T_contra = TypeVar("_T_contra", contravariant=True)
 _S_co = TypeVar("_S_co", covariant=True)
@@ -12,7 +21,7 @@ _S_co = TypeVar("_S_co", covariant=True)
 class InputConfig(TypedDict, total=False):
     """Configuration for a single bids component"""
 
-    filters: dict[str, str | bool | list[str]]
+    filters: dict[str, str | bool | list[str | bool]]
     """Filters to pass on to :class:`BIDSLayout.get() <bids.layout.BIDSLayout>`
 
     Each key refers to the name of an entity. Values may take the following forms:
@@ -48,6 +57,45 @@ class InputConfig(TypedDict, total=False):
 
 class BinaryOperator(Protocol, Generic[_T_contra, _S_co]):
     def __call__(self, __first: _T_contra, __second: _T_contra) -> _S_co:
+        ...
+
+
+class Expandable(Protocol):
+    """Protocol represents objects that hold an entity table and can expand over a path
+
+    Includes BidsComponent, BidsPartialComponent, and BidsComponentRow
+    """
+
+    @property
+    def zip_lists(self) -> ZipList:
+        ...
+
+    def expand(
+        self,
+        __paths: Iterable[Path | str] | Path | str,
+        allow_missing: bool = False,
+        **wildcards: str | Iterable[str],
+    ) -> list[str]:
+        ...
+
+    def filter(
+        self, *, regex_search: bool = False, **filters: str | Sequence[str]
+    ) -> Self:
+        ...
+
+
+_K_contra = TypeVar("_K_contra", bound="str", contravariant=True)
+_V_co = TypeVar("_V_co", covariant=True)
+_Valt_co = TypeVar("_Valt_co", covariant=True)
+
+
+class MultiSelectable(Protocol, Generic[_K_contra, _V_co, _Valt_co]):
+    @overload
+    def __getitem__(self, __key: _K_contra) -> _V_co:
+        ...
+
+    @overload
+    def __getitem__(self, __key: tuple[_K_contra, ...]) -> _Valt_co:
         ...
 
 
@@ -94,3 +142,15 @@ Useful for typing functions that won't mutate the ZipList or use
 each :class:`~typing.Sequence` must be the same length, and values in each with the same
 index must correspond to the same path.
 """
+
+
+class OptionalFilterType(Enum):
+    """Sentinel value for CLI OPTIONAL filtering.
+
+    This is necessary because None means no CLI filter was added.
+    """
+
+    OptionalFilter = "OptionalFilter"
+
+
+OptionalFilter = OptionalFilterType.OptionalFilter

@@ -10,15 +10,14 @@ from snakebids.cli import SnakebidsArgs
 
 
 def test_template_dry_runs_successfully(tmp_path: Path):
-    app_name = Path(tmp_path).resolve().name
+    app_name = "snakebids_app"
     cookiecutter(
         join(list(snakebids.__path__)[0], "project_template"),
         no_input=True,
-        output_dir=tmp_path,
-        extra_context={"_output_dir": app_name},
+        output_dir=str(tmp_path),
     )
     app = SnakeBidsApp(
-        tmp_path / app_name,
+        tmp_path / app_name / app_name,
         args=SnakebidsArgs(
             force=False,
             outputdir=tmp_path / "out",
@@ -33,6 +32,7 @@ def test_template_dry_runs_successfully(tmp_path: Path):
                 "path_bold": None,
                 "participant_label": None,
                 "exclude_participant_label": None,
+                "plugins.validator.skip": True,
             },
         ),
     )

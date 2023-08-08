@@ -1,25 +1,57 @@
 from __future__ import annotations
 
 import functools as ft
-import importlib.resources
 import json
 import operator as op
+import os
 import re
+import sys
+from os import PathLike
 from pathlib import Path
-from typing import Any, Callable, Iterable, Mapping, Sequence, TypeVar, cast, overload
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Sequence,
+    TypeVar,
+    cast,
+    overload,
+)
 
 import attrs
+import importlib_resources as impr
 import more_itertools as itx
-from typing_extensions import Protocol, Self
+from typing_extensions import (
+    NotRequired,
+    Protocol,
+    Self,
+    SupportsIndex,
+    TypeAlias,
+    TypedDict,
+)
 
-from snakebids import types
+from snakebids import resources, types
 from snakebids.utils.user_property import UserProperty
 
-T = TypeVar("T")
+_T = TypeVar("_T")
+
+
+class BidsTag(TypedDict):
+    tag: str
+    before: NotRequired[str]
+    match: str
+    after: NotRequired[str]
+    leader: NotRequired[bool]
+
+
+BidsTags: TypeAlias = "dict[str, BidsTag]"
 
 
 @ft.lru_cache(None)
-def read_bids_tags(bids_json: Path | None = None) -> dict[str, dict[str, str]]:
+def read_bids_tags(bids_json: Path | None = None) -> BidsTags:
     """Read the bids tags we are aware of from a JSON file.
 
     This is used specifically for compatibility with pybids, since some tag keys
@@ -41,9 +73,7 @@ def read_bids_tags(bids_json: Path | None = None) -> dict[str, dict[str, str]]:
         with bids_json.open("r") as infile:
             bids_tags = json.load(infile)
         return bids_tags
-    with importlib.resources.open_text("snakebids.resources", "bids_tags.json") as file:
-        bids_tags = json.load(file)
-    return bids_tags
+    return json.loads(impr.files(resources).joinpath("bids_tags.json").read_text())
 
 
 @attrs.frozen(hash=True)
@@ -61,6 +91,11 @@ class BidsEntity:
         if isinstance(other, BidsEntity):
             return self.entity == other.entity
         return False
+
+    def __lt__(self, other: BidsEntity | str):
+        if isinstance(other, str):
+            return self.entity < other
+        return self.entity < other.entity
 
     @property
     def tag(self) -> str:
@@ -94,21 +129,13 @@ class BidsEntity:
     def before(self) -> str:
         """regex str to search before value in paths"""
         tags = read_bids_tags()
-        return (
-            tags[self.entity]["before"]
-            if self.entity in tags and "before" in tags[self.entity]
-            else f"{self.tag}-"
-        )
+        return tags.get(self.entity, {}).get("before", f"{self.tag}-")
 
     @property
     def after(self) -> str:
         """regex str to search after value in paths"""
         tags = read_bids_tags()
-        return (
-            tags[self.entity]["after"]
-            if self.entity in tags and "after" in tags[self.entity]
-            else ""
-        )
+        return tags.get(self.entity, {}).get("after", "")
 
     @property
     def regex(self) -> re.Pattern[str]:
@@ -156,11 +183,32 @@ class BidsEntity:
                 return cls(entity)
         return cls(tag)
 
+    @classmethod
+    def normalize(cls, __item: str | BidsEntity) -> BidsEntity:
+        """Return the entity associated with the given item, if found
+
+        Supports both strings and BidsEntities as input. Unlike the constructor, if a
+        tag name is given, the associated entity will be returned. If no associated
+        entity is found, the tag itself is used as the entity name
+
+        Parameters
+        ----------
+        tag : str
+            tag to search
+
+        Returns
+        -------
+        BidsEntity
+        """
+        if isinstance(__item, BidsEntity):
+            return __item
+        return cls.from_tag(__item)
+
 
 def matches_any(
-    item: T,
-    match_list: Iterable[T],
-    match_func: types.BinaryOperator[T, object],
+    item: _T,
+    match_list: Iterable[_T],
+    match_func: types.BinaryOperator[_T, object],
     *args: Any,
 ) -> bool:
     for match in match_list:
@@ -214,7 +262,7 @@ def property_alias(
     label: str | None = None,
     ref: str | None = None,
     copy_extended_docstring: bool = False,
-) -> Callable[[Callable[[Any], T]], "UserProperty[T]"]:
+) -> Callable[[Callable[[Any], _T]], "UserProperty[_T]"]:
     """Set property as an alias for another property
 
     Copies the docstring from the aliased property to the alias
@@ -235,7 +283,7 @@ def property_alias(
     property
     """
 
-    def inner(__func: Callable[[Any], T]) -> "UserProperty[T]":
+    def inner(__func: Callable[[Any], _T]) -> "UserProperty[_T]":
         alias = UserProperty(__func)
         if label:
             link = f":attr:`{label} <{ref}>`" if ref else label
@@ -356,4 +404,137 @@ def zip_list_eq(__first: types.ZipListLike, __second: types.ZipListLike):
     first_items = get_values(__first)
     second_items = get_values(__second)
 
-    return set(zip(*first_items)) == set(zip(*second_items))
+    return sorted(zip(*first_items)) == sorted(zip(*second_items))
+
+
+def get_first_dir(path: str) -> str:
+    """Return the top level directory in a path
+
+    If absolute, return the root. This function is necessary to handle paths with
+    ``./``, as ``pathlib.Path`` filters this out.
+    """
+    if os.path.isabs(path):
+        return Path(path).root
+    parent, child = os.path.split(path)
+    if parent:
+        return get_first_dir(parent)
+    return child
+
+
+def to_resolved_path(path: str | PathLike[str]):
+    return Path(path).resolve()
+
+
+_T_co = TypeVar("_T_co", covariant=True)
+
+
+class ImmutableList(Sequence[_T_co], Generic[_T_co]):
+    """Subclassable tuple equivalent
+
+    Mimics a tuple in every way, but readily supports subclassing. Data is stored on a
+    private attribute ``_data``. Subclasses must not override this attribute. To avoid
+    accidental modification, subclasses should avoid interacting with ``_data``, using
+    the relevant ``super()`` calls to access internal data instead (e.g. use
+    ``super().__getitem__(index)`` rather than ``self._data[index]``).
+
+    Unlike tuples, only a single type parameter is supported. In other words,
+    ``ImmutableList`` cannot be specified via type hints as a fixed length sequence
+    containing heterogenous items. A tuple specified as ``tuple[str, int, str]`` would
+    be specified as ``ImmutableList[str | int]``
+    """
+
+    def __init__(self, __iterable: Iterable[_T_co] = tuple()):
+        self._data = tuple(__iterable)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({list(self._data)})"
+
+    def __contains__(self, __item: object) -> bool:
+        return __item in self._data
+
+    def __hash__(self):
+        return hash(self._data)
+
+    def __iter__(self) -> Iterator[_T_co]:
+        return iter(self._data)
+
+    def __reversed__(self) -> Iterator[_T_co]:
+        return reversed(self._data)
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __bool__(self) -> bool:
+        return bool(self._data)
+
+    @overload
+    def __getitem__(self, __key: SupportsIndex) -> _T_co:
+        ...
+
+    @overload
+    def __getitem__(self, __key: slice) -> Self:
+        ...
+
+    def __getitem__(self, __item: SupportsIndex | slice) -> _T_co | Self:
+        if isinstance(__item, slice):
+            return self.__class__(self._data[__item])
+        return self._data[__item]
+
+    def __lt__(self, __value: tuple[_T_co, ...] | Self) -> bool:
+        if isinstance(__value, tuple):
+            return self._data < __value
+        if isinstance(__value, ImmutableList):
+            return self._data < __value._data
+        return False
+
+    def __le__(self, __value: tuple[_T_co, ...] | Self) -> bool:
+        if isinstance(__value, tuple):
+            return self._data <= __value
+        if isinstance(__value, ImmutableList):
+            return self._data <= __value._data
+        return False
+
+    def __gt__(self, __value: tuple[_T_co, ...] | Self) -> bool:
+        if isinstance(__value, tuple):
+            return self._data > __value
+        if isinstance(__value, ImmutableList):
+            return self._data > __value._data
+        return False
+
+    def __ge__(self, __value: tuple[_T_co, ...] | Self) -> bool:
+        if isinstance(__value, tuple):
+            return self._data >= __value
+        if isinstance(__value, ImmutableList):
+            return self._data >= __value._data
+        return False
+
+    def __eq__(self, __value: object) -> bool:
+        if isinstance(__value, tuple):
+            return self._data == __value
+        if isinstance(__value, ImmutableList):
+            return self._data == __value._data  # type: ignore
+        return False
+
+    def __add__(self, __value: tuple[_T_co, ...] | ImmutableList[_T_co]) -> Self:
+        if isinstance(__value, ImmutableList):
+            return self.__class__(self._data + __value._data)
+        return self.__class__(self._data + __value)
+
+    def __mul__(self, __value: SupportsIndex) -> Self:
+        return self.__class__(self._data * __value)
+
+    def __rmul__(self, __value: SupportsIndex) -> Self:
+        return self.__class__(__value * self._data)
+
+    def count(self, value: Any) -> int:
+        return self._data.count(value)
+
+    def index(
+        self, value: Any, start: SupportsIndex = 0, stop: SupportsIndex = sys.maxsize
+    ) -> int:
+        return self._data.index(value, start, stop)
+
+
+def get_wildcard_dict(__entities: str | Iterable[str]) -> dict[str, str]:
+    """Turn entity strings into wildcard dicts as {"entity": "{entity}"}"""
+    return {entity: f"{{{entity}}}" for entity in itx.always_iterable(__entities)}

@@ -6,7 +6,7 @@ import warnings
 from math import inf
 from pathlib import Path
 from string import Formatter
-from typing import Any, Iterable, NoReturn, Optional, Sequence
+from typing import Any, Iterable, NoReturn, Optional, Sequence, overload
 
 import attr
 import more_itertools as itx
@@ -22,7 +22,13 @@ from snakebids.exceptions import DuplicateComponentError
 from snakebids.io.console import get_console_size
 from snakebids.io.printing import format_zip_lists, quote_wrap
 from snakebids.types import UserDictPy37, ZipList
-from snakebids.utils.utils import MultiSelectDict, property_alias, zip_list_eq
+from snakebids.utils.utils import (
+    ImmutableList,
+    MultiSelectDict,
+    get_wildcard_dict,
+    property_alias,
+    zip_list_eq,
+)
 
 
 class BidsDatasetDict(TypedDict):
@@ -37,18 +43,169 @@ class BidsDatasetDict(TypedDict):
     subj_wildcards: dict[str, str]
 
 
-@attr.define
-class BidsComponent:
-    """Component of a BidsDataset mapping entities to their resolved values
+class BidsComponentRow(ImmutableList[str]):
+    """A single row from a BidsComponent
 
-    BidsComponents are immutable: their values cannot be altered.
+    This class is derived by indexing a single entity from a :class:`BidsComponent` or
+    :class:`BidsPartialComponent`. It should not be constructed manually.
+
+    The class is a subclass of :class:`ImmutableList` and can thus be treated as a
+    tuple. Indexing it via ``row[<int>]`` gives the entity-value of the selected entry.
+
+    The :attr:`~BidsComponentRow.entities` and :attr:`~BidsComponentRow.wildcards`
+    directly return the list of unique entity-values or the ``{brace-wrapped-entity}``
+    name corresponding to the row, rather than a dict.
+
+    The :meth:`~BidsComponentRow.expand` and :meth:`~BidsComponentRow.filter` methods
+    behave as they would in a :class:`BidsComponent` with a single entity.
+
     """
 
-    name: str = attr.field(on_setattr=attr.setters.frozen)
-    """Name of the component"""
+    def __init__(self, __iterable: Iterable[str], entity: str):
+        super().__init__(__iterable)
+        self.entity = entity
 
-    path: str = attr.field(on_setattr=attr.setters.frozen)
-    """Wildcard-filled path that matches the files for this component."""
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}({list(self._data)}, entity="{self.entity}")'
+
+    @property
+    def entities(self) -> tuple[str]:
+        """The unique values associated with the component"""
+        return tuple(set(self._data))
+
+    @property
+    def wildcards(self) -> str:
+        """The entity name wrapped in wildcard braces"""
+        return f"{{{self.entity}}}"
+
+    @property
+    def zip_lists(self) -> ZipList:
+        """
+        Dictionary where each key is a wildcard entity and each value is a list of the
+        values found for that entity. Each of these lists has length equal to the number
+        of images matched for this modality, so they can be zipped together to get a
+        list of the wildcard values for each file.
+        """
+        return MultiSelectDict({self.entity: list(self._data)})
+
+    def __eq__(self, other: BidsComponentRow | object) -> bool:
+        if not isinstance(other, self.__class__):
+            return False
+
+        return super().__eq__(other)
+
+    def expand(
+        self,
+        __paths: Iterable[Path | str] | Path | str,
+        allow_missing: bool = False,
+        **wildcards: str | Iterable[str],
+    ) -> list[str]:
+        """Safely expand over given paths with component wildcards
+
+        Uses the entity-values represented by this row to expand over the given paths.
+        Extra wildcards can be specified as keyword arguments.
+
+        By default, expansion over paths with extra wildcards not accounted for by the
+        component causes an error. This prevents accidental partial expansion. To allow
+        the passage of extra wildcards without expansion,set ``allow_missing`` to
+        ``True``.
+
+        Uses the snakemake :ref:`expand <snakemake:snakefiles_expand>` under the hood.
+
+        Parameters
+        ==========
+        __paths:
+            Path or list of paths to expand over
+        allow_missing:
+            If True, allow ``{wildcards}`` in the provided paths that are not present
+            either in the component or in the extra provided ``**wildcards``. These
+            wildcards will be preserved in the returned paths.
+        wildcards:
+            Each keyword should be the name of an wildcard in the provided paths.
+            Keywords not found in the path will be ignored. Keywords take values or
+            lists of values to be expanded over the provided paths.
+        """
+        return sn_expand(
+            list(itx.always_iterable(__paths)),
+            allow_missing=allow_missing,
+            **{self.entity: list(set(self._data))},
+            **{
+                wildcard: list(itx.always_iterable(v))
+                for wildcard, v in wildcards.items()
+            },
+        )
+
+    def filter(
+        self,
+        __spec: str | Iterable[str] | None = None,
+        *,
+        regex_search: bool = False,
+        **filters: str | Iterable[str],
+    ) -> Self:
+        """Filter component based on provided entity filters
+
+        Extracts a subset of the entity-values present in the row.
+
+        Takes entities as keyword arguments assigned to values or list of values to
+        select from the component. Only columns containing the provided entity-values
+        are kept. If no matches are found, a component with the all the original
+        entities but with no values will be returned.
+
+        Returns a brand new :class:`~snakebids.BidsComponentRow`. The original component
+        is not modified.
+
+        Parameters
+        ----------
+        __spec
+            Value or iterable of values assocatiated with the ComponentRow's
+            :attr:`~snakebids.BidsComponentRow.entity`. Equivalent to specifying
+            ``.filter(entity=value)``
+        regex_search
+            Treat filters as regex patterns when matching with entity-values.
+        filters
+            Keyword-value(s) filters as in :meth:`~snakebids.BidsComponent.filter`.
+            Here, the only valid filter is the
+            :attr:`~snakebids.BidsComponentRow.entity` of the
+            :class:`~snakebids.BidsComponentRow`; all others will be ignored.
+        """
+        if __spec is not None:
+            if filters:
+                raise ValueError(
+                    "Both __spec and filters cannot be used simultaneously"
+                )
+            filters = {self.entity: __spec}
+        entity, data = itx.first(
+            filter_list(
+                {self.entity: self._data}, filters, regex_search=regex_search
+            ).items()
+        )
+        return self.__class__(data, entity=entity)
+
+
+@attr.define(kw_only=True)
+class BidsPartialComponent:
+    """Primitive representation of a bids data component
+
+    See :class:`BidsComponent` for an extended definition of a data component.
+
+    ``BidsPartialComponents`` are typically derived from a :class:`BidsComponent`. They
+    do not store path information, and do not represent real data files. They just have
+    a table of entity-values, typically a subset of those present in their source
+    :class:`BidsComponent`.
+
+    Despite this, ``BidsPartialComponents`` still allow you to expand the data table
+    over new paths, allowing you to derive paths from your source dataset.
+
+    The members of ``BidsPartialComponent`` are identical to :class:`BidsComponent` with
+    the following exceptions:
+
+    - No :attr:`~BidsComponent.name` or :attr:`~BidsComponent.path`
+    - :meth:`~BidsPartialComponent.expand` must be given a path or list of paths as the
+      first argument
+
+    ``BidsPartialComponents`` are immutable: their values cannot be altered.
+    """
+
     zip_lists: ZipList = attr.field(
         on_setattr=attr.setters.frozen, converter=MultiSelectDict
     )
@@ -63,34 +220,63 @@ class BidsComponent:
     def __repr__(self) -> str:
         return self.pformat()
 
+    @overload
+    def __getitem__(self, __key: str) -> BidsComponentRow:
+        ...
+
+    @overload
+    def __getitem__(self, __key: tuple[str, ...]) -> BidsPartialComponent:
+        ...
+
+    def __getitem__(
+        self, __key: str | tuple[str, ...]
+    ) -> BidsComponentRow | BidsPartialComponent:
+        if isinstance(__key, tuple):
+            # Use dict.fromkeys for de-duplication
+            return BidsPartialComponent(
+                zip_lists={key: self.zip_lists[key] for key in dict.fromkeys(__key)}
+            )
+        return BidsComponentRow(self.zip_lists[__key], entity=__key)
+
+    def __bool__(self) -> bool:
+        """Truth of a BidsComponent is based on whether it has values
+
+        It is not based on whether it has any entities. This is because
+        :meth:`~BidsPartialComponent.filter` returns a component retaining all entities
+        but with no values, making that the standard for emptiness. It also makes it
+        consistent with :class:`BidsComponentRow`, which always has an entity name
+        stored, but may or may not have values.
+        """
+        return bool(next(iter(self.zip_lists)))
+
+    def _pformat_body(self) -> None | str | list[str]:
+        """Extra properties to be printed within pformat
+
+        Meant for implementation in subclasses
+        """
+        return None
+
     def pformat(self, max_width: int | float | None = None, tabstop: int = 4) -> str:
         width = max_width or get_console_size()[0] or inf
-        body = [
-            f"name={quote_wrap(self.name)},",
-            f"path={quote_wrap(self.path)},",
-            f"zip_lists={format_zip_lists(self.zip_lists, width - tabstop, tabstop)},",
-        ]
+        body = it.chain(
+            itx.always_iterable(self._pformat_body() or []),
+            [
+                "zip_lists="
+                f"{format_zip_lists(self.zip_lists, width - tabstop, tabstop)},",
+            ],
+        )
         output = [
-            "BidsComponent(",
+            f"{self.__class__.__name__}(",
             textwrap.indent("\n".join(body), " " * tabstop),
             ")",
         ]
         return "\n".join(output)
 
     @zip_lists.validator  # type: ignore
-    def _validate_zip_lists(self, _, value: dict[str, list[str]]) -> None:
+    def _validate_zip_lists(self, __attr: str, value: dict[str, list[str]]) -> None:
         lengths = {len(val) for val in value.values()}
         if len(lengths) > 1:
             raise ValueError("zip_lists must all be of equal length")
-        _, raw_fields, *_ = sb_it.unpack(
-            zip(*Formatter().parse(self.path)), [[], [], []]
-        )
-        fields = set(filter(None, raw_fields))
-        if fields != set(value):
-            raise ValueError(
-                "zip_lists entries must match the wildcards in input_path: "
-                f"{self.path}: {fields} != zip_lists: {set(value)}"
-            )
 
     # Note: we can't use cached property here because it's incompatible with slots.
     _input_lists: Optional[MultiSelectDict[str, list[str]]] = attr.field(
@@ -124,26 +310,8 @@ class BidsComponent:
         the Snakemake wildcard used for that entity.
         """
         if self._input_wildcards is None:
-            self._input_wildcards = MultiSelectDict(
-                {entity: f"{{{entity}}}" for entity in self.zip_lists}
-            )
+            self._input_wildcards = MultiSelectDict(get_wildcard_dict(self.zip_lists))
         return self._input_wildcards
-
-    @property
-    def input_name(self) -> str:
-        """Alias of :attr:`name <snakebids.BidsComponent.name>`
-
-        Name of the component
-        """
-        return self.name
-
-    @property
-    def input_path(self) -> str:
-        """Alias of :attr:`path <snakebids.BidsComponent.path>`
-
-        Wildcard-filled path that matches the files for this component.
-        """
-        return self.path
 
     @property
     def input_zip_lists(self) -> ZipList:
@@ -165,29 +333,21 @@ class BidsComponent:
         return self.wildcards
 
     def __eq__(self, other: BidsComponent | object) -> bool:
-        if not isinstance(other, BidsComponent):
-            return False
-
-        if self.name != other.name:
-            return False
-
-        if self.path != other.path:
+        if not isinstance(other, self.__class__):
             return False
 
         return zip_list_eq(self.zip_lists, other.zip_lists)
 
     def expand(
         self,
-        paths: Iterable[Path | str] | Path | str | None = None,
+        __paths: Iterable[Path | str] | Path | str,
         allow_missing: bool = False,
         **wildcards: str | Iterable[str],
     ) -> list[str]:
         """Safely expand over given paths with component wildcards
 
         Uses the entity-value combinations found in the dataset to expand over the given
-        paths. If no path is provided, expands over the component
-        :attr:`~snakebids.BidsComponent.path` (thus returning the original files used to
-        create the component). Extra wildcards can be specifed as keyword arguments.
+        paths. Extra wildcards can be specifed as keyword arguments.
 
         By default, expansion over paths with extra wildcards not accounted for by the
         component causes an error. This prevents accidental partial expansion. To allow
@@ -195,13 +355,29 @@ class BidsComponent:
         ``True``.
 
         Uses the snakemake :ref:`expand <snakemake:snakefiles_expand>` under the hood.
+
+        Parameters
+        ==========
+        __paths:
+            Path or list of paths to expand over
+        allow_missing:
+            If True, allow ``{wildcards}`` in the provided paths that are not present
+            either in the component or in the extra provided ``**wildcards``. These
+            wildcards will be preserved in the returned paths.
+        wildcards:
+            Each keyword should be the name of an wildcard in the provided paths.
+            Keywords not found in the path will be ignored. Keywords take values or
+            lists of values to be expanded over the provided paths.
         """
-        paths = paths or self.path
-        inner_expand = sn_expand(
-            list(itx.always_iterable(paths)),
-            zip,
-            allow_missing=True if wildcards else allow_missing,
-            **self.zip_lists,
+        inner_expand = list(
+            set(
+                sn_expand(
+                    list(itx.always_iterable(__paths)),
+                    zip,
+                    allow_missing=True if wildcards else allow_missing,
+                    **self.zip_lists,
+                )
+            )
         )
         if not wildcards:
             return inner_expand
@@ -249,6 +425,146 @@ class BidsComponent:
             self,
             zip_lists=filter_list(self.zip_lists, filters, regex_search=regex_search),
         )
+
+
+@attr.define(kw_only=True)
+class BidsComponent(BidsPartialComponent):
+    """Representation of a bids data component
+
+    A component is a set of data entries all corresponding to the same type of object.
+    Entries vary over a set of entities. For example, a component may represent all the
+    unprocessed, T1-weighted anatomical images aqcuired from a group of 100 subjects,
+    across 2 sessions, with three runs per session. Here, the subject, session, and run
+    are the entities over which the component varies. Each entry in the component has
+    a single value assigned for each of the three entities (e.g subject 002, session
+    01, run 1).
+
+    Each entry can be defined solely by its wildcard values. The complete collection of
+    entries can thus be stored as a table, where each row represents an entity and each
+    column represents an entry.
+
+    ``BidsComponent`` stores and indexes this table. It uses 'row-first' indexing,
+    meaning first an entity is selected, then an entry. It also has a number of
+    properties and methods making it easier to incorporate the data in a snakemake
+    workflow.
+
+    In addition, ``BidsComponent`` stores a template :attr:`~BidsComponent.path <path>`
+    derived from the source dataset. This path is used by the
+    :meth:`~BidsComponent.expand` method to recreate the original filesystem paths.
+
+    The real power of the ``BidsComponent``, however, is in creating derived paths based
+    on the original dataset. Using the :meth`~BidsComponent.expand` method, you can pass
+    new paths with ``{wildcard}`` placeholders wrapped in braces and named according to
+    the entities in the component. These placeholders will be substituted with the
+    entity values saved in the table, giving you a list of paths the same length as the
+    number of entries in the component.
+
+    BidsComponents are immutable: their values cannot be altered.
+    """
+
+    name: str = attr.field(on_setattr=attr.setters.frozen)
+    """Name of the component"""
+
+    path: str = attr.field(on_setattr=attr.setters.frozen)
+    """Wildcard-filled path that matches the files for this component."""
+
+    zip_lists: ZipList = attr.field(
+        on_setattr=attr.setters.frozen, converter=MultiSelectDict
+    )
+    """Table of unique wildcard groupings for each member in the component.
+
+    Dictionary where each key is a wildcard entity and each value is a list of the
+    values found for that entity. Each of these lists has length equal to the number
+    of images matched for this modality, so they can be zipped together to get a
+    list of the wildcard values for each file.
+    """
+
+    def __repr__(self) -> str:
+        return self.pformat()
+
+    def _pformat_body(self):
+        return [
+            f"name={quote_wrap(self.name)},",
+            f"path={quote_wrap(self.path)},",
+        ]
+
+    @zip_lists.validator  # type: ignore
+    def _validate_zip_lists(self, __attr: str, value: dict[str, list[str]]) -> None:
+        super()._validate_zip_lists(__attr, value)
+        _, raw_fields, *_ = sb_it.unpack(
+            zip(*Formatter().parse(self.path)), [[], [], []]
+        )
+        fields = set(filter(None, raw_fields))
+        if fields != set(value):
+            raise ValueError(
+                "zip_lists entries must match the wildcards in input_path: "
+                f"{self.path}: {fields} != zip_lists: {set(value)}"
+            )
+
+    def __eq__(self, other: BidsComponent | object) -> bool:
+        if not isinstance(other, self.__class__):
+            return False
+
+        if self.name != other.name:
+            return False
+
+        if self.path != other.path:
+            return False
+
+        return super().__eq__(other)
+
+    def expand(
+        self,
+        __paths: Iterable[Path | str] | Path | str | None = None,
+        allow_missing: bool = False,
+        **wildcards: str | Iterable[str],
+    ) -> list[str]:
+        """Safely expand over given paths with component wildcards
+
+        Uses the entity-value combinations found in the dataset to expand over the given
+        paths. If no path is provided, expands over the component
+        :attr:`~snakebids.BidsComponent.path` (thus returning the original files used to
+        create the component). Extra wildcards can be specified as keyword arguments.
+
+        By default, expansion over paths with extra wildcards not accounted for by the
+        component causes an error. This prevents accidental partial expansion. To allow
+        the passage of extra wildcards without expansion,set ``allow_missing`` to
+        ``True``.
+
+        Uses the snakemake :ref:`expand <snakemake:snakefiles_expand>` under the hood.
+
+        Parameters
+        ==========
+        __paths:
+            Path or list of paths to expand over. If not provided, the component's own
+            :attr:`~BidsComponent.path` will be expanded over.
+        allow_missing:
+            If True, allow ``{wildcards}`` in the provided paths that are not present
+            either in the component or in the extra provided ``**wildcards``. These
+            wildcards will be preserved in the returned paths.
+        wildcards:
+            Each keyword should be the name of an wildcard in the provided paths.
+            Keywords not found in the path will be ignored. Keywords take values or
+            lists of values to be expanded over the provided paths.
+        """
+        paths = __paths or self.path
+        return super().expand(paths, allow_missing, **wildcards)
+
+    @property
+    def input_name(self) -> str:
+        """Alias of :attr:`name <snakebids.BidsComponent.name>`
+
+        Name of the component
+        """
+        return self.name
+
+    @property
+    def input_path(self) -> str:
+        """Alias of :attr:`path <snakebids.BidsComponent.path>`
+
+        Wildcard-filled path that matches the files for this component.
+        """
+        return self.path
 
 
 class BidsDataset(UserDictPy37[str, BidsComponent]):

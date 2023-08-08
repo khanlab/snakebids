@@ -15,7 +15,7 @@ from pytest_mock.plugin import MockerFixture
 from snakebids.app import update_config
 from snakebids.cli import SnakebidsArgs
 from snakebids.tests import strategies as sb_st
-from snakebids.types import InputConfig, InputsConfig
+from snakebids.types import InputConfig, InputsConfig, OptionalFilter
 
 from .. import app as sn_app
 from ..app import SnakeBidsApp
@@ -46,14 +46,18 @@ def app(mocker: MockerFixture):
 class TestUpdateConfig:
     @given(
         input_config=sb_st.input_configs(),
+        drop_wildcards=st.booleans(),
     )
     def test_magic_args(
         self,
         input_config: InputConfig,
+        drop_wildcards: bool,
     ):
         config_copy: dict[str, Any] = copy.deepcopy(config)
         config_copy["bids_dir"] = "root"
         config_copy["output_dir"] = "app"
+        if drop_wildcards:
+            del config_copy["pybids_inputs"]["bold"]["wildcards"]
         args = SnakebidsArgs(
             force=False,
             outputdir=Path("app"),
@@ -78,6 +82,37 @@ class TestUpdateConfig:
                 inputs_config["bold"].get("custom_path", "")
                 == Path(input_config["custom_path"]).resolve()
             )
+
+    @given(
+        inputs_config=sb_st.inputs_configs(),
+    )
+    def test_magic_optional_filter(
+        self,
+        inputs_config: InputsConfig,
+    ):
+        config_copy: dict[str, Any] = copy.deepcopy(config)
+        config_copy["bids_dir"] = "root"
+        config_copy["output_dir"] = "app"
+        config_copy["pybids_inputs"] = inputs_config
+        args_dict: dict[str, Any] = {
+            f"filter_{input_}": {
+                entity: OptionalFilter for entity in value.get("filters", {})
+            }
+            for input_, value in inputs_config.items()
+        }
+        for input_ in inputs_config:
+            args_dict[f"wildcards_{input_}"] = None
+            args_dict[f"path_{input_}"] = None
+        args = SnakebidsArgs(
+            force=False,
+            outputdir=Path("app"),
+            snakemake_args=[],
+            args_dict=args_dict,
+        )
+        update_config(config_copy, args)
+        inputs_config = config_copy["pybids_inputs"]
+        for input_config in inputs_config.values():
+            assert len(input_config.get("filters", {})) == 0
 
 
 class TestRunSnakemake:
@@ -212,6 +247,33 @@ class TestRunSnakemake:
                 str(new_config),
             ]
         )
+
+    def test_plugin_args(self, mocker: MockerFixture, app: SnakeBidsApp):
+        """Test that plugins have access to args parsed from the CLI."""
+        # Get mocks for all the io functions
+        self.io_mocks(mocker)
+        mocker.patch.object(
+            sn_app,
+            "update_config",
+            side_effect=(
+                lambda config, sn_args: config.update(sn_args.args_dict)  # type: ignore
+            ),
+        )
+        mocker.patch.object(
+            sys, "argv", ["script_name", "path/to/input", "app/results", "participant"]
+        )
+
+        def plugin(my_app: SnakeBidsApp):
+            my_app.foo = my_app.args.outputdir  # type: ignore
+
+        app.plugins.extend([plugin])
+        try:
+            app.run_snakemake()
+        except SystemExit as e:
+            print("System exited prematurely")
+            print(e)
+
+        assert app.foo == Path("app/results").resolve()  # type: ignore
 
     def test_plugins(self, mocker: MockerFixture, app: SnakeBidsApp):
         # Get mocks for all the io functions

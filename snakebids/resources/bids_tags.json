@@ -105,8 +105,8 @@
         "match": "[0-9]{1,5}"
     },
     "suffix": {
-        "before": "[._]*",
-        "match": "[a-zA-Z0-9]*?",
+        "before": "(?:^|[_/\\\\])",
+        "match": "[a-zA-Z0-9]+",
         "after": "\\.[^/\\\\]+$"
     },
     "datatype": {
@@ -115,7 +115,7 @@
         "after": "[/\\\\]+"
     },
     "extension": {
-        "before": "[._]*[a-zA-Z0-9]*?",
+        "before": "[^./\\\\]",
         "match": "\\.[^/\\\\]+",
         "after": "$"
     },
@@ -185,6 +185,11 @@
     "desc": {
         "tag": "desc",
         "before": "desc-",
+        "match": "[a-zA-Z0-9]+"
+    },
+    "tracksys": {
+        "tag": "tracksys",
+        "before": "[_/\\\\]+tracksys-",
         "match": "[a-zA-Z0-9]+"
     }
 }

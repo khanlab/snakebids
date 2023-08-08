@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import operator as op
 import re
+import string
+import sys
 from typing import Any
 
 import more_itertools as itx
@@ -10,7 +12,12 @@ from hypothesis import assume, given
 from hypothesis import strategies as st
 
 import snakebids.tests.strategies as sb_st
-from snakebids.utils.utils import MultiSelectDict, matches_any
+from snakebids.utils.utils import (
+    ImmutableList,
+    MultiSelectDict,
+    get_wildcard_dict,
+    matches_any,
+)
 
 
 class TestMatchesAny:
@@ -99,22 +106,12 @@ class TestMultiselectDict:
             assert selected[key] is dicts[key]
 
     @given(dicts=sb_st.multiselect_dicts(st.text(), sb_st.everything()), data=st.data())
-    def test_all_requested_items_received(
+    def test_all_requested_items_received_and_no_others(
         self, dicts: MultiSelectDict[str, Any], data: st.DataObject
     ):
         selectors = self.get_selectors(data, dicts)
         selected = dicts[selectors]
-        for selector in selectors:
-            assert selector in selected
-
-    @given(dicts=sb_st.multiselect_dicts(st.text(), sb_st.everything()), data=st.data())
-    def test_no_extra_items_given(
-        self, dicts: MultiSelectDict[str, Any], data: st.DataObject
-    ):
-        selectors = self.get_selectors(data, dicts)
-        selected = dicts[selectors]
-        for selector in selected:
-            assert selector in selectors
+        assert set(selectors) == set(selected)
 
     @given(
         dicts=sb_st.multiselect_dicts(st.text(), sb_st.everything(), min_size=1),
@@ -154,3 +151,178 @@ class TestMultiselectDict:
         # Using the itx method for uniqueness to avoid calculating unique values in the
         # test in the same way as the source code
         assert tuple(dicts[selectors]) == tuple(itx.unique_everseen(selectors))
+
+
+class TestImmutableListsAreEquivalentToTuples:
+    @given(st.lists(sb_st.everything()))
+    def test_they_are_not_tuples(self, items: list[Any]):
+        iml = ImmutableList(items)
+        assert not isinstance(iml, tuple)
+
+    @given(st.lists(sb_st.partially_ordered(), min_size=1), st.data())
+    def test_contains_items(self, items: list[Any], data: st.DataObject):
+        iml = ImmutableList(items)
+        sample = data.draw(st.sampled_from(items))
+        assert sample in iml
+
+    @given(st.lists(sb_st.hashables()))
+    def test_is_hashable(self, items: list[Any]):
+        iml = ImmutableList(items)
+        assert hash(iml) == hash(tuple(items))
+
+    @given(st.lists(sb_st.everything()))
+    def test_is_iterable(self, items: list[Any]):
+        i = 0
+        iml = ImmutableList(items)
+        _iter = iter(iml)
+        while True:
+            try:
+                val = next(_iter)
+                assert val is items[i]
+                i += 1
+            except StopIteration:
+                break
+        assert i == len(items)
+
+    @given(st.lists(sb_st.everything()))
+    def test_is_reversable(self, items: list[Any]):
+        i = 0
+        iml = ImmutableList(items)
+        _iter = reversed(iml)
+        while True:
+            try:
+                val = next(_iter)
+                i += 1
+                assert val is items[-i]
+            except StopIteration:
+                break
+        assert i == len(items)
+
+    @given(st.lists(sb_st.everything()))
+    def test_has_length(self, items: list[Any]):
+        iml = ImmutableList(items)
+        assert len(iml) == len(items)
+
+    @given(st.lists(sb_st.everything(), min_size=1), st.data())
+    def test_supports_getting(self, items: list[Any], data: st.DataObject):
+        iml = ImmutableList(items)
+        index = data.draw(st.integers(min_value=0, max_value=len(items) - 1))
+        assert iml[index] is items[index]
+
+    @given(st.lists(sb_st.everything()), st.data())
+    def test_supports_slicing(self, items: list[Any], data: st.DataObject):
+        iml = ImmutableList(items)
+        _slice = data.draw(st.slices(len(items)))
+        for i, item in enumerate(iml[_slice]):
+            assert item is items[_slice][i]
+
+    @given(st.lists(st.integers()), st.lists(st.integers()))
+    def test_supports_comparisons(self, items1: list[Any], items2: list[Any]):
+        iml1 = ImmutableList(items1)
+        iml2 = ImmutableList(items2)
+        tup1 = tuple(items1)
+        tup2 = tuple(items2)
+        if tup1 == tup2:
+            assert iml1 == iml2
+            assert iml1 == tup2
+            assert tup1 == iml2
+        if tup1 >= tup2:
+            assert iml1 >= iml2
+            assert iml1 >= tup2
+            assert tup1 >= iml2
+        if tup1 > tup2:
+            assert iml1 > iml2
+            assert iml1 > tup2
+            assert tup1 > iml2
+        if tup1 < tup2:
+            assert iml1 < iml2
+            assert iml1 < tup2
+            assert tup1 < iml2
+        if tup1 <= tup2:
+            assert iml1 <= iml2
+            assert iml1 <= tup2
+            assert tup1 <= iml2
+
+    @given(st.lists(sb_st.partially_ordered()), st.lists(sb_st.partially_ordered()))
+    def test_supports_equality(self, items1: list[Any], items2: list[Any]):
+        iml1 = ImmutableList(items1)
+        iml2 = ImmutableList(items2)
+        tup1 = tuple(items1)
+        tup2 = tuple(items2)
+        if tup1 == tup2:
+            assert iml1 == iml2
+            assert iml1 == tup2
+            assert tup1 == iml2
+
+    @given(st.lists(sb_st.partially_ordered()))
+    def test_equal_items_are_equal(self, items: list[Any]):
+        iml1 = ImmutableList(items)
+        iml2 = ImmutableList(items)
+        tup1 = tuple(items)
+        tup2 = tuple(items)
+        assert iml1 == iml2
+        assert iml1 == tup2
+        assert tup1 == iml2
+
+    @given(st.lists(sb_st.everything()))
+    def test_supports_addition(self, items: list[Any]):
+        iml = ImmutableList(items)
+        assert iml + iml == tuple(items) + tuple(items)
+
+    @given(
+        st.lists(sb_st.everything(), max_size=10),
+        st.integers(min_value=-5, max_value=5),
+    )
+    def test_supports_multiplication(self, items: list[Any], value: int):
+        iml = ImmutableList(items)
+        assert iml * value == tuple(items) * value
+        assert value * iml == value * tuple(items)
+        assert value * iml == iml * value
+
+    @given(st.lists(sb_st.partially_ordered(), min_size=1), st.data())
+    def test_supports_count(self, items: list[Any], data: st.DataObject):
+        iml = ImmutableList(items)
+        sample = data.draw(st.sampled_from(items))
+        assert iml.count(sample) == items.count(sample)
+
+    @given(st.lists(sb_st.partially_ordered(), min_size=1), st.data())
+    def test_supports_index(self, items: list[Any], data: st.DataObject):
+        iml = ImmutableList(items)
+        _slice = data.draw(st.slices(len(items)))
+        assume(len(items[_slice]))
+        assume(_slice.step is None or _slice.step > 0)
+        sample = data.draw(st.sampled_from(items[_slice]))
+        start = 0 if _slice.start is None else _slice.start
+        stop = sys.maxsize if _slice.stop is None else _slice.stop
+        assert iml.index(sample, start, stop) == items.index(sample, start, stop)
+
+    @given(st.lists(sb_st.everything()), sb_st.everything())
+    def test_cannot_be_mutated(self, items: list[Any], value: Any):
+        iml = ImmutableList(items)
+        with pytest.raises(TypeError):
+            iml[len(iml)] = value  # type: ignore
+
+    @given(st.lists(st.text(string.printable)))
+    def test_repr(self, items: list[Any]):
+        iml = ImmutableList(items)
+        assert repr(iml) == f"ImmutableList({items})"
+
+    @given(st.lists(sb_st.everything()))
+    def test_bool(self, items: list[Any]):
+        iml = ImmutableList(items)
+        assert bool(iml) == bool(items)
+
+
+@given(
+    st.dictionaries(
+        sb_st.bids_entity().map(lambda e: e.wildcard),
+        sb_st.bids_value("[^.]*"),
+        min_size=1,
+    ).filter(lambda v: list(v) != ["datatype"])
+)
+def test_get_wildcard_dict(zip_list: dict[str, str]):
+    wildcards = get_wildcard_dict(zip_list)
+    wildstr = ".".join(wildcards.values())
+    first = wildstr.format(**wildcards)
+    second = first.format(**zip_list)
+    assert set(second.split(".")) == set(zip_list.values())

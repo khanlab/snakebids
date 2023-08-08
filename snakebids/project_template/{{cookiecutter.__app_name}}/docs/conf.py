@@ -17,8 +17,8 @@
 # -- Project information -----------------------------------------------------
 
 
-project = "{{cookiecutter.app_name}}"
-copyright = "2021, {{cookiecutter.full_name}}"
+project = "{{cookiecutter.__app_name}}"
+copyright = "{% now 'utc', '%Y' %}, {{cookiecutter.full_name}}"
 author = "{{cookiecutter.full_name}}"
 
 

@@ -15,25 +15,24 @@ from hypothesis import strategies as st
 from snakemake.exceptions import WildcardError
 
 from snakebids.core.construct_bids import bids
-from snakebids.core.datasets import BidsComponent, BidsDataset
+from snakebids.core.datasets import (
+    BidsComponent,
+    BidsComponentRow,
+    BidsDataset,
+    BidsPartialComponent,
+)
 from snakebids.exceptions import DuplicateComponentError
 from snakebids.tests import strategies as sb_st
-from snakebids.tests.helpers import (
-    entity_to_wildcard,
-    expand_zip_list,
-    get_bids_path,
-    get_zip_list,
-    setify,
-)
-from snakebids.types import ZipList
+from snakebids.tests.helpers import expand_zip_list, get_bids_path, get_zip_list, setify
+from snakebids.types import Expandable, ZipList
 from snakebids.utils import sb_itertools as sb_it
 from snakebids.utils.snakemake_io import glob_wildcards
-from snakebids.utils.utils import BidsEntity, MultiSelectDict, zip_list_eq
+from snakebids.utils.utils import BidsEntity, get_wildcard_dict, zip_list_eq
 
 
 def test_multiple_components_cannot_have_same_name():
-    comp1 = BidsComponent("foo", path=".", zip_lists=MultiSelectDict({}))
-    comp2 = BidsComponent("foo", path=".", zip_lists=MultiSelectDict({}))
+    comp1 = BidsComponent(name="foo", path=".", zip_lists={})
+    comp2 = BidsComponent(name="foo", path=".", zip_lists={})
     with pytest.raises(DuplicateComponentError):
         BidsDataset.from_iterable([comp1, comp2])
 
@@ -62,7 +61,9 @@ class TestBidsComponentValidation:
     def test_zip_lists_must_be_same_length(self, zip_lists: ZipList):
         itx.first(zip_lists.values()).append("foo")
         with pytest.raises(ValueError) as err:
-            BidsComponent("foo", get_bids_path(zip_lists), zip_lists)
+            BidsComponent(
+                name="foo", path=get_bids_path(zip_lists), zip_lists=zip_lists
+            )
         assert err.value.args[0] == "zip_lists must all be of equal length"
 
     @given(sb_st.zip_lists(), sb_st.bids_entity())
@@ -72,7 +73,7 @@ class TestBidsComponentValidation:
         assume(entity.wildcard not in zip_lists)
         path = get_bids_path(it.chain(zip_lists, [entity.entity]))
         with pytest.raises(ValueError) as err:
-            BidsComponent("foo", path, zip_lists)
+            BidsComponent(name="foo", path=path, zip_lists=zip_lists)
         assert (
             "zip_lists entries must match the wildcards in input_path"
             in err.value.args[0]
@@ -87,7 +88,7 @@ class TestBidsComponentValidation:
 
         path = get_bids_path(path_entities)
         with pytest.raises(ValueError) as err:
-            BidsComponent("foo", path, zip_lists)
+            BidsComponent(name="foo", path=path, zip_lists=zip_lists)
         assert (
             "zip_lists entries must match the wildcards in input_path"
             in err.value.args[0]
@@ -100,12 +101,18 @@ class TestBidsComponentEq:
         assert input != other
 
     def test_empty_BidsInput_are_equal(self):
-        assert BidsComponent("", "", MultiSelectDict({})) == BidsComponent(
-            "", "", MultiSelectDict({})
+        assert BidsComponent(name="", path="", zip_lists={}) == BidsComponent(
+            name="", path="", zip_lists={}
         )
         assert BidsComponent(
-            "", "{foo}{bar}", MultiSelectDict({"foo": [], "bar": []})
-        ) == BidsComponent("", "{foo}{bar}", MultiSelectDict({"foo": [], "bar": []}))
+            name="",
+            path="{foo}{bar}",
+            zip_lists={"foo": [], "bar": []},
+        ) == BidsComponent(
+            name="",
+            path="{foo}{bar}",
+            zip_lists={"foo": [], "bar": []},
+        )
 
     @given(sb_st.bids_components())
     def test_copies_are_equal(self, input: BidsComponent):
@@ -139,7 +146,11 @@ class TestBidsComponentEq:
 
     @given(sb_st.bids_components())
     def test_paths_must_be_identical(self, input: BidsComponent):
-        cp = BidsComponent(input.input_name, input.input_path + "foo", input.zip_lists)
+        cp = BidsComponent(
+            name=input.input_name,
+            path=input.input_path + "foo",
+            zip_lists=input.zip_lists,
+        )
         assert cp != input
 
 
@@ -148,7 +159,7 @@ class TestBidsComponentProperties:
     def test_input_lists_derives_from_zip_lists(
         self, data: st.DataObject, min_size: int
     ):
-        input_lists = data.draw(sb_st.bids_input_lists(min_size, max_size=5))
+        input_lists = data.draw(sb_st.bids_input_lists(min_size=min_size, max_size=5))
 
         # Due to the product, we can delete some of the combinations and still
         # regenerate our input_lists
@@ -175,7 +186,7 @@ class TestBidsComponentProperties:
         bids_input = BidsComponent(
             name="foo",
             path=get_bids_path(zip_lists),
-            zip_lists=MultiSelectDict(zip_lists),
+            zip_lists=zip_lists,
         )
 
         wildstr = ".".join(bids_input.input_wildcards.values())
@@ -231,19 +242,22 @@ class TestBidsDatasetLegacyAccess:
         assert isinstance(dataset[name], BidsComponent)
 
 
-class TestBidsComponentExpand:
-    def get_novel_path(self, component: BidsComponent):
-        # use the "comp-" prefix to give a constant part to the novel template,
-        # otherwise the trivial template "{foo}" globs everything
-        return Path(*map(lambda s: f"comp-{s}", component.wildcards.values()))
+def _get_novel_path(prefix: str, component: Expandable):
+    # use the "comp-" prefix to give a constant part to the novel template,
+    # otherwise the trivial template "{foo}" globs everything
+    return Path(
+        *map(
+            lambda s: f"{prefix}-{s}",
+            get_wildcard_dict(component.zip_lists).values(),
+        )
+    )
 
-    @given(component=sb_st.bids_components(restrict_patterns=True))
-    def test_expand_with_no_args_returns_initial_paths(self, component: BidsComponent):
-        paths = component.expand()
-        assert zip_list_eq(glob_wildcards(component.path, paths), component.zip_lists)
 
+class TestExpandables:
     @given(
-        component=sb_st.bids_components(restrict_patterns=True),
+        component=sb_st.expandables(
+            restrict_patterns=True, unique=True, blacklist_entities=["extension"]
+        ),
         wildcards=st.lists(
             st.text(string.ascii_letters, min_size=1, max_size=10).filter(
                 lambda s: s not in sb_st.valid_entities
@@ -254,7 +268,7 @@ class TestBidsComponentExpand:
         data=st.data(),
     )
     def test_expand_with_extra_args_returns_all_paths(
-        self, component: BidsComponent, wildcards: list[str], data: st.DataObject
+        self, component: Expandable, wildcards: list[str], data: st.DataObject
     ):
         num_wildcards = len(wildcards)
         values = data.draw(
@@ -269,59 +283,100 @@ class TestBidsComponentExpand:
             )
         )
         path_tpl = bids(
-            **component.wildcards,
-            **entity_to_wildcard(wildcards),
+            **get_wildcard_dict(component.zip_lists),
+            **get_wildcard_dict(wildcards),
         )
         wcard_dict = dict(zip(wildcards, values))
         zlist = expand_zip_list(component.zip_lists, wcard_dict)
         paths = component.expand(path_tpl, **wcard_dict)
         assert zip_list_eq(glob_wildcards(path_tpl, paths), zlist)
 
-    @given(component=sb_st.bids_components(restrict_patterns=True))
-    def test_not_expand_over_internal_path_when_novel_given(
-        self, component: BidsComponent
-    ):
-        novel_path = self.get_novel_path(component)
-        paths = component.expand(novel_path)
-        assert not glob_wildcards(component.path, paths)
-
-    @given(component=sb_st.bids_components(restrict_patterns=True))
-    def test_expand_over_multiple_paths(self, component: BidsComponent):
-        novel_path = self.get_novel_path(component)
-        paths = component.expand([component.path, novel_path])
-        assert zip_list_eq(
-            glob_wildcards(component.path, paths), glob_wildcards(novel_path, paths)
+    @given(
+        component=sb_st.expandables(
+            restrict_patterns=True, blacklist_entities=["extension"]
         )
+    )
+    def test_expand_over_multiple_paths(self, component: Expandable):
+        path1 = _get_novel_path("first", component)
+        path2 = _get_novel_path("second", component)
+        paths = component.expand([path1, path2])
+        assert zip_list_eq(glob_wildcards(path1, paths), glob_wildcards(path2, paths))
 
     @given(
-        component=sb_st.bids_components(min_entities=2, restrict_patterns=True),
+        component=sb_st.expandables(restrict_patterns=True),
         wildcard=st.text(string.ascii_letters, min_size=1, max_size=10).filter(
             lambda s: s not in sb_st.valid_entities
         ),
     )
-    def test_partial_expansion(self, component: BidsComponent, wildcard: str):
-        path_tpl = bids(**component.wildcards, **entity_to_wildcard(wildcard))
+    def test_partial_expansion(self, component: Expandable, wildcard: str):
+        path_tpl = bids(
+            **get_wildcard_dict(component.zip_lists), **get_wildcard_dict(wildcard)
+        )
         paths = component.expand(path_tpl, allow_missing=True)
         for path in paths:
             assert re.search(r"\{.+\}", path)
 
     @given(
-        component=sb_st.bids_components(min_entities=2, restrict_patterns=True),
+        component=sb_st.expandables(restrict_patterns=True),
         wildcard=st.text(string.ascii_letters, min_size=1, max_size=10).filter(
             lambda s: s not in sb_st.valid_entities
         ),
     )
-    def test_prevent_partial_expansion(self, component: BidsComponent, wildcard: str):
-        path_tpl = bids(**component.wildcards, **entity_to_wildcard(wildcard))
+    def test_prevent_partial_expansion(self, component: Expandable, wildcard: str):
+        path_tpl = bids(
+            **get_wildcard_dict(component.zip_lists), **get_wildcard_dict(wildcard)
+        )
         with pytest.raises(WildcardError):
             component.expand(path_tpl)
+
+    @given(component=sb_st.expandables(restrict_patterns=True, path_safe=True))
+    def test_expand_deduplicates_paths(self, component: Expandable):
+        path_tpl = bids(**get_wildcard_dict(component.zip_lists))
+        paths = component.expand(path_tpl)
+        assert len(paths) == len(set(paths))
+
+
+class TestBidsComponentExpand:
+    """
+    `extension` is generally excluded from the generated components because its wildcard
+    is immediately adjacent to the previous wildcard (e.g.
+    sub-{subject}_{suffix}{extenions}), making it impossible to correctly parse using
+    `glob_wildcards`. Its absence does not affect the spirit of the tests.
+
+    We also exclude extra_entities from the generated Components for the same reason:
+    ``glob_wildcards`` would glob the extra entities found in the generated path, making
+    comparison impossible
+    """
+
+    @given(
+        component=sb_st.bids_components(
+            blacklist_entities=["extension"],
+            restrict_patterns=True,
+            extra_entities=False,
+            unique=True,
+        )
+    )
+    def test_expand_with_no_args_returns_initial_paths(self, component: BidsComponent):
+        paths = component.expand()
+        assert zip_list_eq(glob_wildcards(component.path, paths), component.zip_lists)
+
+    @given(
+        component=sb_st.bids_components(restrict_patterns=True, extra_entities=False)
+    )
+    def test_not_expand_over_internal_path_when_novel_given(
+        self, component: BidsComponent
+    ):
+        assume(set(component.wildcards) - {"datatype", "suffix", "extension"})
+        novel_path = _get_novel_path("comp", component)
+        paths = component.expand(novel_path)
+        assert not glob_wildcards(component.path, paths)
 
 
 class TestFiltering:
     def get_filter_dict(
         self,
         data: st.DataObject,
-        component: BidsComponent,
+        component: Expandable,
         allow_extra_filters: bool = False,
     ):
         filter_dict: dict[str, list[str] | str] = {}
@@ -340,11 +395,13 @@ class TestFiltering:
             )
         )
 
+        entities = {key: list(set(vals)) for key, vals in component.zip_lists.items()}
+
         def value_strat(filt: str):
             rand_text = st.text(sb_st.alphanum, min_size=1, max_size=10)
             return (
-                st.one_of([st.sampled_from(component.entities[filt]), rand_text])
-                if filt in component.entities
+                st.one_of([st.sampled_from(entities[filt]), rand_text])
+                if filt in entities
                 else rand_text
             )
 
@@ -364,66 +421,74 @@ class TestFiltering:
             )
         return filter_dict
 
-    @given(
-        component=sb_st.bids_components(max_values=4, restrict_patterns=True),
-        data=st.data(),
-    )
-    def test_only_filter_values_in_output(
-        self, component: BidsComponent, data: st.DataObject
-    ):
-        filter_dict = self.get_filter_dict(data, component)
-        filtered = component.filter(**filter_dict)
-        for filt in filter_dict:
-            for val in filtered.zip_lists[filt]:
-                assert val in filter_dict[filt]
+    def filter_iter(self, filters: dict[str, str | list[str]]):
+        return {
+            key: iter(val) if isinstance(val, list) else val
+            for key, val in filters.items()
+        }
 
     @given(
         component=sb_st.bids_components(max_values=4, restrict_patterns=True),
         data=st.data(),
     )
-    def test_zip_lists_rows_remain_of_equal_length(
-        self, component: BidsComponent, data: st.DataObject
+    def test_only_filter_values_in_output(
+        self, component: Expandable, data: st.DataObject
     ):
         filter_dict = self.get_filter_dict(data, component)
-        filtered = component.filter(**filter_dict)
+        filtered = component.filter(**self.filter_iter(filter_dict))
+        for filt in filter_dict:
+            for val in filtered.zip_lists[filt]:
+                assert val in filter_dict[filt]
+
+    @given(
+        component=sb_st.expandables(max_values=4, restrict_patterns=True),
+        data=st.data(),
+    )
+    def test_zip_lists_rows_remain_of_equal_length(
+        self, component: Expandable, data: st.DataObject
+    ):
+        filter_dict = self.get_filter_dict(data, component)
+        filtered = component.filter(**self.filter_iter(filter_dict))
         lengths: set[int] = set()
         for row in filtered.zip_lists.values():
             lengths.add(len(row))
         assert len(lengths) == 1
 
     @given(
-        component=sb_st.bids_components(max_values=4, restrict_patterns=True),
+        component=sb_st.expandables(max_values=4, restrict_patterns=True),
         data=st.data(),
     )
     def test_all_columns_found_in_original_zip_list(
-        self, component: BidsComponent, data: st.DataObject
+        self, component: Expandable, data: st.DataObject
     ):
         filter_dict = self.get_filter_dict(data, component, allow_extra_filters=True)
-        filtered = component.filter(**filter_dict)
+        filtered = component.filter(**self.filter_iter(filter_dict))
         cols = set(zip(*component.zip_lists.values()))
         for col in zip(*filtered.zip_lists.values()):
             assert col in cols
 
     @given(
-        component=sb_st.bids_components(max_values=4, restrict_patterns=True),
+        component=sb_st.expandables(max_values=4, restrict_patterns=True),
         data=st.data(),
     )
     def test_all_entities_remain_after_filtering(
-        self, component: BidsComponent, data: st.DataObject
+        self, component: Expandable, data: st.DataObject
     ):
         filter_dict = self.get_filter_dict(data, component, allow_extra_filters=True)
-        filtered = component.filter(**filter_dict)
+        filtered = component.filter(**self.filter_iter(filter_dict))
         assert set(component.zip_lists) == set(filtered.zip_lists)
 
     @given(
-        component=sb_st.bids_components(max_values=4, restrict_patterns=True),
+        component=sb_st.expandables(max_values=4, restrict_patterns=True),
         data=st.data(),
     )
     def test_no_columns_that_should_be_present_are_missing(
-        self, component: BidsComponent, data: st.DataObject
+        self,
+        component: Expandable,
+        data: st.DataObject,
     ):
         filter_dict = self.get_filter_dict(data, component)
-        filtered = component.filter(**filter_dict)
+        filtered = component.filter(**self.filter_iter(filter_dict))
         keys = list(component.zip_lists)
         cols = set(zip(*component.zip_lists.values()))
         result = set(zip(*filtered.zip_lists.values()))
@@ -438,3 +503,169 @@ class TestFiltering:
                     break
             if should_be_present:
                 assert col in result
+
+
+class TestFilteringBidsComponentRowWithSpec:
+    def get_filter_spec(
+        self,
+        data: st.DataObject,
+        component: BidsComponentRow,
+    ):
+        rand_text = st.text(sb_st.alphanum, min_size=1, max_size=10)
+        value_strat = st.one_of(st.sampled_from(component.entities), rand_text)
+
+        return data.draw(
+            st.one_of(
+                st.lists(
+                    value_strat,
+                    unique=True,
+                    min_size=1,
+                    max_size=5,
+                ),
+                value_strat,
+            )
+        )
+
+    @given(
+        component=sb_st.bids_component_row(max_values=4, restrict_patterns=True),
+        data=st.data(),
+    )
+    def test_only_filter_values_in_output(
+        self, component: BidsComponentRow, data: st.DataObject
+    ):
+        spec = self.get_filter_spec(data, component)
+        filtered = component.filter(spec)
+        for val in filtered.entities:
+            assert val in list(itx.always_iterable(spec))
+
+    @given(
+        component=sb_st.bids_component_row(max_values=4, restrict_patterns=True),
+        data=st.data(),
+    )
+    def test_all_columns_found_in_original_zip_list(
+        self, component: BidsComponentRow, data: st.DataObject
+    ):
+        spec = self.get_filter_spec(data, component)
+        filtered = component.filter(spec)
+        cols = set(zip(*component.zip_lists.values()))
+        for col in zip(*filtered.zip_lists.values()):
+            assert col in cols
+
+    @given(
+        component=sb_st.bids_component_row(max_values=4, restrict_patterns=True),
+        data=st.data(),
+    )
+    def test_all_entities_remain_after_filtering(
+        self, component: BidsComponentRow, data: st.DataObject
+    ):
+        spec = self.get_filter_spec(data, component)
+        filtered = component.filter(spec)
+        assert set(component.zip_lists) == set(filtered.zip_lists)
+
+    @given(
+        component=sb_st.bids_component_row(max_values=4, restrict_patterns=True),
+        data=st.data(),
+    )
+    def test_all_valid_values_in_spec_in_result(
+        self, component: BidsComponentRow, data: st.DataObject
+    ):
+        spec = self.get_filter_spec(data, component)
+        filtered = component.filter(itx.always_iterable(spec))
+        for val in itx.always_iterable(spec):
+            if val in component.entities:
+                assert val in filtered.entities
+
+    @given(
+        component=sb_st.bids_component_row(max_values=4, restrict_patterns=True),
+        data=st.data(),
+    )
+    def test_providing_both_spec_and_filters_gives_error(
+        self, component: BidsComponentRow, data: st.DataObject
+    ):
+        spec = self.get_filter_spec(data, component)
+        with pytest.raises(ValueError) as err:
+            component.filter(spec, foo="bar")
+        assert "__spec and filters cannot" in err.value.args[0]
+
+
+class TestBidsComponentIndexing:
+    def get_selectors(
+        self,
+        data: st.DataObject,
+        dicts: BidsPartialComponent,
+        use_nonexistant_keys: bool = False,
+        unique: bool = False,
+    ) -> tuple[str, ...]:
+        if not dicts.zip_lists and not use_nonexistant_keys:
+            return tuple()
+        sampler = st.sampled_from(list(dicts.zip_lists))
+        val_strat = (
+            st.text().filter(lambda s: s not in dicts.zip_lists)
+            if use_nonexistant_keys
+            else sampler
+        )
+        return tuple(data.draw(st.lists(val_strat, unique=unique)))
+
+    @given(dicts=sb_st.bids_partial_components(), data=st.data())
+    def test_multiple_selection_returns_BidsPartialComponent(
+        self, dicts: BidsPartialComponent, data: st.DataObject
+    ):
+        selectors = self.get_selectors(data, dicts)
+        assert type(dicts[selectors]) == BidsPartialComponent
+
+    @given(dicts=sb_st.bids_partial_components(), data=st.data())
+    def test_single_selection_returns_BidsComponentRow(
+        self, dicts: BidsPartialComponent, data: st.DataObject
+    ):
+        selectors = data.draw(st.sampled_from(list(dicts.zip_lists)))
+        assert type(dicts[selectors]) == BidsComponentRow
+
+    @given(dicts=sb_st.bids_partial_components(), data=st.data())
+    def test_selected_items_in_original(
+        self, dicts: BidsPartialComponent, data: st.DataObject
+    ):
+        selectors = self.get_selectors(data, dicts)
+        selected = dicts[selectors]
+        for key in selected.zip_lists:
+            assert selected[key] == dicts[key]
+
+    @given(dicts=sb_st.bids_partial_components(), data=st.data())
+    def test_all_requested_items_received_and_no_others(
+        self, dicts: BidsPartialComponent, data: st.DataObject
+    ):
+        selectors = self.get_selectors(data, dicts)
+        selected = dicts[selectors]
+        assert set(selectors) == set(selected.zip_lists)
+        for selector in selectors:
+            assert selector in selected.zip_lists
+
+    @given(
+        dicts=sb_st.bids_partial_components(),
+        data=st.data(),
+    )
+    def test_single_missing_key_raises_error(
+        self, dicts: BidsPartialComponent, data: st.DataObject
+    ):
+        selector = data.draw(st.text().filter(lambda s: s not in dicts.zip_lists))
+        with pytest.raises(KeyError):
+            dicts[selector]
+
+    @given(dicts=sb_st.bids_partial_components(), data=st.data())
+    def test_multiple_missing_key_raises_error(
+        self, dicts: BidsPartialComponent, data: st.DataObject
+    ):
+        selectors = self.get_selectors(data, dicts, use_nonexistant_keys=True)
+        assume(len(selectors))
+        with pytest.raises(KeyError):
+            dicts[selectors]
+
+    @given(dicts=sb_st.bids_partial_components(), data=st.data())
+    def test_order_of_selectors_is_preserved(
+        self, dicts: BidsPartialComponent, data: st.DataObject
+    ):
+        selectors = self.get_selectors(data, dicts)
+        # Using the itx method for uniqueness to avoid calculating unique values in the
+        # test in the same way as the source code
+        assert tuple(dicts.zip_lists[selectors]) == tuple(
+            itx.unique_everseen(selectors)
+        )

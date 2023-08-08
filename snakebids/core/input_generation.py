@@ -3,16 +3,19 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
+import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Generator, Iterable, Optional, Sequence, overload
+from typing import Any, Generator, Iterable, Mapping, Optional, Sequence, overload
 
+import attrs
 import more_itertools as itx
 from bids import BIDSLayout, BIDSLayoutIndexer
 from bids.layout import BIDSFile, Query
 from snakemake.script import Snakemake
-from typing_extensions import Literal
+from typing_extensions import Literal, TypeAlias
 
 from snakebids.core.datasets import BidsComponent, BidsDataset, BidsDatasetDict
 from snakebids.core.filtering import filter_list
@@ -24,13 +27,13 @@ from snakebids.exceptions import (
 )
 from snakebids.types import InputsConfig, ZipList
 from snakebids.utils.snakemake_io import glob_wildcards
-from snakebids.utils.utils import BidsEntity, BidsParseError, MultiSelectDict
+from snakebids.utils.utils import BidsEntity, BidsParseError, get_first_dir
 
 _logger = logging.getLogger(__name__)
 
 
 @overload
-def generate_inputs(  # noqa: PLR0913
+def generate_inputs(
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
     pybidsdb_dir: Path | str | None = ...,
@@ -41,6 +44,7 @@ def generate_inputs(  # noqa: PLR0913
     participant_label: Iterable[str] | str | None = ...,
     exclude_participant_label: Iterable[str] | str | None = ...,
     use_bids_inputs: Literal[True] | None = ...,
+    validate: bool = ...,
     pybids_database_dir: Path | str | None = ...,
     pybids_reset_database: bool = ...,
 ) -> BidsDataset:
@@ -48,7 +52,7 @@ def generate_inputs(  # noqa: PLR0913
 
 
 @overload
-def generate_inputs(  # noqa: PLR0913
+def generate_inputs(
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
     pybidsdb_dir: Path | str | None = ...,
@@ -59,13 +63,14 @@ def generate_inputs(  # noqa: PLR0913
     participant_label: Iterable[str] | str | None = ...,
     exclude_participant_label: Iterable[str] | str | None = ...,
     use_bids_inputs: Literal[False] = ...,
+    validate: bool = ...,
     pybids_database_dir: Path | str | None = ...,
     pybids_reset_database: bool = ...,
 ) -> BidsDatasetDict:
     ...
 
 
-def generate_inputs(  # noqa: PLR0913
+def generate_inputs(
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
     pybidsdb_dir: Path | str | None = None,
@@ -76,6 +81,7 @@ def generate_inputs(  # noqa: PLR0913
     participant_label: Iterable[str] | str | None = None,
     exclude_participant_label: Iterable[str] | str | None = None,
     use_bids_inputs: bool | None = None,
+    validate: bool = False,
     pybids_database_dir: Path | str | None = None,
     pybids_reset_database: bool = False,
 ) -> BidsDataset | BidsDatasetDict:
@@ -144,6 +150,10 @@ def generate_inputs(  # noqa: PLR0913
         If False, returns the classic :class:`BidsDatasetDict` instead of
         :class`BidsDataset`. Setting to True is deprecated as of v0.8, as this is now
         the default behaviour
+
+    validate
+        If True performs validation of BIDS directory using pybids, otherwise 
+        skips validation.
 
     Returns
     -------
@@ -266,6 +276,7 @@ ses-{session}_run-{run}_T1w.nii.gz",
             pybids_config=pybids_config,
             pybidsdb_dir=pybidsdb_dir or pybids_database_dir,
             pybidsdb_reset=pybidsdb_reset or pybids_reset_database,
+            validate=validate,
         )
         if not _all_custom_paths(pybids_inputs)
         else None
@@ -307,11 +318,13 @@ def _all_custom_paths(config: InputsConfig):
 
 
 def _gen_bids_layout(
+    *,
     bids_dir: Path | str,
     derivatives: Path | str | bool,
     pybidsdb_dir: Path | str | None,
     pybidsdb_reset: bool,
     pybids_config: Path | str | None = None,
+    validate: bool = False,
 ) -> BIDSLayout:
     """Create (or reindex) the BIDSLayout if one doesn't exist,
     which is only saved if a database directory path is provided
@@ -334,6 +347,9 @@ def _gen_bids_layout(
         A boolean that determines whether to reset / overwrite
         existing database.
 
+    validate
+        A boolean that determines whether to validate the bids dataset
+
     Returns
     -------
     layout : BIDSLayout
@@ -352,7 +368,7 @@ def _gen_bids_layout(
     return BIDSLayout(
         str(bids_dir),
         derivatives=derivatives,
-        validate=False,
+        validate=validate,
         config=pybids_config,
         database_path=pybidsdb_dir,
         reset_database=pybidsdb_reset,
@@ -504,23 +520,101 @@ def _parse_bids_path(path: str, entities: Iterable[str]) -> tuple[str, dict[str,
     matches : iterable of (wildcard, value)
         The values matched with each wildcard
     """
+    # If path is relative, we need to get a slash in front of it to ensure parsing works
+    # correctly. So prepend "./" or ".\" and run function again, then strip before
+    # returning
+    if not os.path.isabs(path) and not get_first_dir(path) == ".":
+        path_, wildcard_values = _parse_bids_path(os.path.join(".", path), entities)
+        return str(Path(path_)), wildcard_values
 
-    wildcard_values: dict[str, str] = {}
+    entities = list(entities)
 
-    for entity in map(BidsEntity, entities):
-        # Iterate over wildcards, slowly updating the path as each entity is replaced
+    matches = sorted(
+        (
+            (entity, match)
+            for entity in map(BidsEntity, entities)
+            for match in re.finditer(entity.regex, path)
+        ),
+        key=lambda match: match[1].start(2),
+    )
 
-        wildcard = entity.wildcard
-        match = re.search(entity.regex, path)
-        if not match or not match.group(2):
-            raise BidsParseError(path=path, entity=entity)
+    wildcard_values: dict[str, str] = {
+        entity.wildcard: match.group(2) for entity, match in matches
+    }
+    if len(wildcard_values) != len(entities):
+        unmatched = (
+            set(map(BidsEntity, entities))
+            .difference(set(match[0] for match in matches))
+            .pop()
+        )
+        raise BidsParseError(path=path, entity=unmatched)
 
-        # overwrite path one wildcard at a time
-        path = re.sub(entity.regex, rf"\1{{{wildcard}}}\3", path)
-        value = match.group(2)
-        wildcard_values[wildcard] = value
+    num_matches = len(matches)
+    new_path: list[str] = []
+    for i in range(num_matches + 1):
+        start = matches[i - 1][1].end(2) if i else 0
+        end = len(path) if i == num_matches else matches[i][1].start(2)
+        # Pybids technically allows `{` in the extension, so we escape it
+        new_path.append(path[start:end].replace("{", "{{").replace("}", "}}"))
+        if i < num_matches:
+            new_path.append(f"{{{matches[i][0].wildcard}}}")
+    return "".join(new_path), wildcard_values
 
-    return path, wildcard_values
+
+@attrs.define
+class _GetListsFromBidsSteps:
+    input_name: str
+
+    FilterType: TypeAlias = "Mapping[str, str | bool | Sequence[str | bool]]"
+
+    def _get_invalid_filters(self, filters: FilterType):
+        for key, filts in filters.items():
+            try:
+                if True in filts or False in filts:  # type: ignore
+                    yield key, filts
+            except TypeError:
+                pass
+
+    def prepare_bids_filters(
+        self, filters: Mapping[str, str | bool | Sequence[str | bool]]
+    ) -> dict[str, str | Query | list[str | Query]]:
+        if sys.version_info < (3, 8):
+            invalid_filters = list(self._get_invalid_filters(filters))
+            if invalid_filters:
+                msg = (
+                    f"Invalid filters in component: '{self.input_name}'. Booleans "
+                    "may not be included in filter lists in Python 3.7.x "
+                    "or lower. Please upgrade to Python 3.8.x or greater for this "
+                    f"feature. Invalid filters:\n\t"
+                ) + "\n\t".join(f"{key}: {val}" for key, val in invalid_filters)
+
+                raise ConfigError(msg)
+            return {
+                key: Query.ANY if f is True else Query.NONE if f is False else f
+                for key, f in filters.items()
+            }  # type: ignore
+        return {
+            key: [
+                Query.ANY if f is True else Query.NONE if f is False else f
+                for f in itx.always_iterable(filts)
+            ]
+            for key, filts in filters.items()
+        }
+
+    def get_matching_files(
+        self,
+        bids_layout: BIDSLayout,
+        regex_search: bool,
+        filters: Mapping[str, str | Query | Sequence[str | Query]],
+    ) -> Iterable[BIDSFile]:
+        try:
+            return bids_layout.get(regex_search=regex_search, **filters)
+        except AttributeError as err:
+            raise PybidsError(
+                "Pybids has encountered a problem that Snakebids cannot handle. This "
+                "may indicate a missing or invalid dataset_description.json for this "
+                "dataset."
+            ) from err
 
 
 def _get_lists_from_bids(
@@ -555,6 +649,7 @@ def _get_lists_from_bids(
         One BidsComponent is yielded for each modality described by ``pybids_inputs``.
     """
     for input_name in limit_to or list(pybids_inputs):
+        steps = _GetListsFromBidsSteps(input_name)
         _logger.debug("Grabbing inputs for %s...", input_name)
         component = pybids_inputs[input_name]
 
@@ -572,7 +667,7 @@ def _get_lists_from_bids(
                 **pybids_inputs[input_name].get("filters", {}),
                 **filters,
             )
-            yield BidsComponent(input_name, path, MultiSelectDict(zip_lists))
+            yield BidsComponent(name=input_name, path=path, zip_lists=zip_lists)
             continue
 
         if bids_layout is None:
@@ -583,20 +678,11 @@ def _get_lists_from_bids(
 
         zip_lists: dict[str, list[str]] = defaultdict(list)
         paths: set[str] = set()
-        pybids_filters = {
-            key: Query.ANY if val is True else Query.NONE if val is False else val
-            for key, val in component.get("filters", {}).items()
-        }
-        try:
-            matching_files: Iterable[BIDSFile] = bids_layout.get(
-                regex_search=regex_search, **pybids_filters, **filters
-            )
-        except AttributeError as err:
-            raise PybidsError(
-                "Pybids has encountered a problem that Snakebids cannot handle. This "
-                "may indicate a missing or invalid dataset_description.json for this "
-                "dataset."
-            ) from err
+        pybids_filters = steps.prepare_bids_filters(component.get("filters", {}))
+        matching_files = steps.get_matching_files(
+            bids_layout, regex_search, {**pybids_filters, **filters}
+        )
+
         for img in matching_files:
             wildcards: list[str] = [
                 wildcard
@@ -661,7 +747,7 @@ def _get_lists_from_bids(
                 f"narrow the search. Found filenames: {paths}"
             )
 
-        yield BidsComponent(input_name, path, MultiSelectDict(zip_lists))
+        yield BidsComponent(name=input_name, path=path, zip_lists=zip_lists)
 
 
 def get_wildcard_constraints(image_types: InputsConfig) -> dict[str, str]:

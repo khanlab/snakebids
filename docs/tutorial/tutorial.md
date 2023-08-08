@@ -32,7 +32,7 @@ Make a new virtual environment:
 
 ```console
 $ python -m venv .venv
-$ source activate .venv/bin/activate
+$ source .venv/bin/activate
 ```
 
 And use pip to install snakebids:

@@ -10,6 +10,8 @@ import pytest
 from hypothesis import settings
 from pyfakefs.fake_filesystem import FakeFilesystem
 
+from snakebids import resources
+
 ## Hypothesis profiles
 
 # github-actions tends to have flaky runtimes, likely due to temporary slowdowns in the
@@ -64,4 +66,5 @@ def bids_fs(fakefs: Optional[FakeFilesystem]) -> FakeFilesystem | None:
         f = Path(*bids.layout.__path__, "config")
         fakefs.add_real_file(f / "bids.json")
         fakefs.add_real_file(f / "derivatives.json")
+        fakefs.add_real_file(Path(*resources.__path__) / "bids_tags.json")
     return fakefs

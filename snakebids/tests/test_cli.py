@@ -2,15 +2,17 @@ from __future__ import annotations
 
 import copy
 import itertools as it
+import re
 import sys
 from argparse import ArgumentParser, Namespace
 from collections.abc import Sequence
 from os import PathLike
 from pathlib import Path
-from typing import Mapping
+from typing import ClassVar, Mapping
 
+import hypothesis.strategies as st
 import pytest
-from hypothesis import HealthCheck, given, settings
+from hypothesis import given
 from pytest_mock.plugin import MockerFixture
 
 from snakebids.cli import (
@@ -20,7 +22,8 @@ from snakebids.cli import (
     parse_snakebids_args,
 )
 from snakebids.tests import strategies as sb_st
-from snakebids.types import InputsConfig
+from snakebids.tests.helpers import allow_function_scoped
+from snakebids.types import InputsConfig, OptionalFilter
 
 from .mock.config import parse_args, pybids_inputs
 
@@ -68,17 +71,17 @@ class TestResolvePath:
 
 
 class TestAddDynamicArgs:
-    mock_args_special = ["--derivatives", "path/to/nowhere"]
-    mock_basic_args = [
+    mock_args_special: ClassVar[list[str]] = ["--derivatives", "path/to/nowhere"]
+    mock_basic_args: ClassVar[list[str]] = [
         "script_name",
         "path/to/input",
         "path/to/output",
         "participant",
     ]
-    mock_all_args = mock_basic_args + mock_args_special
+    mock_all_args: ClassVar[list[str]] = mock_basic_args + mock_args_special
 
     @given(sb_st.inputs_configs())
-    @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @allow_function_scoped
     def test_dynamic_inputs(self, mocker: MockerFixture, pybids_inputs: InputsConfig):
         p = create_parser()
         add_dynamic_args(p, copy.deepcopy(parse_args), pybids_inputs)
@@ -106,6 +109,76 @@ class TestAddDynamicArgs:
             assert isinstance(args.args_dict[f"path_{key_identifier}"], str)
             assert isinstance(args.args_dict[f"filter_{key_identifier}"], dict)
             assert isinstance(args.args_dict[f"wildcards_{key_identifier}"], list)
+
+    @given(
+        pybids_inputs=sb_st.inputs_configs(),
+        flag=st.from_regex(
+            re.compile(r"(?:required)|(?:any)", re.IGNORECASE), fullmatch=True
+        ),
+    )
+    @allow_function_scoped
+    def test_required_filters(
+        self, mocker: MockerFixture, pybids_inputs: InputsConfig, flag: str
+    ):
+        p = create_parser()
+        add_dynamic_args(p, copy.deepcopy(parse_args), pybids_inputs)
+        magic_filters = list(
+            it.chain.from_iterable(
+                [[f"--filter-{key}", f"entity:{flag}"] for key in pybids_inputs]
+            )
+        )
+        mocker.patch.object(sys, "argv", self.mock_all_args + magic_filters)
+
+        args = parse_snakebids_args(p)
+        for key in pybids_inputs:
+            key_identifier = key.replace("-", "_")
+            assert args.args_dict[f"filter_{key_identifier}"]["entity"] is True
+
+    @given(
+        pybids_inputs=sb_st.inputs_configs(),
+        flag=st.from_regex(re.compile(r"optional", re.IGNORECASE), fullmatch=True),
+    )
+    @allow_function_scoped
+    def test_optional_filters(
+        self, mocker: MockerFixture, pybids_inputs: InputsConfig, flag: str
+    ):
+        p = create_parser()
+        add_dynamic_args(p, copy.deepcopy(parse_args), pybids_inputs)
+        magic_filters = list(
+            it.chain.from_iterable(
+                [[f"--filter-{key}", f"entity:{flag}"] for key in pybids_inputs]
+            )
+        )
+        mocker.patch.object(sys, "argv", self.mock_all_args + magic_filters)
+
+        args = parse_snakebids_args(p)
+        for key in pybids_inputs:
+            key_identifier = key.replace("-", "_")
+            assert (
+                args.args_dict[f"filter_{key_identifier}"]["entity"] is OptionalFilter
+            )
+
+    @given(
+        pybids_inputs=sb_st.inputs_configs(),
+        flag=st.from_regex(re.compile(r"none", re.IGNORECASE), fullmatch=True),
+    )
+    @allow_function_scoped
+    def test_none_filters(
+        self, mocker: MockerFixture, pybids_inputs: InputsConfig, flag: str
+    ):
+        p = create_parser()
+        add_dynamic_args(p, copy.deepcopy(parse_args), pybids_inputs)
+        magic_filters = list(
+            it.chain.from_iterable(
+                [[f"--filter-{key}", f"entity:{flag}"] for key in pybids_inputs]
+            )
+        )
+        mocker.patch.object(sys, "argv", self.mock_all_args + magic_filters)
+
+        args = parse_snakebids_args(p)
+        for key in pybids_inputs:
+            key_identifier = key.replace("-", "_")
+            assert args.args_dict[f"filter_{key_identifier}"]["entity"] is False
 
     def test_fails_if_missing_arguments(
         self, parser: ArgumentParser, mocker: MockerFixture

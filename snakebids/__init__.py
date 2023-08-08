@@ -1,4 +1,3 @@
-"""Top-level namespace containing the core classes and functions"""
 __submodules__ = ["core"]
 
 __version__ = "0.0.0"
@@ -6,8 +5,10 @@ __version__ = "0.0.0"
 # <AUTOGEN_INIT>
 from snakebids.core import (
     BidsComponent,
+    BidsComponentRow,
     BidsDataset,
     BidsDatasetDict,
+    BidsPartialComponent,
     bids,
     filter_list,
     generate_inputs,
@@ -19,8 +20,10 @@ from snakebids.core import (
 
 __all__ = [
     "BidsComponent",
+    "BidsComponentRow",
     "BidsDataset",
     "BidsDatasetDict",
+    "BidsPartialComponent",
     "bids",
     "filter_list",
     "generate_inputs",

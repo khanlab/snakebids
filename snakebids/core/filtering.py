@@ -3,7 +3,7 @@ from __future__ import annotations
 import operator as op
 import re
 from collections.abc import Iterator, Mapping
-from typing import List, Sequence, TypeVar, Union, overload
+from typing import Iterable, List, TypeVar, Union, overload
 
 import more_itertools as itx
 from typing_extensions import Literal
@@ -17,7 +17,7 @@ T_co = TypeVar("T_co", bound=Union[List[str], str], covariant=True)
 @overload
 def filter_list(
     zip_list: ZipListLike,
-    filters: Mapping[str, Sequence[str] | str],
+    filters: Mapping[str, Iterable[str] | str],
     return_indices_only: Literal[False] = ...,
     regex_search: bool = ...,
 ) -> ZipList:
@@ -27,7 +27,7 @@ def filter_list(
 @overload
 def filter_list(
     zip_list: ZipListLike,
-    filters: Mapping[str, Sequence[str] | str],
+    filters: Mapping[str, Iterable[str] | str],
     return_indices_only: Literal[True] = ...,
     regex_search: bool = ...,
 ) -> list[int]:
@@ -36,7 +36,7 @@ def filter_list(
 
 def filter_list(
     zip_list: ZipListLike,
-    filters: Mapping[str, Sequence[str] | str],
+    filters: Mapping[str, Iterable[str] | str],
     return_indices_only: bool = False,
     regex_search: bool = False,
 ) -> ZipList | list[int]:
@@ -129,21 +129,22 @@ def filter_list(
         ... }
         True
     """
+    # TODO: Reimplement regex matching as a `RegexContainer` so that for non-regex
+    # cases, we can use the `in` operator
     if regex_search:
         match_func = re.match
     else:
         match_func = op.eq
 
+    # Save filters into memory as sets for quick access later
+    filter_sets = {key: set(itx.always_iterable(vals)) for key, vals in filters.items()}
+
     # Get a set {0,1,2,3...n-1} where n is the length of any one of the lists in
     # zip_list
     keep_indices = set(_get_zip_list_indices(zip_list)).intersection(
         *(
-            {
-                i
-                for i, v in enumerate(zip_list[key])
-                if matches_any(v, itx.always_iterable(val), match_func)
-            }
-            for key, val in filters.items()
+            {i for i, v in enumerate(zip_list[key]) if matches_any(v, val, match_func)}
+            for key, val in filter_sets.items()
             if key in zip_list
         )
     )
