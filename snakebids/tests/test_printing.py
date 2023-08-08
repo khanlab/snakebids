@@ -47,7 +47,7 @@ def test_values_balanced_around_elision_correctly(zip_list: ZipList, width: int)
     nleft = len(parsed[0].get("left", []))  # type: ignore
     nright = len(parsed[0].get("right", []))  # type: ignore
     if "ellipse" in parsed[0]:
-        assert nleft == nright or nleft == nright + 1
+        assert nleft in {nright, nright + 1}
         assert nleft + nright == len(parsed[0]) - 2  # type: ignore
     else:
         assert nright == 0

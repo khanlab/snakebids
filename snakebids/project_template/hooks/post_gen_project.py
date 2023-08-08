@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from shutil import rmtree
-
 from importlib import metadata
+from shutil import rmtree
 
 
 def update_files(files: list[str] | str, replacement_str: str, cc_variable: str):
@@ -19,7 +18,7 @@ def update_files(files: list[str] | str, replacement_str: str, cc_variable: str)
         {{ cookiecutter._snakebids_version }})
     """
     for fpath in files:
-        with open(fpath, encoding="utf-8") as fcontent:
+        with open(fpath) as fcontent:
             content = fcontent.read()
 
         content = content.replace(cc_variable, replacement_str)

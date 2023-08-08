@@ -1,6 +1,7 @@
 from os.path import join
 from pathlib import Path
 
+import more_itertools as itx
 import pytest
 from cookiecutter.main import cookiecutter  # type: ignore
 
@@ -12,7 +13,7 @@ from snakebids.cli import SnakebidsArgs
 def test_template_dry_runs_successfully(tmp_path: Path):
     app_name = "snakebids_app"
     cookiecutter(
-        join(list(snakebids.__path__)[0], "project_template"),
+        join(itx.first(snakebids.__path__), "project_template"),
         no_input=True,
         output_dir=str(tmp_path),
     )

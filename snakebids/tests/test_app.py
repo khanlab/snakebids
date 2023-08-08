@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 import sys
+from importlib import metadata
 from pathlib import Path
 from typing import Any, cast
 
@@ -20,8 +21,6 @@ from snakebids.types import InputConfig, InputsConfig, OptionalFilter
 from .. import app as sn_app
 from ..app import SnakeBidsApp
 from .mock.config import config
-
-from importlib import metadata
 
 
 @pytest.fixture
