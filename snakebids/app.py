@@ -13,6 +13,11 @@ import boutiques.creator as bc  # type: ignore
 import snakemake
 from snakemake.io import load_configfile
 
+if sys.version_info >= (3, 8):
+    from importlib import metadata
+else:
+    import importlib_metadata as metadata
+
 from snakebids.cli import (
     SnakebidsArgs,
     add_dynamic_args,
@@ -68,6 +73,26 @@ def _get_file_paths(
         )
 
     return wrapper
+
+
+def _get_app_version(self: SnakeBidsApp) -> str | None:
+    """Attempt to get the app version, returning None if we can't.
+
+    This will succeed only if the following conditions are true:
+
+    1. The Snakebids app is a distribution package installed in the current
+       environment.
+    2. The app's distribution package has the same name as this
+       SnakeBidsApp's snakemake_dir
+    """
+    try:
+        return metadata.version(self.snakemake_dir.name)
+    except metadata.PackageNotFoundError:
+        logger.warning(
+            "App version not found; will be recorded in output as 'unknown'. "
+            "If this is unexpected, please contact the app maintainer."
+        )
+        return None
 
 
 @attr.define(slots=False)
@@ -130,6 +155,7 @@ class SnakeBidsApp:
         lambda self: load_configfile(self.snakemake_dir / self.configfile_path),
         takes_self=True,
     )
+    version: Optional[str] = attr.Factory(_get_app_version, takes_self=True)
     args: Optional[SnakebidsArgs] = None
 
     def run_snakemake(self) -> None:
@@ -207,7 +233,12 @@ class SnakeBidsApp:
         # Write the config file
         write_config_file(
             config_file=new_config_file,
-            data=app.config,
+            data=dict(
+                app.config,
+                snakemake_version=metadata.version("snakemake"),
+                snakebids_version=metadata.version("snakebids"),
+                app_version=app.version or "unknown",
+            ),
             force_overwrite=True,
         )
 

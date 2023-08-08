@@ -21,6 +21,11 @@ from .. import app as sn_app
 from ..app import SnakeBidsApp
 from .mock.config import config
 
+if sys.version_info >= (3, 8):
+    from importlib import metadata
+else:
+    import importlib_metadata as metadata
+
 
 @pytest.fixture
 def app(mocker: MockerFixture):
@@ -178,6 +183,9 @@ class TestRunSnakemake:
                 "pybidsdb_reset": True,
                 "snakefile": Path("Snakefile"),
                 "output_dir": outputdir.resolve(),
+                "snakemake_version": metadata.version("snakemake"),
+                "snakebids_version": metadata.version("snakebids"),
+                "app_version": "unknown",  # not installing a snakebids app here
             }
         )
         if root == "app" and not tail:
@@ -296,6 +304,24 @@ class TestRunSnakemake:
             print(e)
 
         assert app.foo == "bar"  # type: ignore
+
+    def test_get_app_version_no_package(self, app: SnakeBidsApp):
+        assert app.version is None
+
+    def test_get_app_version_package(self, mocker: MockerFixture):
+        metadata_pkg = (
+            "importlib.metadata" if sys.version_info >= (3, 8) else "importlib_metadata"
+        )
+        mock = mocker.patch(f"{metadata_pkg}.version", return_value="0.1.0")
+        app = SnakeBidsApp(
+            Path("my_app"),
+            snakefile_path=Path("Snakefile"),
+            configfile_path=Path("mock/config.yaml"),
+            config=copy.deepcopy(config),
+        )
+
+        assert app.version == "0.1.0"
+        mock.assert_called_once_with("my_app")
 
 
 class TestGenBoutiques:
