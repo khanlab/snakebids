@@ -81,7 +81,7 @@ def _filter_invalid_entity_lists(entities: Sequence[BidsEntity | str]):
             ("suffix" not in entities or "extension" in entities),
             # Cannot have paths with just datatype, just extension, or just datatype and
             # extension
-            set(entities)
+            set(map(str, entities))
             not in [
                 {"datatype"},
                 {"extension"},
