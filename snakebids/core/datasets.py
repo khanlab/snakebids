@@ -249,7 +249,7 @@ class BidsPartialComponent:
         consistent with :class:`BidsComponentRow`, which always has an entity name
         stored, but may or may not have values.
         """
-        return bool(next(iter(self.zip_lists)))
+        return bool(itx.first(self.zip_lists))
 
     def _pformat_body(self) -> None | str | list[str]:
         """Extra properties to be printed within pformat

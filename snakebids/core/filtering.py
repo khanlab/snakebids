@@ -288,7 +288,7 @@ def _get_zip_list_indices(zip_list: ZipListLike) -> Iterator[int]:
 
     # Retrieve the first zip_list (all zip_lists should be the same, so it doesn't
     # matter which one we take)
-    sample_zip_list = zip_list[next(iter(zip_list))]
+    sample_zip_list = zip_list[itx.first(zip_list)]
 
     # Return a sequence of numbers 0, 1, 2, 3, ... n-1 where n is the length of the
     # zip list
