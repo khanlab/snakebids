@@ -89,12 +89,8 @@ def _get_app_version(self: SnakeBidsApp) -> str | None:
         return metadata.version(self.snakemake_dir.name)
     except metadata.PackageNotFoundError:
         logger.warning(
-            "This Snakebids app's version could not be found. This will not generally "
-            "affect the app's functioning, but its version will be recorded as "
-            '"unknown" in the output config file. If you\'ve installed the app into '
-            "your python environment, this is likely caused by the app maintainer's "
-            "version implementation being non-standard, and only the app maintainer "
-            "could correct the versioning. In that case, this message can be ignored."
+            "App version not found; will be recorded in output as 'unknown'. "
+            "If this is unexpected, please contact the app maintainer."
         )
         return None
 
