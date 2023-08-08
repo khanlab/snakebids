@@ -6,7 +6,7 @@ import sys
 from os import PathLike
 from pathlib import Path
 from string import ascii_letters, digits
-from typing import Any, Container, Hashable, Iterable, Optional, Type, TypeVar
+from typing import Any, Container, Hashable, Iterable, Optional, Sequence, Type, TypeVar
 
 import hypothesis.strategies as st
 from bids.layout import Config as BidsConfig
@@ -66,7 +66,7 @@ def bids_value(pattern: str = r"[^\n\r]*") -> st.SearchStrategy[str]:
     )
 
 
-def _filter_invalid_entity_lists(entities: Container[BidsEntity | str]):
+def _filter_invalid_entity_lists(entities: Sequence[BidsEntity | str]):
     """Entity lists may not consist of just a datatype or extension.
 
     If suffix is in the entity list, so must extension
@@ -81,7 +81,12 @@ def _filter_invalid_entity_lists(entities: Container[BidsEntity | str]):
             ("suffix" not in entities or "extension" in entities),
             # Cannot have paths with just datatype, just extension, or just datatype and
             # extension
-            entities not in [["datatype"], ["extension"], ["datatype", "extension"]],
+            set(entities)
+            not in [
+                {"datatype"},
+                {"extension"},
+                {"datatype", "extension"},
+            ],  # type: ignore
         ]
     )
 
