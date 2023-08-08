@@ -35,7 +35,7 @@ def fakefs(
     FakeFilesystem or None
         None if disabled
     """
-    if request.node.get_closest_marker("disable_fakefs"):
+    if request.node.get_closest_marker("disable_fakefs"):  # type: ignore
         return None
 
     return request.getfixturevalue("fs")
