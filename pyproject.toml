@@ -113,6 +113,13 @@ reportPrivateUsage = false
 reportImportCycles = false
 
 [tool.ruff]
-select = ["E", "F", "PL", "RUF", "UP"]
+select = [
+    "E", # pycodestyle error
+    "F", # pyflakes
+    "PL", # pylint
+    "RUF", # ruff
+    "UP", #pyupgrade
+    "T100", # debugger
+]
 ignore = ["PLR0913"]
 target-version = "py38"
