@@ -1,8 +1,49 @@
 """Utilities for converting Snakemake apps to BIDS apps."""
 from __future__ import annotations
 
-from collections import OrderedDict
+import functools as ft
+import itertools as it
+import os
+import sys
 from pathlib import Path
+
+import more_itertools as itx
+
+from snakebids.paths.specs import v0_0_0
+
+
+@ft.lru_cache
+def _parse_spec(include_subject_dir: bool, include_session_dir: bool):
+    spec = v0_0_0(subject_dir=include_subject_dir, session_dir=include_session_dir)
+    order: list[str] = []
+    dirs: set[str] = set()
+    aliases: dict[str, str] = {}
+
+    for entry in spec:
+        tag = entry.get("tag", entry["entity"])
+        order.append(tag)
+        aliases[entry["entity"]] = tag
+        if entry.get("dir"):
+            dirs.add(tag)
+
+    def parse_entities(entities: dict[str, str | bool]) -> dict[str, str]:
+        result: dict[str, str] = {}
+        for entity, val in entities.items():
+            # strip underscores from keys (needed so that users can use reserved
+            # keywords by appending a _)
+            stripped = entity.rstrip("_")
+            unaliased = aliases.get(stripped, stripped)
+            if unaliased in result:
+                aliased = itx.nth(aliases, list(aliases.values()).index(unaliased))
+                err = (
+                    "Long and short names of an entity cannot be used in the same "
+                    f"call to bids(): got '{aliased}' and '{unaliased}'"
+                )
+                raise ValueError(err)
+            result[unaliased] = str(val)
+        return result
+
+    return order, dirs, parse_entities
 
 
 def bids(
@@ -11,11 +52,7 @@ def bids(
     prefix: str | None = None,
     suffix: str | None = None,
     extension: str | None = None,
-    subject: str | None = None,
-    session: str | None = None,
-    include_subject_dir: bool = True,
-    include_session_dir: bool = True,
-    **entities: str,
+    **entities: str | bool,
 ) -> str:
     """Helper function for generating bids paths for snakemake workflows.
 
@@ -126,11 +163,9 @@ def bids(
     * Some code adapted from mne-bids, specifically
       https://mne.tools/mne-bids/stable/_modules/mne_bids/utils.html
     """
-    if not any([entities, suffix, subject, session, extension]) and any(
-        [datatype, prefix]
-    ):
+    if not any([entities, suffix, extension]) and any([datatype, prefix]):
         raise ValueError(
-            "At least one of subject, session, suffix, extension, or an entity must be "
+            "At least one of suffix, extension, or an entity must be "
             "supplied.\n\tGot only: "
             + " and ".join(
                 filter(
@@ -143,69 +178,41 @@ def bids(
             )
         )
 
-    # replace underscores in keys (needed so that users can use reserved
-    # keywords by appending a _)
-    entities = {k.replace("_", ""): v for k, v in entities.items()}
+    include_subject_dir = bool(entities.pop("include_subject_dir", True))
+    include_session_dir = bool(entities.pop("include_session_dir", True))
 
-    # strict ordering of bids entities is specified here:
-    order: OrderedDict[str, str | None] = OrderedDict(
-        [
-            ("task", None),
-            ("acq", None),
-            ("ce", None),
-            ("rec", None),
-            ("dir", None),
-            ("run", None),
-            ("mod", None),
-            ("echo", None),
-            ("hemi", None),
-            ("space", None),
-            ("res", None),
-            ("den", None),
-            ("label", None),
-            ("desc", None),
-        ]
+    order, dirs, parse_entities = _parse_spec(
+        include_subject_dir=include_subject_dir, include_session_dir=include_session_dir
+    )
+    parsed = parse_entities(entities)
+
+    spec_parts: list[str] = []
+    custom_parts: list[str] = []
+    split: int = sys.maxsize + 1
+    path_parts: list[str] = []
+
+    if root:
+        path_parts.append(str(root))
+    if prefix:
+        spec_parts.append(prefix)
+    for entity in order:
+        # Check for `*` first so that if user specifies an entity called `*` we don't
+        # skip setting the split
+        if entity == "*":
+            split = len(path_parts)
+        elif value := parsed.pop(entity, None):
+            spec_parts.append(f"{entity}-{value}")
+            if entity in dirs:
+                path_parts.append(f"{entity}-{value}")
+    for key, value in parsed.items():
+        custom_parts.append(f"{key}-{value}")
+
+    if datatype:
+        path_parts.append(datatype)
+    path_parts.append(
+        "_".join(it.chain(spec_parts[:split], custom_parts, spec_parts[split:]))
     )
 
-    # Now add in entities (this preserves ordering above)
-    for key, val in entities.items():
-        order[key] = val
+    tail = f"_{suffix}{extension or ''}" if suffix else extension or ""
 
-    # Form all entities for filename as a list, and join with "_". Any undefined
-    # entities will be `None` and will be filtered out.
-    filename: str = "_".join(
-        filter(
-            None,
-            [
-                # Put the prefix before anything else
-                prefix,
-                # Add in subject and session
-                f"sub-{subject}" if subject else None,
-                f"ses-{session}" if session else None,
-                # Iterate through all other entities and add as "key-value"
-                *(f"{key}-{val}" for key, val in order.items() if val is not None),
-                # Put the suffix last
-                suffix,
-            ],
-        )
-    ) + (extension or "")
-
-    # If all entities were `None`, the list will be empty and filename == ""
-    if not filename:
-        return ""
-
-    # Form folder using list similar to filename, above. Filter out Nones, and convert
-    # to Path.
-    folder = Path(
-        *filter(
-            None,
-            [
-                str(root) if root else None,
-                f"sub-{subject}" if subject and include_subject_dir else None,
-                f"ses-{session}" if session and include_session_dir else None,
-                datatype,
-            ],
-        )
-    )
-
-    return str(folder / filename)
+    return os.path.join(*path_parts) + tail

@@ -13,6 +13,7 @@ from typing import (
     Iterable,
     List,
     Mapping,
+    Protocol,
     Sequence,
     TypeVar,
 )
@@ -29,6 +30,7 @@ from snakebids.types import InputsConfig, UserDictPy38, ZipList, ZipListLike
 from snakebids.utils.utils import BidsEntity, MultiSelectDict
 
 _T = TypeVar("_T")
+_T_contra = TypeVar("_T_contra", contravariant=True)
 
 
 def get_zip_list(
@@ -93,7 +95,6 @@ def get_bids_path(entities: Iterable[str | BidsEntity], **extras: str) -> str:
         return entity.wildcard, f"{{{entity.wildcard}}}"
 
     return bids(
-        root=".",
         **dict(get_tag(BidsEntity(entity)) for entity in sorted(entities)),
         **dict(
             (BidsEntity(entity).wildcard, value) for entity, value in extras.items()
@@ -298,3 +299,23 @@ class ContainerBag(Container[_T]):
             if x in entry:
                 return True
         return False
+
+
+class Benchmark(Protocol):
+    def __call__(
+        self, func: Callable[_P, _T], *args: _P.args, **kwargs: _P.kwargs
+    ) -> _T:
+        ...
+
+
+"""Comparison Dunders copied from typeshed"""
+
+
+class SupportsDunderLT(Protocol[_T_contra]):
+    def __lt__(self, __other: _T_contra) -> bool:
+        ...
+
+
+def is_strictly_increasing(items: Iterable[SupportsDunderLT[Any]]) -> bool:
+    # itx.pairwise properly aliases it.pairwise on py310+
+    return all(i < j for i, j in itx.pairwise(items))
