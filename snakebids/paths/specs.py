@@ -8,7 +8,7 @@ from snakebids.paths import resources
 
 class BidsPathEntitySpec(TypedDict):
     entity: str
-    name: NotRequired[str]
+    tag: NotRequired[str]
     dir: NotRequired[bool]
 
 
@@ -38,9 +38,9 @@ def v0_0_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
     """
     spec = yaml.safe_load(impr.files(resources).joinpath("spec.0.0.0.yaml").read_text())
     if not subject_dir:
-        _find_entity(spec, "sub")["dir"] = False
+        _find_entity(spec, "subject")["dir"] = False
 
     if not session_dir:
-        _find_entity(spec, "ses")["dir"] = False
+        _find_entity(spec, "session")["dir"] = False
 
     return spec

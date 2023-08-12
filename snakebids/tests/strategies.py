@@ -28,6 +28,10 @@ alphanum = ascii_letters + digits
 valid_entities: tuple[str] = tuple(BidsConfig.load("bids").entities.keys())
 
 
+def nothing() -> Any:
+    return st.nothing()  # type: ignore
+
+
 def bids_entity(
     *,
     blacklist_entities: Container[BidsEntity | str] | None = None,

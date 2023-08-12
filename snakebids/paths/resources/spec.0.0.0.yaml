@@ -1,8 +1,8 @@
-- entity: sub
-  name: subject
+- entity: "subject"
+  tag: "sub"
   dir: true
-- entity: ses
-  name: session
+- entity: "session"
+  tag: "ses"
   dir: true
 - entity: "task"
 - entity: "acq"
@@ -15,6 +15,6 @@
 - entity: "hemi"
 - entity: "space"
 - entity: "res"
-- entity: den
+- entity: "den"
 - entity: "label"
 - entity: "desc"
