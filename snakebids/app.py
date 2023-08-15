@@ -176,14 +176,14 @@ class SnakeBidsApp:
         #    the snakefile folder
         # - Add info from args
         # - Set mode (bidsapp or workflow) and output_dir appropriately
+        update_config(self.config, self.args)
+
         self.config["snakemake_dir"] = self.snakemake_dir
         self.config["snakefile"] = self.snakefile_path
 
         # Update config with pybids settings
         self.config["pybidsdb_dir"] = self.args.pybidsdb_dir
         self.config["pybidsdb_reset"] = self.args.pybidsdb_reset
-
-        update_config(self.config, self.args)
 
         # First, handle outputs in snakebids_root or results folder
         try:
