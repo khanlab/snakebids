@@ -248,6 +248,32 @@ class TestRunSnakemake:
             ]
         )
 
+    def test_pybidsdb_path_resolved(self, mocker: MockerFixture):
+        self.io_mocks(mocker)
+        mocker.patch.object(
+            sys,
+            "argv",
+            ["./run.sh", "input", "output", "participant", "--pybidsdb-dir", ".pybids"],
+        )
+
+        # Prepare app and initial config values
+        app = SnakeBidsApp(
+            Path("app"),
+            skip_parse_args=False,
+            snakefile_path=Path("Snakefile"),
+            configfile_path=Path("mock/config.yaml"),
+            config=copy.deepcopy(config),
+        )
+
+        # Prepare expected config
+        try:
+            app.run_snakemake()
+        except SystemExit as e:
+            print("System exited prematurely")
+            print(e)
+
+        assert app.config["pybidsdb_dir"] == Path(".pybids").resolve()
+
     def test_plugin_args(self, mocker: MockerFixture, app: SnakeBidsApp):
         """Test that plugins have access to args parsed from the CLI."""
         # Get mocks for all the io functions
