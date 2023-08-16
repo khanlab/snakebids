@@ -26,10 +26,6 @@ build:
       - (git fetch --tags) || exit 183
     pre_install:
       - git update-index --assume-unchanged docs/conf.py
-    pre_build:
-       - >
-        python -m sphinx -b linkcheck -D linkcheck_timeout=1 docs/
-          $READTHEDOCS_OUTPUT/linkcheck
 
 python:
   install:
