@@ -140,7 +140,7 @@ class SnakeBidsApp:
     snakemake_dir: Path = attr.ib(converter=to_resolved_path)
     plugins: list[Callable[[SnakeBidsApp], None | SnakeBidsApp]] = attr.Factory(list)
     skip_parse_args: bool = False
-    parser: argparse.ArgumentParser = create_parser()
+    parser: argparse.ArgumentParser = attr.Factory(create_parser)
     configfile_path: Path = attr.Factory(
         _get_file_paths(CONFIGFILE_CHOICES, "config"), takes_self=True
     )
