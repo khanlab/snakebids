@@ -140,7 +140,7 @@ class SnakeBidsApp:
     snakemake_dir: Path = attr.ib(converter=to_resolved_path)
     plugins: list[Callable[[SnakeBidsApp], None | SnakeBidsApp]] = attr.Factory(list)
     skip_parse_args: bool = False
-    parser: argparse.ArgumentParser = create_parser()
+    parser: argparse.ArgumentParser = attr.Factory(create_parser)
     configfile_path: Path = attr.Factory(
         _get_file_paths(CONFIGFILE_CHOICES, "config"), takes_self=True
     )
@@ -172,14 +172,14 @@ class SnakeBidsApp:
         #    the snakefile folder
         # - Add info from args
         # - Set mode (bidsapp or workflow) and output_dir appropriately
+        update_config(self.config, self.args)
+
         self.config["snakemake_dir"] = self.snakemake_dir
         self.config["snakefile"] = self.snakefile_path
 
         # Update config with pybids settings
         self.config["pybidsdb_dir"] = self.args.pybidsdb_dir
         self.config["pybidsdb_reset"] = self.args.pybidsdb_reset
-
-        update_config(self.config, self.args)
 
         # First, handle outputs in snakebids_root or results folder
         try:
