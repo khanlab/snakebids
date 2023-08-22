@@ -6,7 +6,7 @@ import warnings
 from math import inf
 from pathlib import Path
 from string import Formatter
-from typing import Any, Iterable, NoReturn, Sequence, overload
+from typing import Any, Iterable, NoReturn, overload
 
 import attr
 import more_itertools as itx
@@ -98,7 +98,7 @@ class BidsComponentRow(ImmutableList[str]):
         self,
         paths: Iterable[Path | str] | Path | str,
         /,
-        allow_missing: bool = False,
+        allow_missing: bool | str | Iterable[str] = False,
         **wildcards: str | Iterable[str],
     ) -> list[str]:
         """Safely expand over given paths with component wildcards
@@ -128,7 +128,9 @@ class BidsComponentRow(ImmutableList[str]):
         """
         return sn_expand(
             list(itx.always_iterable(paths)),
-            allow_missing=allow_missing,
+            allow_missing=allow_missing
+            if isinstance(allow_missing, bool)
+            else list(itx.always_iterable(allow_missing)),
             **{self.entity: list(set(self._data))},
             **{
                 wildcard: list(itx.always_iterable(v))
@@ -141,7 +143,7 @@ class BidsComponentRow(ImmutableList[str]):
         spec: str | Iterable[str] | None = None,
         /,
         *,
-        regex_search: bool = False,
+        regex_search: bool | str | Iterable[str] = False,
         **filters: str | Iterable[str],
     ) -> Self:
         """Filter component based on provided entity filters
@@ -170,6 +172,9 @@ class BidsComponentRow(ImmutableList[str]):
             :attr:`~snakebids.BidsComponentRow.entity` of the
             :class:`~snakebids.BidsComponentRow`; all others will be ignored.
         """
+        if not isinstance(regex_search, bool):
+            msg = "regex_search must be a boolean"
+            raise TypeError(msg)
         if spec is not None:
             if filters:
                 raise ValueError(
@@ -208,16 +213,15 @@ class BidsPartialComponent:
     ``BidsPartialComponents`` are immutable: their values cannot be altered.
     """
 
-    zip_lists: ZipList = attr.field(
-        on_setattr=attr.setters.frozen, converter=MultiSelectDict
+    _zip_lists: ZipList = attr.field(
+        on_setattr=attr.setters.frozen, converter=MultiSelectDict, alias="zip_lists"
     )
-    """Table of unique wildcard groupings for each member in the component.
 
-    Dictionary where each key is a wildcard entity and each value is a list of the
-    values found for that entity. Each of these lists has length equal to the number
-    of images matched for this modality, so they can be zipped together to get a
-    list of the wildcard values for each file.
-    """
+    @_zip_lists.validator  # type: ignore
+    def _validate_zip_lists(self, __attr: str, value: dict[str, list[str]]) -> None:
+        lengths = {len(val) for val in value.values()}
+        if len(lengths) > 1:
+            raise ValueError("zip_lists must all be of equal length")
 
     def __repr__(self) -> str:
         return self.pformat()
@@ -274,12 +278,6 @@ class BidsPartialComponent:
         ]
         return "\n".join(output)
 
-    @zip_lists.validator  # type: ignore
-    def _validate_zip_lists(self, __attr: str, value: dict[str, list[str]]) -> None:
-        lengths = {len(val) for val in value.values()}
-        if len(lengths) > 1:
-            raise ValueError("zip_lists must all be of equal length")
-
     # Note: we can't use cached property here because it's incompatible with slots.
     _input_lists: MultiSelectDict[str, list[str]] | None = attr.field(
         default=None, init=False, eq=False, repr=False
@@ -290,6 +288,17 @@ class BidsPartialComponent:
     _entities: list[str] | None = attr.field(
         default=None, init=False, eq=False, repr=False
     )
+
+    @property
+    def zip_lists(self):
+        """Table of unique wildcard groupings for each member in the component.
+
+        Dictionary where each key is a wildcard entity and each value is a list of the
+        values found for that entity. Each of these lists has length equal to the number
+        of images matched for this modality, so they can be zipped together to get a
+        list of the wildcard values for each file.
+        """
+        return self._zip_lists
 
     @property
     def entities(self) -> MultiSelectDict[str, list[str]]:
@@ -344,7 +353,7 @@ class BidsPartialComponent:
         self,
         paths: Iterable[Path | str] | Path | str,
         /,
-        allow_missing: bool = False,
+        allow_missing: bool | str | Iterable[str] = False,
         **wildcards: str | Iterable[str],
     ) -> list[str]:
         """Safely expand over given paths with component wildcards
@@ -372,12 +381,19 @@ class BidsPartialComponent:
             Keywords not found in the path will be ignored. Keywords take values or
             lists of values to be expanded over the provided paths.
         """
+
+        def sequencify(item: bool | str | Iterable[str]) -> bool | list[str]:
+            if isinstance(item, bool):
+                return item
+            return list(itx.always_iterable(item))
+
+        allow_missing_seq = sequencify(allow_missing)
         inner_expand = list(
             set(
                 sn_expand(
                     list(itx.always_iterable(paths)),
                     zip,
-                    allow_missing=True if wildcards else allow_missing,
+                    allow_missing=True if wildcards else allow_missing_seq,
                     **self.zip_lists,
                 )
             )
@@ -387,7 +403,7 @@ class BidsPartialComponent:
 
         return sn_expand(
             inner_expand,
-            allow_missing=allow_missing,
+            allow_missing=allow_missing_seq,
             # Turn all the wildcard items into lists because Snakemake doesn't handle
             # iterables very well
             **{
@@ -397,7 +413,10 @@ class BidsPartialComponent:
         )
 
     def filter(
-        self, *, regex_search: bool = False, **filters: str | Sequence[str]
+        self,
+        *,
+        regex_search: bool | str | Iterable[str] = False,
+        **filters: str | Iterable[str],
     ) -> Self:
         """Filter component based on provided entity filters
 
@@ -424,6 +443,9 @@ class BidsPartialComponent:
             values to be matched with the component
             :attr:`~snakebids.BidsComponent.zip_lists`
         """
+        if not isinstance(regex_search, bool):
+            msg = "regex_search must be a boolean"
+            raise TypeError(msg)
         return attr.evolve(
             self,
             zip_lists=filter_list(self.zip_lists, filters, regex_search=regex_search),
@@ -471,27 +493,11 @@ class BidsComponent(BidsPartialComponent):
     path: str = attr.field(on_setattr=attr.setters.frozen)
     """Wildcard-filled path that matches the files for this component."""
 
-    zip_lists: ZipList = attr.field(
-        on_setattr=attr.setters.frozen, converter=MultiSelectDict
+    _zip_lists: ZipList = attr.field(
+        on_setattr=attr.setters.frozen, converter=MultiSelectDict, alias="zip_lists"
     )
-    """Table of unique wildcard groupings for each member in the component.
 
-    Dictionary where each key is a wildcard entity and each value is a list of the
-    values found for that entity. Each of these lists has length equal to the number
-    of images matched for this modality, so they can be zipped together to get a
-    list of the wildcard values for each file.
-    """
-
-    def __repr__(self) -> str:
-        return self.pformat()
-
-    def _pformat_body(self):
-        return [
-            f"name={quote_wrap(self.name)},",
-            f"path={quote_wrap(self.path)},",
-        ]
-
-    @zip_lists.validator  # type: ignore
+    @_zip_lists.validator  # type: ignore
     def _validate_zip_lists(self, __attr: str, value: dict[str, list[str]]) -> None:
         super()._validate_zip_lists(__attr, value)
         _, raw_fields, *_ = sb_it.unpack(
@@ -502,6 +508,15 @@ class BidsComponent(BidsPartialComponent):
                 "zip_lists entries must match the wildcards in input_path: "
                 f"{self.path}: {fields} != zip_lists: {set(value)}"
             )
+
+    def __repr__(self) -> str:
+        return self.pformat()
+
+    def _pformat_body(self):
+        return [
+            f"name={quote_wrap(self.name)},",
+            f"path={quote_wrap(self.path)},",
+        ]
 
     def __eq__(self, other: BidsComponent | object) -> bool:
         if not isinstance(other, self.__class__):
@@ -519,7 +534,7 @@ class BidsComponent(BidsPartialComponent):
         self,
         paths: Iterable[Path | str] | Path | str | None = None,
         /,
-        allow_missing: bool = False,
+        allow_missing: bool | str | Iterable[str] = False,
         **wildcards: str | Iterable[str],
     ) -> list[str]:
         """Safely expand over given paths with component wildcards

@@ -5,7 +5,7 @@ import logging
 import pathlib
 import re
 from collections.abc import Sequence
-from typing import Any, Iterable, Mapping, TypeVar, overload
+from typing import Any, Mapping, TypeVar, overload
 
 import attr
 import snakemake
@@ -204,7 +204,7 @@ def create_parser(include_snakemake: bool = False) -> argparse.ArgumentParser:
 
 def add_dynamic_args(
     parser: argparse.ArgumentParser,
-    parse_args: Mapping[str, Mapping[str, str | Iterable[str] | bool]],
+    parse_args: Mapping[str, Any],
     pybids_inputs: InputsConfig,
 ) -> None:
     # create parser group for app options
@@ -216,16 +216,19 @@ def add_dynamic_args(
         # We first check that the type annotation is, in fact,
         # a str to allow the edge case where it's already
         # been converted
-        arg_copy = dict(arg)
         if "type" in arg:
             try:
-                arg_copy["type"] = globals()[str(arg["type"])]
+                arg_dict = {**arg, "type": globals()[str(arg["type"])]}
             except KeyError as err:
                 raise TypeError(
-                    f"{arg['type']} is not available " + f"as a type for {name}"
+                    f"{arg['type']} is not available as a type for {name}"
                 ) from err
-
-        app_group.add_argument(*_make_underscore_dash_aliases(name), **arg_copy)
+        else:
+            arg_dict = arg
+        app_group.add_argument(
+            *_make_underscore_dash_aliases(name),
+            **arg_dict,
+        )
 
     # general parser for
     # --filter_{input_type} {key1}={value1} {key2}={value2}...

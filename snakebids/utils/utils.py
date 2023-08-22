@@ -45,7 +45,7 @@ class BidsTag(TypedDict):
 BidsTags: TypeAlias = "dict[str, BidsTag]"
 
 
-@ft.lru_cache(None)
+@ft.lru_cache
 def read_bids_tags(bids_json: Path | None = None) -> BidsTags:
     """Read the bids tags we are aware of from a JSON file.
 
@@ -124,13 +124,19 @@ class BidsEntity:
     def before(self) -> str:
         """regex str to search before value in paths"""
         tags = read_bids_tags()
-        return tags.get(self.entity, {}).get("before", f"{self.tag}-")
+        # Need to explicitly annotate the default here and in .after because tags is a
+        # dict of `BidsTag`, a `TypedDict`. So putting unannotated dicts directly as
+        # default leads to a type error
+        _def: dict[Any, Any] = {}
+        return tags.get(self.entity, _def).get("before", f"{self.tag}-")
 
     @property
     def after(self) -> str:
         """regex str to search after value in paths"""
         tags = read_bids_tags()
-        return tags.get(self.entity, {}).get("after", "")
+        # See note in .before
+        _def: dict[Any, Any] = {}
+        return tags.get(self.entity, _def).get("after", "")
 
     @property
     def regex(self) -> re.Pattern[str]:
@@ -463,17 +469,17 @@ class ImmutableList(Sequence[_T_co], Generic[_T_co]):
         return bool(self._data)
 
     @overload
-    def __getitem__(self, key: SupportsIndex, /) -> _T_co:
+    def __getitem__(self, index: int) -> _T_co:
         ...
 
     @overload
-    def __getitem__(self, key: slice, /) -> Self:
+    def __getitem__(self, index: slice) -> Self:
         ...
 
-    def __getitem__(self, item: SupportsIndex | slice, /) -> _T_co | Self:
-        if isinstance(item, slice):
-            return self.__class__(self._data[item])
-        return self._data[item]
+    def __getitem__(self, index: int | slice) -> _T_co | Self:
+        if isinstance(index, slice):
+            return self.__class__(self._data[index])
+        return self._data[index]
 
     def __lt__(self, value: tuple[_T_co, ...] | Self, /) -> bool:
         if isinstance(value, tuple):

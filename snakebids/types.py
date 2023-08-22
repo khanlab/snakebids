@@ -76,13 +76,16 @@ class Expandable(Protocol):
         self,
         paths: Iterable[Path | str] | Path | str,
         /,
-        allow_missing: bool = False,
+        allow_missing: bool | str | Iterable[str] = False,
         **wildcards: str | Iterable[str],
     ) -> list[str]:
         ...
 
     def filter(
-        self, *, regex_search: bool = False, **filters: str | Sequence[str]
+        self,
+        *,
+        regex_search: bool | str | Iterable[str] = False,
+        **filters: str | Iterable[str],
     ) -> Self:
         ...
 

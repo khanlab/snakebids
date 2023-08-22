@@ -70,7 +70,7 @@ black = "^23.1.0"
 pytest = "^7.0.0"
 pytest-mock = "^3.7.0"
 isort = "^5.10.1"
-poethepoet = "^0.21.1"
+poethepoet = "^0.22.0"
 pre-commit = "^3.0.0"
 mkinit = "^1.0.0"
 hypothesis = "^6.34.1"
@@ -79,9 +79,9 @@ pyfakefs = "^5.1.0"
 pyparsing = "^3.0.9"
 # Version 1.1.312-1.1.315 have a false positive handling some nested function
 # calls
-pyright = ">=1.1.307,<1.1.312"
-ruff = "^0.0.280"
 pathvalidate = "^3.0.0"
+pyright = ">=1.1.324"
+ruff = "^0.0.285"
 
 [tool.poetry.scripts]
 snakebids = "snakebids.admin:main"

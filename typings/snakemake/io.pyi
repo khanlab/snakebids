@@ -284,6 +284,8 @@ def local(value):  # -> AnnotatedString | list[Unknown]:
 def expand(
     filepatterns: Sequence[Path | str] | Path | str,
     func: Callable[[Iterable[str]], Iterable[Iterable[str]]] | None = ...,
+    /,
+    *,
     allow_missing: bool | Sequence[str] | str = ...,
     **wildcards: Sequence[str] | str,
 ) -> list[str]:

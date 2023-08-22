@@ -6,7 +6,7 @@ from __future__ import annotations
 import enum
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 
 from bids import BIDSLayoutIndexer
 from bids.layout.models import BIDSFile, Entity
@@ -270,13 +270,13 @@ class BIDSLayout:
         ...
     def get(
         self,
-        return_type=...,
-        target=...,
-        scope=...,
+        # return_type=...,
+        # target=...,
+        # scope=...,
         regex_search: bool = ...,
-        absolute_paths=...,
-        invalid_filters=...,
-        **filters: str,
+        # absolute_paths=...,
+        # invalid_filters=...,
+        **filters: str | Query | Sequence[str | Query],
     ) -> list[BIDSFile]:
         """Retrieve files and/or metadata from the current Layout.
 
