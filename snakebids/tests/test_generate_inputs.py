@@ -602,7 +602,9 @@ class TestCustomPaths:
         test_path = self.generate_test_directory(entities, template, temp_dir)
 
         # Test with filters
-        result_filtered = MultiSelectDict(_parse_custom_path(test_path, **filters))
+        result_filtered = MultiSelectDict(
+            _parse_custom_path(test_path, regex_search=False, **filters)
+        )
         zip_lists = MultiSelectDict(
             {
                 # Start with empty lists for each key, otherwise keys will be missing

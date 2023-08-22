@@ -7,7 +7,7 @@ import os
 import re
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Generator, Iterable, Literal, Mapping, Sequence, overload
+from typing import Any, Generator, Iterable, Literal, Mapping, Sequence, cast, overload
 
 import attrs
 import more_itertools as itx
@@ -460,7 +460,7 @@ def _generate_filters(
 def _parse_custom_path(
     input_path: Path | str,
     regex_search: bool = False,
-    **filters: list[str] | str,
+    **filters: Sequence[str | bool] | str | bool,
 ) -> ZipList:
     """Glob wildcards from a custom path and apply filters
 
@@ -495,7 +495,17 @@ def _parse_custom_path(
         return wildcards
 
     # Return the output values, running filtering on the zip_lists
-    return filter_list(wildcards, filters, regex_search=regex_search)
+    if any(
+        isinstance(v, bool) for f in filters.values() for v in itx.always_iterable(f)
+    ):
+        raise TypeError(
+            "boolean filters are not currently supported in custom path filtering"
+        )
+    return filter_list(
+        wildcards,
+        cast("Mapping[str, str | Sequence[str]]", filters),
+        regex_search=regex_search,
+    )
 
 
 def _parse_bids_path(path: str, entities: Iterable[str]) -> tuple[str, dict[str, str]]:
