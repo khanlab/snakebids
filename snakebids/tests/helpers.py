@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import (
     Any,
     Callable,
-    Container,
     Dict,
     Iterable,
     List,
@@ -282,23 +281,6 @@ def example_if(condition: bool, *args: Any, **kwargs: Any):
         return inner
 
     return identity
-
-
-class ContainerBag(Container[_T]):
-    """Container to hold other containers
-
-    Useful because list(Container) isn't guarenteed to work, so this lets us merge
-    Containers in a type safe way.
-    """
-
-    def __init__(self, *entries: Container[_T]):
-        self.entries = entries
-
-    def __contains__(self, x: object, /) -> bool:
-        for entry in self.entries:
-            if x in entry:
-                return True
-        return False
 
 
 class Benchmark(Protocol):

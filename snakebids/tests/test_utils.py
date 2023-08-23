@@ -15,6 +15,7 @@ import snakebids.tests.strategies as sb_st
 from snakebids.utils.utils import (
     ImmutableList,
     MultiSelectDict,
+    RegexContainer,
     get_wildcard_dict,
     matches_any,
 )
@@ -326,3 +327,25 @@ def test_get_wildcard_dict(zip_list: dict[str, str]):
     first = wildstr.format(**wildcards)
     second = first.format(**zip_list)
     assert set(second.split(".")) == set(zip_list.values())
+
+
+class TestRegexContainer:
+    DDWW = r"^\d{3}[a-zA-Z]{3}$"
+    bDDWW = rb"^\d{3}[a-zA-Z]{3}$"
+    WWDD = r"^[a-zA-Z]{3}\d{3}$"
+
+    @given(sample=st.from_regex(DDWW))
+    def test_str_matching_regex_are_contained(self, sample: str):
+        assert sample in RegexContainer(self.DDWW)
+
+    @given(sample=st.from_regex(bDDWW))
+    def test_bytes_matching_regex_are_contained(self, sample: bytes):
+        assert sample in RegexContainer(self.bDDWW)
+
+    @given(sample=st.from_regex(WWDD))
+    def test_str_not_matching_regex_excluded(self, sample: str):
+        assert sample not in RegexContainer(self.DDWW)
+
+    @given(sample=st.from_regex(bDDWW))
+    def test_container_specific_to_type(self, sample: str):
+        assert sample not in RegexContainer(self.DDWW)

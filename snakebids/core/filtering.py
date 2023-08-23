@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import operator as op
-import re
 from collections.abc import Iterator, Mapping
 from typing import Iterable, List, Literal, TypeVar, Union, overload
 
 import more_itertools as itx
 
 from snakebids.types import ZipList, ZipListLike
-from snakebids.utils.utils import MultiSelectDict, matches_any
+from snakebids.utils.utils import ContainerBag, MultiSelectDict, RegexContainer
 
 T_co = TypeVar("T_co", bound=Union[List[str], str], covariant=True)
 
@@ -128,22 +126,23 @@ def filter_list(
         ... }
         True
     """
-    # TODO: Reimplement regex matching as a `RegexContainer` so that for non-regex
-    # cases, we can use the `in` operator
-    if regex_search:
-        match_func = re.match
-    else:
-        match_func = op.eq
-
     # Save filters into memory as sets for quick access later
-    filter_sets = {key: set(itx.always_iterable(vals)) for key, vals in filters.items()}
+    if regex_search:
+        filter_sets = {
+            key: ContainerBag(*(RegexContainer(r) for r in itx.always_iterable(vals)))
+            for key, vals in filters.items()
+        }
+    else:
+        filter_sets = {
+            key: set(itx.always_iterable(vals)) for key, vals in filters.items()
+        }
 
     # Get a set {0,1,2,3...n-1} where n is the length of any one of the lists in
     # zip_list
     keep_indices = set(_get_zip_list_indices(zip_list)).intersection(
         *(
-            {i for i, v in enumerate(zip_list[key]) if matches_any(v, val, match_func)}
-            for key, val in filter_sets.items()
+            {i for i, v in enumerate(zip_list[key]) if v in container}
+            for key, container in filter_sets.items()
             if key in zip_list
         )
     )
