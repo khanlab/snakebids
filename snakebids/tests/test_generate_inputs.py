@@ -269,6 +269,11 @@ class TestFilterBools:
         target = data.draw(sb_st.bids_value(entity.match))
         decoy = data.draw(sb_st.bids_value(entity.match))
         assume(target != decoy)
+        # This is a brute-force way of dealing with the fact that values for `run` are
+        # converted into int by pybids before querying. So just prevent the decoy from
+        # ever looking like the same number as target
+        if target.isdecimal() and decoy.isdecimal():
+            assume(int(target) != int(decoy))
         dataset = BidsDataset.from_iterable(
             [
                 attrs.evolve(
