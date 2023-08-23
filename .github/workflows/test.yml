@@ -23,12 +23,12 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.11'
       - uses: actions/cache@v3
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-3.9
-          restore-keys: ${{ runner.os }}-pip-3.9
+          key: ${{ runner.os }}-pip-3.11
+          restore-keys: ${{ runner.os }}-pip-3.11
       #----------------------------------------------
       #  -----  install & configure poetry  -----
       #----------------------------------------------
@@ -45,7 +45,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: .venv
-          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}-3.9
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}-3.11
       #----------------------------------------------
       # install dependencies if cache does not exist
       #----------------------------------------------
@@ -56,11 +56,13 @@ jobs:
       # install your root project, if required
       #----------------------------------------------
       - name: Install library
-        run: poetry install --no-interaction
+        run: poetry install --no-interaction --no-ansi
 
       #----------------------------------------------
       #       run python style checks
       #----------------------------------------------
+      - name: Poetry Lock Check
+        run: poetry check --lock
       - name: isort
         run: poetry run isort snakebids -c
       - name: Black
@@ -110,12 +112,12 @@ jobs:
     #----------------------------------------------
     - name: Install dependencies
       if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-      run: poetry install --no-interaction --no-root
+      run: poetry install --no-interaction --no-root --no-ansi
     #----------------------------------------------
     # install your root project, if required
     #----------------------------------------------
     - name: Install library
-      run: poetry install --no-interaction
+      run: poetry install --no-interaction --no-ansi
     - name: Test with pytest
       env:
         HYPOTHESIS_PROFILE: pr
