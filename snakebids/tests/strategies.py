@@ -19,7 +19,7 @@ from snakebids.core.datasets import (
 )
 from snakebids.tests import helpers
 from snakebids.types import Expandable, InputConfig, InputsConfig, ZipList
-from snakebids.utils.utils import BidsEntity, MultiSelectDict
+from snakebids.utils.utils import BidsEntity, ContainerBag, MultiSelectDict
 
 _Ex_co = TypeVar("_Ex_co", bound=str, covariant=True)
 _T = TypeVar("_T")
@@ -38,7 +38,7 @@ def bids_entity(
     whitelist_entities: Container[BidsEntity | str] | None = None,
     path_safe: bool = False,
 ) -> st.SearchStrategy[BidsEntity]:
-    blacklist = helpers.ContainerBag(
+    blacklist = ContainerBag(
         {"fmap", "scans"},
         blacklist_entities if blacklist_entities is not None else set(),
         {"datatype", "suffix", "extension"} if path_safe else set(),
@@ -114,7 +114,7 @@ def bids_path(
                 zip_lists(
                     max_values=1,
                     max_entities=2,
-                    blacklist_entities=helpers.ContainerBag(
+                    blacklist_entities=ContainerBag(
                         blacklist_entities if blacklist_entities is not None else [],
                         [BidsEntity.normalize(e) for e in entities],
                     ),

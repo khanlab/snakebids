@@ -10,7 +10,9 @@ from os import PathLike
 from pathlib import Path
 from typing import (
     Any,
+    AnyStr,
     Callable,
+    Container,
     Generic,
     Iterable,
     Iterator,
@@ -216,33 +218,6 @@ def matches_any(
         if match_func(match, item, *args):
             return True
     return False
-
-
-def get_match_search_func(
-    match_list: Iterable[Any], match_func: Callable[[Any, Any], Any]
-) -> Callable[[Any], bool]:
-    """Return a match search function suitable for use in filter
-
-    Parameters
-    ----------
-    match_list : list
-        list of items to search for matches
-    match_func : callable
-        Any callable that takes two args and returns truthy/falsy values. The first arg
-        will be drawn from match_list, the second will be the value being matched
-
-    Returns
-    -------
-    callable
-        Takes as a single arg a value to be matched. It will be compared to every item
-        in match list using match_func
-    """
-    match_list = list(match_list)
-
-    def inner(item: Any):
-        return matches_any(item, match_list, match_func)
-
-    return inner
 
 
 class BidsParseError(Exception):
@@ -539,3 +514,36 @@ class ImmutableList(Sequence[_T_co], Generic[_T_co]):
 def get_wildcard_dict(entities: str | Iterable[str], /) -> dict[str, str]:
     """Turn entity strings into wildcard dicts as {"entity": "{entity}"}"""
     return {entity: f"{{{entity}}}" for entity in itx.always_iterable(entities)}
+
+
+class RegexContainer(Generic[AnyStr], Container[AnyStr]):
+    """Container that tests if a string matches a regex using the ``in`` operator
+
+    Constructed with a regex expression. Supports inclusion tests for strings using
+    ``in``. Strings matching the regex (using ``re.match``) will return ``True``
+    """
+
+    def __init__(self, template: AnyStr | re.Pattern[AnyStr]):
+        self.template: re.Pattern[AnyStr] = re.compile(template)
+
+    def __contains__(self, x: object, /):
+        if isinstance(x, type(self.template.pattern)):
+            return self.template.match(x) is not None
+        return False
+
+
+class ContainerBag(Container[_T]):
+    """Container to hold other containers
+
+    Useful because list(Container) isn't guaranteed to work, so this lets us merge
+    Containers in a type safe way.
+    """
+
+    def __init__(self, *entries: Container[_T]):
+        self.entries = entries
+
+    def __contains__(self, x: object, /) -> bool:
+        for entry in self.entries:
+            if x in entry:
+                return True
+        return False
