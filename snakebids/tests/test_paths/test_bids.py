@@ -7,7 +7,7 @@ from typing import Iterable
 
 import more_itertools as itx
 import pytest
-from hypothesis import assume, given
+from hypothesis import assume, example, given
 from hypothesis import strategies as st
 from pathvalidate import Platform, is_valid_filename, is_valid_filepath
 
@@ -144,11 +144,15 @@ def test_beginning_of_path_always_root(entities: dict[str, str], root: str):
     assert path[length] == os.path.sep
 
 
+@example(entities={"sub": "0"}, datatype=".", root="0")
 @given(entities=_bids_args(nonstandard=False), datatype=_values(), root=_roots())
 def test_bottom_directory_always_datatype(
     entities: dict[str, str], datatype: str, root: str
 ):
-    assert datatype == Path(bids(root=root, datatype=datatype, **entities)).parent.name
+    # use os.path functions so that datatype=="." is treated safely
+    assert datatype == os.path.basename(
+        os.path.dirname(bids(root=root, datatype=datatype, **entities))
+    )
 
 
 @given(entities=_bids_args(nonstandard=False), datatype=_values())
