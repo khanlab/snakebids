@@ -16,6 +16,7 @@ from snakebids.app import update_config
 from snakebids.cli import SnakebidsArgs
 from snakebids.tests import strategies as sb_st
 from snakebids.types import InputConfig, InputsConfig, OptionalFilter
+from snakebids.utils.utils import DEPRECATION_FLAG
 
 from .. import app as sn_app
 from ..app import SnakeBidsApp
@@ -181,6 +182,8 @@ class TestRunSnakemake:
                 "snakemake_dir": Path("app").resolve(),
                 "pybidsdb_dir": Path("/tmp/output/.db"),
                 "pybidsdb_reset": True,
+                "pybids_db_dir": f"{DEPRECATION_FLAG}/tmp/output/.db{DEPRECATION_FLAG}",
+                "pybids_db_reset": f"{DEPRECATION_FLAG}1{DEPRECATION_FLAG}",
                 "snakefile": Path("Snakefile"),
                 "output_dir": outputdir.resolve(),
                 "snakemake_version": metadata.version("snakemake"),
@@ -273,6 +276,36 @@ class TestRunSnakemake:
             print(e)
 
         assert app.config["pybidsdb_dir"] == Path(".pybids").resolve()
+
+    def test_old_db_args_deprecated(self, mocker: MockerFixture):
+        self.io_mocks(mocker)
+        mocker.patch.object(
+            sys,
+            "argv",
+            ["./run.sh", "input", "output", "participant", "--pybidsdb-dir", ".pybids"],
+        )
+
+        # Prepare app and initial config values
+        app = SnakeBidsApp(
+            Path("app"),
+            skip_parse_args=False,
+            snakefile_path=Path("Snakefile"),
+            configfile_path=Path("mock/config.yaml"),
+            config=copy.deepcopy(config),
+        )
+
+        # Prepare expected config
+        try:
+            app.run_snakemake()
+        except SystemExit as e:
+            print("System exited prematurely")
+            print(e)
+
+        assert (
+            app.config["pybids_db_dir"]
+            == f"{DEPRECATION_FLAG}{Path('.pybids').resolve()}{DEPRECATION_FLAG}"
+        )
+        assert app.config["pybids_db_reset"] == f"{DEPRECATION_FLAG}0{DEPRECATION_FLAG}"
 
     def test_plugin_args(self, mocker: MockerFixture, app: SnakeBidsApp):
         """Test that plugins have access to args parsed from the CLI."""

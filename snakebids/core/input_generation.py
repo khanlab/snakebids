@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import sys
+import warnings
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Generator, Iterable, Mapping, Optional, Sequence, overload
@@ -27,7 +28,12 @@ from snakebids.exceptions import (
 )
 from snakebids.types import InputsConfig, ZipList
 from snakebids.utils.snakemake_io import glob_wildcards
-from snakebids.utils.utils import BidsEntity, BidsParseError, get_first_dir
+from snakebids.utils.utils import (
+    DEPRECATION_FLAG,
+    BidsEntity,
+    BidsParseError,
+    get_first_dir,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -74,7 +80,7 @@ def generate_inputs(
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
     pybidsdb_dir: Path | str | None = None,
-    pybidsdb_reset: bool = False,
+    pybidsdb_reset: bool | None = None,
     derivatives: bool | Path | str = False,
     pybids_config: str | None = None,
     limit_to: Iterable[str] | None = None,
@@ -83,7 +89,7 @@ def generate_inputs(
     use_bids_inputs: bool | None = None,
     validate: bool = False,
     pybids_database_dir: Path | str | None = None,
-    pybids_reset_database: bool = False,
+    pybids_reset_database: bool | None = None,
 ) -> BidsDataset | BidsDatasetDict:
     """Dynamically generate snakemake inputs using pybids_inputs
 
@@ -152,7 +158,7 @@ def generate_inputs(
         the default behaviour
 
     validate
-        If True performs validation of BIDS directory using pybids, otherwise 
+        If True performs validation of BIDS directory using pybids, otherwise
         skips validation.
 
     Returns
@@ -255,18 +261,9 @@ ses-{session}_run-{run}_T1w.nii.gz",
         participant_label, exclude_participant_label
     )
 
-    if pybids_database_dir:
-        _logger.warning(
-            "The parameter `pybids_database_dir` in generate_inputs() is deprecated "
-            "and will be removed in the next release. To set the pybids database, use "
-            "the `pybidsdb_dir` parameter instead."
-        )
-    if pybids_reset_database:
-        _logger.warning(
-            "The parameter `pybids_reset_database` in generate_inputs() is deprecated "
-            "and will be removed in the next release. To reset the pybids database, "
-            "use the `pybidsdb_reset` parameter instead."
-        )
+    pybidsdb_dir, pybidsdb_reset = _normalize_database_args(
+        pybidsdb_dir, pybidsdb_reset, pybids_database_dir, pybids_reset_database
+    )
 
     # Generates a BIDSLayout
     layout = (
@@ -274,8 +271,8 @@ ses-{session}_run-{run}_T1w.nii.gz",
             bids_dir=bids_dir,
             derivatives=derivatives,
             pybids_config=pybids_config,
-            pybidsdb_dir=pybidsdb_dir or pybids_database_dir,
-            pybidsdb_reset=pybidsdb_reset or pybids_reset_database,
+            pybidsdb_dir=pybidsdb_dir,
+            pybidsdb_reset=pybidsdb_reset,
             validate=validate,
         )
         if not _all_custom_paths(pybids_inputs)
@@ -310,6 +307,68 @@ ses-{session}_run-{run}_T1w.nii.gz",
     if use_bids_inputs:
         return dataset
     return dataset.as_dict
+
+
+def _normalize_database_args(
+    pybidsdb_dir: Path | str | None,
+    pybidsdb_reset: bool | str | None,
+    pybids_database_dir: Path | str | None,
+    pybids_reset_database: str | bool | None,
+) -> tuple[Path | str | None, bool]:
+    """This function exists to help handle deprecation for pybidsdb"""
+    if pybids_database_dir is not None:
+        warnings.warn(
+            "The parameter `pybids_database_dir` in generate_inputs() is deprecated "
+            "and will be removed in the next release. To set the pybids database, use "
+            "the `pybidsdb_dir` parameter instead."
+        )
+    if pybids_reset_database is not None:
+        warnings.warn(
+            "The parameter `pybids_reset_database` in generate_inputs() is deprecated "
+            "and will be removed in the next release. To reset the pybids database, "
+            "use the `pybidsdb_reset` parameter instead."
+        )
+
+    pybidsdb_dir = pybidsdb_dir or pybids_database_dir
+    pybidsdb_reset = (
+        pybidsdb_reset
+        if pybidsdb_reset is not None
+        else pybids_reset_database
+        if pybids_reset_database is not None
+        else False
+    )
+
+    depr_len = len(DEPRECATION_FLAG)
+    if (
+        pybidsdb_dir is not None
+        and str(pybidsdb_dir).startswith(DEPRECATION_FLAG)
+        and str(pybidsdb_dir).endswith(DEPRECATION_FLAG)
+    ):
+        warnings.warn(
+            "The config value `pybids_db_dir` is deprecated and will be removed in a "
+            "future release. To access a CLI-specified pybids database directory, use "
+            '`config.get("pybidsdb_dir")` instead.'
+        )
+        pybidsdb_dir = str(pybidsdb_dir)[depr_len:-depr_len]
+    try:
+        if (
+            isinstance(pybidsdb_reset, str)
+            and pybidsdb_reset.startswith(DEPRECATION_FLAG)
+            and pybidsdb_reset.endswith(DEPRECATION_FLAG)
+        ):
+            pybidsdb_reset = bool(int(pybidsdb_reset[depr_len:-depr_len]))
+            warnings.warn(
+                "The config value `pybids_db_reset` is deprecated and will be removed "
+                "in a future release. To access CLI-specified pybids database reset "
+                'instructions, use `config.get("pybidsdb_reset")` instead.'
+            )
+    except ValueError:
+        raise TypeError("pybidsdb_reset must be a boolean")
+
+    if not isinstance(pybidsdb_reset, bool):
+        raise TypeError("pybidsdb_reset must be a boolean")
+
+    return pybidsdb_dir, pybidsdb_reset
 
 
 def _all_custom_paths(config: InputsConfig):

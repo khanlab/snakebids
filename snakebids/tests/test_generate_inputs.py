@@ -10,6 +10,7 @@ import re
 import shutil
 import sys
 import tempfile
+import warnings
 from collections import defaultdict
 from pathlib import Path
 from typing import (
@@ -40,6 +41,7 @@ from snakebids.core.input_generation import (
     _gen_bids_layout,
     _generate_filters,
     _get_lists_from_bids,
+    _normalize_database_args,
     _parse_bids_path,
     _parse_custom_path,
     generate_inputs,
@@ -56,9 +58,115 @@ from snakebids.tests.helpers import (
     reindex_dataset,
 )
 from snakebids.types import InputsConfig
-from snakebids.utils.utils import BidsEntity, BidsParseError, MultiSelectDict
+from snakebids.utils.utils import (
+    DEPRECATION_FLAG,
+    BidsEntity,
+    BidsParseError,
+    MultiSelectDict,
+)
 
 T = TypeVar("T")
+
+
+def _not_deprecated(s: str):
+    return not (s.startswith(DEPRECATION_FLAG) and s.endswith(DEPRECATION_FLAG))
+
+
+class TestNormalizeDatabaseArgs:
+    @given(
+        pybidsdb_dir=st.text().filter(_not_deprecated) | st.none(),
+        pybidsdb_reset=st.booleans(),
+    )
+    def test_normal_calls_give_no_warnings(
+        self, pybidsdb_dir: str | None, pybidsdb_reset: bool
+    ):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            _normalize_database_args(pybidsdb_dir, pybidsdb_reset, None, None)
+
+    @given(
+        pybidsdb_dir=st.text().filter(_not_deprecated) | st.none(),
+        pybidsdb_reset=st.booleans(),
+        pybids_database_dir=st.text().filter(_not_deprecated),
+    )
+    def test_old_dir_param_gives_warning(
+        self, pybidsdb_dir: str | None, pybidsdb_reset: bool, pybids_database_dir: str
+    ):
+        with pytest.warns(UserWarning, match="`pybids_database_dir`"):
+            _normalize_database_args(
+                pybidsdb_dir, pybidsdb_reset, pybids_database_dir, None
+            )
+
+    @given(
+        pybidsdb_dir=st.text().filter(_not_deprecated) | st.none(),
+        pybidsdb_reset=st.booleans(),
+        pybids_database_reset=st.booleans(),
+    )
+    def test_old_reset_param_gives_warning(
+        self,
+        pybidsdb_dir: str | None,
+        pybidsdb_reset: bool,
+        pybids_database_reset: bool,
+    ):
+        with pytest.warns(UserWarning, match="`pybids_reset_database`"):
+            _normalize_database_args(
+                pybidsdb_dir, pybidsdb_reset, None, pybids_database_reset
+            )
+
+    @given(
+        pybids_database_dir=st.text().filter(_not_deprecated),
+        pybids_database_reset=st.booleans(),
+    )
+    def test_old_params_passed_on_to_new(
+        self,
+        pybids_database_dir: str,
+        pybids_database_reset: bool,
+    ):
+        assert (pybids_database_dir, pybids_database_reset) == _normalize_database_args(
+            None, None, pybids_database_dir, pybids_database_reset
+        )
+
+    @given(
+        pybidsdb_reset=st.booleans() | st.none(),
+        pybids_database_reset=st.booleans() | st.none(),
+    )
+    def test_second_return_never_none(
+        self,
+        pybidsdb_reset: bool | None,
+        pybids_database_reset: bool | None,
+    ):
+        assert (
+            _normalize_database_args(
+                None,
+                pybidsdb_reset,
+                None,
+                pybids_database_reset,
+            )[1]
+            is not None
+        )
+
+    @given(pybidsdb_dir=st.text().filter(_not_deprecated))
+    def test_deprecated_dir_raises_warning(self, pybidsdb_dir: str):
+        pybidsdb_dir_ = DEPRECATION_FLAG + pybidsdb_dir + DEPRECATION_FLAG
+        with pytest.warns(UserWarning, match="`pybids_db_dir`"):
+            assert (
+                _normalize_database_args(pybidsdb_dir_, None, None, None)[0]
+                == pybidsdb_dir
+            )
+
+    @given(pybidsdb_reset=st.booleans())
+    def test_deprecated_reset_raises_warning(self, pybidsdb_reset: bool):
+        pybidsdb_reset_ = DEPRECATION_FLAG + str(int(pybidsdb_reset)) + DEPRECATION_FLAG
+        with pytest.warns(UserWarning, match="`pybids_db_reset`"):
+            assert (
+                _normalize_database_args(None, pybidsdb_reset_, None, None)[1]
+                == pybidsdb_reset
+            )
+
+    @given(pybidsdb_reset=st.text().filter(_not_deprecated))
+    def test_non_deprecated_text_in_reset_raises_error(self, pybidsdb_reset: bool):
+        with pytest.raises(TypeError):
+            _normalize_database_args(None, pybidsdb_reset, None, None)
 
 
 class TestFilterBools:
@@ -284,6 +392,11 @@ class TestFilterBools:
         target = data.draw(sb_st.bids_value(entity.match))
         decoy = data.draw(sb_st.bids_value(entity.match))
         assume(target != decoy)
+        # This is a brute-force way of dealing with the fact that values for `run` are
+        # converted into int by pybids before querying. So just prevent the decoy from
+        # ever looking like the same number as target
+        if target.isdecimal() and decoy.isdecimal():
+            assume(int(target) != int(decoy))
         dataset = BidsDataset.from_iterable(
             [
                 attrs.evolve(
@@ -368,6 +481,8 @@ class TestFilterBools:
         target = data.draw(sb_st.bids_value(entity.match))
         decoy = data.draw(sb_st.bids_value(entity.match))
         assume(target != decoy)
+        if target.isdecimal() and decoy.isdecimal():
+            assume(int(target) != int(decoy))
         root = tempfile.mkdtemp(dir=tmpdir)
         dataset = BidsDataset.from_iterable(
             [
