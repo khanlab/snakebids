@@ -1,0 +1,39 @@
+from snakebids import bids, generate_inputs, get_wildcard_constraints
+
+configfile: 'config/snakebids.yml'
+
+# Get input wildcards
+inputs = generate_inputs(
+    bids_dir=config["bids_dir"],
+    pybids_inputs=config["pybids_inputs"],
+    pybidsdb_dir=config.get("pybidsdb_dir"),
+    pybidsdb_reset=config.get("pybidsdb_reset"),
+    derivatives=config.get("derivatives", None),
+    participant_label=config.get("participant_label", None),
+    exclude_participant_label=config.get("exclude_participant_label", None),
+    validate=not config.get("plugins.validator.skip", False)
+)
+
+
+rule all:
+    input:
+        inputs['t1w'].expand(),
+        inputs['bold'].expand()
+    default_target: True
+    params:
+        inputs=lambda wcards, input: "- " + "\n- ".join(input)
+    shell:
+        """
+        cat <<EOF
+All set 🚀🚀!
+
+To get going, replace this \`rule all\` block with your own and start adding some rules.
+
+If you need help, check out the tutorial:
+    https://snakebids.readthedocs.io/en/stable/tutorial/tutorial.html
+
+Found the following inputs:
+{params.inputs}
+
+EOF
+        """

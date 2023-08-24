@@ -22,16 +22,16 @@ targets_by_analysis_level:
 #    https://bids-standard.github.io/pybids/generated/bids.layout.BIDSLayout.html#bids.layout.BIDSLayout.get
 
 pybids_inputs:
-  bold:
+  t1w:
     filters:
-      suffix: 'bold'
-      extension: '.nii.gz'
-      datatype: 'func'
+      suffix: T1w
     wildcards:
       - subject
-      - session
-      - acquisition
-      - task
+  bold:
+    filters:
+      suffix: bold
+    wildcards:
+      - subject
       - run
 
 #configuration for the command-line parameters to make available
@@ -54,7 +54,7 @@ parse_args:
     help: Level of the analysis that will be performed.
     choices: *analysis_levels
 
-  --participant_label:
+  --participant-label:
     help: The label(s) of the participant(s) that should be analyzed. The label
           corresponds to sub-<participant_label> from the BIDS spec
           (so it does not include "sub-"). If this parameter is not
@@ -62,7 +62,7 @@ parse_args:
           participants can be specified with a space separated list.
     nargs: '+'
 
-  --exclude_participant_label:
+  --exclude-participant-label:
     help: The label(s) of the participant(s) that should be excluded. The label
           corresponds to sub-<participant_label> from the BIDS spec
           (so it does not include "sub-"). If this parameter is not
@@ -78,17 +78,14 @@ parse_args:
 
  # custom command-line parameters can then be added, these will get added to the config and also accessible to plugins
  # below are examples for plugin and custom parameters (e.g. config['smoothing_fwhm'])
-  --skip_bids_validation:
+  --skip-bids-validation:
     help: 'Skip validation of BIDS dataset. BIDS validation is performed by
-          default using the bids-validator plugin (if installed/enabled) or with the pybids 
+          default using the bids-validator plugin (if installed/enabled) or with the pybids
           validator implementation (if bids-validator is not installed/enabled).'
     dest: "plugins.validator.skip"
     action: "store_true"
     default: False
 
-  --smoothing_fwhm:
-    nargs: '+'
-    required: True
 
 
 #--- workflow specific configuration -- below is just an example:

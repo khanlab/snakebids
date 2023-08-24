@@ -110,6 +110,33 @@ jobs:
       if: steps.setup-python.outputs.cache-hit != 'true'
       run: poetry install --no-interaction --no-root --no-ansi
 
+    # Build docker container needed for test
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    - name: Cache Template Testing Containers
+      uses: actions/cache@v3
+      with:
+        path: container-test-template-cache
+        key: ${{ runner.os }}-test-template-cache-${{ hashFiles('containers/test-template/**') }}-${{ steps.setup-python.outputs.python-version }}
+    - name: Inject container-test-template-cache into docker
+      uses: reproducible-containers/buildkit-cache-dance@v2.1.2
+      with:
+        cache-source: container-test-template-cache
+    - name: Build Docker container for cache
+      uses: docker/build-push-action@v5
+      with:
+        context: containers/test-template
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        push: false
+        load: false
+        tags: snakebids/test-template:${{ steps.setup-python.outputs.python-version }}
+        platforms: linux/amd64
+        build-args: |
+          PYTHON_VERSION=${{ steps.setup-python.outputs.python-version }}
+
   test:
     runs-on: ubuntu-latest
     needs: [ 'build-cache-env'  ]
@@ -153,6 +180,35 @@ jobs:
     - name: Install dependencies
       if: steps.setup-python.outputs.cache-hit != 'true'
       run: poetry install --no-interaction --no-root --no-ansi
+
+
+    # Build docker container needed for test
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    - name: Cache Template Testing Containers
+      uses: actions/cache@v3
+      with:
+        path: container-test-template-cache
+        key: ${{ runner.os }}-test-template-cache-${{ hashFiles('containers/test-template/**') }}-${{ steps.setup-python.outputs.python-version }}
+    - name: Inject container-test-template-cache into docker
+      uses: reproducible-containers/buildkit-cache-dance@v2.1.2
+      with:
+        cache-source: container-test-template-cache
+    - name: Build Docker container for cache
+      uses: docker/build-push-action@v5
+      with:
+        context: containers/test-template
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        push: false
+        load: true
+        tags: snakebids/test-template:${{ steps.setup-python.outputs.python-version }}
+        platforms: linux/amd64
+        build-args: |
+          PYTHON_VERSION=${{ steps.setup-python.outputs.python-version }}
+
     - name: Install library
       run: poetry install --no-interaction --no-ansi
 

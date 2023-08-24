@@ -64,6 +64,8 @@ scipy = [
     { version = ">=1.10.0,<=1.10.1", python = "<3.9" },
     { version = ">=1.10.0", python = ">=3.9" }
 ]
+copier = ">=8.2.0"
+jinja2-time = ">=0.2.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
@@ -80,10 +82,12 @@ pyparsing = "^3.0.9"
 # Version 1.1.312-1.1.315 have a false positive handling some nested function
 # calls
 pathvalidate = "^3.0.0"
-pyright = ">=1.1.324"
+# As of pyright==1.1.327 only 1.1.324 is bug free
+pyright = "==1.1.324"
 ruff = "^0.0.285"
 pytest-xdist = "^3.3.1"
 pytest-split = "^0.8.1"
+tomli = "^2.0.1"
 
 [tool.poetry.scripts]
 snakebids = "snakebids.admin:main"
@@ -94,14 +98,27 @@ build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poe.tasks]
 setup = "pre-commit install"
-quality = { shell = "isort snakebids && black snakebids && ruff snakebids && pyright" }
-fix = { shell = "ruff --fix snakebids && isort snakebids && black snakebids"}
+quality.shell = "isort snakebids && black snakebids && ruff snakebids && pyright snakebids"
+fix.shell = "ruff --fix snakebids && isort snakebids && black snakebids"
 test = """
 pytest --doctest-modules --ignore=docs \
     --ignore=snakebids/project_template --benchmark-disable
 """
 mkinit = "mkinit --recursive --nomods --black -i snakebids"
 benchmark = "pytest --benchmark-only --benchmark-autosave"
+
+[tool.poe.tasks._get_version]
+imports = ["platform"]
+expr = "platform.python_version()"
+
+[tool.poe.tasks.build-container]
+args = [{ name = "container_id", positional = true, required = true }]
+uses = { VERSION = "_get_version"}
+cmd = """
+    docker build 'containers/${container_id}' \
+        --tag 'snakebids/${container_id}:${VERSION}' \
+        --build-arg="PYTHON_VERSION=${VERSION}"
+"""
 
 [tool.isort]
 profile = "black"

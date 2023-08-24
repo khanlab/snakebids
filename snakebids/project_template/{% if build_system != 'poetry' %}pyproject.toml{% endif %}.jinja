@@ -1,0 +1,48 @@
+[project]
+name = {{ app_full_name | toml_string }}
+version = {{ app_version | toml_string }}
+description = {{ app_description | toml_string }}
+readme = "README.md"
+{% if license -%}
+license = {{ license | toml_string }}
+{%- endif %}
+{% if full_name or email -%}
+authors = [
+    { {{ '' }}
+        {%- if full_name -%}
+            name = {{ full_name | toml_string }}
+        {%- endif -%}
+        {%- if full_name and email -%}
+            ,{{ ' ' }}
+        {%- endif -%}
+        {%- if email -%}
+            email = {{ email | toml_string }}
+        {%- endif -%}
+    {{ ' ' }}}
+]
+{%- endif %}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+requires-python = ">=3.8,<3.12"
+dependencies = [
+    "snakemake >= {{ snakemake_version }}",
+    "snakebids >= {{ snakebids_version }}",
+]
+
+[project.scripts]
+{{ name_slug }} = "{{ name_slug }}.run:main"
+
+[build-system]
+{% if build_system == "flit" -%}
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+{%- elif build_system == "hatch" -%}
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+{%- else -%}
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+{%- endif %}

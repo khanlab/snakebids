@@ -1,10 +1,13 @@
 """Script to generate a Snakebids project."""
 
 import argparse
+import re
+import sys
 from pathlib import Path
 
+import copier
 import more_itertools as itx
-from cookiecutter.main import cookiecutter  # type: ignore
+from colorama import Fore, Style
 
 import snakebids
 from snakebids.app import SnakeBidsApp
@@ -12,14 +15,38 @@ from snakebids.cli import add_dynamic_args
 
 
 def create_app(args: argparse.Namespace) -> None:
-    cookiecutter(
-        str(Path(itx.first(snakebids.__path__)) / "project_template"),
-        output_dir=args.output_dir,
+    output = Path(args.output_dir).resolve()
+    if not output.parent.exists():
+        print(
+            f"{Fore.RED}{Style.BRIGHT}{output.parent}{Style.RESET_ALL}{Fore.RED} does "
+            f"not exist{Fore.RESET}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if not re.match(r"^[a-zA-Z_][a-zA-Z_0-9]*$", output.name):
+        print(
+            f"{Fore.RED}Output directory name {Style.BRIGHT}{output.name}"
+            f"{Style.RESET_ALL}{Fore.RED} is not a valid python module name",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    print(
+        f"Creating Snakebids app at {Fore.GREEN}{output}{Fore.RESET}", file=sys.stderr
     )
+    print(file=sys.stderr)
+    try:
+        copier.run_copy(
+            str(Path(itx.first(snakebids.__path__), "project_template")),
+            output,
+            data={"app_full_name": output.name},
+            unsafe=True,
+        )
+    except KeyboardInterrupt:
+        print(f"{Fore.RED}Aborted!{Fore.RESET}", file=sys.stderr)
+        sys.exit(1)
 
 
 def create_descriptor(args: argparse.Namespace) -> None:
-    # pylint: disable=unsubscriptable-object
     app = SnakeBidsApp(args.app_dir.resolve())
     add_dynamic_args(app.parser, app.config["parse_args"], app.config["pybids_inputs"])
     app.create_descriptor(args.out_path)
@@ -57,7 +84,7 @@ def gen_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    """Invoke Cookiecutter on the Snakebids project template."""
+    """Invoke snakebids cli."""
 
     parser = gen_parser()
     args = parser.parse_args()

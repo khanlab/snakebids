@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import functools as ft
 import itertools as it
+import subprocess as sp
 from datetime import timedelta
 from pathlib import Path
 from typing import (
@@ -30,6 +31,7 @@ from snakebids.utils.utils import BidsEntity, MultiSelectDict
 
 _T = TypeVar("_T")
 _T_contra = TypeVar("_T_contra", contravariant=True)
+_F = TypeVar("_F", bound="Callable[..., Any]")
 
 
 def get_zip_list(
@@ -261,7 +263,27 @@ def expand_zip_list(
             it.product(zip_cols, it.product(*new_values.values())),
         )
     )
-    return dict(zip(it.chain(zip_list.keys(), new_values.keys()), zip(*new_cols)))
+    z = zip(*new_cols)
+    return dict(zip(it.chain(zip_list.keys(), new_values.keys()), z))
+
+
+def needs_docker(container: str):
+    def inner(func: _F) -> _F:
+        try:
+            sp.run(["docker"], check=True)
+        except sp.CalledProcessError:
+            return pytest.mark.skip(reason="docker is not available on this machine")(
+                func
+            )
+        try:
+            sp.run(["docker", "image", "inspect", container], check=True)
+        except sp.CalledProcessError:
+            return pytest.mark.skip(reason=f"{container} is not built on this machine")(
+                func
+            )
+        return func
+
+    return inner
 
 
 def entity_to_wildcard(entities: str | Iterable[str], /):

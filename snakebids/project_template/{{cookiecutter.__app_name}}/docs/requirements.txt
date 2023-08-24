@@ -1,4 +1,0 @@
-docutils<0.18
-sphinx-argparse
-sphinx_rtd_theme
-snakebids=={{ cookiecutter._snakebids_version }}
