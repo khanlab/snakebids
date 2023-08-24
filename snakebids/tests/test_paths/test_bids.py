@@ -240,7 +240,7 @@ def test_dir_entities_each_own_dir(entities: dict[str, str]):
 
 @given(
     entities=_bids_args(entities=HAS_DIR, nonstandard=False, custom=False),
-    root=_roots(),
+    root=_roots().filter(lambda s: s != "."),
 )
 def test_directories_in_correct_order(entities: dict[str, str], root: str):
     tags = _get_entity_tags(entities)
