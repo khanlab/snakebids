@@ -328,6 +328,10 @@ class TestFilterBools:
         target = data.draw(sb_st.bids_value(entity.match))
         decoy = data.draw(sb_st.bids_value(entity.match))
         assume(target != decoy)
+        # See note in test_filter_works_when_false_in_list
+        if target.isdecimal() and decoy.isdecimal():
+            assume(int(target) != int(decoy))
+
         root = tempfile.mkdtemp(dir=tmpdir)
         dataset = BidsDataset.from_iterable(
             [
