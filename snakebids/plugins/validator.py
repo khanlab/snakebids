@@ -56,7 +56,7 @@ class BidsValidator:
             temp.flush()
             try:
                 subprocess.check_call(
-                    ["bids-validator", app.config["bids_dirs"], "-c", temp.name]
+                    ["bids-validator", app.config["bids_dir"], "-c", temp.name]
                 )
 
                 # If successfully bids-validation performed

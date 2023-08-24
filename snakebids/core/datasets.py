@@ -69,7 +69,7 @@ class BidsComponentRow(ImmutableList[str]):
         return f'{self.__class__.__name__}({list(self._data)}, entity="{self.entity}")'
 
     @property
-    def entities(self) -> tuple[str]:
+    def entities(self) -> tuple[str, ...]:
         """The unique values associated with the component"""
         return tuple(set(self._data))
 
