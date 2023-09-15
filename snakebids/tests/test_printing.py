@@ -1,6 +1,8 @@
 # ruff: noqa: PLR2004
 from __future__ import annotations
 
+from math import inf
+
 import pyparsing as pp
 from hypothesis import assume, given
 from hypothesis import strategies as st
@@ -91,15 +93,15 @@ class TestCorrectNumberOfLinesCreated:
 class TestIsValidPython:
     @given(zip_list=sb_st.zip_lists(restrict_patterns=True))
     def test_in_zip_list(self, zip_list: ZipList):
-        assert eval(format_zip_lists(zip_list)) == zip_list
+        assert eval(format_zip_lists(zip_list, inf)) == zip_list
 
     @given(component=sb_st.bids_components(restrict_patterns=True))
     def test_in_component(self, component: BidsComponent):
-        assert eval(component.pformat()) == component
+        assert eval(component.pformat(inf)) == component
 
     @given(dataset=sb_st.datasets())
     def test_in_dataset(self, dataset: BidsDataset):
-        assert eval(dataset.pformat()) == dataset
+        assert eval(dataset.pformat(inf)) == dataset
 
 
 # this could also be tested for components and datasets, however, in those objects the
