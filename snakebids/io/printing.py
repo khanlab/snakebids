@@ -12,7 +12,12 @@ from snakebids.types import ZipList
 
 
 def quote_wrap(val: str) -> str:
-    return json.dumps(val, ensure_ascii=False)
+    return (
+        json.dumps(val, ensure_ascii=False)
+        .replace("\x85", "\\x85")
+        .replace("\u2028", "\\u2028")
+        .replace("\u2029", "\\u2029")
+    )
 
 
 def format_zip_lists(
