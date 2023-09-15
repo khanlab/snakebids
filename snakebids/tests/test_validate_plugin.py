@@ -35,7 +35,7 @@ class TestBidsValidator:
         # Test successful validation
         mocker.patch("subprocess.check_call", return_value=0)
 
-        app.config["bids_dirs"] = "path/to/bids/dir"
+        app.config["bids_dir"] = "path/to/bids/dir"
         app.config["plugins.validator.skip"] = False
 
         validator = BidsValidator()
@@ -48,7 +48,7 @@ class TestBidsValidator:
         # Test fall back to Pybids validation
         mocker.patch("subprocess.check_call", side_effect=FileNotFoundError)
 
-        app.config["bids_dirs"] = "path/to/bids/dir"
+        app.config["bids_dir"] = "path/to/bids/dir"
         app.config["plugins.validator.skip"] = False
 
         validator = BidsValidator()
@@ -68,7 +68,7 @@ class TestBidsValidator:
             "subprocess.check_call", side_effect=subprocess.CalledProcessError(1, "")
         )
 
-        app.config["bids_dirs"] = "path/to/bids/dir"
+        app.config["bids_dir"] = "path/to/bids/dir"
         app.config["plugins.validator.skip"] = False
 
         # Check error raised
@@ -85,7 +85,7 @@ class TestBidsValidator:
             "subprocess.check_call", side_effect=subprocess.CalledProcessError(1, "")
         )
 
-        app.config["bids_dirs"] = "path/to/bids/dir"
+        app.config["bids_dir"] = "path/to/bids/dir"
         app.config["plugins.validator.skip"] = False
 
         # Check if error is skipped on invalid
