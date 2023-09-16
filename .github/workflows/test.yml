@@ -78,6 +78,7 @@ jobs:
     strategy:
       matrix:
         python-version: ['3.8', '3.9', '3.10', '3.11']
+        split: ['1', '2', '3', '4', '5']
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
@@ -121,8 +122,10 @@ jobs:
     - name: Test with pytest
       env:
         HYPOTHESIS_PROFILE: pr
-      run: |
-        poetry run pytest --doctest-modules --ignore=docs --ignore=snakebids/project_template --benchmark-disable
+      run: >
+        poetry run pytest -n auto --splits 5 --group ${{ matrix.split }}
+          --doctest-modules --ignore=docs
+          --ignore=snakebids/project_template --benchmark-disable
 
   deployment_on_base:
     runs-on: ubuntu-latest
