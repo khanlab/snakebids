@@ -9,6 +9,7 @@ import pytest
 from hypothesis import settings
 from pyfakefs.fake_filesystem import FakeFilesystem
 
+import snakebids.paths.resources as specs
 from snakebids import resources
 
 ## Hypothesis profiles
@@ -66,4 +67,5 @@ def bids_fs(fakefs: FakeFilesystem | None) -> FakeFilesystem | None:
         fakefs.add_real_file(f / "bids.json")
         fakefs.add_real_file(f / "derivatives.json")
         fakefs.add_real_file(Path(*resources.__path__) / "bids_tags.json")
+        fakefs.add_real_directory(Path(*specs.__path__))
     return fakefs
