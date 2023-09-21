@@ -20,47 +20,42 @@ jobs:
     steps:
       - name: Clone repo
         uses: actions/checkout@v3
-      - name: Setup Python
-        uses: actions/setup-python@v4
+
+      # install & configure poetry
+      - name: Cache Poetry Installation
+        id: cached-poetry
+        uses: actions/cache@v3
         with:
-          python-version: '3.11'
-      - uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-3.11
-          restore-keys: ${{ runner.os }}-pip-3.11
-      #----------------------------------------------
-      #  -----  install & configure poetry  -----
-      #----------------------------------------------
+          path: ~/.local
+          key: ${{ runner.os }}-poetry-${{ github.event.pull_request.id || github.event.after }}
       - name: Install Poetry
         uses: snok/install-poetry@v1
+        if: steps.cached-poetry.outputs.cache-hit != 'true'
         with:
           virtualenvs-create: true
           virtualenvs-in-project: true
-      #----------------------------------------------
-      #       load cached venv if cache exists
-      #----------------------------------------------
-      - name: Load cached venv
-        id: cached-poetry-dependencies
+
+      - name: Setup Python
+        id: setup-python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'poetry'
+      - name: Store Pip Cache
         uses: actions/cache@v3
         with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}-3.11
-      #----------------------------------------------
-      # install dependencies if cache does not exist
-      #----------------------------------------------
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ steps.setup-python.outputs.python-version }}
+          restore-keys: ${{ runner.os }}-pip-${{ steps.setup-python.outputs.python-version }}
+
+      # install dependencies
       - name: Install dependencies
-        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        if: steps.setup-python.outputs.cache-hit != 'true'
         run: poetry install --no-interaction --no-ansi --no-root
-      #----------------------------------------------
-      # install your root project, if required
-      #----------------------------------------------
       - name: Install library
         run: poetry install --no-interaction --no-ansi
 
-      #----------------------------------------------
-      #       run python style checks
-      #----------------------------------------------
+      # run python style checks
       - name: Poetry Lock Check
         run: poetry check --lock
       - name: isort
@@ -80,40 +75,39 @@ jobs:
         python-version: ['3.8', '3.9', '3.10', '3.11']
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
 
-    - uses: actions/cache@v3
+    # install & configure poetry
+    - name: Cache Poetry Installation
+      id: cached-poetry
+      uses: actions/cache@v3
       with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ matrix.python-version }}
-        restore-keys: |
-          ${{ runner.os }}-pip-${{ matrix.python-version }}
-          ${{ runner.os }}-pip-
-    #----------------------------------------------
-    #  -----  install & configure poetry  -----
-    #----------------------------------------------
+        path: ~/.local
+        key: ${{ runner.os }}-poetry-${{ github.event.pull_request.id || github.event.after }}
     - name: Install Poetry
+      if: steps.cached-poetry.outputs.cache-hit != 'true'
       uses: snok/install-poetry@v1
       with:
         virtualenvs-create: true
         virtualenvs-in-project: true
-    #----------------------------------------------
-    #       load cached venv if cache exists
-    #----------------------------------------------
-    - name: Load cached venv
-      id: cached-poetry-dependencies
+
+    - name: Set up Python ${{ matrix.python-version }}
+      id: setup-python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'poetry'
+    - name: Store pip cache
       uses: actions/cache@v3
       with:
-        path: .venv
-        key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}-${{ matrix.python-version }}
-    #----------------------------------------------
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ steps.setup-python.outputs.python-version }}
+        restore-keys: |
+          ${{ runner.os }}-pip-${{ steps.setup-python.outputs.python-version }}
+          ${{ runner.os }}-pip-
+
     # install dependencies if cache does not exist
-    #----------------------------------------------
     - name: Install dependencies
-      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+      if: steps.setup-python.outputs.cache-hit != 'true'
       run: poetry install --no-interaction --no-root --no-ansi
 
   test:
@@ -126,46 +120,42 @@ jobs:
       fail-fast: false
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
 
-    - uses: actions/cache@v3
+    # install & configure poetry
+    - name: Cache Poetry Installation
+      id: cached-poetry
+      uses: actions/cache@v3
       with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ matrix.python-version }}
-        restore-keys: |
-          ${{ runner.os }}-pip-${{ matrix.python-version }}
-          ${{ runner.os }}-pip-
-    #----------------------------------------------
-    #  -----  install & configure poetry  -----
-    #----------------------------------------------
+        path: ~/.local
+        key: ${{ runner.os }}-poetry-${{ github.event.pull_request.id || github.event.after }}
     - name: Install Poetry
       uses: snok/install-poetry@v1
+      if: steps.cached-poetry.outputs.cache-hit != 'true'
       with:
         virtualenvs-create: true
         virtualenvs-in-project: true
-    #----------------------------------------------
-    #       load cached venv if cache exists
-    #----------------------------------------------
-    - name: Load cached venv
-      id: cached-poetry-dependencies
-      uses: actions/cache@v3
+
+    - name: Set up Python ${{ matrix.python-version }}
+      id: setup-python
+      uses: actions/setup-python@v4
       with:
-        path: .venv
-        key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}-${{ matrix.python-version }}
-    #----------------------------------------------
-    # install dependencies if cache does not exist
-    #----------------------------------------------
+        python-version: ${{ matrix.python-version }}
+        cache: poetry
+    - uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ steps.setup-python.outputs.python-version }}
+        restore-keys: |
+          ${{ runner.os }}-pip-${{ steps.setup-python.outputs.python-version }}
+          ${{ runner.os }}-pip-
+
+    # install dependencies
     - name: Install dependencies
-      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+      if: steps.setup-python.outputs.cache-hit != 'true'
       run: poetry install --no-interaction --no-root --no-ansi
-    #----------------------------------------------
-    # install your root project, if required
-    #----------------------------------------------
     - name: Install library
       run: poetry install --no-interaction --no-ansi
+
     - name: Test with pytest
       env:
         HYPOTHESIS_PROFILE: pr
