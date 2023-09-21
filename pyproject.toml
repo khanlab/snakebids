@@ -32,21 +32,24 @@ patterns = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.8,<3.12"
-pybids = "^0.16.0"
+# upper cap imposed by scipy
+python = ">=3.8,<3.13"
+# core dep with high breakage potential given plans for redesign, so
+# keep upper limit
+pybids = ">=0.16.0,<0.17"
 snakemake = [
     { version = ">=5.28.0", python = ">=3.8" },
     { version = ">=7.18.2", python = ">=3.11" },
 ]
-PyYAML = "^6"
+PyYAML = ">=6"
 typing-extensions = ">=3.10.0"
-attrs = ">=21.2.0,<24"
+attrs = ">=21.2.0"
 boutiques = "^0.5.25"
-more-itertools = ">=8,<11"
-cached-property = "^1.5.2"
-pvandyken-deprecated = "0.0.3"
+more-itertools = ">=8"
+# package developed in complete tandem with snakebids, so no need for a range
+pvandyken-deprecated = "0.0.4"
 # Need this until py39
-importlib-resources = ">=5.12.0,<7"
+importlib-resources = ">=5.12.0"
 
 #  Below are non-direct dependencies (i.e. dependencies of other depenencies)
 #  specified to ensure a version with a pre-built wheel is installed depending
@@ -78,12 +81,9 @@ hypothesis = "^6.34.1"
 pytest-benchmark = "^4.0.0"
 pyfakefs = "^5.1.0"
 pyparsing = "^3.0.9"
-# Version 1.1.312-1.1.315 have a false positive handling some nested function
-# calls
 pathvalidate = "^3.0.0"
-# As of pyright==1.1.327 only 1.1.324 is bug free
 pyright = "==1.1.324"
-ruff = "^0.0.285"
+ruff = "^0.0.290"
 pytest-xdist = "^3.3.1"
 pytest-split = "^0.8.1"
 tomli = "^2.0.1"
