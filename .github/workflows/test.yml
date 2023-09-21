@@ -72,9 +72,53 @@ jobs:
       - name: ruff
         run: poetry run ruff snakebids
 
-  test:
+  build-cache-env:
     runs-on: ubuntu-latest
     needs: [ 'quality'  ]
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11']
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ matrix.python-version }}
+        restore-keys: |
+          ${{ runner.os }}-pip-${{ matrix.python-version }}
+          ${{ runner.os }}-pip-
+    #----------------------------------------------
+    #  -----  install & configure poetry  -----
+    #----------------------------------------------
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+    #----------------------------------------------
+    #       load cached venv if cache exists
+    #----------------------------------------------
+    - name: Load cached venv
+      id: cached-poetry-dependencies
+      uses: actions/cache@v3
+      with:
+        path: .venv
+        key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}-${{ matrix.python-version }}
+    #----------------------------------------------
+    # install dependencies if cache does not exist
+    #----------------------------------------------
+    - name: Install dependencies
+      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+      run: poetry install --no-interaction --no-root --no-ansi
+
+  test:
+    runs-on: ubuntu-latest
+    needs: [ 'build-cache-env'  ]
     strategy:
       matrix:
         python-version: ['3.8', '3.9', '3.10', '3.11']
@@ -91,7 +135,9 @@ jobs:
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ matrix.python-version }}
-        restore-keys: ${{ runner.os }}-pip-${{ matrix.python-version }}
+        restore-keys: |
+          ${{ runner.os }}-pip-${{ matrix.python-version }}
+          ${{ runner.os }}-pip-
     #----------------------------------------------
     #  -----  install & configure poetry  -----
     #----------------------------------------------
