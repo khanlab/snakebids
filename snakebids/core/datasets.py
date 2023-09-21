@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools as ft
 import itertools as it
 import textwrap
 import warnings
@@ -11,7 +12,6 @@ from typing import Any, Iterable, NoReturn, overload
 import attr
 import more_itertools as itx
 from bids import BIDSLayout
-from cached_property import cached_property
 from pvandyken.deprecated import deprecated
 from snakemake.io import expand as sn_expand
 from typing_extensions import Self, TypedDict
@@ -654,7 +654,7 @@ class BidsDataset(UserDictPy38[str, BidsComponent]):
         ]
         return "\n".join(output)
 
-    @cached_property
+    @ft.cached_property
     @deprecated(
         details="""
         The behaviour of path will change in an upcoming release, where it will refer
@@ -670,7 +670,7 @@ class BidsDataset(UserDictPy38[str, BidsComponent]):
         """
         return {key: value.path for key, value in self.items()}
 
-    @cached_property
+    @ft.cached_property
     @deprecated(
         details="""
         The behaviour of zip_lists will change in an upcoming release, where it will
@@ -687,7 +687,7 @@ class BidsDataset(UserDictPy38[str, BidsComponent]):
         """
         return {key: value.zip_lists for key, value in self.items()}
 
-    @cached_property
+    @ft.cached_property
     @deprecated(
         details="""
         The behaviour of entities will change in the 1.0 release, where it will refer
@@ -704,7 +704,7 @@ class BidsDataset(UserDictPy38[str, BidsComponent]):
         """
         return {key: value.entities for key, value in self.items()}
 
-    @cached_property
+    @ft.cached_property
     @deprecated(
         details="""
         The behaviour of wildcards will change in an upcoming release, where it will
@@ -721,7 +721,7 @@ class BidsDataset(UserDictPy38[str, BidsComponent]):
         """
         return {key: value.input_wildcards for key, value in self.items()}
 
-    @cached_property
+    @ft.cached_property
     def subjects(self) -> list[str]:
         """A list of the subjects in the dataset."""
         return [
@@ -732,7 +732,7 @@ class BidsDataset(UserDictPy38[str, BidsComponent]):
             }
         ]
 
-    @cached_property
+    @ft.cached_property
     def sessions(self) -> list[str]:
         """A list of the sessions in the dataset."""
         return [
@@ -743,7 +743,7 @@ class BidsDataset(UserDictPy38[str, BidsComponent]):
             }
         ]
 
-    @cached_property
+    @ft.cached_property
     def subj_wildcards(self) -> dict[str, str]:
         """The subject and session wildcards applicable to this dataset.
 
