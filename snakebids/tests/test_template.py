@@ -235,11 +235,17 @@ def test_template_dry_runs_successfully(tmp_path: Path, build: BuildSystems, ven
             "-v",
             f"{tmp_path / app_name}:/app",
             "--rm",
-            "snakebids/test-template:dev",
+            f"snakebids/test-template:{platform.python_version()}",
             venv,
             app_name,
         ],
         capture_output=True,
-        check=True,
+        check=False,
     )
+    try:
+        cmd.check_returncode()
+    except Exception as err:
+        print(cmd.stdout)
+        print(cmd.stderr, file=sys.stderr)
+        raise err
     assert "All set" in cmd.stdout.decode()

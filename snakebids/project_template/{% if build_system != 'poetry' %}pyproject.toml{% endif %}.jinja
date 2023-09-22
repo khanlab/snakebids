@@ -30,6 +30,10 @@ requires-python = ">=3.8,<3.12"
 dependencies = [
     "snakemake >= {{ snakemake_version }}",
     "snakebids >= {{ snakebids_version }}",
+    {# Explicitely specify numpy version for py38 until snakebids 0.10.x to
+       work around specification bug causing numpys too high for py38 to be
+       locked by pdm -#}
+    "numpy <=1.24.4; python_version < \"3.9\"",
 ]
 
 [project.scripts]

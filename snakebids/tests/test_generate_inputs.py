@@ -556,7 +556,7 @@ def path_entities(draw: st.DrawFn):
 
 class TestCustomPaths:
     @pytest.fixture()
-    def temp_dir(self, fakefs_tmpdir: Path):
+    def temp_dir(self, fakefs_tmpdir: Path, bids_fs: Path):
         return fakefs_tmpdir
 
     def generate_test_directory(
