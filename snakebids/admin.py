@@ -84,7 +84,7 @@ def gen_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    """Invoke snakebids cli."""
+    """Invoke Snakebids cli."""
 
     parser = gen_parser()
     args = parser.parse_args()

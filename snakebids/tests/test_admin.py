@@ -37,6 +37,7 @@ class TestAdminCli:
         name=st.text()
         .filter(lambda s: not re.match(r"^[a-zA-Z_][a-zA-Z_0-9]*$", s))
         .filter(lambda s: is_valid_filename(s, Platform.LINUX))
+        .filter(lambda s: s not in {".", ".."})
     )
     @allow_function_scoped
     def test_create_fails_with_invalid_filename(
@@ -55,7 +56,11 @@ class TestAdminCli:
         assert "valid python module" in capture.err
         assert name in capture.err
 
-    @given(name=st.text().filter(lambda s: is_valid_filename(s, Platform.LINUX)))
+    @given(
+        name=st.text()
+        .filter(lambda s: is_valid_filename(s, Platform.LINUX))
+        .filter(lambda s: s not in {".", ".."})
+    )
     @allow_function_scoped
     def test_create_fails_missing_parent_dir(
         self,

@@ -41,8 +41,7 @@ app_version:
 
 build_system:
   help: >
-    What build system would you like to use? If you don't know what this means,
-    choose setuptools
+    What build system would you like to use? If unsure, choose setuptools
   choices:
     - setuptools
     - poetry
