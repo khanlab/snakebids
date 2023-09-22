@@ -64,8 +64,12 @@ bids_version:
   default: "1.8.0"
   when: false
 
+python_version:
+  default: ">=3.8,<3.12"
+  when: false
+
 snakebids_version:
-  default: "0.9.2"
+  default: "{{ snakebids_version or '0.9.3' }}"
   when: false
 
 snakemake_version:
@@ -137,3 +141,4 @@ _jinja_extensions:
   - snakebids.jinja2_ext.vcs.GitConfigExtension
   - snakebids.jinja2_ext.colorama.ColoramaExtension
   - snakebids.jinja2_ext.toml_encode.TomlEncodeExtension
+  - snakebids.jinja2_ext.snakebids_version.SnakebidsVersionExtension

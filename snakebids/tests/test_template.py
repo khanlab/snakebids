@@ -6,15 +6,17 @@ import subprocess as sp
 import sys
 import tempfile
 from pathlib import Path
-from typing import Literal, TypedDict
+from typing import Any, Literal, TypedDict
 
 import copier
 import more_itertools as itx
 import pathvalidate
 import prompt_toolkit.validation
 import pytest
+import requests_mock
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
+from pytest_mock.plugin import MockerFixture
 from typing_extensions import Unpack
 
 if sys.version_info < (3, 11):
@@ -25,7 +27,7 @@ else:
 import snakebids
 from snakebids.tests.helpers import allow_function_scoped, needs_docker
 
-BuildSystems = Literal["poetry", "hatch", "flit", "setuptools"]
+BuildSystem = Literal["poetry", "hatch", "flit", "setuptools"]
 
 
 class DataFields(TypedDict):
@@ -34,13 +36,13 @@ class DataFields(TypedDict):
     app_full_name: str
     github: str
     app_description: str
-    build_system: BuildSystems
+    build_system: BuildSystem
     app_version: str
     create_doc_template: bool
     license: str
 
 
-def get_empty_data(app_name: str, build: BuildSystems) -> DataFields:
+def get_empty_data(app_name: str, build: BuildSystem) -> DataFields:
     data: DataFields = {
         "full_name": "",
         "email": "",
@@ -101,6 +103,59 @@ def test_invalid_email_raises_error(email: str, tmp_path: Path):
         )
 
 
+@pytest.mark.parametrize("build", ["poetry", "hatch", "flit", "setuptools"])
+@pytest.mark.parametrize(
+    ["server", "server_status", "metadata", "expected"],
+    [
+        # Server returns valid version
+        ("1.1.1", 200, "2.2.2", "1.1.1"),
+        # Server raises 400 error
+        ("1.1.1", 400, "2.2.2", "2.2.2"),
+        # server returns invalid and importlib.metadata gives valid
+        ("1.1.1.dev1", 200, "2.2.2", "2.2.2"),
+        # server invalid and importlib.metadata gives 0.0.0
+        ("1.1.1.dev1", 200, "0.0.0", "0.9.3"),
+        # server and importlib.metadata invalid
+        ("1.1.1.dev1", 200, "2.2.2.dev1", "0.9.3"),
+        # server gives non-string type
+        (True, 200, "2.2.2", "2.2.2"),
+    ],
+)
+def test_gets_correct_snakebids_version(
+    build: BuildSystem,
+    server: Any,
+    server_status: str,
+    metadata: str,
+    expected: str,
+    mocker: MockerFixture,
+    tmp_path: Path,
+):
+    tmpdir = Path(tempfile.mkdtemp(dir=tmp_path))
+    with requests_mock.Mocker() as m:
+        m.get(
+            "https://pypi.org/pypi/snakebids/json",
+            json={"info": {"version": server}},
+            status_code=server_status,
+        )
+        metadata_patch = mocker.patch("importlib.metadata.version")
+        metadata_patch.return_value = metadata
+        data = get_empty_data("testapp", build)
+        copier.run_copy(
+            str(Path(itx.first(snakebids.__path__), "project_template")),
+            tmpdir / data["app_full_name"],
+            data=data,
+            unsafe=True,
+        )
+    with open(tmpdir / data["app_full_name"] / "pyproject.toml", "rb") as f:
+        pyproject = tomllib.load(f)
+    if build == "poetry":
+        assert (
+            pyproject["tool"]["poetry"]["dependencies"]["snakebids"] == f">={expected}"
+        )
+    else:
+        assert f"snakebids >= {expected}" in pyproject["project"]["dependencies"]
+
+
 @given(
     name=st.text()
     .filter(lambda s: not re.match(r"^[a-zA-Z_][a-zA-Z_0-9]*$", s))
@@ -128,7 +183,7 @@ def test_invalid_app_name_raises_error(name: str, tmp_path: Path):
     ],
 )
 def test_correct_build_system_used(
-    tmp_path: Path, build: BuildSystems, build_backend: str
+    tmp_path: Path, build: BuildSystem, build_backend: str
 ):
     tmpdir = Path(tempfile.mkdtemp(dir=tmp_path))
     data = get_empty_data("testapp", build)
@@ -154,11 +209,9 @@ def test_correct_build_system_used(
     license=st.text(),
 )
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture], deadline=1000)
-@pytest.mark.parametrize(
-    ["build"], [("poetry",), ("hatch",), ("flit",), ("setuptools",)]
-)
+@pytest.mark.parametrize("build", ["poetry", "hatch", "flit", "setuptools"])
 def test_pyproject_correctly_formatted(
-    tmp_path: Path, build: BuildSystems, **kwargs: Unpack[DataFields]
+    tmp_path: Path, build: BuildSystem, **kwargs: Unpack[DataFields]
 ):
     tmpdir = Path(tempfile.mkdtemp(dir=tmp_path))
     kwargs["build_system"] = build
@@ -218,7 +271,7 @@ def test_pyproject_correctly_formatted(
         ("flit", "pdm"),
     ],
 )
-def test_template_dry_runs_successfully(tmp_path: Path, build: BuildSystems, venv: str):
+def test_template_dry_runs_successfully(tmp_path: Path, build: BuildSystem, venv: str):
     app_name = "snakebids_app"
     data = get_empty_data(app_name, build)
 
