@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import functools as ft
 import itertools as it
+import re
 import subprocess as sp
 from datetime import timedelta
 from pathlib import Path
@@ -21,7 +22,7 @@ from typing import (
 import more_itertools as itx
 import pytest
 from hypothesis import HealthCheck, example, settings
-from typing_extensions import ParamSpec, TypeAlias
+from typing_extensions import ParamSpec
 
 from snakebids import bids
 from snakebids.core.datasets import BidsDataset
@@ -31,7 +32,7 @@ from snakebids.utils.utils import BidsEntity, MultiSelectDict
 
 _T = TypeVar("_T")
 _T_contra = TypeVar("_T_contra", contravariant=True)
-_F = TypeVar("_F", bound="Callable[..., Any]")
+_P = ParamSpec("_P")
 
 
 def get_zip_list(
@@ -127,10 +128,6 @@ class BidsListCompare(UserDictPy38[str, Dict[str, List[str]]]):
         return True
 
 
-_P = ParamSpec("_P")
-_FuncT: TypeAlias = Callable[_P, _T]
-
-
 def debug(**overrides: Any):
     """Disable a hypothesis decorated test with specific parameter examples
 
@@ -139,7 +136,7 @@ def debug(**overrides: Any):
     when hypothesis is not being used)
     """
 
-    def inner(func: _FuncT[_P, _T]) -> _FuncT[_P, _T]:
+    def inner(func: Callable[_P, _T]) -> Callable[_P, _T]:
         if not hasattr(func, "hypothesis"):
             raise TypeError(f"{func} is not decorated with hypothesis.given")
 
@@ -268,22 +265,36 @@ def expand_zip_list(
 
 
 def needs_docker(container: str):
-    def inner(func: _F) -> _F:
-        try:
-            sp.run(["docker"], check=True)
-        except sp.CalledProcessError:
-            return pytest.mark.skip(reason="docker is not available on this machine")(
-                func
-            )
-        try:
-            sp.run(["docker", "image", "inspect", container], check=True)
-        except sp.CalledProcessError:
-            return pytest.mark.skip(reason=f"{container} is not built on this machine")(
-                func
-            )
-        return func
+    def decorator(func: Callable[_P, _T]) -> Callable[_P, _T]:
+        @pytest.mark.docker
+        @ft.wraps(func)
+        def wrapper(*args: _P.args, **kwargs: _P.kwargs):
+            try:
+                sp.run(["docker"], check=True)
+            except (sp.CalledProcessError, FileNotFoundError):
+                pytest.fail(
+                    "docker is not available on this machine. To skip docker tests, "
+                    "use '-m \"not docker\"'"
+                )
+            try:
+                sp.run(["docker", "image", "inspect", container], check=True)
+            except sp.CalledProcessError:
+                if not (match := re.match(r"snakebids/([\w\-])\:", container)):
+                    pytest.fail(
+                        f"Unrecognized docker image: {container}. Should be "
+                        "'snakebids/{container_id}:{version}"
+                    )
+                container_id = match[1]
+                pytest.fail(
+                    f"{container} is not built on this machine. To build container, "
+                    f"run `poetry run poe build-container {container_id}`. To skip "
+                    "docker tests, use '-m \"not docker\"'"
+                )
+            return func(*args, **kwargs)
 
-    return inner
+        return wrapper
+
+    return decorator
 
 
 def entity_to_wildcard(entities: str | Iterable[str], /):
@@ -296,7 +307,7 @@ def identity(obj: _T) -> _T:
 
 
 def example_if(condition: bool, *args: Any, **kwargs: Any):
-    def inner(func: _FuncT[_P, _T]) -> _FuncT[_P, _T]:
+    def inner(func: Callable[_P, _T]) -> Callable[_P, _T]:
         return example(*args, **kwargs)(func)
 
     if condition:
