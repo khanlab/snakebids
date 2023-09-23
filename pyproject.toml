@@ -113,12 +113,17 @@ expr = "platform.python_version()"
 
 [tool.poe.tasks.build-container]
 args = [{ name = "container_id", positional = true, required = true }]
-uses = { VERSION = "_get_version"}
+uses = { VERSION = "_get_version" }
 cmd = """
     docker build 'containers/${container_id}' \
         --tag 'snakebids/${container_id}:${VERSION}' \
         --build-arg="PYTHON_VERSION=${VERSION}"
 """
+
+[tool.pytest.ini_options]
+markers = [
+    "docker: marks tests as requiring docker (deselect with '-m \"not docker\"')",
+]
 
 [tool.isort]
 profile = "black"
