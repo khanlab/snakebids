@@ -6,7 +6,7 @@ import subprocess as sp
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any, Literal, TypedDict
+from typing import Any, Final, Literal, TypedDict
 
 import copier
 import more_itertools as itx
@@ -27,7 +27,8 @@ else:
 import snakebids
 from snakebids.tests.helpers import allow_function_scoped, needs_docker
 
-BuildSystem = Literal["poetry", "hatch", "flit", "setuptools"]
+BuildBackend = Literal["poetry", "hatch", "flit", "setuptools"]
+BUILD_BACKENDS: Final[list[BuildBackend]] = ["poetry", "hatch", "flit", "setuptools"]
 
 
 class DataFields(TypedDict):
@@ -36,13 +37,13 @@ class DataFields(TypedDict):
     app_full_name: str
     github: str
     app_description: str
-    build_system: BuildSystem
+    build_system: BuildBackend
     app_version: str
     create_doc_template: bool
     license: str
 
 
-def get_empty_data(app_name: str, build: BuildSystem) -> DataFields:
+def get_empty_data(app_name: str, build: BuildBackend) -> DataFields:
     data: DataFields = {
         "full_name": "",
         "email": "",
@@ -103,7 +104,7 @@ def test_invalid_email_raises_error(email: str, tmp_path: Path):
         )
 
 
-@pytest.mark.parametrize("build", ["poetry", "hatch", "flit", "setuptools"])
+@pytest.mark.parametrize("build", BUILD_BACKENDS)
 @pytest.mark.parametrize(
     ["server", "server_status", "metadata", "expected"],
     [
@@ -122,7 +123,7 @@ def test_invalid_email_raises_error(email: str, tmp_path: Path):
     ],
 )
 def test_gets_correct_snakebids_version(
-    build: BuildSystem,
+    build: BuildBackend,
     server: Any,
     server_status: str,
     metadata: str,
@@ -183,7 +184,7 @@ def test_invalid_app_name_raises_error(name: str, tmp_path: Path):
     ],
 )
 def test_correct_build_system_used(
-    tmp_path: Path, build: BuildSystem, build_backend: str
+    tmp_path: Path, build: BuildBackend, build_backend: str
 ):
     tmpdir = Path(tempfile.mkdtemp(dir=tmp_path))
     data = get_empty_data("testapp", build)
@@ -209,9 +210,9 @@ def test_correct_build_system_used(
     license=st.text(),
 )
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture], deadline=1000)
-@pytest.mark.parametrize("build", ["poetry", "hatch", "flit", "setuptools"])
+@pytest.mark.parametrize("build", BUILD_BACKENDS)
 def test_pyproject_correctly_formatted(
-    tmp_path: Path, build: BuildSystem, **kwargs: Unpack[DataFields]
+    tmp_path: Path, build: BuildBackend, **kwargs: Unpack[DataFields]
 ):
     tmpdir = Path(tempfile.mkdtemp(dir=tmp_path))
     kwargs["build_system"] = build
@@ -271,7 +272,7 @@ def test_pyproject_correctly_formatted(
         ("flit", "pdm"),
     ],
 )
-def test_template_dry_runs_successfully(tmp_path: Path, build: BuildSystem, venv: str):
+def test_template_dry_runs_successfully(tmp_path: Path, build: BuildBackend, venv: str):
     app_name = "snakebids_app"
     data = get_empty_data(app_name, build)
 
