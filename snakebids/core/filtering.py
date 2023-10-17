@@ -25,7 +25,7 @@ def filter_list(
 def filter_list(
     zip_list: ZipListLike,
     filters: Mapping[str, Iterable[str] | str],
-    return_indices_only: Literal[True] = ...,
+    return_indices_only: Literal[True],
     regex_search: bool = ...,
 ) -> list[int]:
     ...

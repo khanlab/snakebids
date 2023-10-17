@@ -1,6 +1,7 @@
 """Utilities for converting Snakemake apps to BIDS apps."""
 from __future__ import annotations
 
+import functools as ft
 import json
 import logging
 import os
@@ -15,7 +16,7 @@ import more_itertools as itx
 from bids import BIDSLayout, BIDSLayoutIndexer
 from bids.layout import BIDSFile, Query
 from snakemake.script import Snakemake
-from typing_extensions import TypeAlias
+from typing_extensions import Self, TypeAlias
 
 from snakebids.core.datasets import BidsComponent, BidsDataset, BidsDatasetDict
 from snakebids.core.filtering import filter_list
@@ -25,7 +26,7 @@ from snakebids.exceptions import (
     PybidsError,
     RunError,
 )
-from snakebids.types import InputsConfig, ZipList
+from snakebids.types import InputConfig, InputsConfig, ZipList
 from snakebids.utils.snakemake_io import glob_wildcards
 from snakebids.utils.utils import (
     DEPRECATION_FLAG,
@@ -35,6 +36,9 @@ from snakebids.utils.utils import (
 )
 
 _logger = logging.getLogger(__name__)
+
+FilterType: TypeAlias = "Mapping[str, str | bool | Sequence[str | bool]]"
+CompiledFilter: TypeAlias = "Mapping[str, str | Query | Sequence[str | Query]]"
 
 
 @overload
@@ -255,9 +259,8 @@ ses-{session}_run-{run}_T1w.nii.gz",
             ),
         })
     """
-    subject_filter, regex_search = _generate_filters(
-        participant_label, exclude_participant_label
-    )
+    postfilters = _Postfilter()
+    postfilters.add_filter("subject", participant_label, exclude_participant_label)
 
     pybidsdb_dir, pybidsdb_reset = _normalize_database_args(
         pybidsdb_dir, pybidsdb_reset, pybids_database_dir, pybids_reset_database
@@ -277,13 +280,11 @@ ses-{session}_run-{run}_T1w.nii.gz",
         else None
     )
 
-    filters = {"subject": subject_filter} if subject_filter else {}
     bids_inputs = _get_lists_from_bids(
         bids_layout=layout,
         pybids_inputs=pybids_inputs,
         limit_to=limit_to,
-        regex_search=regex_search,
-        **(filters),
+        postfilters=postfilters,
     )
 
     if use_bids_inputs is True:
@@ -465,65 +466,195 @@ def write_derivative_json(snakemake: Snakemake, **kwargs: dict[str, Any]) -> Non
         json.dump(sidecar, outfile, indent=4)
 
 
-def _generate_filters(
-    include: Iterable[str] | str | None = None,
-    exclude: Iterable[str] | str | None = None,
-) -> tuple[list[str], bool]:
-    """Generate Pybids filter based on inclusion or exclusion criteria.
+class _Postfilter:
+    """Filters to apply after indexing, typically derived from the CLI.
 
-    Converts either a list of values to include or exclude in a list of Pybids
-    compatible filters. Unlike inclusion values, exclusion requires regex filtering. The
-    necessity for regex will be indicated by the boolean value of the second returned
-    item: True if regex is needed, False otherwise. Raises an exception if both include
-    and exclude are stipulated
-
-    Parameters
-    ----------
-    include : list of str or str, optional
-        Values to include, values not found in this list will be excluded, by default
-        None
-    exclude : list of str or str, optional
-        Values to exclude, only values not found in this list will be included, by
-        default None
-
-    Returns
-    -------
-    list of str, bool
-        Two values: the first, a list of pybids compatible filters; the second, a
-        boolean indicating whether regex_search must be enabled in pybids
-
-    Raises
-    ------
-    ValueError Raised of both include and exclude values are stipulated.
+    Currently used for supporting ``--[exclude-]participant-label``
     """
-    if include is not None and exclude is not None:
-        msg = (
-            "Cannot define both participant_label and "
-            "exclude_participant_label at the same time"
-        )
-        raise ValueError(msg)
 
-    # add participant_label or exclude_participant_label to search terms (if
-    # defined)
-    # we make the item key in search_terms a list so we can have both
-    # include and exclude defined
-    if include is not None:
-        return [*itx.always_iterable(include)], False
+    def __init__(self):
+        self.inclusions: dict[str, Sequence[str] | str] = {}
+        self.exclusions: dict[str, Sequence[str] | str] = {}
 
-    if exclude is not None:
+    def add_filter(
+        self,
+        key: str,
+        inclusions: Iterable[str] | str | None,
+        exclusions: Iterable[str] | str | None,
+    ):
+        """Add entity filter based on inclusion or exclusion criteria.
+
+        Converts a list of values to include or exclude into Pybids compatible filters.
+        Exclusion filters are appropriately formatted as regex. Raises an exception if
+        both include and exclude are stipulated
+
+        _Postfilter is modified in-place
+
+        Parameters
+        ----------
+        key
+            Name of entity to be filtered
+        inclusions
+            Values to include, values not found in this list will be excluded, by
+            default None
+        exclusions
+            Values to exclude, only values not found in this list will be included, by
+            default None
+
+        Raises
+        ------
+        ValueError
+            Raised if both include and exclude values are stipulated.
+        """
+        if inclusions is not None and exclusions is not None:
+            msg = (
+                "Cannot define both participant_label and exclude_participant_label at "
+                "the same time"
+            )
+            raise ValueError(msg)
+        if inclusions is not None:
+            self.inclusions[key] = list(itx.always_iterable(inclusions))
+        if exclusions is not None:
+            self.exclusions[key] = self._format_exclusions(exclusions)
+
+    def _format_exclusions(self, exclusions: Iterable[str] | str):
         # if multiple items to exclude, combine with with item1|item2|...
         exclude_string = "|".join(
-            re.escape(label) for label in itx.always_iterable(exclude)
+            re.escape(label) for label in itx.always_iterable(exclusions)
         )
         # regex to exclude subjects
-        return [f"^((?!({exclude_string})$).*)$"], True
-    return [], False
+        return [f"^((?!({exclude_string})$).*)$"]
+
+
+def _compile_filters(filters: FilterType) -> CompiledFilter:
+    return {
+        key: [
+            Query.ANY if f is True else Query.NONE if f is False else f
+            for f in itx.always_iterable(filts)
+        ]
+        for key, filts in filters.items()
+    }
+
+
+@attrs.define(slots=False)
+class _UnifiedFilter:
+    """Manages component level and post filters."""
+
+    component: InputConfig
+    """The Component configuration defining the filters"""
+
+    postfilters: _Postfilter
+    """Filters to be applied after collecting and parsing the data
+
+    Currently only used to implement --[exclude-]participant-label, but in the future,
+    may implement other such CLI args. Unlike configuration-defined filters, these
+    filters apply after the dataset is indexed and queried. Thus, if a filter is set
+    to an empty list, a complete, albeit empty, component may be found. This is akin to
+    calling ``BidsComponent.filter`` after running ``generate_inputs``.
+
+    For performance purposes, non-empty post-filters are applied via ``pybids.get()``
+    """
+
+    @classmethod
+    def from_filter_dict(
+        cls,
+        filters: Mapping[str, str | bool | Sequence[str | bool]],
+        postfilter: _Postfilter | None = None,
+    ) -> Self:
+        """Patch together a UnifiedFilter based on a basic filter dict.
+
+        Intended primarily for use in testing
+        """
+        wildcards: list[str] = []
+        if postfilter is not None:
+            wildcards.extend(postfilter.inclusions)
+            wildcards.extend(postfilter.exclusions)
+        return cls(
+            {"filters": filters, "wildcards": wildcards}, postfilter or _Postfilter()
+        )
+
+    def _has_empty_list(self, items: Iterable[Any]):
+        """Check if any of the lists within iterable are empty."""
+        return any(itx.ilen(itx.always_iterable(item)) == 0 for item in items)
+
+    def _has_overlap(self, key: str):
+        """Check if filter key is a wildcard and not already a prefilter."""
+        return key not in self.prefilters and key in self.component.get("wildcards", [])
+
+    @ft.cached_property
+    def prefilters(self) -> FilterType:
+        """Filters defined in the component configuration and applied via pybids.
+
+        Unlike postfilters, a prefilter set to an empty list will result in no valid
+        paths found, resulting in a blank (missing) component.
+        """
+        filters = dict(self.component.get("filters", {}))
+        # Silently remove "regex_search". This value has been blocked by a bug for the
+        # since version 0.6, and even before, never fully worked properly (e.g. would
+        # break if combined with --exclude-participant-label)
+        if "regex_search" in filters:
+            del filters["regex_search"]
+        return filters
+
+    @ft.cached_property
+    def filters(self) -> CompiledFilter:
+        """The combination pre- and post- filters to be applied to pybids indexing.
+
+        Includes all pre-filters, and all inclusion post-filters. Empty post-filters
+        are replaced with Query.ANY. This allows valid paths to be found and processed
+        later. Post-filters are not applied when an equivalent prefilter is present
+        """
+        result = dict(_compile_filters(self.prefilters))
+        postfilters = self.postfilters.inclusions
+        for key in self.postfilters.inclusions:
+            if self._has_overlap(key):
+                # if empty list filter, ensure the entity filtered is present
+                result[key] = (
+                    postfilters[key]
+                    if itx.ilen(itx.always_iterable(postfilters[key]))
+                    else Query.ANY
+                )
+        return result
+
+    @property
+    def post_exclusions(self) -> dict[str, Sequence[str] | str]:
+        """Dictionary of all post-exclusion filters."""
+        return {
+            key: val
+            for key, val in self.postfilters.exclusions.items()
+            if self._has_overlap(key)
+        }
+
+    @property
+    def without_bools(self) -> Mapping[str, str | Sequence[str]]:
+        """Check and typeguard to ensure filters do not contain booleans."""
+        for key, val in self.filters.items():
+            if any(isinstance(v, Query) for v in itx.always_iterable(val)):
+                msg = (
+                    "Boolean filters in items with custom paths are not supported; in "
+                    f"component='{key}'"
+                )
+                raise ValueError(msg)
+        return cast("Mapping[str, str | Sequence[str]]", self.filters)
+
+    @property
+    def has_empty_prefilter(self) -> bool:
+        """Returns True if even one prefilter is empty."""
+        return self._has_empty_list(self.prefilters.values())
+
+    @property
+    def has_empty_postfilter(self) -> bool:
+        """Returns True if even one postfilter is empty."""
+        return self._has_empty_list(
+            filt
+            for name, filt in self.postfilters.inclusions.items()
+            if self._has_overlap(name)
+        )
 
 
 def _parse_custom_path(
     input_path: Path | str,
-    regex_search: bool = False,
-    **filters: Sequence[str | bool] | str | bool,
+    filters: _UnifiedFilter,
 ) -> ZipList:
     """Glob wildcards from a custom path and apply filters.
 
@@ -558,16 +689,15 @@ def _parse_custom_path(
         return wildcards
 
     # Return the output values, running filtering on the zip_lists
-    if any(
-        isinstance(v, bool) for f in filters.values() for v in itx.always_iterable(f)
-    ):
-        msg = "boolean filters are not currently supported in custom path filtering"
-        raise TypeError(msg)
-    return filter_list(
+    result = filter_list(
         wildcards,
-        cast("Mapping[str, str | Sequence[str]]", filters),
-        regex_search=regex_search,
+        filters.without_bools,
+        regex_search=False,
     )
+    if not filters.post_exclusions:
+        return result
+
+    return filter_list(result, filters.post_exclusions, regex_search=True)
 
 
 def _parse_bids_path(path: str, entities: Iterable[str]) -> tuple[str, dict[str, str]]:
@@ -630,46 +760,24 @@ def _parse_bids_path(path: str, entities: Iterable[str]) -> tuple[str, dict[str,
     return "".join(new_path), wildcard_values
 
 
-@attrs.define
-class _GetListsFromBidsSteps:
-    input_name: str
-
-    FilterType: TypeAlias = "Mapping[str, str | bool | Sequence[str | bool]]"
-
-    def _get_invalid_filters(self, filters: FilterType):
-        for key, filts in filters.items():
-            try:
-                if True in filts or False in filts:  # type: ignore
-                    yield key, filts
-            except TypeError:
-                pass
-
-    def prepare_bids_filters(
-        self, filters: Mapping[str, str | bool | Sequence[str | bool]]
-    ) -> dict[str, str | Query | list[str | Query]]:
-        return {
-            key: [
-                Query.ANY if f is True else Query.NONE if f is False else f
-                for f in itx.always_iterable(filts)
-            ]
-            for key, filts in filters.items()
-        }
-
-    def get_matching_files(
-        self,
-        bids_layout: BIDSLayout,
-        regex_search: bool,
-        filters: Mapping[str, str | Query | Sequence[str | Query]],
-    ) -> Iterable[BIDSFile]:
-        try:
-            return bids_layout.get(regex_search=regex_search, **filters)
-        except AttributeError as err:
-            msg = (
-                "Pybids has encountered a problem that Snakebids cannot handle. This "
-                "may indicate a missing or invalid dataset_description.json for this "
-                "dataset."
-            )
-            raise PybidsError(msg) from err
+def _get_matching_files(
+    bids_layout: BIDSLayout,
+    filters: _UnifiedFilter,
+) -> Iterable[BIDSFile]:
+    if filters.has_empty_prefilter:
+        return []
+    try:
+        return bids_layout.get(
+            regex_search=False,
+            **filters.filters,
+        )
+    except AttributeError as err:
+        msg = (
+            "Pybids has encountered a problem that Snakebids cannot handle. This "
+            "may indicate a missing or invalid dataset_description.json for this "
+            "dataset."
+        )
+        raise PybidsError(msg) from err
 
 
 def _get_lists_from_bids(
@@ -677,8 +785,7 @@ def _get_lists_from_bids(
     pybids_inputs: InputsConfig,
     *,
     limit_to: Iterable[str] | None = None,
-    regex_search: bool = False,
-    **filters: str | Sequence[str],
+    postfilters: _Postfilter,
 ) -> Generator[BidsComponent, None, None]:
     """Grabs files using pybids and creates snakemake-friendly lists.
 
@@ -704,9 +811,10 @@ def _get_lists_from_bids(
         One BidsComponent is yielded for each modality described by ``pybids_inputs``.
     """
     for input_name in limit_to or list(pybids_inputs):
-        steps = _GetListsFromBidsSteps(input_name)
         _logger.debug("Grabbing inputs for %s...", input_name)
         component = pybids_inputs[input_name]
+
+        filters = _UnifiedFilter(component, postfilters or {})
 
         if "custom_path" in component:
             # a custom path was specified for this input, skip pybids:
@@ -716,12 +824,7 @@ def _get_lists_from_bids(
             # to deal with multiple wildcards
 
             path = component["custom_path"]
-            zip_lists = _parse_custom_path(
-                path,
-                regex_search=regex_search,
-                **pybids_inputs[input_name].get("filters", {}),
-                **filters,
-            )
+            zip_lists = _parse_custom_path(path, filters=filters)
             yield BidsComponent(name=input_name, path=path, zip_lists=zip_lists)
             continue
 
@@ -734,10 +837,7 @@ def _get_lists_from_bids(
 
         zip_lists: dict[str, list[str]] = defaultdict(list)
         paths: set[str] = set()
-        pybids_filters = steps.prepare_bids_filters(component.get("filters", {}))
-        matching_files = steps.get_matching_files(
-            bids_layout, regex_search, {**pybids_filters, **filters}
-        )
+        matching_files = _get_matching_files(bids_layout, filters)
 
         for img in matching_files:
             wildcards: list[str] = [
@@ -805,7 +905,15 @@ def _get_lists_from_bids(
             )
             raise ConfigError(msg) from err
 
-        yield BidsComponent(name=input_name, path=path, zip_lists=zip_lists)
+        if filters.has_empty_postfilter:
+            yield BidsComponent(
+                name=input_name, path=path, zip_lists={key: [] for key in zip_lists}
+            )
+            continue
+
+        yield BidsComponent(name=input_name, path=path, zip_lists=zip_lists).filter(
+            regex_search=True, **filters.post_exclusions
+        )
 
 
 def get_wildcard_constraints(image_types: InputsConfig) -> dict[str, str]:

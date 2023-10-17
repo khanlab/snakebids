@@ -9,11 +9,11 @@ Config Variables
 
 ### `pybids_inputs`
 
-A dictionary that describes each type of input you want to grab from an input BIDS dataset. Snakebids will parse your dataset with {func}`generate_inputs() <snakebids.generate_inputs>`, converting each input type into a {class}`BidsComponent <snakebids.BidsComponent>`. The value of each item should be a dictionary with keys ``filters`` and ``wildcards``.
+A dictionary that describes each type of input you want to grab from an input BIDS dataset. Snakebids will parse your dataset with {func}`generate_inputs() <snakebids.generate_inputs>`, converting each input type into a {class}`BidsComponent <snakebids.BidsComponent>`. The value of each item should be a dictionary with keys `filters` and `wildcards`.
 
-The value of ``filters`` should be a dictionary where each key corresponds to a BIDS entity, and the value specifies which values of that entity should be grabbed. The dictionary for each input is sent to the [PyBIDS' get() function ](#bids.layout.BIDSLayout). `filters` can be set according to a few different formats:
+The value of `filters` should be a dictionary where each key corresponds to a BIDS entity, and the value specifies which values of that entity should be grabbed. The dictionary for each input is sent to the [PyBIDS' `get()` function ](#bids.layout.BIDSLayout). `filters` can be set according to a few different formats:
 
-* [string](#str): specifies an exact value for the entity. In the following example:
+* [`string`](#str): specifies an exact value for the entity. In the following example:
   ```yaml
   pybids_inputs:
     bold:
@@ -29,22 +29,20 @@ The value of ``filters`` should be a dictionary where each key corresponds to a 
   sub-xxx/.../func/ent1-xxx_ent2-xxx_..._bold.nii.gz
   ```
 
-* [boolean](#bool): constrains presence or absence of the entity without restricting its value. `False` requires that the entity be **absent**, while `True` requires that the  entity be **present**, regardless of value.
+* [`boolean`](#bool): constrains presence or absence of the entity without restricting its value. `False` requires that the entity be **absent**, while `True` requires that the  entity be **present**, regardless of value.
   ```yaml
   pybids_inputs:
     derivs:
       filters:
         datatype: 'func'
-        desc: True # or true, or yes
-        acquisition: False # or false, or no
+        desc: True
+        acquisition: False
   ```
   The above example maps all paths in the `func/` datatype folder that have a `_desc-` entity but do not have the `_acq-` entity.
 
-In addition, the special filter `regex_search` can be set to `true`, which causes all other filters in the component to use regex matching instead of exact matching.
+The value of `wildcards` should be a list of BIDS entities. Snakebids collects the values of any entities specified and saves them in the {attr}`entities <snakebids.BidsComponent.entities>` and {attr}`~snakebids.BidsComponent.zip_lists` entries of the corresponding {class}`BidsComponent <snakebids.BidsComponent>`. In other words, these are the entities to be preserved in output paths derived from the input being described. Placing an entity in `wildcards` does not require the entity be present. If an entity is not found, it will be left out of {attr}`entities <snakebids.BidsComponent.entities>`. To require the presence of an entity, place it under `filters` set to `true`.
 
-The value of ``wildcards`` should be a list of BIDS entities. Snakebids collects the values of any entities specified and saves them in the {attr}`entities <snakebids.BidsComponent.entities>` and {attr}`~snakebids.BidsComponent.zip_lists` entries of the corresponding {class}`BidsComponent <snakebids.BidsComponent>`. In other words, these are the entities to be preserved in output paths derived from the input being described. Placing an entity in `wildcards` does not require the entity be present. If an entity is not found, it will be left out of {attr}`entities <snakebids.BidsComponent.entities>`. To require the presence of an entity, place it under `filters` set to `true`.
-
-In the following (YAML-formatted) example, the ``bold`` input type is specified. BIDS files with the datatype ``func``, suffix ``bold``, and extension ``.nii.gz`` will be grabbed, and the ``subject``, ``session``, ``acquisition``, ``task``, and ``run`` entities of those files will be left as wildcards. The `task` entity must be present, but there must not be any `desc`.
+In the following (YAML-formatted) example, the `bold` input type is specified. BIDS files with the datatype `func`, suffix `bold`, and extension `.nii.gz` will be grabbed, and the `subject`, `session`, `acquisition`, `task`, and `run` entities of those files will be left as wildcards. The `task` entity must be present, but there must not be any `desc`.
 
 ```yaml
 pybids_inputs:

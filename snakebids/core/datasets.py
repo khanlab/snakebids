@@ -458,6 +458,8 @@ class BidsPartialComponent:
         if not isinstance(regex_search, bool):
             msg = "regex_search must be a boolean"
             raise TypeError(msg)
+        if not filters:
+            return self
         return attr.evolve(
             self,
             zip_lists=filter_list(self.zip_lists, filters, regex_search=regex_search),
