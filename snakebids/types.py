@@ -23,7 +23,7 @@ _S_co = TypeVar("_S_co", covariant=True)
 class InputConfig(TypedDict, total=False):
     """Configuration for a single bids component."""
 
-    filters: dict[str, str | bool | list[str | bool]]
+    filters: Mapping[str, str | bool | Sequence[str | bool]]
     """Filters to pass on to :class:`BIDSLayout.get() <bids.layout.BIDSLayout>`
 
     Each key refers to the name of an entity. Values may take the following forms:

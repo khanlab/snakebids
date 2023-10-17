@@ -209,7 +209,11 @@ def create_snakebids_config(dataset: BidsDataset) -> InputsConfig:
 
 
 def reindex_dataset(
-    root: str, dataset: BidsDataset, use_custom_paths: bool = False
+    root: str,
+    dataset: BidsDataset,
+    use_custom_paths: bool = False,
+    participant_label: str | Sequence[str] | None = None,
+    exclude_participant_label: str | Sequence[str] | None = None,
 ) -> BidsDataset:
     """Create BidsDataset on the filesystem and reindex
 
@@ -217,10 +221,20 @@ def reindex_dataset(
     """
     create_dataset(Path("/"), dataset)
     config = create_snakebids_config(dataset)
+    if participant_label is not None or exclude_participant_label is not None:
+        for comp in config.values():
+            if "subject" in comp.get("filters", {}):
+                del comp["filters"]["subject"]  # type: ignore
+
     if use_custom_paths:
         for comp in config:
             config[comp]["custom_path"] = dataset[comp].path
-    return generate_inputs(root, config)
+    return generate_inputs(
+        root,
+        config,
+        participant_label=participant_label,
+        exclude_participant_label=exclude_participant_label,
+    )
 
 
 def allow_function_scoped(func: _T, /) -> _T:
