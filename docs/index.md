@@ -7,67 +7,30 @@ Snakebids is migrating to a more robust, extensible API! If you're coming from p
 
 
 ```{toctree}
-:caption: General
-:name: general
+:caption: User Guide
+:name: guide
 :hidden:
-:maxdepth: 2
+:maxdepth: 1
 
 general/why_snakebids
-```
-
-```{toctree}
-:caption: Tutorial
-:name: tutorial
-:hidden:
-:maxdepth: 2
-
 tutorial/tutorial
-```
-
-```{toctree}
-:caption: Using the bids function
-:name: bids_function
-:hidden:
-:maxdepth: 2
-
 bids_function/overview
-```
-
-```{toctree}
-:caption: Creating a bids app
-:name: bids_app
-:hidden:
-:maxdepth: 2
 
 bids_app/overview
-bids_app/config
-bids_app/workflow
-bids_app/plugins
-```
-
-```{toctree}
-:caption: Running a snakebids app
-:name: running_snakebids
-:hidden:
-:maxdepth: 2
 
 running_snakebids/overview
+
+migration/index
 ```
 
-```{toctree}
-:caption: Migration
-:name: migration
-:hidden:
-:maxdepth: 2
 
-migration/0.5_to_0.8
-migration/0.7_to_0.8
-```
+
+
 
 ```{toctree}
 :caption: Reference
 :hidden:
-:maxdepth: 1
+:maxdepth: 2
 
 api/main
 api/internals

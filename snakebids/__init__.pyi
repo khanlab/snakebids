@@ -12,6 +12,7 @@ from .core import (
 )
 from .paths import (
     bids,
+    bids_v0_0_0,
 )
 
 __all__ = [
@@ -21,6 +22,7 @@ __all__ = [
     "BidsDatasetDict",
     "BidsPartialComponent",
     "bids",
+    "bids_v0_0_0",
     "filter_list",
     "generate_inputs",
     "get_filtered_ziplist_index",

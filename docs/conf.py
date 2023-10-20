@@ -36,6 +36,7 @@ extensions = [
     "sphinxarg.ext",
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
+    "sphinx.ext.autosummary",
     "sphinx.ext.autodoc",
     "sphinxcontrib.asciinema",
     "myst_parser",
@@ -69,7 +70,8 @@ autodoc_type_aliases = {
     "InputsConfig": "snakebids.types.InputsConfig",
 }
 autodoc_typehints_format = "short"
-autosummary_imported_members = True
+# autosummary_imported_members = True
+autosummary_generate = True
 
 
 # Add any paths that contain templates here, relative to this directory.
