@@ -8,6 +8,7 @@ from typing import (
     Dict,
     Generic,
     Iterable,
+    List,
     Mapping,
     Protocol,
     Sequence,
@@ -128,13 +129,13 @@ else:
 # import
 from snakebids.utils import utils  # noqa: E402
 
-InputsConfig: TypeAlias = "dict[str, InputConfig]"
+InputsConfig: TypeAlias = Dict[str, InputConfig]
 """Configuration for all bids components to be parsed in the app
 
 Should be defined in the config.yaml file, by convention in a key called 'pybids_inputs'
 """
 
-ZipList: TypeAlias = "utils.MultiSelectDict[str, list[str]]"
+ZipList: TypeAlias = utils.MultiSelectDict[str, List[str]]
 """Multiselectable dict mapping entity names to possible values.
 
 All lists must be the same length. Entries in each list with the same index correspond
