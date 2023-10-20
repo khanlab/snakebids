@@ -1,17 +1,9 @@
-from snakebids.jinja2_ext.colorama import (
-    ColoramaExtension,
-)
-from snakebids.jinja2_ext.snakebids_version import (
-    SnakebidsVersionExtension,
-)
-from snakebids.jinja2_ext.toml_encode import (
-    TomlEncodeExtension,
-    toml_string,
-)
-from snakebids.jinja2_ext.vcs import (
-    GitConfigExtension,
-    executable,
-)
+# type: ignore
+
+# <AUTOGEN_INIT>
+import lazy_loader
+
+__getattr__, __dir__, __all__ = lazy_loader.attach_stub(__name__, __file__)
 
 __all__ = [
     "ColoramaExtension",
@@ -21,3 +13,4 @@ __all__ = [
     "executable",
     "toml_string",
 ]
+# </AUTOGEN_INIT>

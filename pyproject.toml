@@ -70,13 +70,18 @@ jinja2-time = ">=0.2.0"
 # minimum 2.31.0 because of security vulnerability
 requests = ">=2.31.0"
 ruamel-yaml = ">=0.17.2"
+lazy-loader = ">=0.3"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.0.0"
 pytest-mock = "^3.7.0"
 poethepoet = "^0.24.0"
 pre-commit = "^3.0.0"
-mkinit = "^1.0.0"
+# need custom fork of mkinit to handle .pyi files. PR to main repo pending
+# a mkinit dep has the 'platform_system == "Windows"' as a marker on an incompatible dependeny
+#   (pydantic<2.0 cf copier), so set the inverse as a marker here so mkinit can
+#   still be resolved
+mkinit = { git = "https://github.com/pvandyken/mkinit.git", rev = "f9896e5", markers = "platform_system != 'Windows'" }
 hypothesis = "^6.34.1"
 pytest-benchmark = "^4.0.0"
 pyfakefs = "^5.1.0"
@@ -117,7 +122,11 @@ test = """
 pytest --doctest-modules --ignore=docs \
     --ignore=snakebids/project_template --benchmark-disable
 """
-mkinit.shell = "mkinit --recursive --nomods -i snakebids && ruff format snakebids && ruff check --fix --select I001 snakebids "
+mkinit.shell = """
+mkinit --recursive --nomods --lazy_loader_typed --relative -i  snakebids &&
+ruff format snakebids &&
+ruff check --fix --select I001 snakebids
+"""
 benchmark = "pytest --benchmark-only --benchmark-autosave"
 docs = "sphinx-autobuild docs build/docs --watch snakebids -W"
 
