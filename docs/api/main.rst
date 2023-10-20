@@ -1,63 +1,65 @@
 .. _main api:
 
+
 ================
 API
 ================
 
+.. py:currentmodule:: snakebids
 
-snakebids
----------
+.. toctree::
+    :hidden:
 
-.. autoclass:: snakebids.BidsComponent
-    :members:
-    :exclude-members: input_wildcards, input_lists, input_name, input_path, input_zip_lists
-    :inherited-members:
-
-.. dropdown:: Legacy ``BidsComponents`` properties
-    :icon: info
-    :class-title: sd-outline-info
-
-    The following properties are historical aliases of ``BidsComponents`` properties. There are no current plans to deprecate them, but new code should avoid them.
-
-    .. autoproperty:: snakebids.BidsComponent.input_zip_lists
-
-    .. autoproperty:: snakebids.BidsComponent.input_wildcards
-
-    .. autoproperty:: snakebids.BidsComponent.input_name
-
-    .. autoproperty:: snakebids.BidsComponent.input_path
-
-    .. autoproperty:: snakebids.BidsComponent.input_lists
+    paths
+    creation
+    manipulation
+    structures
 
 
-.. autoclass:: snakebids.BidsPartialComponent
+Path Creation
+-------------
 
-.. autoclass:: snakebids.BidsComponentRow
-    :members:
-    :exclude-members: zip_lists
+.. Need to manually create this table because bids does not have a proper docstring
 
-.. autoclass:: snakebids.BidsDataset
-    :members:
-    :exclude-members: input_wildcards, input_lists, input_path, input_zip_lists
+.. ===================================  ================================
+.. :func:`bids <bids>`                  Generate bids or bids-like paths
+.. :func:`bids_factory <bids_factory>`  Create new :func:`bids` functions according to a spec
+.. ===================================  ================================
 
-.. dropdown:: Legacy ``BidsDataset`` properties
-    :icon: info
-    :class-title: sd-outline-info
+.. autosummary::
+    :nosignatures:
 
-    The following properties are historical aliases of :class:`~snakebids.BidsDataset` properties. There are no current plans to deprecate them, but new code should avoid them.
+    bids
+    bids_factory
 
-    .. autoproperty:: snakebids.BidsDataset.input_zip_lists
+Dataset Creation
+----------------
 
-    .. autoproperty:: snakebids.BidsDataset.input_wildcards
+.. autosummary::
 
-    .. autoproperty:: snakebids.BidsDataset.input_path
+    generate_inputs
 
-    .. autoproperty:: snakebids.BidsDataset.input_lists
+Dataset Manipulation
+--------------------
 
+.. autosummary::
+    :nosignatures:
 
-.. automodule:: snakebids
-    :exclude-members: from_bids_lists, BidsComponent, BidsPartialComponent, BidsComponentRow, BidsDataset
-    :members:
+    filter_list
+    get_filtered_ziplist_index
+
+Data Structures
+---------------
+
+.. autosummary::
+    :nosignatures:
+
+    BidsComponent
+    BidsPartialComponent
+    BidsComponentRow
+    BidsDataset
+    BidsDatasetDict
+
 
 
 app

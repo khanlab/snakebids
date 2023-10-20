@@ -94,6 +94,7 @@ pytest-split = "^0.8.1"
 tomli = "^2.0.1"
 requests-mock = "^1.11.0"
 pytest-cov = "^4.1.0"
+docstring-parser = "^0.15"
 
 
 [tool.poetry.group.docs.dependencies]
@@ -129,6 +130,7 @@ ruff check --fix --select I001 snakebids
 """
 benchmark = "pytest --benchmark-only --benchmark-autosave"
 docs = "sphinx-autobuild docs build/docs --watch snakebids -W"
+update_bids.script = "scripts.update_bids:main"
 
 [tool.poe.tasks._get_version]
 imports = ["platform"]

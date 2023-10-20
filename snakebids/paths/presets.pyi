@@ -16,8 +16,7 @@ def bids_v0_0_0(
 ) -> str:
     """Generate bids or bids-like paths
 
-    File path is compiled based on the 'v0_0_0' spec, with the
-    general form::
+    Path is compiled based on the 'v0.0.0' spec, with the general form::
 
         [root]/[sub-{subject}]/[ses-{session}]/
         [prefix]_[sub-{subject}]_[ses-{session}]_[{key}-{val}_ ... ]_[suffix]
@@ -43,7 +42,6 @@ def bids_v0_0_0(
     entities
         bids entities as keyword arguments paired with values (e.g. ``space="T1w"``
         for ``space-T1w``)
-
     """
     ...
 
@@ -58,8 +56,8 @@ def bids(
 ) -> str:
     """Generate bids or bids-like paths
 
-    File path is compiled based on the 'latest' spec, with the
-    general form::
+    Path is compiled based on the 'latest' spec (currently pointing to 'v0_0_0'), with
+    the general form::
 
         [root]/[sub-{subject}]/[ses-{session}]/
         [prefix]_[sub-{subject}]_[ses-{session}]_[{key}-{val}_ ... ]_[suffix]
@@ -85,6 +83,5 @@ def bids(
     entities
         bids entities as keyword arguments paired with values (e.g. ``space="T1w"``
         for ``space-T1w``)
-
     """
     ...

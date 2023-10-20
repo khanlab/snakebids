@@ -1,69 +1,53 @@
 from __future__ import annotations
 
-from typing import List
+from typing import TYPE_CHECKING
 
-import importlib_resources as impr
-import more_itertools as itx
-from typing_extensions import NotRequired, TypeAlias, TypedDict
+from snakebids.paths._templates import spec_func
+from snakebids.paths.utils import BidsPathSpec, find_entity, get_spec_path, load_spec
 
-from snakebids.io.yaml import get_yaml_io
-from snakebids.paths import resources
+# <AUTOUPDATE>
+# The code between these tags is automatically generated. Do not
+# manually edit
+# To update, run::
+#
+#       poetry run poe update_bids
+#
 
+if not TYPE_CHECKING:
+    __all__ = ["v0_0_0", "latest", "LATEST"]  # noqa:F822
 
-class BidsPathEntitySpec(TypedDict):
-    """Interface for BIDS path specification."""
-
-    entity: str
-    """Entity full name"""
-
-    tag: NotRequired[str]
-    """Short entity name, as appears in the path"""
-
-    dir: NotRequired[bool]
-    """If true, a directory with the entity-value pair is created"""
+    def __dir__():
+        return __all__
 
 
-def _find_entity(spec: BidsPathSpec, entity: str):
-    return itx.one(item for item in spec if item["entity"] == entity)
+_SPECS = ["v0_0_0"]
+LATEST = "v0_0_0"
+# </AUTOUPDATE>
 
 
-BidsPathSpec: TypeAlias = List[BidsPathEntitySpec]
-"""List of :class:`BidsPathEntitySpec`, defining the order of entities in a bids path"""
+def __getattr__(name: str):
+    """Allow dynamic retrieval of latest spec."""
+    if name == "latest":
+        name = LATEST
 
+    if name not in _SPECS:
+        msg = f"module '{__name__}' has no attribute '{name}'"
+        raise AttributeError(msg)
 
-def v0_0_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
-    r"""Get the v0.0.0 BidsPathSpec.
+    spec_config = load_spec(get_spec_path(name))
 
-    This spec alone equips :func:`~snakebids.bids` with 2 extra arguments:
-    ``include_subject_dir`` and ``include_session_dir``. These default to ``True``, but
-    if set ``False``, remove the subject and session dirs respectively from the output
-    path. For future specs, this behaviour should be achieved by modifying the spec and
-    generating a new :func:`~snakebids.bids` function
+    spec = spec_config["spec"]
 
-    Formatted as::
+    def get_spec(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
+        if not subject_dir:
+            find_entity(spec, "subject")["dir"] = False
 
-        sub-{sub}/ses-{ses}/{datatype}/\
-            sub-{sub}_ses-{ses}_task-{task}_acq-{acq}_\
-            ce-{ce}_rec-{rec}_dir-{dir}_run-{run}_mod-{mod}_\
-            echo-{echo}_hemi-{hemi}_space-{space}_res-{res}_\
-            den-{den}_label-{label}_desc-{desc}_..._{suffix}{.ext}
+        if not session_dir:
+            find_entity(spec, "session")["dir"] = False
 
-    Parameters
-    ----------
-    subject_dir
-        If False, downstream path generator will not include the subject dir
-        `sub-{subject}/*`
-    session_dir : bool, optional
-        If False, downstream path generator will not include the session dir
-        `*/ses-{session}/*`
-    """
-    spec = get_yaml_io().load(
-        impr.files(resources).joinpath("spec.0.0.0.yaml").read_text()
-    )
-    if not subject_dir:
-        _find_entity(spec, "subject")["dir"] = False
+        return spec
 
-    if not session_dir:
-        _find_entity(spec, "session")["dir"] = False
+    get_spec.__doc__ = spec_func.format_doc(spec_config)
+    get_spec.__name__ = name
 
-    return spec
+    return get_spec

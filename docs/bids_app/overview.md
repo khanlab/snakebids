@@ -1,4 +1,12 @@
-# Overview
+# Bids Apps
+
+```{toctree}
+:hidden:
+
+config
+workflow
+plugins
+```
 
 Snakebids apps rely on a configuration file (`snakebids.yml`). This file specifies which files from a BIDS dataset should be used as input. The apps also utilize workflow definitions, which are written in one or more Snakefile(s) and determine how the input files are processed.
 

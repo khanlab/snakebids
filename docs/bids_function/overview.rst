@@ -1,5 +1,5 @@
-Overview
-========
+Bids Function
+=============
 
 The ``bids`` function generates a BIDS-like filepath corresponding to its keyword arguments. The generated filepath has the form::
 
