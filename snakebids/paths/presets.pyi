@@ -27,7 +27,6 @@ def bids_v0_0_0(
 
     Parameters
     ----------
-
     root
         Root folder to include in the path (e.g. ``results``)
     datatype
@@ -70,7 +69,6 @@ def bids(
 
     Parameters
     ----------
-
     root
         Root folder to include in the path (e.g. ``results``)
     datatype

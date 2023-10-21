@@ -1,21 +1,12 @@
 from __future__ import annotations
 
-from collections.abc import Hashable
 from enum import Enum
 from pathlib import Path
-from typing import (
-    TYPE_CHECKING,
-    Dict,
-    Generic,
-    Iterable,
-    List,
-    Mapping,
-    Protocol,
-    Sequence,
-    overload,
-)
+from typing import Dict, Generic, Iterable, List, Mapping, Protocol, Sequence, overload
 
 from typing_extensions import Self, TypeAlias, TypedDict, TypeVar
+
+from snakebids.utils.containers import MultiSelectDict
 
 _T_contra = TypeVar("_T_contra", contravariant=True)
 _S_co = TypeVar("_S_co", covariant=True)
@@ -110,32 +101,13 @@ class MultiSelectable(Protocol, Generic[_K_contra, _V_co, _Valt_co]):
         ...
 
 
-# Hack to make dicts subscriptable in python 3.8. Can remove when we drop support
-# for that version
-_K = TypeVar("_K", bound=Hashable)
-_V = TypeVar("_V")
-if TYPE_CHECKING:
-
-    class UserDictPy38(Dict[_K, _V]):
-        """Wrapper around dict, used for subclassing with static typing."""
-
-else:
-
-    class UserDictPy38(dict, Generic[_K, _V]):
-        """Wrapper around dict, used for subclassing with static typing."""
-
-
-# for py38, we need to import this AFTER we initialize UserDictPy38 to avoid a circular
-# import
-from snakebids.utils import utils  # noqa: E402
-
 InputsConfig: TypeAlias = Dict[str, InputConfig]
 """Configuration for all bids components to be parsed in the app
 
 Should be defined in the config.yaml file, by convention in a key called 'pybids_inputs'
 """
 
-ZipList: TypeAlias = utils.MultiSelectDict[str, List[str]]
+ZipList: TypeAlias = MultiSelectDict[str, List[str]]
 """Multiselectable dict mapping entity names to possible values.
 
 All lists must be the same length. Entries in each list with the same index correspond

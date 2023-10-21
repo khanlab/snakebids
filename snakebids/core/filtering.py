@@ -6,7 +6,7 @@ from typing import Iterable, List, Literal, TypeVar, Union, overload
 import more_itertools as itx
 
 from snakebids.types import ZipList, ZipListLike
-from snakebids.utils.utils import ContainerBag, MultiSelectDict, RegexContainer
+from snakebids.utils.containers import ContainerBag, MultiSelectDict, RegexContainer
 
 T_co = TypeVar("T_co", bound=Union[List[str], str], covariant=True)
 
