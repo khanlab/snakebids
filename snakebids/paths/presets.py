@@ -16,7 +16,10 @@ from snakebids.paths.specs import latest
 #
 
 if not TYPE_CHECKING:
-    __all__ = ["bids_v0_0_0", "bids"]  # noqa:F822
+    __all__ = [  # noqa:F822
+        "bids_v0_0_0",
+        "bids",
+    ]
 
     def __dir__():
         return __all__

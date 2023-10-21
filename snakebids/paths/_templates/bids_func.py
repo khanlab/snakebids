@@ -16,7 +16,7 @@ def bids{spec}(
     """
     ...
 '''
-DOCSTRING = """Generate bids or bids-like paths
+DOCSTRING = """Generate bids or bids-like paths.
 
 Path is compiled based on the '{spec_label}' spec{spec_clarify}, with the
 general form::

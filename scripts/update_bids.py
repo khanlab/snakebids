@@ -1,4 +1,4 @@
-"""Recompile the bids function stub file based on latest specs"""
+"""Recompile the bids function stub file based on latest specs."""
 from __future__ import annotations
 
 import inspect
@@ -8,14 +8,23 @@ from pathlib import Path
 from types import ModuleType
 from typing import Iterable
 
-import black
-
 from snakebids.paths import presets, specs
 from snakebids.paths._templates import bids_func, spec_func
 from snakebids.paths.utils import BidsPathSpecFile, get_specs
 
 
 def generate_stub(mod: ModuleType, imports: list[str], funcs: Iterable[str]):
+    """Write stub file to provided module.
+
+    Parameters
+    ----------
+    mod
+        module for which stub file should be written
+    imports
+        list of imports and other statemets to appear at the beginning of the file
+    funcs
+        list of function declarations
+    """
     prelude = [
         "# This stub file is automatically generated",
         "# It can be updated using::",
@@ -23,20 +32,12 @@ def generate_stub(mod: ModuleType, imports: list[str], funcs: Iterable[str]):
         "#      poetry run poe update_bids",
         "",
     ]
-    assert mod.__file__
-    # pyi = "\n".join(it.chain(prelude, imports, funcs))
-    # print(pyi)
-    # print(black.format_str(
-    #     pyi,
-    #     mode=black.Mode(is_pyi=True),
-    # ))
-    with Path(mod.__file__).with_suffix(".pyi").open("w") as f_:
-        f_.write(
-            black.format_str(
-                "\n".join(it.chain(prelude, imports, funcs)),
-                mode=black.Mode(is_pyi=True),
-            )
-        )
+    if mod.__file__ is None:
+        msg = f"{mod} has no associated file"
+        raise FileNotFoundError(msg)
+    Path(mod.__file__).with_suffix(".pyi").write_text(
+        "\n".join(it.chain(prelude, imports, funcs))
+    )
 
 
 SOURCE_TEMPLATE = """
@@ -64,6 +65,17 @@ if not TYPE_CHECKING:
 def update_source(
     mod: ModuleType, all_items: Iterable[str], statements: list[str] | None = None
 ):
+    """Update python source file with __all__ declaration and provided statements.
+
+    Parameters
+    ----------
+    mod
+        Module to update
+    all_items
+        Items to include in __all__ declaration
+    statements
+        Statements to include after __all__ declaration block
+    """
     source = inspect.getsource(mod)
     all_formatted = ",".join(f'"{item}"' for item in all_items)
     compiled = re.compile(
@@ -72,20 +84,25 @@ def update_source(
     if not compiled.search(source):
         err = f"Could not find an existing <AUTOUPDATE> block in " f"{mod.__name__}"
         raise ValueError(err)
-    replaced = black.format_str(
-        compiled.sub(
-            SOURCE_TEMPLATE.strip().format(
-                all=all_formatted, statements="\n".join(statements or [])
-            ),
-            source,
+    replaced = compiled.sub(
+        SOURCE_TEMPLATE.strip().format(
+            all=all_formatted, statements="\n".join(statements or [])
         ),
-        mode=black.Mode(),
+        source,
     )
-    with open(inspect.getfile(mod), "w") as f_:
-        f_.write(replaced)
+    Path(inspect.getfile(mod)).write_text(replaced)
 
 
 def presets_stub(versions: Iterable[str], latest: str):
+    """Generate bids function stub declarations.
+
+    Parameters
+    ----------
+    versions
+        Versions for which to generate declarations
+    latest
+        Version to which the `latest` stub should point
+    """
     for member in versions:
         yield bids_func.format_pyi(
             spec=f"_{member.replace('.', '_')}", spec_label=member
@@ -99,6 +116,15 @@ def presets_stub(versions: Iterable[str], latest: str):
 
 
 def spec_stub(versions: Iterable[BidsPathSpecFile], latest: BidsPathSpecFile):
+    """Generate spec function stub declarations.
+
+    Parameters
+    ----------
+    versions
+        Versions for which to generate declarations
+    latest
+        Version to which the `latest` stub should point
+    """
     for version in versions:
         yield spec_func.format_pyi(version)
 
@@ -106,6 +132,7 @@ def spec_stub(versions: Iterable[BidsPathSpecFile], latest: BidsPathSpecFile):
 
 
 def get_latest(versions: Iterable[BidsPathSpecFile]) -> tuple[str, BidsPathSpecFile]:
+    """Get the latest version according to semver order."""
     all_versions: dict[str, BidsPathSpecFile] = {}
 
     for version in versions:
@@ -119,6 +146,7 @@ def get_latest(versions: Iterable[BidsPathSpecFile]) -> tuple[str, BidsPathSpecF
 
 
 def main():
+    """update_bids entrypoint."""
     all_specs = list(get_specs())
     latest_version, latest_spec = get_latest(all_specs)
     generate_stub(
