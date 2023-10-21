@@ -52,11 +52,11 @@ from snakebids.tests.helpers import (
     reindex_dataset,
 )
 from snakebids.types import InputsConfig
+from snakebids.utils.containers import MultiSelectDict
 from snakebids.utils.utils import (
     DEPRECATION_FLAG,
     BidsEntity,
     BidsParseError,
-    MultiSelectDict,
 )
 
 T = TypeVar("T")

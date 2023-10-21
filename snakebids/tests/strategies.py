@@ -19,7 +19,8 @@ from snakebids.core.datasets import (
 )
 from snakebids.tests import helpers
 from snakebids.types import Expandable, InputConfig, InputsConfig, ZipList
-from snakebids.utils.utils import BidsEntity, ContainerBag, MultiSelectDict
+from snakebids.utils.containers import ContainerBag, MultiSelectDict
+from snakebids.utils.utils import BidsEntity
 
 _Ex_co = TypeVar("_Ex_co", bound=str, covariant=True)
 _T = TypeVar("_T")

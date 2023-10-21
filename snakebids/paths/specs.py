@@ -32,7 +32,7 @@ BidsPathSpec: TypeAlias = List[BidsPathEntitySpec]
 
 
 def v0_0_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
-    """Get the v0.0.0 BidsPathSpec.
+    r"""Get the v0.0.0 BidsPathSpec.
 
     This spec alone equips :func:`~snakebids.bids` with 2 extra arguments:
     ``include_subject_dir`` and ``include_session_dir``. These default to ``True``, but
@@ -42,10 +42,10 @@ def v0_0_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
 
     Formatted as::
 
-        sub-{sub}/ses-{ses}/{datatype}/\\
-            sub-{sub}_ses-{ses}_task-{task}_acq-{acq}_\\
-            ce-{ce}_rec-{rec}_dir-{dir}_run-{run}_mod-{mod}_\\
-            echo-{echo}_hemi-{hemi}_space-{space}_res-{res}_\\
+        sub-{sub}/ses-{ses}/{datatype}/\
+            sub-{sub}_ses-{ses}_task-{task}_acq-{acq}_\
+            ce-{ce}_rec-{rec}_dir-{dir}_run-{run}_mod-{mod}_\
+            echo-{echo}_hemi-{hemi}_space-{space}_res-{res}_\
             den-{den}_label-{label}_desc-{desc}_..._{suffix}{.ext}
 
     Parameters

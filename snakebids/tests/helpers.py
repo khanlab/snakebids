@@ -27,8 +27,9 @@ from typing_extensions import ParamSpec
 from snakebids import bids
 from snakebids.core.datasets import BidsDataset
 from snakebids.core.input_generation import generate_inputs
-from snakebids.types import InputsConfig, UserDictPy38, ZipList, ZipListLike
-from snakebids.utils.utils import BidsEntity, MultiSelectDict
+from snakebids.types import InputsConfig, ZipList, ZipListLike
+from snakebids.utils.containers import MultiSelectDict, UserDictPy38
+from snakebids.utils.utils import BidsEntity
 
 _T = TypeVar("_T")
 _T_contra = TypeVar("_T_contra", contravariant=True)
@@ -315,11 +316,6 @@ def needs_docker(container: str):
         return wrapper
 
     return decorator
-
-
-def entity_to_wildcard(entities: str | Iterable[str], /):
-    """Turn entity strings into wildcard dicts as {"entity": "{entity}"}"""
-    return {entity: f"{{{entity}}}" for entity in itx.always_iterable(entities)}
 
 
 def identity(obj: _T) -> _T:
