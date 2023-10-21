@@ -14,7 +14,11 @@ from snakebids.paths.utils import BidsPathSpec, find_entity, get_spec_path, load
 #
 
 if not TYPE_CHECKING:
-    __all__ = ["v0_0_0", "latest", "LATEST"]  # noqa:F822
+    __all__ = [  # noqa:F822
+        "v0_0_0",
+        "latest",
+        "LATEST",
+    ]
 
     def __dir__():
         return __all__

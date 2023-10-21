@@ -8,7 +8,7 @@ from .utils import BidsPathSpec
 LATEST: str
 
 def v0_0_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
-    """The legacy spec used since the beginning of snakebids.
+    """Get the v0.0.0 BidsPathSpec.
 
     This spec alone equips :func:`~snakebids.bids` with 2 extra arguments:
     ``include_subject_dir`` and ``include_session_dir``. These default to ``True``, but
@@ -36,7 +36,7 @@ def v0_0_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
     ...
 
 def latest(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
-    """The legacy spec used since the beginning of snakebids.
+    """Get the v0.0.0 BidsPathSpec.
 
     This spec alone equips :func:`~snakebids.bids` with 2 extra arguments:
     ``include_subject_dir`` and ``include_session_dir``. These default to ``True``, but

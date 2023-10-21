@@ -117,20 +117,33 @@ build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poe.tasks]
 setup = "pre-commit install"
-quality.shell = "ruff format --check snakebids && ruff check snakebids && pyright snakebids"
-fix.shell = "ruff format snakebids && ruff check --fix snakebids"
+sort.cmd = "ruff check --fix --select I001 $path"
+sort.args = [
+    { name = "path", default = "snakebids scripts", positional = true },
+]
+fmt = "ruff format snakebids scripts"
+
+ruff = "ruff check snakebids scripts"
+
+pyright = "pyright snakebids scripts"
+quality = ["fmt", "ruff", "pyright"]
+fix = ["fmt", "ruff --fix"]
 test = """
 pytest --doctest-modules --ignore=docs \
     --ignore=snakebids/project_template --benchmark-disable
 """
-mkinit.shell = """
-mkinit --recursive --nomods --lazy_loader_typed --relative -i  snakebids &&
-ruff format snakebids &&
-ruff check --fix --select I001 snakebids
-"""
 benchmark = "pytest --benchmark-only --benchmark-autosave"
 docs = "sphinx-autobuild docs build/docs --watch snakebids -W"
-update_bids.script = "scripts.update_bids:main"
+
+[[tool.poe.tasks.update_bids.sequence]]
+script = "scripts.update_bids:main"
+[[tool.poe.tasks.update_bids.sequence]]
+ref = "mkinit"
+
+[[tool.poe.tasks.mkinit.sequence]]
+cmd = "mkinit --recursive --nomods --lazy_loader_typed --relative -i snakebids"
+[[tool.poe.tasks.mkinit.sequence]]
+ref = "sort snakebids/**/__init__.py*"
 
 [tool.poe.tasks._get_version]
 imports = ["platform"]

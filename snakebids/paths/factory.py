@@ -260,6 +260,6 @@ def bids_factory(spec: BidsPathSpec, *, _v0_0_0: bool = False) -> BidsFunction:
 
     from snakebids.paths.specs import LATEST
 
-    assert bids.__doc__
+    assert bids.__doc__  # noqa: S101
     bids.__doc__ = bids.__doc__.replace("<version>", LATEST)
     return bids
