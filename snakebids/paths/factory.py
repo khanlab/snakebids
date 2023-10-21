@@ -240,7 +240,7 @@ def bids_factory(spec: BidsPathSpec, *, _v0_0_0: bool = False) -> BidsFunction:
             # Check for `*` first so that if user specifies an entity called `*` we
             # don't skip setting the split
             if entity == "*":
-                split = len(path_parts)
+                split = len(spec_parts)
             elif value := parsed.pop(entity, None):
                 spec_parts.append(f"{entity}-{value}")
                 if entity in dirs:
