@@ -6,7 +6,7 @@ from pathlib import Path
 
 import bids.layout
 import pytest
-from hypothesis import settings
+from hypothesis import database, settings
 from pyfakefs.fake_filesystem import FakeFilesystem
 
 import snakebids.paths.resources as specs
@@ -14,11 +14,18 @@ from snakebids import resources
 
 ## Hypothesis profiles
 
+# TODO: The default Directory Database would be much better, but it's currently
+#       incompatible with pyfakefs. To fix it, we need to either patch @given or add
+#       another decorator that only activates the fake filesystem within the test body
+
 # github-actions tends to have flaky runtimes, likely due to temporary slowdowns in the
 # runner, so just disable deadlines
-settings.register_profile("pr", deadline=None)
+settings.register_profile(
+    "pr", deadline=None, database=database.InMemoryExampleDatabase()
+)
+settings.register_profile("dev", database=database.InMemoryExampleDatabase())
 
-settings.load_profile(os.getenv("HYPOTHESIS_PROFILE", "default"))
+settings.load_profile(os.getenv("HYPOTHESIS_PROFILE", "dev"))
 
 # Fixtures
 
