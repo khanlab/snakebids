@@ -159,6 +159,8 @@ jobs:
       uses: snok/install-poetry@v1
       if: steps.cached-poetry.outputs.cache-hit != 'true'
       with:
+        # Ensure this specification is removed when py37 support is dropped
+        version: 1.5.1
         virtualenvs-create: true
         virtualenvs-in-project: true
 

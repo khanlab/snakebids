@@ -47,6 +47,10 @@ class BidsTag(TypedDict):
 BidsTags: TypeAlias = "dict[str, BidsTag]"
 
 
+DEPRECATION_FLAG = "<!DEPRECATED!>"
+"""Sentinel string to mark deprecated config features"""
+
+
 @ft.lru_cache
 def read_bids_tags(bids_json: Path | None = None) -> BidsTags:
     """Read the bids tags we are aware of from a JSON file.

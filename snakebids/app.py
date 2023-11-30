@@ -22,9 +22,12 @@ from snakebids.cli import (
 )
 from snakebids.exceptions import ConfigError, RunError
 from snakebids.types import OptionalFilter
-from snakebids.utils.output import write_config_file  # type: ignore
-from snakebids.utils.output import prepare_bidsapp_output, write_output_mode
-from snakebids.utils.utils import to_resolved_path
+from snakebids.utils.output import (
+    prepare_bidsapp_output,
+    write_config_file,
+    write_output_mode,
+)
+from snakebids.utils.utils import DEPRECATION_FLAG, to_resolved_path
 
 logger = logging.Logger(__name__)
 
@@ -180,6 +183,12 @@ class SnakeBidsApp:
         # Update config with pybids settings
         self.config["pybidsdb_dir"] = self.args.pybidsdb_dir
         self.config["pybidsdb_reset"] = self.args.pybidsdb_reset
+        self.config[
+            "pybids_db_dir"
+        ] = f"{DEPRECATION_FLAG}{self.args.pybidsdb_dir}{DEPRECATION_FLAG}"
+        self.config[
+            "pybids_db_reset"
+        ] = f"{DEPRECATION_FLAG}{int(self.args.pybidsdb_reset)}{DEPRECATION_FLAG}"
 
         # First, handle outputs in snakebids_root or results folder
         try:
