@@ -1,0 +1,78 @@
+version: "v0.10.1"
+description: |
+  Spec corresponding to `BIDS v1.9.0`_
+
+  Significantly expanded from the v0.0.0 spec, now including long names for
+  every relevant entity. In addition to the spec, it includes `from` and `to`
+  entities intended for transformations. Unknown entities are placed just before
+  desc, so that the description entity is always last.
+
+  .. _BIDS v1.9.0: https://bids-specification.readthedocs.io/en/v1.9.0/
+
+spec:
+# Basic identifiers
+- entity: "subject"
+  tag: "sub"
+  dir: true
+- entity: "session"
+  tag: "ses"
+  dir: true
+- entity: sample
+- entity: "task"
+# Acquisition context
+- entity: tracksys
+- entity: "acquisition"
+  tag: acq
+- entity: "ceagent"
+  tag: ce
+- entity: staining
+  tag: stain
+- entity: tracer
+  tag: trc
+- entity: "reconstruction"
+  tag: rec
+- entity: "direction"
+  tag: dir
+- entity: "run"
+- entity: "modality"
+  tag: mod
+
+# Acquisition parameters
+- entity: "echo"
+- entity: flip
+- entity: inversion
+  tag: inv
+- entity: mt
+- entity: processed
+  tag: proc
+- entity: part
+
+
+# Atlases and segmentations
+- entity: space
+- entity: atlas
+- entity: segmentation
+  tag: seg
+- entity: "hemisphere"
+  tag: hemi
+- entity: "resolution"
+  tag: res
+- entity: "density"
+  tag: den
+- entity: roi
+
+# Transforms
+- entity: from
+- entity: to
+
+# File splits
+- entity: split
+- entity: recording
+- entity: chunk
+
+- entity: model
+- entity: subset
+- entity: label
+- entity: "*"
+- entity: description
+  tag: desc

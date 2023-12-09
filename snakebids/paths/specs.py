@@ -15,6 +15,7 @@ from snakebids.paths.utils import BidsPathSpec, find_entity, get_spec_path, load
 
 if not TYPE_CHECKING:
     __all__ = [  # noqa:F822
+        "v0_10_1",
         "v0_0_0",
         "latest",
         "LATEST",
@@ -24,8 +25,8 @@ if not TYPE_CHECKING:
         return __all__
 
 
-_SPECS = ["v0_0_0"]
-LATEST = "v0_0_0"
+_SPECS = ["v0_10_1", "v0_0_0"]
+LATEST = "v0_10_1"
 # </AUTOUPDATE>
 
 
