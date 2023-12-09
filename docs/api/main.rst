@@ -14,28 +14,25 @@ API
     creation
     manipulation
     structures
+    app
 
 
-Path Creation
+Path Building
 -------------
 
 .. Need to manually create this table because bids does not have a proper docstring
 
-.. ===================================  ================================
-.. :func:`bids <bids>`                  Generate bids or bids-like paths
-.. :func:`bids_factory <bids_factory>`  Create new :func:`bids` functions according to a spec
-.. ===================================  ================================
+===================================  ================================
+:func:`bids <bids>`                  Generate bids or bids-like paths
+:func:`bids_factory <bids_factory>`  Create new :func:`bids` functions according to a spec
+===================================  ================================
 
-.. autosummary::
-    :nosignatures:
-
-    bids
-    bids_factory
 
 Dataset Creation
 ----------------
 
 .. autosummary::
+    :nosignatures:
 
     generate_inputs
 
@@ -62,8 +59,13 @@ Data Structures
 
 
 
-app
----
+BIDS App Booststrapping
+-----------------------
 
-.. automodule:: snakebids.app
-    :members:
+.. currentmodule:: snakebids.app
+
+.. autosummary::
+    :nosignatures:
+    :recursive:
+
+    SnakeBidsApp
