@@ -335,6 +335,19 @@ class TestExpandables:
         paths = component.expand(path_tpl)
         assert len(paths) == len(set(paths))
 
+    @given(
+        component=sb_st.expandables(
+            restrict_patterns=True,
+            path_safe=True,
+            unique=True,
+        )
+    )
+    def test_expand_preserves_entry_order(self, component: Expandable):
+        path_tpl = bids(**get_wildcard_dict(component.zip_lists))
+        paths = component.expand(path_tpl)
+        for path, entity_vals in zip(paths, zip(*component.zip_lists.values())):
+            assert bids(**dict(zip(component.zip_lists.keys(), entity_vals))) == path
+
 
 class TestBidsComponentExpand:
     """
