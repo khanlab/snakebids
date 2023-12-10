@@ -131,7 +131,7 @@ class BidsComponentRow(ImmutableList[str]):
             allow_missing=allow_missing
             if isinstance(allow_missing, bool)
             else list(itx.always_iterable(allow_missing)),
-            **{self.entity: list(set(self._data))},
+            **{self.entity: list(dict.fromkeys(self._data))},
             **{
                 wildcard: list(itx.always_iterable(v))
                 for wildcard, v in wildcards.items()
@@ -389,7 +389,8 @@ class BidsPartialComponent:
 
         allow_missing_seq = sequencify(allow_missing)
         inner_expand = list(
-            set(
+            # order preserving deduplication
+            dict.fromkeys(
                 sn_expand(
                     list(itx.always_iterable(paths)),
                     zip,
