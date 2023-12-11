@@ -1,8 +1,8 @@
 from snakebids.paths import specs
-from snakebids.paths.config import set_bids_spec
-from snakebids.paths.presets import bids
+from snakebids.paths._config import set_bids_spec
+from snakebids.paths._presets import bids
+from snakebids.paths._utils import find_entity
 from snakebids.paths.specs import v0_0_0
-from snakebids.paths.utils import find_entity
 
 
 def test_all_entries_define_entity():

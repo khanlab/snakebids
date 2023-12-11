@@ -3,7 +3,7 @@
 #
 #      poetry run poe update_bids
 
-from .utils import BidsPathSpec
+from ._utils import BidsPathSpec
 
 LATEST: str
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from snakebids.paths._templates import spec_func
-from snakebids.paths.utils import BidsPathSpec, find_entity, get_spec_path, load_spec
+from snakebids.paths._utils import BidsPathSpec, find_entity, get_spec_path, load_spec
 
 # <AUTOUPDATE>
 # The code between these tags is automatically generated. Do not

@@ -9,6 +9,8 @@ from typing_extensions import NotRequired, TypeAlias, TypedDict
 from snakebids.io.yaml import get_yaml_io
 from snakebids.paths import resources
 
+__all__ = ["BidsPathEntitySpec", "BidsPathSpec", "BidsPathSpecFile"]
+
 
 class BidsPathEntitySpec(TypedDict):
     """Defines an entity in a bids path."""

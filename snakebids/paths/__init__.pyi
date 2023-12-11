@@ -1,23 +1,27 @@
 # <AUTOGEN_INIT>
-from .config import (
-    get_bids_func,
-    get_bids_spec,
+from ._config import (
     set_bids_spec,
 )
-from .factory import (
+from ._factory import (
     BidsFunction,
     bids_factory,
 )
-from .presets import (
+from ._presets import (
     bids,
+)
+from ._utils import (
+    BidsPathEntitySpec,
+    BidsPathSpec,
+    BidsPathSpecFile,
 )
 
 __all__ = [
     "BidsFunction",
+    "BidsPathEntitySpec",
+    "BidsPathSpec",
+    "BidsPathSpecFile",
     "bids",
     "bids_factory",
-    "get_bids_func",
-    "get_bids_spec",
     "set_bids_spec",
 ]
 # </AUTOGEN_INIT>

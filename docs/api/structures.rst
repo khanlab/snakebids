@@ -1,5 +1,5 @@
 Data Structures
-==============
+===============
 
 .. py:currentmodule:: snakebids
 
