@@ -33,6 +33,60 @@ class BidsFunction(Protocol):
         ...
 
 
+def _handle_subses_dir(
+    root: str | Path | None = None,
+    *,
+    spec: BidsPathSpec,
+    sub_dir_default: bool,
+    ses_dir_default: bool,
+    sub_dir: str | bool | None,
+    ses_dir: str | bool | None,
+    datatype: str | None = None,
+    prefix: str | None = None,
+    suffix: str | None = None,
+    extension: str | None = None,
+    **entities: str | bool,
+) -> str | None:
+    newspec = None
+    warn_subses_dir = False
+
+    if isinstance(ses_dir, bool):
+        warn_subses_dir = True
+        if ses_dir ^ ses_dir_default:
+            if newspec is None:
+                newspec = spec.copy()
+            find_entity(newspec, "session")["dir"] = ses_dir
+
+    if isinstance(sub_dir, bool):
+        warn_subses_dir = True
+        if sub_dir ^ sub_dir_default:
+            if newspec is None:
+                newspec = spec.copy()
+            find_entity(newspec, "subject")["dir"] = sub_dir
+
+    if warn_subses_dir:
+        wrn_msg = (
+            "include_session_dir and include_subject_dir are deprecated and "
+            "will be removed in a future release. Builder functions without "
+            "directories can be created using the bids_factory and spec "
+            "functions:\n"
+            "   from snakebids.paths import set_bids_spec, specs\n"
+            "   set_bids_spec(specs.v0_0_0(subject_dir=False, "
+            "session_dir=False))"
+        )
+        warnings.warn(wrn_msg, stacklevel=1)
+    if newspec:
+        return bids_factory(newspec)(
+            root,
+            datatype=datatype,
+            prefix=prefix,
+            suffix=suffix,
+            extension=extension,
+            **entities,
+        )
+    return None
+
+
 def _get_entity_parser(aliases: dict[str, str]):
     def parse_entities(entities: dict[str, str | bool]) -> dict[str, str]:
         result: dict[str, str] = {}
@@ -54,18 +108,13 @@ def _get_entity_parser(aliases: dict[str, str]):
     return parse_entities
 
 
-def bids_factory(
-    spec: BidsPathSpec, *, _v0_0_0: bool = False, _implicit: bool = False
-) -> BidsFunction:
+def bids_factory(spec: BidsPathSpec, *, _implicit: bool = False) -> BidsFunction:
     """Generate bids functions according to the supplied spec.
 
     Parameters
     ----------
         spec
             Valid Bids Spec object
-        _v0_0_0
-            Provides backward compatibility for the bids_v0_0_0 signature. Should not
-            otherwise be used
         _implicit
             Flag used internally to mark the default generated bids function. The
             resulting builder will warn when custom entities are used
@@ -74,12 +123,8 @@ def bids_factory(
     dirs: set[str] = set()
     aliases: dict[str, str] = {}
 
-    if _v0_0_0:
-        subject_dir_default = find_entity(spec, "subject").get("dir", False)
-        session_dir_default = find_entity(spec, "session").get("dir", False)
-    else:
-        subject_dir_default = True
-        session_dir_default = True
+    subject_dir_default = find_entity(spec, "subject").get("dir", False)
+    session_dir_default = find_entity(spec, "session").get("dir", False)
     for entry in spec:
         tag = entry.get("tag", entry["entity"])
         order.append(tag)
@@ -126,33 +171,22 @@ def bids_factory(
             bids entities as keyword arguments paired with values (e.g. ``space="T1w"``
             for ``space-T1w``)
         """
-        if _v0_0_0:
-            from snakebids.paths.specs import v0_0_0
-
-            include_subject_dir = bool(entities.pop("include_subject_dir", True))
-            include_session_dir = bool(entities.pop("include_session_dir", True))
-            if (
-                include_session_dir ^ session_dir_default
-                or include_subject_dir ^ subject_dir_default
-            ):
-                wrn_msg = (
-                    "include_session_dir and include_subject_dir are deprecated and "
-                    "will be removed in a future release. Builder functions without "
-                    "directories can be created using the bids_factory and spec "
-                    "functions:\n"
-                    "   from snakebids.paths import bids_factory, specs\n"
-                    "   bids = bids_factory(specs.v0_0_0(subject_dir=False, "
-                    "session_dir=False))"
-                )
-                warnings.warn(wrn_msg, stacklevel=1)
-                return bids_factory(v0_0_0(include_subject_dir, include_session_dir))(
-                    root,
-                    datatype=datatype,
-                    prefix=prefix,
-                    suffix=suffix,
-                    extension=extension,
-                    **entities,
-                )
+        if (
+            result := _handle_subses_dir(
+                root,
+                spec=spec,
+                sub_dir_default=subject_dir_default,
+                ses_dir_default=session_dir_default,
+                sub_dir=entities.pop("include_subject_dir", None),
+                ses_dir=entities.pop("include_session_dir", None),
+                datatype=datatype,
+                prefix=prefix,
+                suffix=suffix,
+                extension=extension,
+                **entities,
+            )
+        ) is not None:
+            return result
 
         if not any([entities, suffix, extension]) and any([datatype, prefix]):
             raise ValueError(
