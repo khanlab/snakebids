@@ -12,7 +12,7 @@ from hypothesis import strategies as st
 from pathvalidate import Platform, is_valid_filename, is_valid_filepath
 
 from snakebids.paths import specs
-from snakebids.paths.presets import bids
+from snakebids.paths.factory import bids_factory
 from snakebids.paths.utils import BidsPathSpec
 from snakebids.tests import strategies as sb_st
 from snakebids.tests.helpers import Benchmark, is_strictly_increasing
@@ -37,6 +37,7 @@ def make_bids_testsuite(spec: BidsPathSpec):
     std_entities = {e["entity"] for e in spec}
     has_tag = {e["entity"] for e in spec if e.get("tag")}
     has_dir = {e["entity"] for e in spec if e.get("dir")}
+    bids = bids_factory(spec)
 
     def _bids_args(
         entities: set[str] | None = std_entities,
@@ -301,8 +302,12 @@ def make_bids_testsuite(spec: BidsPathSpec):
 
 TestV0_0_0 = make_bids_testsuite(specs.v0_0_0())
 
+TestV0_10_1 = make_bids_testsuite(specs.v0_10_1())
+
 
 def test_benchmark_bids(benchmark: Benchmark):
+    from snakebids.paths import bids
+
     """If refactoring bids, be sure this benchmark doesn't needlessly increase"""
     benchmark(
         bids,
