@@ -41,6 +41,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 from __future__ import annotations
 
+import functools as ft
 from shutil import get_terminal_size
 
 
@@ -83,6 +84,7 @@ def get_console_size() -> tuple[int | None, int | None]:
 # Detect our environment
 
 
+@ft.lru_cache
 def in_interactive_session() -> bool:
     """Check if we're running in an interactive shell.
 

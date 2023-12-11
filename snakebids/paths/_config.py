@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from typing import Literal, TypedDict, cast
+from typing import TYPE_CHECKING, Literal, TypedDict, cast
 
 from typing_extensions import TypeAlias
 
 from snakebids.paths import specs
 from snakebids.paths._factory import BidsFunction, bids_factory
-from snakebids.paths._utils import BidsPathSpec
+
+if TYPE_CHECKING:
+    from snakebids.paths._utils import BidsPathSpec
 
 # <AUTOUPDATE>
 # The code between these tags is automatically generated. Do not
@@ -25,15 +27,6 @@ __all__ = ["set_bids_spec"]
 class _Config(TypedDict):
     active_spec: BidsPathSpec
     bids_func: BidsFunction
-    explicit_spec: bool
-
-
-_latest_spec = specs.latest()
-_config = _Config(
-    active_spec=_latest_spec,
-    bids_func=bids_factory(_latest_spec, _v0_0_0=True),
-    explicit_spec=False,
-)
 
 
 def set_bids_spec(spec: BidsPathSpec | VALID_SPECS):
@@ -48,7 +41,6 @@ def set_bids_spec(spec: BidsPathSpec | VALID_SPECS):
         spec = cast("BidsPathSpec", getattr(specs, spec)())
     _config["active_spec"] = spec
     _config["bids_func"] = bids_factory(spec)
-    _config["explicit_spec"] = True
 
 
 def get_bids_spec() -> BidsPathSpec:
@@ -61,6 +53,11 @@ def get_bids_func() -> BidsFunction:
     return _config["bids_func"]
 
 
-def is_explicit_spec() -> bool:
-    """Return True if BIDS spec was explicitly set."""
-    return _config["explicit_spec"]
+def reset_bids_spec():
+    spec = specs.latest()
+    _config["active_spec"] = spec
+    _config["bids_func"] = bids_factory(spec, _implicit=True)
+
+
+_config: _Config = {}  # type: ignore
+reset_bids_spec()

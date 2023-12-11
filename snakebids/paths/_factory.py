@@ -3,11 +3,14 @@ from __future__ import annotations
 import itertools as it
 import os
 import sys
+import warnings
 from pathlib import Path
 from typing import Protocol
 
 import more_itertools as itx
 
+from snakebids.io.console import in_interactive_session
+from snakebids.paths import specs
 from snakebids.paths._utils import BidsPathSpec, find_entity
 
 
@@ -51,7 +54,9 @@ def _get_entity_parser(aliases: dict[str, str]):
     return parse_entities
 
 
-def bids_factory(spec: BidsPathSpec, *, _v0_0_0: bool = False) -> BidsFunction:
+def bids_factory(
+    spec: BidsPathSpec, *, _v0_0_0: bool = False, _implicit: bool = False
+) -> BidsFunction:
     """Generate bids functions according to the supplied spec.
 
     Parameters
@@ -61,6 +66,9 @@ def bids_factory(spec: BidsPathSpec, *, _v0_0_0: bool = False) -> BidsFunction:
         _v0_0_0
             Provides backward compatibility for the bids_v0_0_0 signature. Should not
             otherwise be used
+        _implicit
+            Flag used internally to mark the default generated bids function. The
+            resulting builder will warn when custom entities are used
     """
     order: list[str] = []
     dirs: set[str] = set()
@@ -127,6 +135,16 @@ def bids_factory(spec: BidsPathSpec, *, _v0_0_0: bool = False) -> BidsFunction:
                 include_session_dir ^ session_dir_default
                 or include_subject_dir ^ subject_dir_default
             ):
+                wrn_msg = (
+                    "include_session_dir and include_subject_dir are deprecated and "
+                    "will be removed in a future release. Builder functions without "
+                    "directories can be created using the bids_factory and spec "
+                    "functions:\n"
+                    "   from snakebids.paths import bids_factory, specs\n"
+                    "   bids = bids_factory(specs.v0_0_0(subject_dir=False, "
+                    "session_dir=False))"
+                )
+                warnings.warn(wrn_msg, stacklevel=1)
                 return bids_factory(v0_0_0(include_subject_dir, include_session_dir))(
                     root,
                     datatype=datatype,
@@ -173,6 +191,18 @@ def bids_factory(spec: BidsPathSpec, *, _v0_0_0: bool = False) -> BidsFunction:
                     path_parts.append(f"{entity}-{value}")
         for key, value in parsed.items():
             custom_parts.append(f"{key}-{value}")
+
+        if custom_parts and _implicit and not in_interactive_session():
+            wrn_msg = (
+                f"The segment '{custom_parts}' has custom entities not part of the "
+                "current BIDS spec, but a spec has not been explicitly declared. This "
+                "could break when snakebids is upgraded, as specs can be updated "
+                "without warning, and these entities may be included in future specs. "
+                "Please declare a spec using:\n"
+                "   from snakebids import set_bids_spec\n"
+                f'   set_bids_spec("{specs.LATEST}")'
+            )
+            warnings.warn(wrn_msg, stacklevel=1)
 
         if datatype:
             path_parts.append(datatype)
