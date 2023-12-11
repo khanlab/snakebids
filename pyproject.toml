@@ -135,9 +135,9 @@ pytest --doctest-modules --ignore=docs \
 benchmark = "pytest --benchmark-only --benchmark-autosave"
 docs = "sphinx-autobuild docs build/docs --watch snakebids -W"
 
-[[tool.poe.tasks.update_bids.sequence]]
+[[tool.poe.tasks.update-bids.sequence]]
 script = "scripts.update_bids:main"
-[[tool.poe.tasks.update_bids.sequence]]
+[[tool.poe.tasks.update-bids.sequence]]
 ref = "mkinit"
 
 [[tool.poe.tasks.mkinit.sequence]]

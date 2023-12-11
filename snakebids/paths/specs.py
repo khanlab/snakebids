@@ -10,9 +10,8 @@ from snakebids.paths.utils import BidsPathSpec, find_entity, get_spec_path, load
 # manually edit
 # To update, run::
 #
-#       poetry run poe update_bids
+#       poetry run poe update-bids
 #
-
 if not TYPE_CHECKING:
     __all__ = [  # noqa:F822
         "v0_10_1",
@@ -26,8 +25,12 @@ if not TYPE_CHECKING:
 
 
 _SPECS = ["v0_10_1", "v0_0_0"]
-LATEST = "v0_10_1"
+# LATEST = "v0_10_1"
 # </AUTOUPDATE>
+
+# To automatically use latest spec as "LATEST", remove this line and uncomment the
+# generated line in scripts/update_bids.py
+LATEST = "v0_0_0"
 
 
 def __getattr__(name: str):

@@ -8,7 +8,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Iterable
 
-from snakebids.paths import presets, specs
+from snakebids.paths import config, specs
 from snakebids.paths._templates import bids_func, spec_func
 from snakebids.paths.utils import BidsPathSpecFile, get_specs
 
@@ -46,9 +46,14 @@ SOURCE_TEMPLATE = """
 # manually edit
 # To update, run::
 #
-#       poetry run poe update_bids
+#       poetry run poe update-bids
 #
+{all_block}
+{statements}
+# </AUTOUPDATE>
+"""
 
+ALL_TEMPLATE = """
 if not TYPE_CHECKING:
     __all__ = [ # noqa:F822
         {all}
@@ -56,14 +61,13 @@ if not TYPE_CHECKING:
 
     def __dir__():
         return __all__
-
-{statements}
-# </AUTOUPDATE>
 """
 
 
 def update_source(
-    mod: ModuleType, all_items: Iterable[str], statements: list[str] | None = None
+    mod: ModuleType,
+    all_items: Iterable[str] | None,
+    statements: list[str] | None = None,
 ):
     """Update python source file with __all__ declaration and provided statements.
 
@@ -77,16 +81,20 @@ def update_source(
         Statements to include after __all__ declaration block
     """
     source = inspect.getsource(mod)
-    all_formatted = ",".join(f'"{item}"' for item in all_items)
     compiled = re.compile(
         r"#\s?<AUTOUPDATE>(?:.*\n)+#\s?<\/AUTOUPDATE>", flags=re.MULTILINE
     )
     if not compiled.search(source):
         err = f"Could not find an existing <AUTOUPDATE> block in " f"{mod.__name__}"
         raise ValueError(err)
+    all_block = (
+        ALL_TEMPLATE.strip().format(all=",".join(f'"{item}"' for item in all_items))
+        if all_items is not None
+        else ""
+    )
     replaced = compiled.sub(
         SOURCE_TEMPLATE.strip().format(
-            all=all_formatted, statements="\n".join(statements or [])
+            all_block=all_block, statements="\n".join(statements or [])
         ),
         source,
     )
@@ -154,22 +162,16 @@ def main():
         ["from .utils import BidsPathSpec", "LATEST: str"],
         spec_stub(all_specs, latest_spec),
     )
-    generate_stub(
-        presets,
-        ["from pathlib import Path"],
-        presets_stub((spec["version"] for spec in all_specs), latest_version),
-    )
 
     versions = [spec["version"].replace(".", "_") for spec in all_specs]
-    update_source(
-        presets, it.chain((f"bids_{version}" for version in versions), ("bids",))
-    )
-
     spec_list = ",".join(f'"{v}"' for v in versions)
+    valid_specs = spec_list + ', "latest"'
+    update_source(config, None, [f"VALID_SPECS: TypeAlias = Literal[{valid_specs}]"])
+
     update_source(
         specs,
         it.chain((version for version in versions), ("latest", "LATEST")),
-        [f"_SPECS = [{spec_list}]", f'LATEST = "{latest_version}"'],
+        [f"_SPECS = [{spec_list}]", f'# LATEST = "{latest_version}"'],
     )
 
 

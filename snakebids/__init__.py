@@ -18,12 +18,13 @@ __all__ = [
     "BidsPartialComponent",
     "bids",
     "bids_factory",
-    "bids_v0_0_0",
-    "bids_v0_10_1",
     "filter_list",
     "generate_inputs",
+    "get_bids_func",
+    "get_bids_spec",
     "get_filtered_ziplist_index",
     "get_wildcard_constraints",
+    "set_bids_spec",
     "write_derivative_json",
 ]
 # </AUTOGEN_INIT>
