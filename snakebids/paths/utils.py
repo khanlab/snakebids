@@ -10,11 +10,6 @@ from snakebids.io.yaml import get_yaml_io
 from snakebids.paths import resources
 
 
-def find_entity(spec: BidsPathSpec, entity: str) -> BidsPathEntitySpec:
-    """Return configuration for specified entity out of BidsPathSpec."""
-    return itx.one(item for item in spec if item["entity"] == entity)
-
-
 class BidsPathEntitySpec(TypedDict):
     """Defines an entity in a bids path."""
 
@@ -71,3 +66,8 @@ def get_spec_path(version: str) -> impr.abc.Traversable:
     """
     dotted = version[1:].replace("_", ".")
     return impr.files(resources).joinpath(f"spec.{dotted}.yaml")
+
+
+def find_entity(spec: BidsPathSpec, entity: str) -> BidsPathEntitySpec:
+    """Return configuration for specified entity out of BidsPathSpec."""
+    return itx.one(item for item in spec if item["entity"] == entity)

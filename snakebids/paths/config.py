@@ -30,13 +30,13 @@ _config = _Config(active_spec=_latest_spec, bids_func=bids_factory(_latest_spec)
 
 
 def set_bids_spec(spec: BidsPathSpec | VALID_SPECS):
-    """Set the spec to be used by path generation functions (such as bids()).
+    """Set the spec to be used by path generation functions (such as :func:`~snakebids.bids`).
 
     Parameters
     ----------
     spec
-        Either a spec object, or the name of a builtin spec
-    """
+        Either a spec object, or the name of a builtin :ref:`spec <specs>`
+    """  # noqa: E501
     if isinstance(spec, str):
         spec = cast("BidsPathSpec", getattr(specs, spec)())
     _config["active_spec"] = spec
