@@ -8,7 +8,7 @@ from typing import Protocol
 
 import more_itertools as itx
 
-from snakebids.paths.utils import BidsPathSpec, find_entity
+from snakebids.paths._utils import BidsPathSpec, find_entity
 
 
 class BidsFunction(Protocol):
@@ -17,7 +17,7 @@ class BidsFunction(Protocol):
     See :func:`bids` for more details
     """
 
-    def __call__(  # noqa: D102
+    def __call__(
         self,
         root: str | Path | None = None,
         *,

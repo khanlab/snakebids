@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from snakebids.utils.utils import entity_to_wildcard
 
 if TYPE_CHECKING:
-    from snakebids.paths.utils import BidsPathSpec, BidsPathSpecFile
+    from snakebids.paths._utils import BidsPathSpec, BidsPathSpecFile
 
 TEMPLATE = '''
 def {spec}(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
@@ -46,7 +46,7 @@ def _wrap_template(template: str, length: int):
 
 def compile_example(spec: BidsPathSpec):
     # import within function to avoid circular import
-    from snakebids.paths.factory import bids_factory
+    from snakebids.paths._factory import bids_factory
 
     entities = [listing["entity"] for listing in spec]
     standard_entities = ("prefix", "datatype", "suffix", "extension")

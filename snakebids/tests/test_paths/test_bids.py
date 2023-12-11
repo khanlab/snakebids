@@ -12,8 +12,8 @@ from hypothesis import strategies as st
 from pathvalidate import Platform, is_valid_filename, is_valid_filepath
 
 from snakebids.paths import specs
-from snakebids.paths.factory import bids_factory
-from snakebids.paths.utils import BidsPathSpec
+from snakebids.paths._factory import bids_factory
+from snakebids.paths._utils import BidsPathSpec
 from snakebids.tests import strategies as sb_st
 from snakebids.tests.helpers import Benchmark, is_strictly_increasing
 from snakebids.utils.utils import BidsEntity

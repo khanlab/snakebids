@@ -12,10 +12,11 @@ from .core import (
 )
 from .paths import (
     BidsFunction,
+    BidsPathEntitySpec,
+    BidsPathSpec,
+    BidsPathSpecFile,
     bids,
     bids_factory,
-    get_bids_func,
-    get_bids_spec,
     set_bids_spec,
 )
 
@@ -26,12 +27,13 @@ __all__ = [
     "BidsDatasetDict",
     "BidsFunction",
     "BidsPartialComponent",
+    "BidsPathEntitySpec",
+    "BidsPathSpec",
+    "BidsPathSpecFile",
     "bids",
     "bids_factory",
     "filter_list",
     "generate_inputs",
-    "get_bids_func",
-    "get_bids_spec",
     "get_filtered_ziplist_index",
     "get_wildcard_constraints",
     "set_bids_spec",

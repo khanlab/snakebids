@@ -8,9 +8,9 @@ from pathlib import Path
 from types import ModuleType
 from typing import Iterable
 
-from snakebids.paths import config, specs
-from snakebids.paths._templates import bids_func, spec_func
-from snakebids.paths.utils import BidsPathSpecFile, get_specs
+from snakebids.paths import _config, specs
+from snakebids.paths._templates import spec_func
+from snakebids.paths._utils import BidsPathSpecFile, get_specs
 
 
 def generate_stub(mod: ModuleType, imports: list[str], funcs: Iterable[str]):
@@ -101,28 +101,6 @@ def update_source(
     Path(inspect.getfile(mod)).write_text(replaced)
 
 
-def presets_stub(versions: Iterable[str], latest: str):
-    """Generate bids function stub declarations.
-
-    Parameters
-    ----------
-    versions
-        Versions for which to generate declarations
-    latest
-        Version to which the `latest` stub should point
-    """
-    for member in versions:
-        yield bids_func.format_pyi(
-            spec=f"_{member.replace('.', '_')}", spec_label=member
-        )
-
-    yield bids_func.format_pyi(
-        spec="",
-        spec_label="latest",
-        spec_clarify=f" (currently pointing to '{latest}')",
-    )
-
-
 def spec_stub(versions: Iterable[BidsPathSpecFile], latest: BidsPathSpecFile):
     """Generate spec function stub declarations.
 
@@ -159,14 +137,14 @@ def main():
     latest_version, latest_spec = get_latest(all_specs)
     generate_stub(
         specs,
-        ["from .utils import BidsPathSpec", "LATEST: str"],
+        ["from ._utils import BidsPathSpec", "LATEST: str"],
         spec_stub(all_specs, latest_spec),
     )
 
     versions = [spec["version"].replace(".", "_") for spec in all_specs]
     spec_list = ",".join(f'"{v}"' for v in versions)
     valid_specs = spec_list + ', "latest"'
-    update_source(config, None, [f"VALID_SPECS: TypeAlias = Literal[{valid_specs}]"])
+    update_source(_config, None, [f"VALID_SPECS: TypeAlias = Literal[{valid_specs}]"])
 
     update_source(
         specs,

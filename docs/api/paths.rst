@@ -35,16 +35,17 @@ Official specs represent the evolution of the BIDS spec over time. Currently, :f
 Types
 -----
 
-.. automodule:: snakebids
-    :exclude-members: from_bids_lists, BidsComponent, BidsPartialComponent, BidsComponentRow, BidsDataset
-    :members: BidsFunction
+.. py:currentmodule:: snakebids
 
-.. py:currentmodule:: snakebids.paths.utils
+.. autoclass:: BidsFunction
+    :members:
+
+.. py:currentmodule:: snakebids.paths
 
 .. autoclass:: BidsPathEntitySpec
     :members:
 
-.. automodule:: snakebids.paths.utils
+.. automodule:: snakebids.paths
     :noindex:
     :members: BidsPathSpec
 

@@ -6,6 +6,7 @@ Plugins are a feature in Snakebids that enables you to add custom functionality 
 For a full list of plugins distributed with Snakebids, see the [Plugins reference](/api/plugins) page.
 ```
 
+(using-plugins)=
 ## Using plugins
 To add one or more plugins to your {class}`SnakeBidsApp <snakebids.app.SnakeBidsApp>`, pass them to the {class}`~snakebids.app.SnakeBidsApp` constructor via the {attr}`~snakebids.app.SnakeBidsApp.plugins` parameter. Your plugin will have access to CLI parameters (after they've been parsed) via their names in {attr}`SnakeBidsApp.config <snakebids.app.SnakeBidsApp.config>`. Any modifications to that config dictionary made by the plugin will be carried forward into the workflow.
 
@@ -23,13 +24,14 @@ SnakeBidsApp(
 ).run_snakemake()
 ```
 
+(creating-plugins)=
 ## Creating plugins
 A plugin is a function or callable class that accepts a {class}`SnakeBidsApp <snakebids.app.SnakeBidsApp>` as input and returns a modified {class}`SnakeBidsApp` or `None`.
 
 As an example, a simplified version of the bids-validator plugin that runs the [BIDS Validator](https://github.com/bids-standard/bids-validator) could be defined as follows:
 
 ```py
-import subprocess 
+import subprocess
 
 from snakebids.app import SnakeBidsApp
 from snakebids.exceptions import SnakeBidsPluginError
@@ -55,7 +57,7 @@ class BidsValidator:
 
 
 class InvalidBidsError(SnakebidsPluginError):
-    """Error raised if input BIDS dataset is invalid, 
+    """Error raised if input BIDS dataset is invalid,
     inheriting from SnakebidsPluginError.
     """
 ```

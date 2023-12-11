@@ -21,7 +21,7 @@ from snakebids.core.datasets import (
     BidsPartialComponent,
 )
 from snakebids.exceptions import DuplicateComponentError
-from snakebids.paths.presets import bids
+from snakebids.paths._presets import bids
 from snakebids.tests import strategies as sb_st
 from snakebids.tests.helpers import expand_zip_list, get_bids_path, get_zip_list, setify
 from snakebids.types import Expandable, ZipList
