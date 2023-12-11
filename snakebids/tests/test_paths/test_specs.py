@@ -1,4 +1,5 @@
 import warnings
+from pathlib import Path
 
 import pytest
 from pytest_mock import MockerFixture
@@ -43,10 +44,19 @@ def test_spec_can_be_set_with_obj():
 
 
 def test_using_include_subject_dir_raises_warning():
+    reset_bids_spec()
     with pytest.warns(UserWarning, match="include_session_dir and include_subject_dir"):
         bids(subject="001", include_subject_dir=False)
     with pytest.warns(UserWarning, match="include_session_dir and include_subject_dir"):
         bids(session="001", include_session_dir=False)
+
+
+def test_include_subject_dir_can_remove_dir():
+    reset_bids_spec()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        assert len(Path(bids(subject="001", include_subject_dir=False)).parents) == 1
+        assert len(Path(bids(session="001", include_session_dir=False)).parents) == 1
 
 
 class TestCustomEntityWarnings:
