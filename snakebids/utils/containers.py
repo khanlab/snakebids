@@ -178,12 +178,12 @@ class ContainerBag(Container[_T]):
         return any(x in entry for entry in self.entries)
 
 
-class MultiSelectDict(UserDictPy38[_K, _V]):
+class MultiSelectDict(UserDictPy38[_K, _T]):
     """Dict supporting selection of multiple keys using tuples.
 
     If a single key is given, the item associated with that key is returned just as in a
     regular dict. If multiple, comma-seperated keys are given, (e.g. a tuple), a new
-    ``MultiSelectDict`` will be returned containing the keys given and their values:
+    ``MultiSelectDict`` will be returned containing the keys given and their values::
 
         >>> mydict = MultiSelectDict({
         ...     "foo": "bar",
@@ -196,7 +196,7 @@ class MultiSelectDict(UserDictPy38[_K, _V]):
         {'foo': 'bar', 'hello': 'world'}
 
     The new ``MultiSelectDict`` is a "view" of the original data. Any mutations made to
-    the values will be reflected in the original object:
+    the values will be reflected in the original object::
 
         >>> mydict = MultiSelectDict({
         ...     "foo": [1, 2, 3, 4],
@@ -209,7 +209,7 @@ class MultiSelectDict(UserDictPy38[_K, _V]):
         {'foo': [1, 2, 3, 4, 5], 'hello': 'world', 'fee': 'fie'}
 
     The keys of the new ``MultiSelectDict`` will be inserted in the order provided in
-    the selector
+    the selector::
 
         >>> mydict = MultiSelectDict({
         ...     "foo": "bar",
@@ -219,7 +219,7 @@ class MultiSelectDict(UserDictPy38[_K, _V]):
         >>> mydict["hello", "foo"]
         {'hello': 'world', 'foo': 'bar'}
 
-    Tuples of length 1 will still return a ``MultiSelectDict``:
+    Tuples of length 1 will still return a ``MultiSelectDict``::
 
         >>> mydict = MultiSelectDict({
         ...     "foo": [1, 2, 3, 4],
@@ -229,7 +229,7 @@ class MultiSelectDict(UserDictPy38[_K, _V]):
         >>> mydict["foo",]
         {'foo': [1, 2, 3, 4]}
 
-    If a key is given multiple times, the extra instances of the key will be ignored:
+    If a key is given multiple times, the extra instances of the key will be ignored::
 
         >>> mydict = MultiSelectDict({
         ...     "foo": [1, 2, 3, 4],
@@ -241,14 +241,14 @@ class MultiSelectDict(UserDictPy38[_K, _V]):
     """
 
     @overload
-    def __getitem__(self, key: _K, /) -> _V:
+    def __getitem__(self, key: _K, /) -> _T:
         ...
 
     @overload
     def __getitem__(self, key: tuple[_K, ...], /) -> Self:
         ...
 
-    def __getitem__(self, key: _K | tuple[_K, ...], /) -> _V | Self:
+    def __getitem__(self, key: _K | tuple[_K, ...], /) -> _T | Self:
         if isinstance(key, tuple):
             # Use dict.fromkeys for de-duplication
             return self.__class__({key: self[key] for key in dict.fromkeys(key)})
