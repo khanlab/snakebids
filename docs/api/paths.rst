@@ -7,23 +7,22 @@ Path Building
 
 .. autofunction:: bids_factory(spec)
 
+.. autofunction:: set_bids_spec
+
+.. _specs:
 
 Specs
 -----
 
-Official specs represent the evolution of the bids spec over time. Versioned :func:`bids` functions based on these specs can be imported with::
+.. py:currentmodule:: snakebids.paths.specs
 
-    from snakebids import bids_<version> as bids
+Official specs represent the evolution of the BIDS spec over time. Currently, :func:`~snakebids.bids` uses the :func:`v0_0_0` by default, however, in a future release, this will change to always use the latest spec. Specs may be updated at any time, without warning, even on patch releases, so it's important for production code to explicitly specify the BIDS spec version in use. This is done using :func:`~snakebids.set_bids_spec`:
 
-For example, the bids function based on the ``v0_0_0`` spec can be imported using::
+.. code-block:: python
 
-    from snakebids import bids_v0_0_0 as bids
+    from snakebids import set_bids_spec
+    set_bids_spec("v0_0_0")
 
-The latest function can always be imported using::
-
-    from snakebids import bids
-
-However, this latest version is subject to breaking changes on any snakebids release, including patches. Production code should thus always import a versioned bids function.
 
 .. automodule:: snakebids.paths.specs
     :exclude-members: latest

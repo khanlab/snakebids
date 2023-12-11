@@ -60,3 +60,8 @@ Now if you want to process all inputs of a given form regardless of how their wi
             **inputs.subj_wildcards
         ),
     )
+
+Specs
+-----
+
+The structure of the built path is based on the currently active BIDS spec. More information can be found on the :ref:`specs <specs>` page.
