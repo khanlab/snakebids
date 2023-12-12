@@ -42,6 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from __future__ import annotations
 
 import functools as ft
+import sys
 from shutil import get_terminal_size
 
 
@@ -95,11 +96,7 @@ def in_interactive_session() -> bool:
     """
 
     def check_main() -> bool:
-        try:
-            import __main__ as main
-        except ModuleNotFoundError:
-            return False
-        return not hasattr(main, "__file__")
+        return hasattr(sys, "ps1")
 
     try:
         # error: Name '__IPYTHON__' is not defined
