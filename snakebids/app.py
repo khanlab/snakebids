@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-from importlib import metadata
+from importlib import metadata as impm
 from os import PathLike
 from pathlib import Path
 from typing import Any, Callable
@@ -67,9 +67,8 @@ def _get_file_paths(
                 # else, snakefile
                 return Path(self.snakemake_dir, path)
 
-        raise ConfigError(
-            f"Error: no {file_name} file found, tried {', '.join(choices)}."
-        )
+        msg = f"Error: no {file_name} file found, tried {', '.join(choices)}."
+        raise ConfigError(msg)
 
     return wrapper
 
@@ -85,8 +84,8 @@ def _get_app_version(self: SnakeBidsApp) -> str | None:
        SnakeBidsApp's snakemake_dir
     """
     try:
-        return metadata.version(self.snakemake_dir.name)
-    except metadata.PackageNotFoundError:
+        return impm.version(self.snakemake_dir.name)
+    except impm.PackageNotFoundError:
         logger.warning(
             "App version not found; will be recorded in output as 'unknown'. "
             "If this is unexpected, please contact the app maintainer."
@@ -158,8 +157,7 @@ class SnakeBidsApp:
     args: SnakebidsArgs | None = None
 
     def run_snakemake(self) -> None:
-        """Run snakemake with the given config, after applying plugins"""
-
+        """Run snakemake with the given config, after applying plugins."""
         # If no SnakebidsArgs were provided on class instantiation, we compute args
         # using the provided parser
         if not self.args:
@@ -240,8 +238,8 @@ class SnakeBidsApp:
             config_file=new_config_file,
             data=dict(
                 app.config,
-                snakemake_version=metadata.version("snakemake"),
-                snakebids_version=metadata.version("snakebids"),
+                snakemake_version=impm.version("snakemake"),
+                snakebids_version=impm.version("snakebids"),
                 app_version=app.version or "unknown",
             ),
             force_overwrite=True,
@@ -286,7 +284,7 @@ def update_config(config: dict[str, Any], snakebids_args: SnakebidsArgs) -> None
     # filter_{input_type} dict
     pybids_inputs = config["pybids_inputs"]
     args = snakebids_args.args_dict
-    for input_type in pybids_inputs.keys():
+    for input_type in pybids_inputs:
         arg_filter_dict = args[f"filter_{input_type}"]
         if arg_filter_dict is not None:
             pybids_inputs[input_type].setdefault("filters", {})
@@ -299,7 +297,7 @@ def update_config(config: dict[str, Any], snakebids_args: SnakebidsArgs) -> None
 
     # add cmdline defined wildcards from the list:
     # wildcards_{input_type}
-    for input_type in pybids_inputs.keys():
+    for input_type in pybids_inputs:
         wildcards_list = args[f"wildcards_{input_type}"]
         if wildcards_list is not None:
             pybids_inputs[input_type].setdefault("wildcards", [])
@@ -308,7 +306,7 @@ def update_config(config: dict[str, Any], snakebids_args: SnakebidsArgs) -> None
 
     # add custom input paths to
     # config['pybids_inputs'][input_type]['custom_path']
-    for input_type in pybids_inputs.keys():
+    for input_type in pybids_inputs:
         custom_path = args[f"path_{input_type}"]
         if custom_path is not None:
             pybids_inputs[input_type]["custom_path"] = Path(custom_path).resolve()

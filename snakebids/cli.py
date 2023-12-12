@@ -9,6 +9,7 @@ from typing import Any, Mapping, TypeVar, overload
 
 import attr
 import snakemake
+from typing_extensions import override
 
 from snakebids.exceptions import MisspecifiedCliFilterError
 from snakebids.types import InputsConfig, OptionalFilter
@@ -23,9 +24,10 @@ logger = logging.Logger(__name__)
 
 
 class FilterParse(argparse.Action):
-    """Class for parsing CLI filters in argparse"""
+    """Class for parsing CLI filters in argparse."""
 
     # Constructor calling
+    @override
     def __call__(
         self,
         parser: argparse.ArgumentParser,
@@ -61,8 +63,9 @@ class FilterParse(argparse.Action):
 
 
 class SnakemakeHelpAction(argparse.Action):
-    """Class for printing snakemake usage in argparse"""
+    """Class for printing snakemake usage in argparse."""
 
+    @override
     def __call__(
         self,
         parser: argparse.ArgumentParser,
@@ -75,7 +78,7 @@ class SnakemakeHelpAction(argparse.Action):
 
 @attr.frozen
 class SnakebidsArgs:
-    """Arguments for Snakebids App
+    """Arguments for Snakebids App.
 
     Organizes the various options available for a generic Snakebids App, and store
     project specific arguments in a dict. Snakemake args are to be put in a list
@@ -105,11 +108,10 @@ class SnakebidsArgs:
 
 
 def create_parser(include_snakemake: bool = False) -> argparse.ArgumentParser:
-    """Generate basic Snakebids Parser
+    """Generate basic Snakebids Parser.
 
     Includes the standard Snakebids arguments.
     """
-
     # The snakemake parser functionality did not seem to be implemented in the original
     # factoring. I left the logic here, but it should probably be removed if it's not
     # needed.
@@ -207,6 +209,7 @@ def add_dynamic_args(
     parse_args: Mapping[str, Any],
     pybids_inputs: InputsConfig,
 ) -> None:
+    """Add --filter-<comp> and --wildcards-<comp> arguments to CLI."""
     # create parser group for app options
     app_group = parser.add_argument_group("SNAKEBIDS", "Options for snakebids app")
 
@@ -220,9 +223,8 @@ def add_dynamic_args(
             try:
                 arg_dict = {**arg, "type": globals()[str(arg["type"])]}
             except KeyError as err:
-                raise TypeError(
-                    f"{arg['type']} is not available as a type for {name}"
-                ) from err
+                msg = f"{arg['type']} is not available as a type for {name}"
+                raise TypeError(msg) from err
         else:
             arg_dict = arg
         app_group.add_argument(
@@ -240,7 +242,7 @@ def add_dynamic_args(
         "absence of values for that key.",
     )
 
-    for input_type in pybids_inputs.keys():
+    for input_type in pybids_inputs:
         argnames = (f"--filter-{input_type}", f"--filter_{input_type}")
         filters = pybids_inputs[input_type].get("filters", {})
         arglist_default = [f"{key}={value}" for (key, value) in filters.items()]
@@ -260,7 +262,7 @@ def add_dynamic_args(
         "File path entities to use as wildcards in snakemake",
     )
 
-    for input_type in pybids_inputs.keys():
+    for input_type in pybids_inputs:
         argnames = (f"--wildcards-{input_type}", f"--wildcards_{input_type}")
         arglist_default = [
             f"{wc}" for wc in pybids_inputs[input_type].get("wildcards", [])
@@ -282,12 +284,13 @@ def add_dynamic_args(
     )
 
     # create path override parser
-    for input_type in pybids_inputs.keys():
+    for input_type in pybids_inputs:
         argnames = (f"--path-{input_type}", f"--path_{input_type}")
         override_opts.add_argument(*argnames, default=None)
 
 
 def parse_snakebids_args(parser: argparse.ArgumentParser) -> SnakebidsArgs:
+    """Parse built-in snakebids arguments."""
     all_args = parser.parse_known_args()
     if all_args[0].workflow_mode:
         logger.warning(
@@ -324,7 +327,7 @@ def parse_snakebids_args(parser: argparse.ArgumentParser) -> SnakebidsArgs:
 
 
 def _make_underscore_dash_aliases(name: str) -> set[str]:
-    """Generate --dash-arg aliases for --dash_args and vice versa
+    """Generate --dash-arg aliases for --dash_args and vice versa.
 
     If no dashes or underscores are in the argument name, a tuple containing just the
     original arg name will be returned
@@ -363,9 +366,7 @@ def _resolve_path(path_candidate: _T) -> _T:
 
 
 def _resolve_path(path_candidate: Any) -> Any:
-    """Helper function to resolve any paths or list
-    of paths it's passed. Otherwise, returns the argument
-    unchanged.
+    """Resolve paths or list of paths, or return argument unchanged.
 
     Parameters
     ----------
@@ -374,7 +375,6 @@ def _resolve_path(path_candidate: Any) -> Any:
 
     Returns
     -------
-    list, Path, object
         If os.Pathlike or list  of os.Pathlike, the same paths resolved.
         Otherwise, the argument unchanged.
     """

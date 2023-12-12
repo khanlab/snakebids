@@ -21,6 +21,23 @@ from snakebids.utils.utils import (
 )
 
 
+@st.composite
+def non_matching_match_list(draw: st.DrawFn) -> tuple[str, list[str]]:
+    item = draw(st.text())
+    match_list = draw(
+        st.lists(
+            st.text(
+                # blank match strings (e.g. ['']) will match anything, and are not
+                # considered here
+                min_size=1
+            )
+            .map(re.escape)
+            .filter(lambda s: not re.match(s, item))
+        )
+    )
+    return item, match_list
+
+
 class TestMatchesAny:
     @given(st.text(), st.lists(st.text()))
     def test_with_eq_operator(self, item: str, match_list: list[str]):
@@ -29,23 +46,7 @@ class TestMatchesAny:
             match_list.append(item)
         assert matches_any(item, match_list, op.eq)
 
-    @st.composite
-    def NonMatchingMatchList(draw: st.DrawFn) -> tuple[str, list[str]]:
-        item = draw(st.text())
-        match_list = draw(
-            st.lists(
-                st.text(
-                    # blank match strings (e.g. ['']) will match anything, and are not
-                    # considered here
-                    min_size=1
-                )
-                .map(re.escape)
-                .filter(lambda s: not re.match(s, item))
-            )
-        )
-        return item, match_list
-
-    @given(NonMatchingMatchList())
+    @given(non_matching_match_list())
     def test_with_re_match(self, args: tuple[str, list[str]]):
         item, match_list = args
 
@@ -79,7 +80,7 @@ class TestMultiselectDict:
         unique: bool = False,
     ) -> tuple[str, ...]:
         if not dicts and not use_nonexistant_keys:
-            return tuple()
+            return ()
         sampler = st.sampled_from(list(dicts))
         val_strat = (
             st.text().filter(lambda s: s not in dicts)
@@ -331,7 +332,7 @@ def test_get_wildcard_dict(zip_list: dict[str, str]):
 
 class TestRegexContainer:
     DDWW = r"^\d{3}[a-zA-Z]{3}$"
-    bDDWW = rb"^\d{3}[a-zA-Z]{3}$"
+    bDDWW = rb"^\d{3}[a-zA-Z]{3}$"  # noqa: N815
     WWDD = r"^[a-zA-Z]{3}\d{3}$"
 
     @given(sample=st.from_regex(DDWW))

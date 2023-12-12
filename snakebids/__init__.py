@@ -19,7 +19,9 @@ from snakebids.core import (
     get_wildcard_constraints,
     write_derivative_json,
 )
-from snakebids.paths import bids
+from snakebids.paths import (
+    bids,
+)
 
 __all__ = [
     "BidsComponent",
@@ -35,5 +37,4 @@ __all__ = [
     "get_wildcard_constraints",
     "write_derivative_json",
 ]
-
 # </AUTOGEN_INIT>

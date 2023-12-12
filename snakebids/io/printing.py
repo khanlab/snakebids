@@ -13,6 +13,7 @@ from snakebids.types import ZipList
 
 
 def quote_wrap(val: str) -> str:
+    """Wrap string in quotes, with additional character escapes for printing."""
     return (
         json.dumps(val, ensure_ascii=False)
         .replace("\x85", "\\x85")
@@ -24,6 +25,18 @@ def quote_wrap(val: str) -> str:
 def format_zip_lists(
     zip_list: ZipList, max_width: int | float | None = None, tabstop: int = 4
 ) -> str:
+    """Pretty-format zip-lists in a tablar format.
+
+    Parameters
+    ----------
+    zip_list
+        zip_list to format
+    max_width
+        Maximum character width. If possible, zip_list values will be elided to fit
+        within this width
+    tabstop
+        Number of spaces to include in each level of indentation
+    """
     if not zip_list:
         return "{}"
     table = [_format_zip_row(key, row) for key, row in zip_list.items()]

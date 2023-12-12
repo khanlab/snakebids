@@ -54,7 +54,7 @@ def bids(
     extension: str | None = None,
     **entities: str | bool,
 ) -> str:
-    """Helper function for generating bids paths for snakemake workflows.
+    """Generate bids paths based on provided entities according to standardized schema.
 
     File path is of the form::
 
@@ -92,7 +92,6 @@ def bids(
 
     Examples
     --------
-
     Below is a rule using bids naming for input and output::
 
         rule proc_img:
@@ -155,7 +154,6 @@ def bids(
 
     Notes
     -----
-
     * For maximum flexibility all arguments are optional (if none are specified, will
       return empty string). Note that datatype and prefix may not be used in isolation,
       but must be given with another entity.

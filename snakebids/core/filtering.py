@@ -37,9 +37,7 @@ def filter_list(
     return_indices_only: bool = False,
     regex_search: bool = False,
 ) -> ZipList | list[int]:
-    """This function is used when you are expanding over some subset of the
-    wildcards i.e. if your output file doesn't contain all the wildcards in
-    :attr:`BidsComponent.wildcards <snakebids.BidsComponent.wildcards>`
+    """Filter zip_list, including only entries with provided entity values.
 
     Parameters
     ----------
@@ -160,9 +158,7 @@ def get_filtered_ziplist_index(
     wildcards: dict[str, str],
     subj_wildcards: dict[str, str],
 ) -> int | list[int]:
-    """Use this function when you have wildcards for a single scan instance,
-    and want to know the index of that scan, amongst that subject's scan
-    instances.
+    """Return the indices of all entries matching the filter query.
 
     Parameters
     ----------
@@ -176,7 +172,6 @@ def get_filtered_ziplist_index(
 
     Examples
     --------
-
     >>> import snakebids
 
     In this example, we have a dataset where with scans from two subjects,
@@ -244,7 +239,7 @@ def get_filtered_ziplist_index(
         3
     """
     # get the subject/(session) dict:
-    subj_dict = {key: wildcards[key] for key in subj_wildcards.keys()}
+    subj_dict = {key: wildcards[key] for key in subj_wildcards}
 
     # now filter the list based on subj_wildcards
     zip_list_filtered = filter_list(zip_list, subj_dict)
@@ -257,7 +252,7 @@ def get_filtered_ziplist_index(
 
 
 def _get_zip_list_indices(zip_list: ZipListLike) -> Iterator[int]:
-    """Convert a zip_list into its indices
+    """Convert a zip_list into its indices.
 
     Generates a sequence of numbers from 0 up to the length of the zip_lists. For
     example, the zip list:
@@ -277,11 +272,10 @@ def _get_zip_list_indices(zip_list: ZipListLike) -> Iterator[int]:
         Zip_list to be converted
 
     Yields
-    -------
+    ------
     integers
         The indices of the zip_list
     """
-
     if not zip_list:
         return
 

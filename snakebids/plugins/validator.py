@@ -1,6 +1,6 @@
 import json
 import logging
-import subprocess
+import subprocess as sp
 import tempfile
 
 import attr
@@ -17,9 +17,10 @@ class InvalidBidsError(SnakebidsPluginError):
 
 @attr.define
 class BidsValidator:
-    """Snakebids plugin to perform validation of a BIDS dataset using the
-    bids-validator. If the dataset is not valid according to the BIDS
-    specifications, an InvalidBidsError is raised.
+    """Perform validation of a BIDS dataset using the bids-validator.
+
+    If the dataset is not valid according to the BIDS specifications, an
+    InvalidBidsError is raised.
 
     Parameters
     ----------
@@ -55,7 +56,7 @@ class BidsValidator:
             temp.write(json.dumps(validator_config_dict))
             temp.flush()
             try:
-                subprocess.check_call(
+                sp.check_call(
                     ["bids-validator", app.config["bids_dir"], "-c", temp.name]
                 )
 
@@ -69,7 +70,7 @@ class BidsValidator:
                     "validation."
                 )
             # Any other bids-validator error
-            except subprocess.CalledProcessError as err:
+            except sp.CalledProcessError as err:
                 app.config["plugins.validator.success"] = False
                 if self.raise_invalid_bids:
                     raise InvalidBidsError from err

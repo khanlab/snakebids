@@ -1,5 +1,4 @@
-"""
-Internal module for console introspection
+"""Internal module for console introspection.
 
 Module modified from [pandas](https://github.com/pandas-dev/pandas)
 `pandas.io.formats.console` under BSD 3-Clause License
@@ -46,11 +45,10 @@ from shutil import get_terminal_size
 
 
 def get_console_size() -> tuple[int | None, int | None]:
-    """
-    Return console size as tuple = (width, height).
+    """Return console size as tuple = (width, height).
+
     Returns (None,None) in non-interactive session.
     """
-
     # Consider
     # interactive shell terminal, can detect term size
     # interactive non-shell terminal (ipnb/ipqtconsole), cannot detect term
@@ -86,8 +84,8 @@ def get_console_size() -> tuple[int | None, int | None]:
 
 
 def in_interactive_session() -> bool:
-    """
-    Check if we're running in an interactive shell.
+    """Check if we're running in an interactive shell.
+
     Returns
     -------
     bool
@@ -109,8 +107,8 @@ def in_interactive_session() -> bool:
 
 
 def in_ipython_frontend() -> bool:
-    """
-    Check if we're inside an IPython zmq frontend.
+    """Check if we're inside an IPython zmq frontend.
+
     Returns
     -------
     bool

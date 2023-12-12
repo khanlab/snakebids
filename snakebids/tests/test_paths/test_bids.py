@@ -185,7 +185,9 @@ def test_full_entity_names_not_in_path(entities: dict[str, str]):
 def test_long_and_short_names_cannot_be_used_simultaneously(entities: dict[str, str]):
     entities = {BidsEntity.normalize(e).entity: v for e, v in entities.items()}
     tags = {BidsEntity.normalize(e).tag: v for e, v in entities.items()}
-    with pytest.raises(ValueError) as err:
+    with pytest.raises(
+        ValueError, match="Long and short names of an entity cannot be used in the same"
+    ) as err:
         bids(**entities, **tags)
     assert itx.first(entities) in err.value.args[0]
     assert itx.first(tags) in err.value.args[0]
@@ -278,7 +280,9 @@ def test_bids_with_no_args_gives_empty_path():
     args=st.dictionaries(st.sampled_from(["datatype", "prefix"]), _values(), min_size=1)
 )
 def test_missing_essential_entities_gives_error(args: dict[str, str]):
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError, match="At least one of suffix, extension, or an entity must be"
+    ):
         bids(**args)
 
 

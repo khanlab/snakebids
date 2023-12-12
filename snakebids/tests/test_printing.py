@@ -149,7 +149,7 @@ def test_line_never_longer_than_max_width(zip_list: ZipList, width: int, tab: in
     formatted = format_zip_lists(zip_list, width, tab)
     parsed = zip_list_parser().parse_string(formatted)
     assume("left" in parsed[0])
-    assert all(list(len(line) <= width for line in formatted.splitlines()))
+    assert all(len(line) <= width for line in formatted.splitlines())
 
 
 def get_indent_length(line: str):

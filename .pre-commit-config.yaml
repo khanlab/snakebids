@@ -10,23 +10,16 @@ repos:
       - id: trailing-whitespace
   - repo: local
     hooks:
-      - id: isort
-        entry: poetry run isort
-        name: isort
-        language: system
-        types_or: [cython, pyi, python]
-  - repo: local
-    hooks:
-      - id: black
-        entry: poetry run black
-        name: black
+      - id: format
+        entry: poetry run ruff format
+        name: Ruff Format
         language: system
         types_or: [cython, pyi, python]
   - repo: local
     hooks:
       - id: system
-        name: Ruff
-        entry: poetry run ruff
+        name: Ruff Lint
+        entry: poetry run ruff check
         language: system
         exclude: \._py\}\}$
         types_or: [cython, pyi, python]

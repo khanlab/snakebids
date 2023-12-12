@@ -7,7 +7,7 @@ T = TypeVar("T")
 
 
 def unpack(iterable: Iterable[T], default: Sequence[T]) -> Iterable[T]:
-    """Return default if iterable has no elements
+    """Return default if iterable has no elements.
 
     Allows safe unpacking of possibly empty iterables
 
@@ -29,7 +29,7 @@ def unpack(iterable: Iterable[T], default: Sequence[T]) -> Iterable[T]:
 
 
 def drop(n: int, iterable: Iterable[T]) -> Iterable[T]:
-    """Returns all items of an iterable except the first *n* as a list
+    """Return all items of an iterable except the first *n* as a list.
 
     >>> drop(7, range(10))
     [7, 8, 9]

@@ -47,4 +47,4 @@ class MisspecifiedCliFilterError(Exception):
 
 
 class SnakebidsPluginError(Exception):
-    """Exception raised when a Snakebids plugin encounters a problem"""
+    """Exception raised when a Snakebids plugin encounters a problem."""

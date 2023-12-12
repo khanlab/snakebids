@@ -11,7 +11,10 @@ from snakebids.core.datasets import (
 )
 
 # <AUTOGEN_INIT>
-from snakebids.core.filtering import filter_list, get_filtered_ziplist_index
+from snakebids.core.filtering import (
+    filter_list,
+    get_filtered_ziplist_index,
+)
 from snakebids.core.input_generation import (
     generate_inputs,
     get_wildcard_constraints,
@@ -30,5 +33,4 @@ __all__ = [
     "get_wildcard_constraints",
     "write_derivative_json",
 ]
-
 # </AUTOGEN_INIT>

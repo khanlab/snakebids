@@ -15,6 +15,7 @@ from snakebids.cli import add_dynamic_args
 
 
 def create_app(args: argparse.Namespace) -> None:
+    """Implement the ``snakebids create`` command."""
     output = Path(args.output_dir).resolve()
     if not output.parent.exists():
         print(
@@ -47,6 +48,7 @@ def create_app(args: argparse.Namespace) -> None:
 
 
 def create_descriptor(args: argparse.Namespace) -> None:
+    """Implement the ``snakebids boutiques`` command."""
     app = SnakeBidsApp(args.app_dir.resolve())
     add_dynamic_args(app.parser, app.config["parse_args"], app.config["pybids_inputs"])
     app.create_descriptor(args.out_path)
@@ -54,6 +56,7 @@ def create_descriptor(args: argparse.Namespace) -> None:
 
 
 def gen_parser() -> argparse.ArgumentParser:
+    """Generate the CLI parser for ``snakebids``."""
     parser = argparse.ArgumentParser(
         description="Perform administrative Snakebids tasks."
     )
@@ -85,7 +88,6 @@ def gen_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     """Invoke Snakebids cli."""
-
     parser = gen_parser()
     args = parser.parse_args()
     args.func(args)

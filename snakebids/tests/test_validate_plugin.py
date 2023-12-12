@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import copy
-import subprocess
+import subprocess as sp
 from pathlib import Path
 
 import pytest
@@ -64,9 +64,7 @@ class TestBidsValidator:
 
     def test_raise_validation_error(self, app: SnakeBidsApp, mocker: MockerFixture):
         # Test for any other bids-validation error
-        mocker.patch(
-            "subprocess.check_call", side_effect=subprocess.CalledProcessError(1, "")
-        )
+        mocker.patch("subprocess.check_call", side_effect=sp.CalledProcessError(1, ""))
 
         app.config["bids_dir"] = "path/to/bids/dir"
         app.config["plugins.validator.skip"] = False
@@ -81,9 +79,7 @@ class TestBidsValidator:
 
     def test_ignore_validation_error(self, app: SnakeBidsApp, mocker: MockerFixture):
         # Test for any other bids-validation error
-        mocker.patch(
-            "subprocess.check_call", side_effect=subprocess.CalledProcessError(1, "")
-        )
+        mocker.patch("subprocess.check_call", side_effect=sp.CalledProcessError(1, ""))
 
         app.config["bids_dir"] = "path/to/bids/dir"
         app.config["plugins.validator.skip"] = False
