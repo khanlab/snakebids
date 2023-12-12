@@ -1,2 +1,2 @@
 class UserProperty(property):
-    """Simple wrapper around property for typing purposes"""
+    """Simple wrapper around property for typing purposes."""

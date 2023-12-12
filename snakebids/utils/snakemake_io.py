@@ -1,4 +1,4 @@
-"""File globbing functions based on snakemake.io library"""
+"""File globbing functions based on snakemake.io library."""
 from __future__ import annotations
 
 import collections
@@ -22,10 +22,11 @@ def regex(filepattern: str) -> str:
         wildcard = match.group("name")
         if wildcard in wildcards:
             if match.group("constraint"):
-                raise ValueError(
+                msg = (
                     "Constraint regex must be defined only in the first "
                     "occurence of the wildcard in a string."
                 )
+                raise ValueError(msg)
             regex_list.append(f"(?P={wildcard})")
         else:
             wildcards.add(wildcard)
@@ -151,6 +152,4 @@ def update_wildcard_constraints(
         return match.group(0)
 
     examined_names: set[str] = set()
-    updated = _wildcard_regex.sub(replace_constraint, pattern)
-
-    return updated
+    return _wildcard_regex.sub(replace_constraint, pattern)

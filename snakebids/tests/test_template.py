@@ -106,7 +106,7 @@ def test_invalid_email_raises_error(email: str, tmp_path: Path):
 
 @pytest.mark.parametrize("build", BUILD_BACKENDS)
 @pytest.mark.parametrize(
-    ["server", "server_status", "metadata", "expected"],
+    ("server", "server_status", "metadata", "expected"),
     [
         # Server returns valid version
         ("1.1.1", 200, "2.2.2", "1.1.1"),
@@ -138,8 +138,9 @@ def test_gets_correct_snakebids_version(
             json={"info": {"version": server}},
             status_code=server_status,
         )
-        metadata_patch = mocker.patch("importlib.metadata.version")
-        metadata_patch.return_value = metadata
+        from snakebids.jinja2_ext.snakebids_version import impm
+
+        mocker.patch.object(impm, "version", return_value=metadata)
         data = get_empty_data("testapp", build)
         copier.run_copy(
             str(Path(itx.first(snakebids.__path__), "project_template")),
@@ -175,7 +176,7 @@ def test_invalid_app_name_raises_error(name: str, tmp_path: Path):
 
 
 @pytest.mark.parametrize(
-    ["build", "build_backend"],
+    ("build", "build_backend"),
     [
         ("poetry", "poetry.core.masonry.api"),
         ("hatch", "hatchling.build"),
@@ -264,7 +265,7 @@ def test_pyproject_correctly_formatted(
 
 @needs_docker(f"snakebids/test-template:{platform.python_version()}")
 @pytest.mark.parametrize(
-    ["build", "venv"],
+    ("build", "venv"),
     [
         ("setuptools", "setuptools"),
         ("poetry", "poetry"),
@@ -298,8 +299,8 @@ def test_template_dry_runs_successfully(tmp_path: Path, build: BuildBackend, ven
     )
     try:
         cmd.check_returncode()
-    except Exception as err:
+    except Exception:
         print(cmd.stdout)
         print(cmd.stderr, file=sys.stderr)
-        raise err
+        raise
     assert "All set" in cmd.stdout.decode()

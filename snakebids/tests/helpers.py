@@ -55,7 +55,7 @@ def get_zip_list(
     """
 
     def strlist() -> list[str]:
-        return list()
+        return []
 
     lists: Iterable[Sequence[str]] = list(zip(*combinations)) or itx.repeatfunc(strlist)
     return MultiSelectDict(
@@ -103,9 +103,7 @@ def get_bids_path(entities: Iterable[str | BidsEntity], **extras: str) -> str:
 
     return bids(
         **dict(get_tag(BidsEntity(entity)) for entity in sorted(entities)),
-        **dict(
-            (BidsEntity(entity).wildcard, value) for entity, value in extras.items()
-        ),
+        **{BidsEntity(entity).wildcard: value for entity, value in extras.items()},
     )
 
 
@@ -143,9 +141,10 @@ def debug(**overrides: Any):
 
     def inner(func: Callable[_P, _T]) -> Callable[_P, _T]:
         if not hasattr(func, "hypothesis"):
-            raise TypeError(f"{func} is not decorated with hypothesis.given")
+            msg = f"{func} is not decorated with hypothesis.given"
+            raise TypeError(msg)
 
-        test = getattr(func, "hypothesis").inner_test
+        test = func.hypothesis.inner_test  # type: ignore
 
         @pytest.mark.disable_fakefs(True)
         @ft.wraps(func)
@@ -224,7 +223,7 @@ def reindex_dataset(
     return generate_inputs(root, config)
 
 
-def allow_function_scoped(callable: _T, /) -> _T:
+def allow_function_scoped(func: _T, /) -> _T:
     """Allow function_scoped fixtures in hypothesis tests
 
     This is primarily useful for using tmpdirs, hence, the name
@@ -233,7 +232,7 @@ def allow_function_scoped(callable: _T, /) -> _T:
         suppress_health_check=[
             HealthCheck.function_scoped_fixture,
         ],
-    )(callable)
+    )(func)
 
 
 def deadline(time: int | float | timedelta | None) -> Callable[[_T], _T]:
@@ -242,8 +241,8 @@ def deadline(time: int | float | timedelta | None) -> Callable[[_T], _T]:
     Numbers refer to time in milliseconds. Set to None to disable entirely
     """
 
-    def inner(callable: _T, /) -> _T:
-        return settings(deadline=time)(callable)
+    def inner(func: _T, /) -> _T:
+        return settings(deadline=time)(func)
 
     return inner
 
@@ -271,7 +270,7 @@ def expand_zip_list(
 
 def needs_docker(container: str):
     def decorator(func: Callable[_P, _T]) -> Callable[_P, _T]:
-        @pytest.mark.docker
+        @pytest.mark.docker()
         @ft.wraps(func)
         def wrapper(*args: _P.args, **kwargs: _P.kwargs):
             try:

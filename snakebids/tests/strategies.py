@@ -5,7 +5,7 @@ import itertools as it
 from os import PathLike
 from pathlib import Path
 from string import ascii_letters, digits
-from typing import Any, Container, Hashable, Iterable, Sequence, TypeVar
+from typing import TYPE_CHECKING, Any, Container, Hashable, Iterable, Sequence, TypeVar
 
 import hypothesis.strategies as st
 from bids.layout import Config as BidsConfig
@@ -25,7 +25,7 @@ _Ex_co = TypeVar("_Ex_co", bound=str, covariant=True)
 _T = TypeVar("_T")
 
 alphanum = ascii_letters + digits
-valid_entities: tuple[str] = tuple(BidsConfig.load("bids").entities.keys())
+valid_entities: tuple[str, ...] = tuple(BidsConfig.load("bids").entities.keys())
 
 
 def nothing() -> Any:
@@ -72,8 +72,10 @@ def _filter_invalid_entity_lists(entities: Sequence[BidsEntity | str]):
     """
     return all(
         [
-            # If suffix is in the path, extension must be too
-            ("suffix" not in entities or "extension" in entities),
+            (
+                # If suffix is in the path, extension must be too
+                "suffix" not in entities or "extension" in entities
+            ),
             # Cannot have paths with just datatype, just extension, or just datatype and
             # extension
             set(map(str, entities))
@@ -537,32 +539,41 @@ def multiselect_dicts(
     )
 
 
-def everything() -> st.SearchStrategy[Any]:
-    return st.from_type(type).flatmap(st.from_type)
+if TYPE_CHECKING:
 
+    def everything() -> st.SearchStrategy[Any]:
+        ...
 
-def everything_except(*excluded_types: type[Any]) -> st.SearchStrategy[Any]:
-    return (
-        st.from_type(type)
-        .flatmap(st.from_type)
-        .filter(lambda s: not isinstance(s, excluded_types))
-    )
+    def everything_except(*excluded_types: type[Any]) -> st.SearchStrategy[Any]:
+        ...
+
+else:
+
+    def everything() -> st.SearchStrategy[Any]:
+        return st.from_type(type).flatmap(st.from_type)
+
+    def everything_except(*excluded_types: type[Any]) -> st.SearchStrategy[Any]:
+        return (
+            st.from_type(type)
+            .flatmap(st.from_type)
+            .filter(lambda s: not isinstance(s, excluded_types))
+        )
 
 
 def _is_hashable(item: Any, /):
     try:
         hash(item)
-        return True
     except TypeError:
         return False
+    return True
 
 
 def _supports_eq(item: Any, /):
     try:
-        item == 0  # type: ignore
-        return True
-    except Exception:
+        item == 0  # type: ignore  # noqa: B015
+    except Exception:  # noqa: BLE001
         return False
+    return True
 
 
 def hashables() -> st.SearchStrategy[Hashable]:

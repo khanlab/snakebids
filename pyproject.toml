@@ -70,11 +70,9 @@ jinja2-time = ">=0.2.0"
 requests = ">=2.31.0"
 
 [tool.poetry.group.dev.dependencies]
-black = "^23.1.0"
 pytest = "^7.0.0"
 pytest-mock = "^3.7.0"
-isort = "^5.10.1"
-poethepoet = "^0.22.0"
+poethepoet = "^0.24.0"
 pre-commit = "^3.0.0"
 mkinit = "^1.0.0"
 hypothesis = "^6.34.1"
@@ -82,8 +80,8 @@ pytest-benchmark = "^4.0.0"
 pyfakefs = "^5.1.0"
 pyparsing = "^3.0.9"
 pathvalidate = "^3.0.0"
-pyright = "==1.1.324"
-ruff = "^0.0.290"
+pyright = "^1.1.339"
+ruff = "^0.1.7"
 pytest-xdist = "^3.3.1"
 pytest-split = "^0.8.1"
 tomli = "^2.0.1"
@@ -98,13 +96,13 @@ build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poe.tasks]
 setup = "pre-commit install"
-quality.shell = "isort snakebids && black snakebids && ruff snakebids && pyright snakebids"
-fix.shell = "ruff --fix snakebids && isort snakebids && black snakebids"
+quality.shell = "ruff format --check snakebids && ruff check snakebids && pyright snakebids"
+fix.shell = "ruff format snakebids && ruff check --fix snakebids"
 test = """
 pytest --doctest-modules --ignore=docs \
     --ignore=snakebids/project_template --benchmark-disable
 """
-mkinit = "mkinit --recursive --nomods --black -i snakebids"
+mkinit.shell = "mkinit --recursive --nomods -i snakebids && ruff format snakebids && ruff check --fix --select I001 snakebids "
 benchmark = "pytest --benchmark-only --benchmark-autosave"
 
 [tool.poe.tasks._get_version]
@@ -139,11 +137,100 @@ reportImportCycles = false
 [tool.ruff]
 select = [
     "E",    # pycodestyle error
+    "W",    # pycodestyle warning
     "F",    # pyflakes
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "YTT",  # flake8-2020
+    "S",    # flake8-bandit
+    "BLE",  # flake8-blind-except
+    "B",    # flake8-bugbear
+    "A",    # flake8-builtins
+    "COM",  # flake8-commas
+    "C4",   # flake8-comprehensions
+    "T10",  # flake8-debugger
+    "EM",   # flake8-errmsg
+    "FA",   # flake8-future-annotations
+    "ISC",  # flake8-implicit-str-concat
+    "ICN",  # flake8-import-conventions
+    "G",    # flake8-logging-format
+    "INP",  # flake8-no-pep420
+    "PIE",  # flake8-pie
+    "PT",   # flake8-pytest-style
+    "RSE",  # flake8-raise
+    "RET",  # flake8-return
+    "SLF",  # flake8-self
+    "SIM",  # flake8-simplify
+    # We use os.path a lot in "legitimate" ways, so this ruleset has too many
+    # false positives
+    # "PTH",  # flake8-use-pathlib
+    "TRY",  # tryceratops
+    "FLY",  # flynt
+    "D",    # pydocstyle
     "PL",   # pylint
     "RUF",  # ruff
-    "UP",   #pyupgrade
     "T100", # debugger
+    "I",    # isort
+    # Other perf rules give more false positives than benefits
+    "PERF101", # do not cast iterable to list
 ]
-ignore = ["PLR0913"]
+ignore = [
+    "PLR0913",
+    "D105",     # missing docstring in magic method
+    "D100",     # Require docstring in public modules
+    "D104",     # Require docstring in public packages
+    "S603",     # Subprocess without shell equals true
+    "S607",     # start-process-with-partial-path
+    # recommended ignores for ruff format
+    "W191",
+    "E111",
+    "E114",
+    "E117",
+    "D206",
+    "D300",
+    "Q000",
+    "Q001",
+    "Q002",
+    "Q003",
+    "COM812",
+    "COM819",
+    "ISC001",
+    "ISC002",
+]
+
+
 target-version = "py38"
+
+namespace-packages = ["snakebids/plugins"]
+
+[tool.ruff.per-file-ignores]
+"snakebids/project_template/**" = ["N999"]
+"snakebids/tests/**" = [
+    "D",
+    "S101",     # assert
+    "S307",     # Use of eval
+    "SLF",
+]
+
+[tool.ruff.pydocstyle]
+convention = "numpy"
+ignore-decorators = ["snakebids.utils.utils.property_alias"]
+
+[tool.ruff.flake8-builtins]
+builtins-ignorelist = ["filter"]
+
+[tool.ruff.flake8-import-conventions.extend-aliases]
+itertools = "it"
+functools = "ft"
+operator = "op"
+subprocess = "sp"
+importlib_resources = "impr"
+"importlib.resources" = "impr"
+"importlib.metadata" = "impm"
+more_itertools = "itx"
+"hypothesis.strategies" = "st"
+"snakebids.tests.strategies" = "sb_st"
+"snakebids.utils.sb_itertools" = "sb_it"
+
+[tool.ruff.flake8-pytest-style]
+fixture-parentheses = false

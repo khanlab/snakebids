@@ -203,7 +203,7 @@ class TestFilterBools:
             shorter.input_name: {
                 "wildcards": [
                     BidsEntity.from_tag(wildcard).entity
-                    for wildcard in shorter.input_wildcards.keys()
+                    for wildcard in shorter.input_wildcards
                 ],
             }
         }
@@ -229,7 +229,7 @@ class TestFilterBools:
             longer.input_name: {
                 "wildcards": [
                     BidsEntity.from_tag(wildcard).entity
-                    for wildcard in longer.input_wildcards.keys()
+                    for wildcard in longer.input_wildcards
                 ],
             }
         }
@@ -256,7 +256,7 @@ class TestFilterBools:
             shorter.input_name: {
                 "wildcards": [
                     BidsEntity.from_tag(wildcard).entity
-                    for wildcard in shorter.input_wildcards.keys()
+                    for wildcard in shorter.input_wildcards
                 ],
                 "filters": {BidsEntity.from_tag(extra_entity).entity: False},
             }
@@ -334,7 +334,7 @@ class TestFilterBools:
             longer.input_name: {
                 "wildcards": [
                     BidsEntity.from_tag(wildcard).entity
-                    for wildcard in longer.input_wildcards.keys()
+                    for wildcard in longer.input_wildcards
                 ],
                 "filters": {BidsEntity.from_tag(extra_entity).entity: True},
             }
@@ -405,7 +405,7 @@ class TestFilterBools:
             "target": {
                 "wildcards": [
                     BidsEntity.from_tag(wildcard).entity
-                    for wildcard in template.wildcards.keys()
+                    for wildcard in template.wildcards
                 ],
                 "filters": {entity.entity: [target, False]},
             }
@@ -543,7 +543,11 @@ class TestGenerateFilter:
     def test_throws_error_if_labels_and_excludes_are_given(
         self, args: tuple[list[str] | str, list[str] | str]
     ):
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match="Cannot define both participant_label and "
+            "exclude_participant_label at the same time",
+        ):
             _generate_filters(*args)
 
     @given(st_lists_or_text)
@@ -663,7 +667,7 @@ def path_entities(draw: st.DrawFn):
 
 
 class TestCustomPaths:
-    @pytest.fixture()
+    @pytest.fixture
     def temp_dir(self, fakefs_tmpdir: Path, bids_fs: Path):
         return fakefs_tmpdir
 
@@ -868,7 +872,11 @@ def test_t1w():
     }
 
     # Can't define particpant_label and exclude_participant_label
-    with pytest.raises(ValueError) as v_error:
+    with pytest.raises(
+        ValueError,
+        match="Cannot define both participant_label and "
+        "exclude_participant_label at the same time",
+    ):
         result = generate_inputs(
             pybids_inputs=pybids_inputs,
             bids_dir=real_bids_dir,
@@ -876,10 +884,6 @@ def test_t1w():
             participant_label="001",
             exclude_participant_label="002",
         )
-    assert v_error.value.args[0] == (
-        "Cannot define both participant_label and "
-        "exclude_participant_label at the same time"
-    )
 
     # Simplest case -- one input type, using pybids
     result = generate_inputs(
@@ -1195,7 +1199,7 @@ class TestGenBidsLayout:
         )
 
     def test_invalid_path_raises_error(self, tmpdir: Path):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="BIDS root does not exist"):
             _gen_bids_layout(
                 bids_dir=tmpdir / "foo",
                 derivatives=False,
@@ -1299,7 +1303,7 @@ class TestParseBidsPath:
         path = component.expand()[0]
         entities = [BidsEntity.normalize(e).entity for e in component.zip_lists]
         _, matches = _parse_bids_path(path, entities)
-        assert {(key, val) for key, val in matches.items()} == {
+        assert set(matches.items()) == {
             (key, val[0]) for key, val in component.zip_lists.items()
         }
 
@@ -1322,7 +1326,7 @@ class TestParseBidsPath:
 
 class TestDB:
     @pytest.fixture(autouse=True)
-    def start(self, tmp_path: Path):
+    def _start(self, tmp_path: Path):
         self.tmpdir = str(tmp_path)
 
         # Copy over test data

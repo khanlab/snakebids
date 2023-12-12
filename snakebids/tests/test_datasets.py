@@ -60,11 +60,10 @@ class TestBidsComponentValidation:
     @given(sb_st.zip_lists().filter(lambda v: len(v) > 1))
     def test_zip_lists_must_be_same_length(self, zip_lists: ZipList):
         itx.first(zip_lists.values()).append("foo")
-        with pytest.raises(ValueError) as err:
+        with pytest.raises(ValueError, match="zip_lists must all be of equal length"):
             BidsComponent(
                 name="foo", path=get_bids_path(zip_lists), zip_lists=zip_lists
             )
-        assert err.value.args[0] == "zip_lists must all be of equal length"
 
     @given(sb_st.zip_lists(), sb_st.bids_entity())
     def test_path_cannot_have_extra_entities(
@@ -72,12 +71,10 @@ class TestBidsComponentValidation:
     ):
         assume(entity.wildcard not in zip_lists)
         path = get_bids_path(it.chain(zip_lists, [entity.entity]))
-        with pytest.raises(ValueError) as err:
+        with pytest.raises(
+            ValueError, match="zip_lists entries must match the wildcards in input_path"
+        ):
             BidsComponent(name="foo", path=path, zip_lists=zip_lists)
-        assert (
-            "zip_lists entries must match the wildcards in input_path"
-            in err.value.args[0]
-        )
 
     @given(sb_st.zip_lists().filter(lambda v: len(v) > 1))
     def test_path_cannot_have_missing_entities(self, zip_lists: ZipList):
@@ -87,20 +84,18 @@ class TestBidsComponentValidation:
         assume(set(path_entities) - {"datatype"})
 
         path = get_bids_path(path_entities)
-        with pytest.raises(ValueError) as err:
+        with pytest.raises(
+            ValueError, match="zip_lists entries must match the wildcards in input_path"
+        ):
             BidsComponent(name="foo", path=path, zip_lists=zip_lists)
-        assert (
-            "zip_lists entries must match the wildcards in input_path"
-            in err.value.args[0]
-        )
 
 
 class TestBidsComponentEq:
     @given(sb_st.bids_components(), sb_st.everything_except(BidsComponent))
-    def test_other_types_are_unequal(self, input: BidsComponent, other: Any):
-        assert input != other
+    def test_other_types_are_unequal(self, comp: BidsComponent, other: Any):
+        assert comp != other
 
-    def test_empty_BidsInput_are_equal(self):
+    def test_empty_bidsinput_are_equal(self):
         assert BidsComponent(name="", path="", zip_lists={}) == BidsComponent(
             name="", path="", zip_lists={}
         )
@@ -115,43 +110,43 @@ class TestBidsComponentEq:
         )
 
     @given(sb_st.bids_components())
-    def test_copies_are_equal(self, input: BidsComponent):
-        cp = copy.deepcopy(input)
-        assert cp == input
+    def test_copies_are_equal(self, comp: BidsComponent):
+        cp = copy.deepcopy(comp)
+        assert cp == comp
 
     @given(sb_st.bids_components())
-    def test_mutation_makes_unequal(self, input: BidsComponent):
-        cp = copy.deepcopy(input)
+    def test_mutation_makes_unequal(self, comp: BidsComponent):
+        cp = copy.deepcopy(comp)
         itx.first(cp.zip_lists.values())[0] += "foo"
-        assert cp != input
+        assert cp != comp
 
     @given(sb_st.bids_components(), st.data())
     def test_extra_entities_makes_unequal(
-        self, input: BidsComponent, data: st.DataObject
+        self, comp: BidsComponent, data: st.DataObject
     ):
-        cp = copy.deepcopy(input)
+        cp = copy.deepcopy(comp)
         new_entity = data.draw(
-            sb_st.bids_value().filter(lambda s: s not in input.zip_lists)
+            sb_st.bids_value().filter(lambda s: s not in comp.zip_lists)
         )
         cp.zip_lists[new_entity] = []
         itx.first(cp.zip_lists.values())[0] += "foo"
-        assert cp != input
+        assert cp != comp
 
     @given(sb_st.bids_components())
-    def test_order_doesnt_affect_equality(self, input: BidsComponent):
-        cp = copy.deepcopy(input)
+    def test_order_doesnt_affect_equality(self, comp: BidsComponent):
+        cp = copy.deepcopy(comp)
         for list_ in cp.zip_lists:
             cp.zip_lists[list_].reverse()
-        assert cp == input
+        assert cp == comp
 
     @given(sb_st.bids_components())
-    def test_paths_must_be_identical(self, input: BidsComponent):
+    def test_paths_must_be_identical(self, comp: BidsComponent):
         cp = BidsComponent(
-            name=input.input_name,
-            path=input.input_path + "foo",
-            zip_lists=input.zip_lists,
+            name=comp.input_name,
+            path=comp.input_path + "foo",
+            zip_lists=comp.zip_lists,
         )
-        assert cp != input
+        assert cp != comp
 
 
 class TestBidsComponentProperties:
@@ -246,10 +241,7 @@ def _get_novel_path(prefix: str, component: Expandable):
     # use the "comp-" prefix to give a constant part to the novel template,
     # otherwise the trivial template "{foo}" globs everything
     return Path(
-        *map(
-            lambda s: f"{prefix}-{s}",
-            get_wildcard_dict(component.zip_lists).values(),
-        )
+        *(f"{prefix}-{s}" for s in get_wildcard_dict(component.zip_lists).values())
     )
 
 
@@ -596,9 +588,8 @@ class TestFilteringBidsComponentRowWithSpec:
         self, component: BidsComponentRow, data: st.DataObject
     ):
         spec = self.get_filter_spec(data, component)
-        with pytest.raises(ValueError) as err:
+        with pytest.raises(ValueError, match="__spec and filters cannot"):
             component.filter(spec, foo="bar")
-        assert "__spec and filters cannot" in err.value.args[0]
 
 
 class TestBidsComponentIndexing:
@@ -610,7 +601,7 @@ class TestBidsComponentIndexing:
         unique: bool = False,
     ) -> tuple[str, ...]:
         if not dicts.zip_lists and not use_nonexistant_keys:
-            return tuple()
+            return ()
         sampler = st.sampled_from(list(dicts.zip_lists))
         val_strat = (
             st.text().filter(lambda s: s not in dicts.zip_lists)
@@ -620,14 +611,14 @@ class TestBidsComponentIndexing:
         return tuple(data.draw(st.lists(val_strat, unique=unique)))
 
     @given(dicts=sb_st.bids_partial_components(), data=st.data())
-    def test_multiple_selection_returns_BidsPartialComponent(
+    def test_multiple_selection_returns_bidspartialcomponent(
         self, dicts: BidsPartialComponent, data: st.DataObject
     ):
         selectors = self.get_selectors(data, dicts)
         assert type(dicts[selectors]) == BidsPartialComponent
 
     @given(dicts=sb_st.bids_partial_components(), data=st.data())
-    def test_single_selection_returns_BidsComponentRow(
+    def test_single_selection_returns_bidscomponentrow(
         self, dicts: BidsPartialComponent, data: st.DataObject
     ):
         selectors = data.draw(st.sampled_from(list(dicts.zip_lists)))

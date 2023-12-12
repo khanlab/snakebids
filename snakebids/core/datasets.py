@@ -32,7 +32,7 @@ from snakebids.utils.utils import (
 
 
 class BidsDatasetDict(TypedDict):
-    """Dict equivalent of BidsInputs, for backwards-compatibility"""
+    """Dict equivalent of BidsInputs, for backwards-compatibility."""
 
     input_path: dict[str, str]
     input_zip_lists: dict[str, dict[str, list[str]]]
@@ -44,7 +44,7 @@ class BidsDatasetDict(TypedDict):
 
 
 class BidsComponentRow(ImmutableList[str]):
-    """A single row from a BidsComponent
+    """A single row from a BidsComponent.
 
     This class is derived by indexing a single entity from a :class:`BidsComponent` or
     :class:`BidsPartialComponent`. It should not be constructed manually.
@@ -70,18 +70,19 @@ class BidsComponentRow(ImmutableList[str]):
 
     @property
     def entities(self) -> tuple[str, ...]:
-        """The unique values associated with the component"""
+        """The unique values associated with the component."""
         return tuple(set(self._data))
 
     @property
     def wildcards(self) -> str:
-        """The entity name wrapped in wildcard braces"""
+        """The entity name wrapped in wildcard braces."""
         return f"{{{self.entity}}}"
 
     @property
     def zip_lists(self) -> ZipList:
-        """
-        Dictionary where each key is a wildcard entity and each value is a list of the
+        """Table of entities and values.
+
+        Each key is a wildcard entity and each value is a list of the
         values found for that entity. Each of these lists has length equal to the number
         of images matched for this modality, so they can be zipped together to get a
         list of the wildcard values for each file.
@@ -101,7 +102,7 @@ class BidsComponentRow(ImmutableList[str]):
         allow_missing: bool | str | Iterable[str] = False,
         **wildcards: str | Iterable[str],
     ) -> list[str]:
-        """Safely expand over given paths with component wildcards
+        """Safely expand over given paths with component wildcards.
 
         Uses the entity-values represented by this row to expand over the given paths.
         Extra wildcards can be specified as keyword arguments.
@@ -114,7 +115,7 @@ class BidsComponentRow(ImmutableList[str]):
         Uses the snakemake :ref:`expand <snakemake:snakefiles_expand>` under the hood.
 
         Parameters
-        ==========
+        ----------
         paths:
             Path or list of paths to expand over
         allow_missing:
@@ -146,7 +147,7 @@ class BidsComponentRow(ImmutableList[str]):
         regex_search: bool | str | Iterable[str] = False,
         **filters: str | Iterable[str],
     ) -> Self:
-        """Filter component based on provided entity filters
+        """Filter component based on provided entity filters.
 
         Extracts a subset of the entity-values present in the row.
 
@@ -177,9 +178,8 @@ class BidsComponentRow(ImmutableList[str]):
             raise TypeError(msg)
         if spec is not None:
             if filters:
-                raise ValueError(
-                    "Both __spec and filters cannot be used simultaneously"
-                )
+                msg = "Both __spec and filters cannot be used simultaneously"
+                raise ValueError(msg)
             filters = {self.entity: spec}
         entity, data = itx.first(
             filter_list(
@@ -191,7 +191,7 @@ class BidsComponentRow(ImmutableList[str]):
 
 @attr.define(kw_only=True)
 class BidsPartialComponent:
-    """Primitive representation of a bids data component
+    """Primitive representation of a bids data component.
 
     See :class:`BidsComponent` for an extended definition of a data component.
 
@@ -221,7 +221,8 @@ class BidsPartialComponent:
     def _validate_zip_lists(self, __attr: str, value: dict[str, list[str]]) -> None:
         lengths = {len(val) for val in value.values()}
         if len(lengths) > 1:
-            raise ValueError("zip_lists must all be of equal length")
+            msg = "zip_lists must all be of equal length"
+            raise ValueError(msg)
 
     def __repr__(self) -> str:
         return self.pformat()
@@ -245,7 +246,7 @@ class BidsPartialComponent:
         return BidsComponentRow(self.zip_lists[key], entity=key)
 
     def __bool__(self) -> bool:
-        """Truth of a BidsComponent is based on whether it has values
+        """Truth of a BidsComponent is based on whether it has values.
 
         It is not based on whether it has any entities. This is because
         :meth:`~BidsPartialComponent.filter` returns a component retaining all entities
@@ -256,13 +257,23 @@ class BidsPartialComponent:
         return bool(itx.first(self.zip_lists))
 
     def _pformat_body(self) -> None | str | list[str]:
-        """Extra properties to be printed within pformat
+        """Extra properties to be printed within pformat.
 
         Meant for implementation in subclasses
         """
         return None
 
     def pformat(self, max_width: int | float | None = None, tabstop: int = 4) -> str:
+        """Pretty-format component.
+
+        Parameters
+        ----------
+        max_width
+            Maximum width of characters for output. If possible, zip_list table will be
+            elided to fit within this width
+        tabstop
+            Number of spaces for output indentation
+        """
         width = max_width or get_console_size()[0] or inf
         body = it.chain(
             itx.always_iterable(self._pformat_body() or []),
@@ -302,7 +313,7 @@ class BidsPartialComponent:
 
     @property
     def entities(self) -> MultiSelectDict[str, list[str]]:
-        """Component entities and their associated values
+        """Component entities and their associated values.
 
         Dictionary where each key is an entity and each value is a list of the
         unique values found for that entity. These lists might not be the same length.
@@ -315,7 +326,7 @@ class BidsPartialComponent:
 
     @property
     def wildcards(self) -> MultiSelectDict[str, str]:
-        """Wildcards in brace-wrapped syntax
+        """Wildcards in brace-wrapped syntax.
 
         Dictionary where each key is the name of a wildcard entity, and each value is
         the Snakemake wildcard used for that entity.
@@ -326,7 +337,7 @@ class BidsPartialComponent:
 
     @property
     def input_zip_lists(self) -> ZipList:
-        """Alias of :attr:`zip_lists <snakebids.BidsComponent.zip_lists>`
+        """Alias of :attr:`zip_lists <snakebids.BidsComponent.zip_lists>`.
 
         Dictionary where each key is a wildcard entity and each value is a list of the
         values found for that entity. Each of these lists has length equal to the number
@@ -356,7 +367,7 @@ class BidsPartialComponent:
         allow_missing: bool | str | Iterable[str] = False,
         **wildcards: str | Iterable[str],
     ) -> list[str]:
-        """Safely expand over given paths with component wildcards
+        """Safely expand over given paths with component wildcards.
 
         Uses the entity-value combinations found in the dataset to expand over the given
         paths. Extra wildcards can be specifed as keyword arguments.
@@ -369,7 +380,7 @@ class BidsPartialComponent:
         Uses the snakemake :ref:`expand <snakemake:snakefiles_expand>` under the hood.
 
         Parameters
-        ==========
+        ----------
         paths:
             Path or list of paths to expand over
         allow_missing:
@@ -419,7 +430,7 @@ class BidsPartialComponent:
         regex_search: bool | str | Iterable[str] = False,
         **filters: str | Iterable[str],
     ) -> Self:
-        """Filter component based on provided entity filters
+        """Filter component based on provided entity filters.
 
         This method allows you to expand over a subset of your wildcards. This could be
         useful for extracting subjects from a specific patient group, running different
@@ -455,7 +466,7 @@ class BidsPartialComponent:
 
 @attr.define(kw_only=True)
 class BidsComponent(BidsPartialComponent):
-    """Representation of a bids data component
+    """Representation of a bids data component.
 
     A component is a set of data entries all corresponding to the same type of object.
     Entries vary over a set of entities. For example, a component may represent all the
@@ -505,10 +516,11 @@ class BidsComponent(BidsPartialComponent):
             zip(*Formatter().parse(self.path)), [[], [], []]
         )
         if (fields := set(filter(None, raw_fields))) != set(value):
-            raise ValueError(
+            msg = (
                 "zip_lists entries must match the wildcards in input_path: "
                 f"{self.path}: {fields} != zip_lists: {set(value)}"
             )
+            raise ValueError(msg)
 
     def __repr__(self) -> str:
         return self.pformat()
@@ -538,7 +550,7 @@ class BidsComponent(BidsPartialComponent):
         allow_missing: bool | str | Iterable[str] = False,
         **wildcards: str | Iterable[str],
     ) -> list[str]:
-        """Safely expand over given paths with component wildcards
+        """Safely expand over given paths with component wildcards.
 
         Uses the entity-value combinations found in the dataset to expand over the given
         paths. If no path is provided, expands over the component
@@ -553,7 +565,7 @@ class BidsComponent(BidsPartialComponent):
         Uses the snakemake :ref:`expand <snakemake:snakefiles_expand>` under the hood.
 
         Parameters
-        ==========
+        ----------
         paths:
             Path or list of paths to expand over. If not provided, the component's own
             :attr:`~BidsComponent.path` will be expanded over.
@@ -571,7 +583,7 @@ class BidsComponent(BidsPartialComponent):
 
     @property
     def input_name(self) -> str:
-        """Alias of :attr:`name <snakebids.BidsComponent.name>`
+        """Alias of :attr:`name <snakebids.BidsComponent.name>`.
 
         Name of the component
         """
@@ -579,7 +591,7 @@ class BidsComponent(BidsPartialComponent):
 
     @property
     def input_path(self) -> str:
-        """Alias of :attr:`path <snakebids.BidsComponent.path>`
+        """Alias of :attr:`path <snakebids.BidsComponent.path>`.
 
         Wildcard-filled path that matches the files for this component.
         """
@@ -624,25 +636,35 @@ class BidsDataset(UserDictPy38[str, BidsComponent]):
                 "sessions",
                 "subj_wildcards",
             }:
-                raise KeyError(
+                msg = (
                     "As of v0.8, generate_inputs() no longer returns a dict by "
                     f"default, but an instance of BidsDataset. As such, '{key}' can no "
                     "longer be accessed via brackets '[]' as before. The original dict "
                     "can be returned by setting `use_bids_inputs` to False in the call "
                     "to generate_inputs(). However, we encourage you to transition to "
                     "the use of `BidsDataset` for long term support"
-                ) from err
-            raise err
+                )
+                raise KeyError(msg) from err
+            raise
 
     def __setitem__(self, _: Any, __: Any) -> NoReturn:
-        raise NotImplementedError(
-            f"Modification of {self.__class__.__name__} is not yet supported"
-        )
+        msg = f"Modification of {self.__class__.__name__} is not yet supported"
+        raise NotImplementedError(msg)
 
     def __repr__(self) -> str:
         return self.pformat()
 
     def pformat(self, max_width: int | float | None = None, tabstop: int = 4) -> str:
+        """Pretty-format dataset.
+
+        Parameters
+        ----------
+        max_width
+            Maximum width of characters for output. If possible, zip_list table will be
+            elided to fit within this width
+        tabstop
+            Number of spaces for output indentation
+        """
         width = max_width or get_console_size()[0] or inf
         body = [
             f"{quote_wrap(name)}: {comp.pformat(width - tabstop, tabstop)},"
@@ -666,9 +688,7 @@ class BidsDataset(UserDictPy38[str, BidsComponent]):
         admonition="warning",
     )
     def path(self) -> dict[str, str]:
-        """Dict mapping :class:`BidsComponents <snakebids.BidsComponent>` names to \
-        their ``paths``.
-        """
+        """Dict mapping :class:`BidsComponent` names to their ``paths``."""
         return {key: value.path for key, value in self.items()}
 
     @ft.cached_property
@@ -683,9 +703,7 @@ class BidsDataset(UserDictPy38[str, BidsComponent]):
         admonition="warning",
     )
     def zip_lists(self) -> dict[str, ZipList]:
-        """Dict mapping :class:`BidsComponents <snakebids.BidsComponent>` names to \
-        their ``zip_lists``
-        """
+        """Dict mapping :class:`BidsComponent` names to their ``zip_lists``."""
         return {key: value.zip_lists for key, value in self.items()}
 
     @ft.cached_property
@@ -700,9 +718,7 @@ class BidsDataset(UserDictPy38[str, BidsComponent]):
         admonition="warning",
     )
     def entities(self) -> dict[str, MultiSelectDict[str, list[str]]]:
-        """Dict mapping :class:`BidsComponents <snakebids.BidsComponent>` names to \
-        to their :attr:`entities <snakebids.BidsComponent.entities>`
-        """
+        """Dict mapping :class:`BidsComponent` names to their :attr:`~BidsComponent.entities`."""  # noqa: E501
         return {key: value.entities for key, value in self.items()}
 
     @ft.cached_property
@@ -717,9 +733,7 @@ class BidsDataset(UserDictPy38[str, BidsComponent]):
         admonition="warning",
     )
     def wildcards(self) -> dict[str, MultiSelectDict[str, str]]:
-        """Dict mapping :class:`BidsComponents <snakebids.BidsComponent>` names to \
-        their :attr:`wildcards <snakebids.BidsComponent.wildcards>`
-        """
+        """Dict mapping :class:`BidsComponent` names to their :attr:`~BidsComponent.wildcards`."""  # noqa: E501
         return {key: value.input_wildcards for key, value in self.items()}
 
     @ft.cached_property
@@ -776,7 +790,7 @@ class BidsDataset(UserDictPy38[str, BidsComponent]):
 
     @property
     def as_dict(self) -> BidsDatasetDict:
-        """Get the layout as a legacy dict
+        """Get the layout as a legacy dict.
 
         Included primarily for backward compatability with older versions of snakebids,
         where generate_inputs() returned a dict rather than the `BidsDataset` class
@@ -805,7 +819,7 @@ class BidsDataset(UserDictPy38[str, BidsComponent]):
     def from_iterable(
         cls, iterable: Iterable[BidsComponent], layout: BIDSLayout | None = None
     ) -> BidsDataset:
-        """Construct Dataset from iterable of BidsComponents
+        """Construct Dataset from iterable of BidsComponents.
 
         Parameters
         ----------

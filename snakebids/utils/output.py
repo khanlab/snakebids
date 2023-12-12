@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
-import time
 from collections import OrderedDict
 from pathlib import Path, PosixPath, WindowsPath
 from typing import Any, Literal
@@ -18,7 +16,7 @@ Mode = Literal["workflow", "bidsapp"]
 
 
 def prepare_bidsapp_output(outputdir: Path, force_output: bool = False) -> None:
-    """Ensure output directory is in the correct mode and is ready for snakemake to run
+    """Ensure output directory is in the correct mode and is ready for snakemake to run.
 
     Checks for existing output at the directory, creating it if necessary. Creates a
     .snakebids file to track output mode and other workflow information. If outputdir
@@ -49,9 +47,9 @@ def prepare_bidsapp_output(outputdir: Path, force_output: bool = False) -> None:
     # If it does exist but there's no .snakebids file, an error will be raised.
     try:
         _get_snakebids_file(outputdir)
-    except RunError as err:
+    except RunError:
         if not force_output:
-            raise err
+            raise
 
     outputdir.mkdir(exist_ok=True)
 
@@ -59,7 +57,7 @@ def prepare_bidsapp_output(outputdir: Path, force_output: bool = False) -> None:
 
 
 def write_output_mode(dotfile: Path, mode: Mode) -> None:
-    """Write output mode to .snakebids
+    """Write output mode to .snakebids.
 
     Parameters
     ----------
@@ -128,30 +126,37 @@ def _get_snakebids_file(outputdir: Path) -> dict[str, str] | None:
 
     # We have an occupied directory without a .snakebids file, so we have no idea
     # what's there.
-    raise RunError(
+    msg = (
         f"Output dir `{outputdir.resolve()}` exists, but it doesn't look like this "
         "app has been run there before. If you're sure you got the directory correct, "
-        "run the app again using `--force-output`",
+        "run the app again using `--force-output`"
     )
-
-
-def get_time_hash() -> str:
-    """currently unused"""
-
-    time_hash = hashlib.sha1()
-    time_hash.update(str(time.time()).encode("utf-8"))
-    return time_hash.hexdigest()[:8]
+    raise RunError(
+        msg,
+    )
 
 
 def write_config_file(
     config_file: Path, data: dict[str, Any], force_overwrite: bool = False
 ) -> None:
+    """Write provided data as yaml to provided path.
+
+    Parameters
+    ----------
+    config_file
+        Path of yaml file
+    data
+        Data to format
+    force_overwrite
+        If True, force overwrite of already existing files, otherwise error out
+    """
     if (config_file.exists()) and not force_overwrite:
-        raise RunError(
+        msg = (
             f"A config file named {config_file.name} already exists:\n"
             f"\t- {config_file.resolve()}\n"
             "Please move or rename either the existing or incoming config."
         )
+        raise RunError(msg)
     config_file.parent.mkdir(exist_ok=True)
 
     # TODO: copy to a time-hashed file for provenance purposes?
@@ -170,14 +175,16 @@ def write_config_file(
         yaml.add_representer(
             OrderedDict,
             lambda dumper, data: dumper.represent_mapping(  # type: ignore
-                "tag:yaml.org,2002:map", data.items()  # type: ignore
+                "tag:yaml.org,2002:map",
+                data.items(),  # type: ignore
             ),
         )
 
         # Represent any PathLikes as str.
         def path2str(dumper, data):  # type: ignore
             return dumper.represent_scalar(  # type: ignore
-                "tag:yaml.org,2002:str", str(data)  # type: ignore
+                "tag:yaml.org,2002:str",
+                str(data),  # type: ignore
             )
 
         yaml.add_representer(PosixPath, path2str)  # type: ignore

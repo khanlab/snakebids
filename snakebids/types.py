@@ -21,7 +21,7 @@ _S_co = TypeVar("_S_co", covariant=True)
 
 
 class InputConfig(TypedDict, total=False):
-    """Configuration for a single bids component"""
+    """Configuration for a single bids component."""
 
     filters: dict[str, str | bool | list[str | bool]]
     """Filters to pass on to :class:`BIDSLayout.get() <bids.layout.BIDSLayout>`
@@ -58,21 +58,23 @@ class InputConfig(TypedDict, total=False):
 
 
 class BinaryOperator(Protocol, Generic[_T_contra, _S_co]):
-    def __call__(self, first: _T_contra, second: _T_contra, /) -> _S_co:
+    """Callables that act on two objects of identical type."""
+
+    def __call__(self, first: _T_contra, second: _T_contra, /) -> _S_co:  # noqa: D102
         ...
 
 
 class Expandable(Protocol):
-    """Protocol represents objects that hold an entity table and can expand over a path
+    """Protocol represents objects that hold an entity table and can expand over a path.
 
     Includes BidsComponent, BidsPartialComponent, and BidsComponentRow
     """
 
     @property
-    def zip_lists(self) -> ZipList:
+    def zip_lists(self) -> ZipList:  # noqa: D102
         ...
 
-    def expand(
+    def expand(  # noqa: D102
         self,
         paths: Iterable[Path | str] | Path | str,
         /,
@@ -81,7 +83,7 @@ class Expandable(Protocol):
     ) -> list[str]:
         ...
 
-    def filter(
+    def filter(  # noqa: D102
         self,
         *,
         regex_search: bool | str | Iterable[str] = False,
@@ -96,6 +98,8 @@ _Valt_co = TypeVar("_Valt_co", covariant=True)
 
 
 class MultiSelectable(Protocol, Generic[_K_contra, _V_co, _Valt_co]):
+    """Mappings supporting selection with multiple keys."""
+
     @overload
     def __getitem__(self, key: _K_contra, /) -> _V_co:
         ...
@@ -112,12 +116,12 @@ _V = TypeVar("_V")
 if TYPE_CHECKING:
 
     class UserDictPy38(Dict[_K, _V]):
-        pass
+        """Wrapper around dict, used for subclassing with static typing."""
 
 else:
 
     class UserDictPy38(dict, Generic[_K, _V]):
-        pass
+        """Wrapper around dict, used for subclassing with static typing."""
 
 
 # for py38, we need to import this AFTER we initialize UserDictPy38 to avoid a circular

@@ -198,7 +198,7 @@ class TestAddDynamicArgs:
     ):
         mocker.patch.object(sys, "argv", self.mock_all_args)
         args = parser.parse_args()
-        assert isinstance(getattr(args, "derivatives")[0], PathLike)
+        assert isinstance(args.derivatives[0], PathLike)
 
     def test_fails_if_undefined_type_given(self):
         parse_args_copy = copy.deepcopy(parse_args)

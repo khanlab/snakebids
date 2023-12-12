@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 import json
 import sys
-from importlib import metadata
+from importlib import metadata as impm
 from pathlib import Path
 from typing import Any, cast
 
@@ -171,19 +171,21 @@ class TestRunSnakemake:
         )
 
         # Prepare expected config
+        # dummy db_path: all io functions are mocked, so this can be arbitrary str
+        db_path = "/path/to/db"
         expected_config = copy.deepcopy(app.config)
         expected_config.update(
             {
                 "root": "",
                 "snakemake_dir": Path("app").resolve(),
-                "pybidsdb_dir": Path("/tmp/output/.db"),
+                "pybidsdb_dir": Path(db_path),
                 "pybidsdb_reset": True,
-                "pybids_db_dir": f"{DEPRECATION_FLAG}/tmp/output/.db{DEPRECATION_FLAG}",
+                "pybids_db_dir": f"{DEPRECATION_FLAG}{db_path}{DEPRECATION_FLAG}",
                 "pybids_db_reset": f"{DEPRECATION_FLAG}1{DEPRECATION_FLAG}",
                 "snakefile": Path("Snakefile"),
                 "output_dir": outputdir.resolve(),
-                "snakemake_version": metadata.version("snakemake"),
-                "snakebids_version": metadata.version("snakebids"),
+                "snakemake_version": impm.version("snakemake"),
+                "snakebids_version": impm.version("snakebids"),
                 "app_version": "unknown",  # not installing a snakebids app here
             }
         )
@@ -198,7 +200,7 @@ class TestRunSnakemake:
             # This Dict is necessary for updating config, since "update_config" is
             # patched
             args_dict={"output_dir": outputdir.resolve()},
-            pybidsdb_dir=Path("/tmp/output/.db"),
+            pybidsdb_dir=Path(db_path),
             pybidsdb_reset=True,
         )
 

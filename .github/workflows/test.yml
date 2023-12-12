@@ -58,14 +58,12 @@ jobs:
       # run python style checks
       - name: Poetry Lock Check
         run: poetry check --lock
-      - name: isort
-        run: poetry run isort snakebids -c
-      - name: Black
-        run: poetry run black snakebids --check
+      - name: Formatting
+        run: poetry run ruff format snakebids --check
+      - name: Linting
+        run: poetry run ruff check snakebids
       - name: pyright
         run: poetry run pyright snakebids
-      - name: ruff
-        run: poetry run ruff snakebids
 
   build-cache-env:
     runs-on: ubuntu-latest

@@ -7,6 +7,8 @@ from snakebids.paths import resources
 
 
 class BidsPathEntitySpec(TypedDict):
+    """Interface for BIDS path specification."""
+
     entity: str
     tag: NotRequired[str]
     dir: NotRequired[bool]
@@ -20,7 +22,7 @@ def _find_entity(spec: BidsPathSpec, entity: str):
 
 
 def v0_0_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
-    """Get the v0.0.0 BidsPathSpec
+    """Get the v0.0.0 BidsPathSpec.
 
     This is the legacy spec used since the beginning of snakebids.
 

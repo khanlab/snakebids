@@ -28,7 +28,7 @@ from typing import (
 import attrs
 import importlib_resources as impr
 import more_itertools as itx
-from typing_extensions import NotRequired, Self, TypeAlias, TypedDict
+from typing_extensions import NotRequired, Self, TypeAlias, TypedDict, override
 
 from snakebids import resources, types
 from snakebids.utils.user_property import UserProperty
@@ -37,6 +37,8 @@ _T = TypeVar("_T")
 
 
 class BidsTag(TypedDict):
+    """Interface for BidsTag configuration."""
+
     tag: str
     before: NotRequired[str]
     match: str
@@ -72,14 +74,13 @@ def read_bids_tags(bids_json: Path | None = None) -> BidsTags:
     """
     if bids_json:
         with bids_json.open("r") as infile:
-            bids_tags = json.load(infile)
-        return bids_tags
+            return json.load(infile)
     return json.loads(impr.files(resources).joinpath("bids_tags.json").read_text())
 
 
 @attrs.frozen(hash=True)
 class BidsEntity:
-    """Bids entities with tag and wildcard representations"""
+    """Bids entities with tag and wildcard representations."""
 
     entity: str = attrs.field(converter=str)
 
@@ -100,7 +101,7 @@ class BidsEntity:
 
     @property
     def tag(self) -> str:
-        """Get the bids tag version of the entity
+        """Get the bids tag version of the entity.
 
         For entities in the bids spec, the tag is the short version of the entity
         name. Otherwise, the tag is equal to the entity.
@@ -114,7 +115,7 @@ class BidsEntity:
 
     @property
     def match(self) -> str:
-        """Get regex of acceptable value matches
+        """Get regex of acceptable value matches.
 
         If no pattern is associated with the entity, the default pattern is a word with
         letters and numbers
@@ -128,7 +129,7 @@ class BidsEntity:
 
     @property
     def before(self) -> str:
-        """regex str to search before value in paths"""
+        """Regex str to search before value in paths."""
         tags = read_bids_tags()
         # Need to explicitly annotate the default here and in .after because tags is a
         # dict of `BidsTag`, a `TypedDict`. So putting unannotated dicts directly as
@@ -138,7 +139,7 @@ class BidsEntity:
 
     @property
     def after(self) -> str:
-        """regex str to search after value in paths"""
+        """Regex str to search after value in paths."""
         tags = read_bids_tags()
         # See note in .before
         _def: dict[Any, Any] = {}
@@ -146,7 +147,7 @@ class BidsEntity:
 
     @property
     def regex(self) -> re.Pattern[str]:
-        """Complete pattern to match when searching in paths
+        """Complete pattern to match when searching in paths.
 
         Contains three capture groups, the first corresponding to "before", the second
         to "value", and the third to "after"
@@ -155,7 +156,7 @@ class BidsEntity:
 
     @property
     def wildcard(self) -> str:
-        """Get the snakebids {wildcard}
+        """Get the snakebids {wildcard}.
 
         The wildcard is generally equal to the tag, i.e. the short version of the entity
         name, except for subject and session, which use the full name name. This is to
@@ -172,7 +173,7 @@ class BidsEntity:
 
     @classmethod
     def from_tag(cls, tag: str) -> BidsEntity:
-        """Return the entity associated with the given tag, if found
+        """Return the entity associated with the given tag, if found.
 
         If not associated entity is found, the tag itself is used as the entity name
 
@@ -192,7 +193,7 @@ class BidsEntity:
 
     @classmethod
     def normalize(cls, item: str | BidsEntity, /) -> BidsEntity:
-        """Return the entity associated with the given item, if found
+        """Return the entity associated with the given item, if found.
 
         Supports both strings and BidsEntities as input. Unlike the constructor, if a
         tag name is given, the associated entity will be returned. If no associated
@@ -200,12 +201,8 @@ class BidsEntity:
 
         Parameters
         ----------
-        tag : str
+        item
             tag to search
-
-        Returns
-        -------
-        BidsEntity
         """
         if isinstance(item, BidsEntity):
             return item
@@ -218,14 +215,22 @@ def matches_any(
     match_func: types.BinaryOperator[_T, object],
     *args: Any,
 ) -> bool:
-    for match in match_list:
-        if match_func(match, item, *args):
-            return True
-    return False
+    """Test if item matches any of the items in match_list.
+
+    Parameters
+    ----------
+    item
+        Item to test
+    match_list
+        Items to compare with
+    match_func
+        Function to test equality. Defaults to basic equality (``==``) check
+    """
+    return any(match_func(match, item, *args) for match in match_list)
 
 
 class BidsParseError(Exception):
-    """Exception raised for errors encountered in the parsing of Bids paths"""
+    """Exception raised for errors encountered in the parsing of Bids paths."""
 
     def __init__(self, path: str, entity: BidsEntity) -> None:
         self.path = path
@@ -234,7 +239,7 @@ class BidsParseError(Exception):
 
 
 class _Documented(Protocol):
-    __doc__: str
+    __doc__: str  # noqa: A003
 
 
 def property_alias(
@@ -243,7 +248,7 @@ def property_alias(
     ref: str | None = None,
     copy_extended_docstring: bool = False,
 ) -> Callable[[Callable[[Any], _T]], UserProperty[_T]]:
-    """Set property as an alias for another property
+    """Set property as an alias for another property.
 
     Copies the docstring from the aliased property to the alias
 
@@ -280,7 +285,7 @@ def property_alias(
 
 
 def surround(s: Iterable[str] | str, object_: str, /) -> Iterable[str]:
-    """Surround a string or each string in an iterable with characters"""
+    """Surround a string or each string in an iterable with characters."""
     for item in itx.always_iterable(s):
         yield object_ + item + object_
 
@@ -290,7 +295,7 @@ _V = TypeVar("_V")
 
 
 class MultiSelectDict(types.UserDictPy38[_K, _V]):
-    """Dict supporting selection of multiple keys using tuples
+    """Dict supporting selection of multiple keys using tuples.
 
     If a single key is given, the item associated with that key is returned just as in a
     regular dict. If multiple, comma-seperated keys are given, (e.g. a tuple), a new
@@ -356,10 +361,10 @@ class MultiSelectDict(types.UserDictPy38[_K, _V]):
         ...
 
     @overload
-    def __getitem__(self, key: tuple[_K], /) -> Self:
+    def __getitem__(self, key: tuple[_K, ...], /) -> Self:
         ...
 
-    def __getitem__(self, key: _K | tuple[_K], /) -> _V | Self:
+    def __getitem__(self, key: _K | tuple[_K, ...], /) -> _V | Self:
         if isinstance(key, tuple):
             # Use dict.fromkeys for de-duplication
             return self.__class__({key: self[key] for key in dict.fromkeys(key)})
@@ -367,7 +372,7 @@ class MultiSelectDict(types.UserDictPy38[_K, _V]):
 
 
 def zip_list_eq(first: types.ZipListLike, second: types.ZipListLike, /):
-    """Compare two zip lists, allowing the order of columns to be irrelevant"""
+    """Compare two zip lists, allowing the order of columns to be irrelevant."""
 
     def sorted_items(dictionary: Mapping[str, Sequence[str]]):
         return sorted(dictionary.items(), key=op.itemgetter(0))
@@ -388,7 +393,7 @@ def zip_list_eq(first: types.ZipListLike, second: types.ZipListLike, /):
 
 
 def get_first_dir(path: str) -> str:
-    """Return the top level directory in a path
+    """Return the top level directory in a path.
 
     If absolute, return the root. This function is necessary to handle paths with
     ``./``, as ``pathlib.Path`` filters this out.
@@ -402,6 +407,7 @@ def get_first_dir(path: str) -> str:
 
 
 def to_resolved_path(path: str | PathLike[str]):
+    """Convert provided object into resolved path."""
     return Path(path).resolve()
 
 
@@ -409,7 +415,7 @@ _T_co = TypeVar("_T_co", covariant=True)
 
 
 class ImmutableList(Sequence[_T_co], Generic[_T_co]):
-    """Subclassable tuple equivalent
+    """Subclassable tuple equivalent.
 
     Mimics a tuple in every way, but readily supports subclassing. Data is stored on a
     private attribute ``_data``. Subclasses must not override this attribute. To avoid
@@ -423,24 +429,30 @@ class ImmutableList(Sequence[_T_co], Generic[_T_co]):
     be specified as ``ImmutableList[str | int]``
     """
 
-    def __init__(self, iterable: Iterable[_T_co] = tuple(), /):
+    def __init__(self, iterable: Iterable[_T_co] = (), /):
         self._data = tuple(iterable)
 
+    @override
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({list(self._data)})"
 
+    @override
     def __contains__(self, item: object, /) -> bool:
         return item in self._data
 
+    @override
     def __hash__(self):
         return hash(self._data)
 
+    @override
     def __iter__(self) -> Iterator[_T_co]:
         return iter(self._data)
 
+    @override
     def __reversed__(self) -> Iterator[_T_co]:
         return reversed(self._data)
 
+    @override
     def __len__(self) -> int:
         return len(self._data)
 
@@ -455,6 +467,7 @@ class ImmutableList(Sequence[_T_co], Generic[_T_co]):
     def __getitem__(self, index: slice) -> Self:
         ...
 
+    @override
     def __getitem__(self, index: int | slice) -> _T_co | Self:
         if isinstance(index, slice):
             return self.__class__(self._data[index])
@@ -488,6 +501,7 @@ class ImmutableList(Sequence[_T_co], Generic[_T_co]):
             return self._data >= value._data
         return False
 
+    @override
     def __eq__(self, value: object, /) -> bool:
         if isinstance(value, tuple):
             return self._data == value
@@ -506,9 +520,11 @@ class ImmutableList(Sequence[_T_co], Generic[_T_co]):
     def __rmul__(self, value: SupportsIndex, /) -> Self:
         return self.__class__(value * self._data)
 
+    @override
     def count(self, value: Any) -> int:
         return self._data.count(value)
 
+    @override
     def index(
         self, value: Any, start: SupportsIndex = 0, stop: SupportsIndex = sys.maxsize
     ) -> int:
@@ -516,12 +532,12 @@ class ImmutableList(Sequence[_T_co], Generic[_T_co]):
 
 
 def get_wildcard_dict(entities: str | Iterable[str], /) -> dict[str, str]:
-    """Turn entity strings into wildcard dicts as {"entity": "{entity}"}"""
+    """Turn entity strings into wildcard dicts as {"entity": "{entity}"}."""
     return {entity: f"{{{entity}}}" for entity in itx.always_iterable(entities)}
 
 
 class RegexContainer(Generic[AnyStr], Container[AnyStr]):
-    """Container that tests if a string matches a regex using the ``in`` operator
+    """Container that tests if a string matches a regex using the ``in`` operator.
 
     Constructed with a regex expression. Supports inclusion tests for strings using
     ``in``. Strings matching the regex (using ``re.match``) will return ``True``
@@ -537,7 +553,7 @@ class RegexContainer(Generic[AnyStr], Container[AnyStr]):
 
 
 class ContainerBag(Container[_T]):
-    """Container to hold other containers
+    """Container to hold other containers.
 
     Useful because list(Container) isn't guaranteed to work, so this lets us merge
     Containers in a type safe way.
@@ -547,7 +563,4 @@ class ContainerBag(Container[_T]):
         self.entries = entries
 
     def __contains__(self, x: object, /) -> bool:
-        for entry in self.entries:
-            if x in entry:
-                return True
-        return False
+        return any(x in entry for entry in self.entries)
