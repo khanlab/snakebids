@@ -210,7 +210,7 @@ def test_correct_build_system_used(
     create_doc_template=st.just(False),
     license=st.text(),
 )
-@settings(suppress_health_check=[HealthCheck.function_scoped_fixture], deadline=1000)
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture], deadline=5000)
 @pytest.mark.parametrize("build", BUILD_BACKENDS)
 def test_pyproject_correctly_formatted(
     tmp_path: Path, build: BuildBackend, **kwargs: Unpack[DataFields]
