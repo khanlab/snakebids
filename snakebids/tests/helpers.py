@@ -53,10 +53,15 @@ def get_zip_list(
     dict[str, list[str]]
         zip_list representation of entity-value combinations
     """
+
+    def strlist() -> list[str]:
+        return list()
+
+    lists: Iterable[Sequence[str]] = list(zip(*combinations)) or itx.repeatfunc(strlist)
     return MultiSelectDict(
         {
             BidsEntity(str(entity)).wildcard: list(combs)
-            for entity, combs in zip(entities, zip(*combinations))
+            for entity, combs in zip(entities, lists)
         }
     )
 
