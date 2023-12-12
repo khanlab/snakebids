@@ -238,7 +238,7 @@ def zip_lists(
                 unique=unique,
             )
         )
-        if cull
+        if cull and len(combinations)
         else combinations
     )
     return helpers.get_zip_list(values, used_combinations)
