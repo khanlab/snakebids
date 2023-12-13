@@ -1,0 +1,78 @@
+name: Weekly testing and recalibration of test timings
+
+on:
+  schedule:
+    - cron: "5 3 * * 2"
+
+jobs:
+  build-cache-env:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+    steps:
+      - uses: khanlab/actions/.github/actions/action-setup_task-installPyProject@v0.3.3
+        id: setup
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: setup docker
+        uses: ./.github/actions/build-test-container
+        with:
+          python-version: ${{ steps.setup.outputs.python-version }}
+
+  calibrate-timings:
+    runs-on: ubuntu-latest
+    needs: ["build-cache-env"]
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: install
+        uses: khanlab/actions/.github/actions/action-setup_task-installPyProject@v0.3.3
+        id: setup
+        with:
+          python-version: "3.8"
+          install-library: true
+      - name: build docker test container
+        uses: ./.github/actions/build-test-container
+        with:
+          python-version: ${{ steps.setup.outputs.python-version }}
+          load: true
+      - name: Count current number of tests
+        id: count
+        run: |
+          echo "NUM=$(
+            poetry run pytest --collect-only -q | head -n -2 | wc -l
+          )" >> "$GITHUB_OUTPUT"
+      - name: Count number of timed tests
+        id: timed-count
+        run: |
+          echo "NUM=$(jq 'keys | length' .test_durations)" >> "$GITHUB_OUTPUT"
+      - name: Test with pytest
+        if: ${{ steps.count.outputs.NUM }} != ${{ steps.timed-count.outputs.NUM }}
+        env:
+          HYPOTHESIS_PROFILE: pr
+        run: >-
+          poetry run pytest -n auto --store-durations
+          --doctest-modules --ignore=docs
+          --ignore=snakebids/project_template --benchmark-disable
+      - name: Check if there are changes
+        id: changes
+        run: |
+          echo "changed=$(git diff-files --quiet && echo 0 || echo 1)" >> "$GITHUB_OUTPUT"
+      - name: debug outputs
+        run: |
+          echo "Current # tests: ${{ steps.count.outputs.NUM }}"
+          echo "Current # timed tests: ${{ steps.timed-count.outputs.NUM }}"
+          echo "Changes?: ${{ steps.changes.outputs.changed }}"
+      - name: Create PR
+        if: steps.changes.outputs.changed == 1
+        uses: peter-evans/create-pull-request@v5
+        with:
+          commit-message: Update test timings file
+          branch: maint/update-test-timings
+          title: Merge updated test timings
+          labels: maintenance
+          body: |
+            The number of tests has changed since the last generated test-timings
+            file. This PR contains an automatically regenerated file.
