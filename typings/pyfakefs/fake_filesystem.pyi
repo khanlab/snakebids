@@ -185,7 +185,7 @@ class FakeFilesystem:
         """Set the simulated type of operating system underlying the fake
         file system."""
         ...
-    def reset(self, total_size: int | None = ...):  # -> None:
+    def reset(self, total_size: int | None = ...) -> None:
         """Remove all file system contents and reset the root."""
         ...
     def pause(self) -> None:
@@ -352,7 +352,7 @@ class FakeFilesystem:
         times: tuple[int | float, int | float] | None = ...,
         *,
         ns: tuple[int, int] | None = ...,
-        follow_symlinks: bool = ...
+        follow_symlinks: bool = ...,
     ) -> None:
         """Change the access and modified times of a file.
 
@@ -724,7 +724,7 @@ class FakeFilesystem:
         ...
     def create_file(
         self,
-        file_path: AnyPath,
+        file_path: AnyPath[AnyStr],
         st_mode: int = ...,
         contents: AnyString = ...,
         st_size: int | None = ...,
@@ -732,7 +732,7 @@ class FakeFilesystem:
         apply_umask: bool = ...,
         encoding: str | None = ...,
         errors: str | None = ...,
-        side_effect: Callable | None = ...,
+        side_effect: Callable[[FakeFile], Any] | None = ...,
     ) -> FakeFile:
         """Create `file_path`, including all the parent directories along
         the way.

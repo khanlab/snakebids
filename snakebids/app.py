@@ -21,10 +21,10 @@ from snakebids.cli import (
     parse_snakebids_args,
 )
 from snakebids.exceptions import ConfigError, RunError
+from snakebids.io.config import write_config
 from snakebids.types import OptionalFilter
 from snakebids.utils.output import (
     prepare_bidsapp_output,
-    write_config_file,
     write_output_mode,
 )
 from snakebids.utils.utils import DEPRECATION_FLAG, to_resolved_path
@@ -234,7 +234,7 @@ class SnakeBidsApp:
             app = plugin(app) or app
 
         # Write the config file
-        write_config_file(
+        write_config(
             config_file=new_config_file,
             data=dict(
                 app.config,

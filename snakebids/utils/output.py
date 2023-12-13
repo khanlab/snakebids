@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import json
-from collections import OrderedDict
-from pathlib import Path, PosixPath, WindowsPath
-from typing import Any, Literal
+from pathlib import Path
+from typing import Literal
 
 import more_itertools as itx
-import yaml
 
 from snakebids.exceptions import RunError
 
@@ -134,60 +132,3 @@ def _get_snakebids_file(outputdir: Path) -> dict[str, str] | None:
     raise RunError(
         msg,
     )
-
-
-def write_config_file(
-    config_file: Path, data: dict[str, Any], force_overwrite: bool = False
-) -> None:
-    """Write provided data as yaml to provided path.
-
-    Parameters
-    ----------
-    config_file
-        Path of yaml file
-    data
-        Data to format
-    force_overwrite
-        If True, force overwrite of already existing files, otherwise error out
-    """
-    if (config_file.exists()) and not force_overwrite:
-        msg = (
-            f"A config file named {config_file.name} already exists:\n"
-            f"\t- {config_file.resolve()}\n"
-            "Please move or rename either the existing or incoming config."
-        )
-        raise RunError(msg)
-    config_file.parent.mkdir(exist_ok=True)
-
-    # TODO: copy to a time-hashed file for provenance purposes?
-    #       unused as of now..
-    # time_hash = get_time_hash()
-
-    with open(config_file, "w", encoding="utf-8") as f:
-        # write either as JSON or YAML
-        if config_file.suffix == ".json":
-            json.dump(data, f, indent=4)
-            return
-
-        # if not json, then should be yaml or yml
-
-        # this is needed to make the output yaml clean
-        yaml.add_representer(
-            OrderedDict,
-            lambda dumper, data: dumper.represent_mapping(  # type: ignore
-                "tag:yaml.org,2002:map",
-                data.items(),  # type: ignore
-            ),
-        )
-
-        # Represent any PathLikes as str.
-        def path2str(dumper, data):  # type: ignore
-            return dumper.represent_scalar(  # type: ignore
-                "tag:yaml.org,2002:str",
-                str(data),  # type: ignore
-            )
-
-        yaml.add_representer(PosixPath, path2str)  # type: ignore
-        yaml.add_representer(WindowsPath, path2str)  # type: ignore
-
-        yaml.dump(data, f, default_flow_style=False, sort_keys=False)

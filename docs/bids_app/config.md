@@ -79,7 +79,28 @@ A mapping from the name of each ``analysis_level`` to the list of rules or files
 
 ### `parse_args`
 
-A dictionary of command-line parameters to make available as part of the BIDS app. Each item of the mapping is passed to [argparse's add_argument function](#argparse.ArgumentParser.add_argument). A number of default entries are present in a new snakebids project's config file that structure the BIDS app's CLI, but additional command-line arguments can be added as necessary.
+A dictionary of command-line parameters to make available as part of the BIDS app. Each item of the mapping is passed to [argparse's `add_argument` function](#argparse.ArgumentParser.add_argument). A number of default entries are present in a new snakebids project's config file that structure the BIDS app's CLI, but additional command-line arguments can be added as necessary.
+
+As in [`ArgumentParser.add_argument()`](#argparse.ArgumentParser.add_argument), `type` may be used to convert the argument to the specified type. It may be set to any type that can be serialized into yaml, for instance, `str`, `int`, `float`, and `boolean`.
+
+```yaml
+parse_args:
+  --a-string:
+    help: args are string by default
+  --a-path:
+    help: |
+      A path pointing to data needed for the pipeline. These are still converted
+      into strings, but are first resolved into absolute paths (see below)
+    type: Path
+  --another-path:
+    help: This type annotation does the same thing as above
+    type: pathlib.Path
+  --a-number:
+    help: A number important for the analysis
+    type: float
+```
+
+When CLI parameters are used to collect paths, `type` should be set to [`Path`](#pathlib.Path) (or [`pathlib.Path`](#pathlib.Path)). These arguments will still be serialized as strings (since yaml doesn't have a path type), but snakebids will automatically resolve all arguments into absolute paths. This is important to prevent issues with snakebids and relative paths.
 
 
 ### `debug`

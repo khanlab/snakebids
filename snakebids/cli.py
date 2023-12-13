@@ -11,7 +11,8 @@ import attr
 import snakemake
 from typing_extensions import override
 
-from snakebids.exceptions import MisspecifiedCliFilterError
+from snakebids.exceptions import ConfigError, MisspecifiedCliFilterError
+from snakebids.io.yaml import get_yaml_io
 from snakebids.types import InputsConfig, OptionalFilter
 from snakebids.utils.utils import to_resolved_path
 
@@ -204,6 +205,26 @@ def create_parser(include_snakemake: bool = False) -> argparse.ArgumentParser:
     return parser
 
 
+def _find_type(name: str, *, yamlsafe: bool = True) -> type[Any]:
+    import importlib
+
+    if name == "Path":
+        return Path
+    *module_name, obj_name = name.split(".") if "." in name else ("builtins", name)
+    try:
+        type_ = getattr(importlib.import_module(".".join(module_name)), obj_name)
+    except (ImportError, AttributeError) as err:
+        msg = f"{name} could not be resolved"
+        raise ConfigError(msg) from err
+    if not callable(type_):
+        msg = f"{name} cannot be used as a type"
+        raise ConfigError(msg)
+    if yamlsafe and type_ not in get_yaml_io().representer.yaml_representers:
+        msg = f"{name} cannot be serialized into yaml"
+        raise ConfigError(msg)
+    return type_
+
+
 def add_dynamic_args(
     parser: argparse.ArgumentParser,
     parse_args: Mapping[str, Any],
@@ -220,16 +241,12 @@ def add_dynamic_args(
         # a str to allow the edge case where it's already
         # been converted
         if "type" in arg:
-            try:
-                arg_dict = {**arg, "type": globals()[str(arg["type"])]}
-            except KeyError as err:
-                msg = f"{arg['type']} is not available as a type for {name}"
-                raise TypeError(msg) from err
+            arg_dict = {**arg, "type": _find_type(str(arg["type"]))}
         else:
             arg_dict = arg
         app_group.add_argument(
             *_make_underscore_dash_aliases(name),
-            **arg_dict,
+            **arg_dict,  # type: ignore
         )
 
     # general parser for
