@@ -6,7 +6,6 @@ import re
 import sys
 from argparse import ArgumentParser, Namespace
 from collections.abc import Sequence
-from os import PathLike
 from pathlib import Path
 from typing import ClassVar, Mapping
 
@@ -21,6 +20,7 @@ from snakebids.cli import (
     create_parser,
     parse_snakebids_args,
 )
+from snakebids.exceptions import ConfigError
 from snakebids.tests import strategies as sb_st
 from snakebids.tests.helpers import allow_function_scoped
 from snakebids.types import InputsConfig, OptionalFilter
@@ -198,7 +198,7 @@ class TestAddDynamicArgs:
     ):
         mocker.patch.object(sys, "argv", self.mock_all_args)
         args = parser.parse_args()
-        assert isinstance(args.derivatives[0], PathLike)
+        assert isinstance(args.derivatives[0], Path)
 
     def test_fails_if_undefined_type_given(self):
         parse_args_copy = copy.deepcopy(parse_args)
@@ -206,8 +206,52 @@ class TestAddDynamicArgs:
             "help": "Generic Help Message",
             "type": "UnheardClass",
         }
-        with pytest.raises(TypeError):
+        with pytest.raises(ConfigError, match="could not be resolved"):
             add_dynamic_args(create_parser(), parse_args_copy, pybids_inputs)
+
+    def test_convert_arg_to_builtin(
+        self, parser: ArgumentParser, mocker: MockerFixture
+    ):
+        new_args = {
+            "--new-param": {
+                "help": "Generic Help Message",
+                "type": "int",
+            }
+        }
+        mocker.patch.object(sys, "argv", [*self.mock_all_args, "--new-param", "12"])
+        add_dynamic_args(parser, new_args, {})
+        args = parser.parse_args()
+        assert isinstance(args.new_param, int)
+
+    def test_non_serialiable_type_raises_error(self, parser: ArgumentParser):
+        new_args = {
+            "--new-param": {
+                "help": "Generic Help Message",
+                "type": "snakebids.utils.utils.BidsEntity",
+            }
+        }
+        with pytest.raises(ConfigError, match="cannot be serialized into yaml"):
+            add_dynamic_args(parser, new_args, {})
+
+    def test_using_module_as_type_gives_error(self, parser: ArgumentParser):
+        new_args = {
+            "--new-param": {
+                "help": "Generic Help Message",
+                "type": "snakebids.utils.utils",
+            }
+        }
+        with pytest.raises(ConfigError, match="cannot be used as a type"):
+            add_dynamic_args(parser, new_args, {})
+
+    def test_using_class_method_as_type_gives_error(self, parser: ArgumentParser):
+        new_args = {
+            "--new-param": {
+                "help": "Generic Help Message",
+                "type": "snakebids.utils.utils.BidsEntity.from_tag",
+            }
+        }
+        with pytest.raises(ConfigError, match="could not be resolved"):
+            add_dynamic_args(parser, new_args, {})
 
     def test_resolves_paths(self, parser: ArgumentParser, mocker: MockerFixture):
         mocker.patch.object(sys, "argv", self.mock_all_args)

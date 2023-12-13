@@ -239,7 +239,7 @@ class BidsParseError(Exception):
 
 
 class _Documented(Protocol):
-    __doc__: str  # noqa: A003
+    __doc__: str
 
 
 def property_alias(

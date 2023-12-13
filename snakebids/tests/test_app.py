@@ -121,7 +121,7 @@ class TestRunSnakemake:
         return {
             "write_output_mode": mocker.patch.object(sn_app, "write_output_mode"),
             "prepare_output": mocker.patch.object(sn_app, "prepare_bidsapp_output"),
-            "write_config": mocker.patch.object(sn_app, "write_config_file"),
+            "write_config": mocker.patch.object(sn_app, "write_config"),
             "snakemake": mocker.patch.object(snakemake, "main"),
         }
 

@@ -1,8 +1,8 @@
 import importlib_resources as impr
 import more_itertools as itx
-import yaml
 from typing_extensions import NotRequired, TypeAlias, TypedDict
 
+from snakebids.io.yaml import get_yaml_io
 from snakebids.paths import resources
 
 
@@ -38,7 +38,9 @@ def v0_0_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
         If False, downstream path generator will not include the session dir
         `*/ses-{session}/*`
     """
-    spec = yaml.safe_load(impr.files(resources).joinpath("spec.0.0.0.yaml").read_text())
+    spec = get_yaml_io().load(
+        impr.files(resources).joinpath("spec.0.0.0.yaml").read_text()
+    )
     if not subject_dir:
         _find_entity(spec, "subject")["dir"] = False
 

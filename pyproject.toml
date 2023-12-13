@@ -39,7 +39,6 @@ snakemake = [
     { version = ">=5.28.0,<8", python = ">=3.8" },
     { version = ">=7.18.2,<8", python = ">=3.11" },
 ]
-PyYAML = ">=6"
 typing-extensions = ">=3.10.0"
 attrs = ">=21.2.0"
 boutiques = "^0.5.25"
@@ -70,6 +69,7 @@ copier = ">=8.2.0"
 jinja2-time = ">=0.2.0"
 # minimum 2.31.0 because of security vulnerability
 requests = ">=2.31.0"
+ruamel-yaml = ">=0.17.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.0.0"
