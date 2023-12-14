@@ -97,7 +97,7 @@ intersphinx_mapping = {
 #
 html_theme = "furo"
 html_theme_options = {
-    "source_repository": "https://github.com/akhanf/snakebids",
+    "source_repository": "https://github.com/khanlab/snakebids",
     "source_branch": "main",
     "source_directory": "docs/",
 }
