@@ -283,8 +283,10 @@ def needs_docker(container: str):
                 )
             try:
                 sp.run(["docker", "image", "inspect", container], check=True)
-            except sp.CalledProcessError:
-                if not (match := re.match(r"snakebids/([\w\-])\:", container)):
+            except sp.CalledProcessError as err:
+                if not (
+                    match := re.match(r"snakebids/([\w\-])+\:[a-zA-Z0-9\-]+", container)
+                ):
                     pytest.fail(
                         f"Unrecognized docker image: {container}. Should be "
                         "'snakebids/{container_id}:{version}"
@@ -293,7 +295,7 @@ def needs_docker(container: str):
                 pytest.fail(
                     f"{container} is not built on this machine. To build container, "
                     f"run `poetry run poe build-container {container_id}`. To skip "
-                    "docker tests, use '-m \"not docker\"'"
+                    f"docker tests, use '-m \"not docker\"'. (got error {err})"
                 )
             return func(*args, **kwargs)
 
