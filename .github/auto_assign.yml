@@ -15,7 +15,7 @@ reviewers:
 
 # A number of reviewers added to the pull request
 # Set 0 to add all the reviewers (default: 0)
-numberOfReviewers: 3
+numberOfReviewers: 5
 
 # A list of assignees, overrides reviewers if set
 # assignees:
