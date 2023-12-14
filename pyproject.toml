@@ -3,7 +3,7 @@ name = "snakebids"
 version = "0.0.0"
 description = "BIDS integration into snakemake workflows"
 readme = "README.md"
-repository = "https://github.com/akhanf/snakebids"
+repository = "https://github.com/khanlab/snakebids"
 documentation = "https://snakebids.readthedocs.io/"
 authors = [
     "Ali Khan <alik@robarts.ca>",
