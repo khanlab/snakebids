@@ -18,42 +18,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Clone repo
-        uses: actions/checkout@v3
-
-      # install & configure poetry
-      - name: Cache Poetry Installation
-        id: cached-poetry
-        uses: actions/cache@v3
-        with:
-          path: ~/.local
-          key: ${{ runner.os }}-poetry-${{ github.event.pull_request.id || github.event.after }}
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        if: steps.cached-poetry.outputs.cache-hit != 'true'
-        with:
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Setup Python
-        id: setup-python
-        uses: actions/setup-python@v4
+      - name: Install
+        uses: khanlab/actions/.github/actions/action-setup_task-installPyProject@v0.3.2
         with:
           python-version: '3.11'
-          cache: 'poetry'
-      - name: Store Pip Cache
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ steps.setup-python.outputs.python-version }}
-          restore-keys: ${{ runner.os }}-pip-${{ steps.setup-python.outputs.python-version }}
-
-      # install dependencies
-      - name: Install dependencies
-        if: steps.setup-python.outputs.cache-hit != 'true'
-        run: poetry install --no-interaction --no-ansi --no-root
-      - name: Install library
-        run: poetry install --no-interaction --no-ansi
+          install-library: true
 
       # run python style checks
       - name: Poetry Lock Check
@@ -72,68 +41,14 @@ jobs:
       matrix:
         python-version: ['3.8', '3.9', '3.10', '3.11']
     steps:
-    - uses: actions/checkout@v3
-
-    # install & configure poetry
-    - name: Cache Poetry Installation
-      id: cached-poetry
-      uses: actions/cache@v3
-      with:
-        path: ~/.local
-        key: ${{ runner.os }}-poetry-${{ github.event.pull_request.id || github.event.after }}
-    - name: Install Poetry
-      if: steps.cached-poetry.outputs.cache-hit != 'true'
-      uses: snok/install-poetry@v1
-      with:
-        virtualenvs-create: true
-        virtualenvs-in-project: true
-
-    - name: Set up Python ${{ matrix.python-version }}
-      id: setup-python
-      uses: actions/setup-python@v4
+    - uses: khanlab/actions/.github/actions/action-setup_task-installPyProject@v0.3.3
+      id: setup
       with:
         python-version: ${{ matrix.python-version }}
-        cache: 'poetry'
-    - name: Store pip cache
-      uses: actions/cache@v3
+    - name: setup docker
+      uses: ./.github/actions/build-test-container
       with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ steps.setup-python.outputs.python-version }}
-        restore-keys: |
-          ${{ runner.os }}-pip-${{ steps.setup-python.outputs.python-version }}
-          ${{ runner.os }}-pip-
-
-    # install dependencies if cache does not exist
-    - name: Install dependencies
-      if: steps.setup-python.outputs.cache-hit != 'true'
-      run: poetry install --no-interaction --no-root --no-ansi
-
-    # Build docker container needed for test
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-    - name: Cache Template Testing Containers
-      uses: actions/cache@v3
-      with:
-        path: container-test-template-cache
-        key: ${{ runner.os }}-test-template-cache-${{ hashFiles('containers/test-template/**') }}-${{ steps.setup-python.outputs.python-version }}
-    - name: Inject container-test-template-cache into docker
-      uses: reproducible-containers/buildkit-cache-dance@v2.1.2
-      with:
-        cache-source: container-test-template-cache
-    - name: Build Docker container for cache
-      uses: docker/build-push-action@v5
-      with:
-        context: containers/test-template
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        push: false
-        load: false
-        tags: snakebids/test-template:${{ steps.setup-python.outputs.python-version }}
-        platforms: linux/amd64
-        build-args: |
-          PYTHON_VERSION=${{ steps.setup-python.outputs.python-version }}
+        python-version: ${{ steps.setup.outputs.python-version }}
 
   test:
     runs-on: ubuntu-latest
@@ -144,81 +59,25 @@ jobs:
         split: ['1', '2', '3', '4', '5']
       fail-fast: false
     steps:
-    - uses: actions/checkout@v3
+      - name: install
+        uses: khanlab/actions/.github/actions/action-setup_task-installPyProject@v0.3.3
+        id: setup
+        with:
+          python-version: ${{ matrix.python-version }}
+          install-library: true
+      - name: build docker test container
+        uses: ./.github/actions/build-test-container
+        with:
+          python-version: ${{ steps.setup.outputs.python-version }}
+          load: true
 
-    # install & configure poetry
-    - name: Cache Poetry Installation
-      id: cached-poetry
-      uses: actions/cache@v3
-      with:
-        path: ~/.local
-        key: ${{ runner.os }}-poetry-${{ github.event.pull_request.id || github.event.after }}
-    - name: Install Poetry
-      uses: snok/install-poetry@v1
-      if: steps.cached-poetry.outputs.cache-hit != 'true'
-      with:
-        # Ensure this specification is removed when py37 support is dropped
-        version: 1.5.1
-        virtualenvs-create: true
-        virtualenvs-in-project: true
-
-    - name: Set up Python ${{ matrix.python-version }}
-      id: setup-python
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: poetry
-    - uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ steps.setup-python.outputs.python-version }}
-        restore-keys: |
-          ${{ runner.os }}-pip-${{ steps.setup-python.outputs.python-version }}
-          ${{ runner.os }}-pip-
-
-    # install dependencies
-    - name: Install dependencies
-      if: steps.setup-python.outputs.cache-hit != 'true'
-      run: poetry install --no-interaction --no-root --no-ansi
-
-
-    # Build docker container needed for test
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-    - name: Cache Template Testing Containers
-      uses: actions/cache@v3
-      with:
-        path: container-test-template-cache
-        key: ${{ runner.os }}-test-template-cache-${{ hashFiles('containers/test-template/**') }}-${{ steps.setup-python.outputs.python-version }}
-    - name: Inject container-test-template-cache into docker
-      uses: reproducible-containers/buildkit-cache-dance@v2.1.2
-      with:
-        cache-source: container-test-template-cache
-    - name: Build Docker container for cache
-      uses: docker/build-push-action@v5
-      with:
-        context: containers/test-template
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        push: false
-        load: true
-        tags: snakebids/test-template:${{ steps.setup-python.outputs.python-version }}
-        platforms: linux/amd64
-        build-args: |
-          PYTHON_VERSION=${{ steps.setup-python.outputs.python-version }}
-
-    - name: Install library
-      run: poetry install --no-interaction --no-ansi
-
-    - name: Test with pytest
-      env:
-        HYPOTHESIS_PROFILE: pr
-      run: >-
-        poetry run pytest -n auto --splits 5 --group ${{ matrix.split }}
-        --doctest-modules --ignore=docs
-        --ignore=snakebids/project_template --benchmark-disable
+      - name: Test with pytest
+        env:
+          HYPOTHESIS_PROFILE: pr
+        run: >-
+          poetry run pytest -n auto --splits 5 --group ${{ matrix.split }}
+          --doctest-modules --ignore=docs
+          --ignore=snakebids/project_template --benchmark-disable
 
   deployment_on_base:
     runs-on: ubuntu-latest

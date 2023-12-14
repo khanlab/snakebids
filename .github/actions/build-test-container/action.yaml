@@ -1,0 +1,40 @@
+name: Build template testing container
+description: Build and cache the container for testing snakebids create
+inputs:
+  python-version:
+    description: Python version to setup
+    required: true
+  load:
+    required: false
+    description: |
+      if true, load the docker container into docker for downstream consumption
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    - name: Cache Template Testing Containers
+      uses: actions/cache@v3
+      with:
+        path: container-test-template-cache
+        key: ${{ runner.os }}-test-template-cache-${{ hashFiles('containers/test-template/**') }}-${{ inputs.python-version }}
+    - name: Inject container-test-template-cache into docker
+      uses: reproducible-containers/buildkit-cache-dance@v2.1.2
+      with:
+        cache-source: container-test-template-cache
+    - name: Build Docker container for cache
+      uses: docker/build-push-action@v5
+      with:
+        context: containers/test-template
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        push: false
+        load: ${{ inputs.load == 'true' }}
+        tags: snakebids/test-template:${{ inputs.python-version }}
+        platforms: linux/amd64
+        build-args: |
+          PYTHON_VERSION=${{ inputs.python-version }}
