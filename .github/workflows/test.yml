@@ -76,8 +76,17 @@ jobs:
           HYPOTHESIS_PROFILE: pr
         run: >-
           poetry run pytest -n auto --splits 5 --group ${{ matrix.split }}
+          --cov=snakebids --cov-report=xml
           --doctest-modules --ignore=docs
           --ignore=snakebids/project_template --benchmark-disable
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          verbose: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
 
   deployment_on_base:
     runs-on: ubuntu-latest
