@@ -8,7 +8,7 @@ from ._utils import BidsPathSpec
 LATEST: str
 
 def v0_10_1(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
-    """Spec corresponding to `BIDS v1.9.0`_
+    """Spec corresponding to `BIDS v1.9.0`_.
 
     Significantly expanded from the v0.0.0 spec, now including long names for every
     relevant entity. In addition to the spec, it includes `from` and `to` entities
@@ -70,7 +70,7 @@ def v0_0_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
     ...
 
 def latest(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
-    """Spec corresponding to `BIDS v1.9.0`_
+    """Spec corresponding to `BIDS v1.9.0`_.
 
     Significantly expanded from the v0.0.0 spec, now including long names for every
     relevant entity. In addition to the spec, it includes `from` and `to` entities
