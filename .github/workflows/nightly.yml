@@ -3,26 +3,18 @@ name: Weekly testing and recalibration of test timings
 on:
   schedule:
     - cron: "5 3 * * 2"
+  push:
+    branches:
+      - '*'
+      - '!push-action/*'
+  pull_request:
+    branches:
+      - '*'
+      - '!push-action/*'
 
 jobs:
-  build-cache-env:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
-    steps:
-      - uses: khanlab/actions/.github/actions/action-setup_task-installPyProject@v0.3.3
-        id: setup
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: setup docker
-        uses: ./.github/actions/build-test-container
-        with:
-          python-version: ${{ steps.setup.outputs.python-version }}
-
   calibrate-timings:
     runs-on: ubuntu-latest
-    needs: ["build-cache-env"]
     permissions:
       pull-requests: write
 
@@ -76,3 +68,63 @@ jobs:
           body: |
             The number of tests has changed since the last generated test-timings
             file. This PR contains an automatically regenerated file.
+
+  build-cache-env:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: khanlab/actions/.github/actions/action-setup_task-installPyProject@feat/flexible-installs
+        id: setup
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache-key: pypi
+          sparse-checkout: |
+            snakebids/tests
+            pyproject.toml
+            poetry.lock
+          install-deps-only: dev
+          install-library: snakebids
+
+      - name: build docker test container
+        uses: ./.github/actions/build-test-container
+        with:
+          python-version: ${{ steps.setup.outputs.python-version }}
+          load: true
+
+
+  test:
+    runs-on: ubuntu-latest
+    needs: [ 'build-cache-env'  ]
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        split: ['1', '2', '3', '4', '5']
+      fail-fast: false
+    steps:
+      - uses: khanlab/actions/.github/actions/action-setup_task-installPyProject@feat/flexible-installs
+        id: setup
+        with:
+          python-version: ${{ matrix.python-version }}
+          sparse-checkout: |
+            snakebids/tests
+            pyproject.toml
+            poetry.lock
+          cache-key: pypi
+          install-deps-only: dev
+          install-library: snakebids
+
+      - name: build docker test container
+        uses: ./.github/actions/build-test-container
+        with:
+          python-version: ${{ steps.setup.outputs.python-version }}
+          load: true
+
+      - name: Test with pytest
+        env:
+          HYPOTHESIS_PROFILE: pr
+        run: >-
+          poetry run pytest -n auto --splits 5 --group ${{ matrix.split }}
+          --doctest-modules --ignore=docs
+          --ignore=snakebids/project_template --benchmark-disable
