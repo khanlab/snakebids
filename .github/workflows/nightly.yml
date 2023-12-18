@@ -105,7 +105,7 @@ jobs:
         id: setup
         with:
           python-version: ${{ matrix.python-version }}
-          cache-key: pypi
+          cache-key: nightly
           install-deps-only: dev
           install-library: false
       - name: install lib
