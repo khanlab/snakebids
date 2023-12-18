@@ -84,6 +84,7 @@ jobs:
             snakebids/tests
             pyproject.toml
             poetry.lock
+            .github
           install-deps-only: dev
           install-library: snakebids
 
@@ -111,6 +112,7 @@ jobs:
             snakebids/tests
             pyproject.toml
             poetry.lock
+            .github
           cache-key: pypi
           install-deps-only: dev
           install-library: snakebids
