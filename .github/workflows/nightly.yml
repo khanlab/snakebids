@@ -80,14 +80,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache-key: pypi
-          sparse-checkout: |
-            snakebids/tests
-            pyproject.toml
-            poetry.lock
-            .github
-            containers
           install-deps-only: dev
-          install-library: snakebids
+          install-library: false
 
       - name: build docker test container
         uses: ./.github/actions/build-test-container
@@ -95,6 +89,8 @@ jobs:
           python-version: ${{ steps.setup.outputs.python-version }}
           load: true
 
+      - name: install lib
+        run: poetry run pip install .
 
   test:
     runs-on: ubuntu-latest
@@ -109,15 +105,11 @@ jobs:
         id: setup
         with:
           python-version: ${{ matrix.python-version }}
-          sparse-checkout: |
-            snakebids/tests
-            pyproject.toml
-            poetry.lock
-            .github
-            containers
           cache-key: pypi
           install-deps-only: dev
-          install-library: snakebids
+          install-library: false
+      - name: install lib
+        run: poetry run pip install .
 
       - name: build docker test container
         uses: ./.github/actions/build-test-container
