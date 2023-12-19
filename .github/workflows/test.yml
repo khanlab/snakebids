@@ -27,6 +27,15 @@ jobs:
       # run python style checks
       - name: Poetry Lock Check
         run: poetry check --lock
+      # Check that running update-bids doesn't change any files
+      - name: update-bids check
+        run: |
+          poetry run poe update-bids
+          git diff --quiet || (
+            git status
+            echo 'bids specs out of date, run `poetry run poe update-bids`'
+            exit 1
+          )
       - name: Formatting
         run: poetry run ruff format snakebids --check
       - name: Linting
