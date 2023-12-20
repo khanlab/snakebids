@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools as ft
 from typing import TYPE_CHECKING
 
 from snakebids.paths._templates import spec_func
@@ -33,6 +34,7 @@ _SPECS = ["v0_10_1", "v0_0_0"]
 LATEST = "v0_0_0"
 
 
+@ft.lru_cache
 def __getattr__(name: str):
     """Allow dynamic retrieval of latest spec."""
     if name == "latest":

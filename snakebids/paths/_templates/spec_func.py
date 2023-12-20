@@ -27,7 +27,7 @@ session_dir : bool, optional
 
 """
 
-DEFAULT_DESCRIPTION = """Bids Spec v{version}
+DEFAULT_DESCRIPTION = """Bids Spec {version}
 
 Supply this to snakebids.bids_factory to construct a corresponding bids function
 """
@@ -65,16 +65,21 @@ def compile_example(spec: BidsPathSpec):
     return _wrap_template(template[:i] + "..._" + template[i:], 80)
 
 
-def format_doc(spec: BidsPathSpecFile):
-    try:
-        import docstring_parser as docstr
-    except ImportError:
-        return DOCSTRING.format(
-            description=DEFAULT_DESCRIPTION.format(version=spec["version"]).strip()
-        )
+def _import_docstring_parser():
+    """Isolated import function that can be mocked in tests."""
+    import docstring_parser as docstr
 
+    return docstr
+
+
+def format_doc(spec: BidsPathSpecFile):
     if (description := spec.get("description")) is None:
         description = DEFAULT_DESCRIPTION.format(version=spec["version"])
+
+    try:
+        docstr = _import_docstring_parser()
+    except ImportError:
+        return description.strip()
 
     doc = docstr.parse(DOCSTRING.format(description=description.strip()))
     if doc.long_description:
