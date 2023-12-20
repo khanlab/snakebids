@@ -54,6 +54,7 @@ def get_bids_func() -> BidsFunction:
 
 
 def reset_bids_spec():
+    specs.__getattr__.cache_clear()  # type: ignore
     spec = specs.latest()
     _config["active_spec"] = spec
     _config["bids_func"] = bids_factory(spec, _implicit=True)
