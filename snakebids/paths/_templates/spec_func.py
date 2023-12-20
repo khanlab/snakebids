@@ -68,29 +68,28 @@ def compile_example(spec: BidsPathSpec):
 def format_doc(spec: BidsPathSpecFile):
     try:
         import docstring_parser as docstr
-
-        if (description := spec.get("description")) is None:
-            description = DEFAULT_DESCRIPTION.format(version=spec["version"])
-
-        doc = docstr.parse(DOCSTRING.format(description=description.strip()))
-        if doc.long_description:
-            doc.long_description = (
-                "\n\n".join(
-                    "\n".join(textwrap.wrap(para, 84))
-                    if not para.startswith("    ")
-                    else para
-                    for para in doc.long_description.split("\n\n")
-                )
-                + "\n\nFormatted as::\n\n    "
-                + compile_example(spec["spec"])
-            )
-
-        return docstr.compose(doc)
     except ImportError:
         return DOCSTRING.format(
             description=DEFAULT_DESCRIPTION.format(version=spec["version"]).strip()
         )
-        ...
+
+    if (description := spec.get("description")) is None:
+        description = DEFAULT_DESCRIPTION.format(version=spec["version"])
+
+    doc = docstr.parse(DOCSTRING.format(description=description.strip()))
+    if doc.long_description:
+        doc.long_description = (
+            "\n\n".join(
+                "\n".join(textwrap.wrap(para, 84))
+                if not para.startswith("    ")
+                else para
+                for para in doc.long_description.split("\n\n")
+            )
+            + "\n\nFormatted as::\n\n    "
+            + compile_example(spec["spec"])
+        )
+
+    return docstr.compose(doc)
 
 
 def format_pyi(spec: BidsPathSpecFile):
