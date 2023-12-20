@@ -26,9 +26,9 @@ build:
       - (git fetch --tags) || exit 183
     pre_install:
       - git update-index --assume-unchanged docs/conf.py
-
-python:
-  install:
-    - requirements: docs/requirements.txt
-    - method: pip
-      path: .
+    post_create_environment:
+      - pip install poetry
+      - poetry self add "poetry-dynamic-versioning[plugin]"
+      - poetry config virtualenvs.create false
+    post_install:
+      - poetry install --with docs
