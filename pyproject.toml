@@ -134,6 +134,9 @@ omit = [
 exclude_lines = [
     "pragma: not covered",
     "@overload",
+    'class [a-zA-Z0-9_]+\([^)]*Protocol.*\)',
+    'if TYPE_CHECKING',
+    "def __dir__"
 ]
 
 [tool.isort]
