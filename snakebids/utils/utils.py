@@ -474,32 +474,24 @@ class ImmutableList(Sequence[_T_co], Generic[_T_co]):
         return self._data[index]
 
     def __lt__(self, value: tuple[_T_co, ...] | Self, /) -> bool:
-        if isinstance(value, tuple):
-            return self._data < value
         if isinstance(value, ImmutableList):
             return self._data < value._data
-        return False
+        return self._data < value
 
     def __le__(self, value: tuple[_T_co, ...] | Self, /) -> bool:
-        if isinstance(value, tuple):
-            return self._data <= value
         if isinstance(value, ImmutableList):
             return self._data <= value._data
-        return False
+        return self._data <= value
 
     def __gt__(self, value: tuple[_T_co, ...] | Self, /) -> bool:
-        if isinstance(value, tuple):
-            return self._data > value
         if isinstance(value, ImmutableList):
             return self._data > value._data
-        return False
+        return self._data > value
 
     def __ge__(self, value: tuple[_T_co, ...] | Self, /) -> bool:
-        if isinstance(value, tuple):
-            return self._data >= value
         if isinstance(value, ImmutableList):
             return self._data >= value._data
-        return False
+        return self._data >= value
 
     @override
     def __eq__(self, value: object, /) -> bool:
