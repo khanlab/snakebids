@@ -28,7 +28,7 @@ classifiers = [
 
 requires-python = "{{ python_version }}"
 dependencies = [
-    "snakemake >= {{ snakemake_version }}",
+    "snakemake >= {{ snakemake_version }},<8",
     "snakebids >= {{ snakebids_version }}",
     {# Explicitly specify numpy version for py38 until snakebids 0.10.x to
        work around specification bug causing numpys too high for py38 to be

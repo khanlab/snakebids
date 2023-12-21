@@ -32,14 +32,14 @@ patterns = [
 ]
 
 [tool.poetry.dependencies]
-# upper cap imposed by scipy
-python = ">=3.8,<3.13"
+# upper cap imposed by pytest-split
+python = ">=3.8,<4.0"
 # core dep with high breakage potential given plans for redesign, so
 # keep upper limit
 pybids = ">=0.16.0,<0.17"
 snakemake = [
-    { version = ">=5.28.0", python = ">=3.8" },
-    { version = ">=7.18.2", python = ">=3.11" },
+    { version = ">=5.28.0,<8", python = ">=3.8" },
+    { version = ">=7.18.2,<8", python = ">=3.11" },
 ]
 PyYAML = ">=6"
 typing-extensions = ">=3.10.0"
@@ -62,6 +62,11 @@ numpy = [
 scipy = [
     { version = ">=1.10.0,<=1.10.1", python = "<3.9" },
     { version = ">=1.10.0", python = ">=3.9" },
+]
+pandas = [
+    { version = "<=2.0.3", python = "<3.9" },
+    { version = ">=2.1.1", python = ">=3.12" },
+
 ]
 # minimum 8.2.0 to use post-copy mesages
 copier = ">=8.2.0"
