@@ -132,9 +132,9 @@ def test_format_poetry(spec_type: Literal["version", "url", "path", "git"], spec
         # server returns invalid and importlib.metadata gives valid
         ("1.1.1.dev1", 200, "2.2.2", "2.2.2"),
         # server invalid and importlib.metadata gives 0.0.0
-        ("1.1.1.dev1", 200, "0.0.0", "0.9.3"),
+        ("1.1.1.dev1", 200, "0.0.0", "0.12.0"),
         # server and importlib.metadata invalid
-        ("1.1.1.dev1", 200, "2.2.2.dev1", "0.9.3"),
+        ("1.1.1.dev1", 200, "2.2.2.dev1", "0.12.0"),
         # server gives non-string type
         (True, 200, "2.2.2", "2.2.2"),
     ],

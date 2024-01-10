@@ -1,26 +1,20 @@
-bids_dir: '/path/to/bids_dir'
-output_dir: '/path/to/output_dir'
-
-#enable printing debug statements during parsing -- disable if generating dag visualization
-debug: False
-
-derivatives: False #will search in bids/derivatives if True; can also be path(s) to derivatives datasets
-
 #list of analysis levels in the bids app
-analysis_levels: &analysis_levels
+analysis_levels:
  - participant
 
 
-#mapping from analysis_level to set of target rules or files
+# mapping from analysis_level to set of target rules or files
 targets_by_analysis_level:
   participant:
-    - ''  # if '', then the first rule is run
+    - 'all'  # if '', then the first rule is run
 
-#this configures the pybids grabber - create an entry for each type of input you want to grab
-# indexed by name of input
-#   dictionary for each input is passed directly to pybids get()
-#    https://bids-standard.github.io/pybids/generated/bids.layout.BIDSLayout.html#bids.layout.BIDSLayout.get
-
+# Configure components:
+# Each entry creates a new component that can be retreived within the workflow
+# via `generate_inputs`.
+# Filters are used to select paths: each filter has an `entity` key and a
+# single value or list of values to select.
+# Wildcards are used to mark variable parts of paths. Each wildcard is an
+# entity, such as `subject` or `session`, that may vary across component paths.
 pybids_inputs:
   t1w:
     filters:
@@ -34,63 +28,20 @@ pybids_inputs:
       - subject
       - run
 
-#configuration for the command-line parameters to make available
+# configuration for the command-line parameters to make available
 # passed on the argparse add_argument()
 parse_args:
-
-#---  core BIDS-app options --- (do not modify below)
-
-  bids_dir:
-    help: The directory with the input dataset formatted according
-          to the BIDS standard.
-
-  output_dir:
-    help: The directory where the output files
-          should be stored. If you are running group level analysis
-          this folder should be prepopulated with the results of the
-          participant level analysis.
-
-  analysis_level:
-    help: Level of the analysis that will be performed.
-    choices: *analysis_levels
-
-  --participant-label:
-    help: The label(s) of the participant(s) that should be analyzed. The label
-          corresponds to sub-<participant_label> from the BIDS spec
-          (so it does not include "sub-"). If this parameter is not
-          provided all subjects should be analyzed. Multiple
-          participants can be specified with a space separated list.
-    nargs: '+'
-
-  --exclude-participant-label:
-    help: The label(s) of the participant(s) that should be excluded. The label
-          corresponds to sub-<participant_label> from the BIDS spec
-          (so it does not include "sub-"). If this parameter is not
-          provided all subjects should be analyzed. Multiple
-          participants can be specified with a space separated list.
-    nargs: '+'
-
-  --derivatives:
-    help: 'Path(s) to a derivatives dataset, for folder(s) that contains multiple derivatives datasets (default: %(default)s) '
-    default: False
-    nargs: '+'
-
-
- # custom command-line parameters can then be added, these will get added to the config and also accessible to plugins
- # below are examples for plugin and custom parameters (e.g. config['smoothing_fwhm'])
   --skip-bids-validation:
-    help: 'Skip validation of BIDS dataset. BIDS validation is performed by
-          default using the bids-validator plugin (if installed/enabled) or with the pybids
-          validator implementation (if bids-validator is not installed/enabled).'
+    help: |
+      Skip validation of BIDS dataset. BIDS validation is performed by default
+      using the bids-validator plugin (if installed/enabled) or with the pybids
+      validator implementation (if bids-validator is not installed/enabled).
     dest: "plugins.validator.skip"
     action: "store_true"
     default: False
 
 
 
-#--- workflow specific configuration -- below is just an example:
-
-
-#singularity containers
-singularity:
-    fsl: 'docker://brainlife/fsl/6.0.0'
+# Docker and singularity containers may be defined here
+containers:
+    # fsl: 'docker://brainlife/fsl/6.0.0'
