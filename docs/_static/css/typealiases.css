@@ -5,3 +5,7 @@
   visibility: hidden;
   height: 0;
 }
+
+#snakebids\.bidsapp\.run\._Runner ~ dd .field-list {
+  display: none
+}
