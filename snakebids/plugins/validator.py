@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 import json
 import logging
 import subprocess as sp
 import tempfile
+from typing import Any
 
 import attr
 
-from snakebids.app import SnakeBidsApp
+from snakebids import bidsapp
 from snakebids.exceptions import SnakebidsPluginError
 
 _logger = logging.getLogger(__name__)
@@ -32,13 +35,12 @@ class BidsValidator:
 
     raise_invalid_bids: bool = attr.field(default=True)
 
-    def __call__(self, app: SnakeBidsApp) -> None:
-        """Perform BIDS validation of dataset.
+    def __eq__(self, other: Any):
+        return isinstance(other, self.__class__)
 
-        Parameters
-        ----------
-        app
-            Snakebids application to be run
+    @bidsapp.hookimpl
+    def finalize_config(self, config: dict[str, Any]) -> None:
+        """Perform BIDS validation of dataset.
 
         Raises
         ------
@@ -47,7 +49,7 @@ class BidsValidator:
             the bids-validator
         """
         # Skip bids validation
-        if app.config["plugins.validator.skip"]:
+        if config["plugins.validator.skip"]:
             return
 
         validator_config_dict = {"ignoredFiles": ["/participants.tsv"]}
@@ -56,21 +58,19 @@ class BidsValidator:
             temp.write(json.dumps(validator_config_dict))
             temp.flush()
             try:
-                sp.check_call(
-                    ["bids-validator", app.config["bids_dir"], "-c", temp.name]
-                )
+                sp.check_call(["bids-validator", config["bids_dir"], "-c", temp.name])
 
                 # If successfully bids-validation performed
-                app.config["plugins.validator.success"] = True
+                config["plugins.validator.success"] = True
             except FileNotFoundError:
                 # If the bids-validator call can't be made
-                app.config["plugins.validator.success"] = False
+                config["plugins.validator.success"] = False
                 _logger.warning(
                     "Missing bids-validator installation - falling back to pybids "
                     "validation."
                 )
             # Any other bids-validator error
             except sp.CalledProcessError as err:
-                app.config["plugins.validator.success"] = False
+                config["plugins.validator.success"] = False
                 if self.raise_invalid_bids:
                     raise InvalidBidsError from err

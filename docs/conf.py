@@ -70,8 +70,9 @@ autodoc_type_aliases = {
     "InputsConfig": "snakebids.types.InputsConfig",
 }
 autodoc_typehints_format = "short"
-# autosummary_imported_members = True
 autosummary_generate = True
+autoclass_content = "class"
+autosummary_imported_members = True
 
 
 # Add any paths that contain templates here, relative to this directory.
@@ -89,6 +90,7 @@ intersphinx_mapping = {
     "pybids": ("https://bids-standard.github.io/pybids/", None),
     "python": ("https://docs.python.org/3", None),
     "snakemake": ("https://snakemake.readthedocs.io/en/stable/", None),
+    "pluggy": ("https://pluggy.readthedocs.io/en/stable", None),
 }
 
 

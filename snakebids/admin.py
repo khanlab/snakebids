@@ -10,8 +10,6 @@ import more_itertools as itx
 from colorama import Fore, Style
 
 import snakebids
-from snakebids.app import SnakeBidsApp
-from snakebids.cli import add_dynamic_args
 from snakebids.utils.utils import text_fold
 
 
@@ -83,10 +81,8 @@ def create_app(args: argparse.Namespace) -> None:
 
 def create_descriptor(args: argparse.Namespace) -> None:
     """Implement the ``snakebids boutiques`` command."""
-    app = SnakeBidsApp(args.app_dir.resolve())
-    add_dynamic_args(app.parser, app.config["parse_args"], app.config["pybids_inputs"])
-    app.create_descriptor(args.out_path)
-    print(f"Boutiques descriptor created at {args.out_path}")
+    print("Boutiques descriptor generation is temporarily disabled", file=sys.stderr)
+    sys.exit(1)
 
 
 def gen_parser() -> argparse.ArgumentParser:

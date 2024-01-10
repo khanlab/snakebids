@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import re
 import sys
 from argparse import ArgumentParser, Namespace
@@ -12,7 +13,7 @@ from hypothesis import strategies as st
 from pathvalidate import Platform, is_valid_filename
 from pytest_mock.plugin import MockerFixture
 
-from snakebids.admin import gen_parser
+from snakebids.admin import create_descriptor, gen_parser
 from snakebids.tests.helpers import allow_function_scoped
 
 
@@ -178,3 +179,8 @@ class TestCreateCommand:
     def test_boutiques_succeeds(self, parser: ArgumentParser, mocker: MockerFixture):
         mocker.patch.object(sys, "argv", ["snakebids", "boutiques", "test.json"])
         assert isinstance(parser.parse_args(), Namespace)
+
+
+def test_boutiques_descriptor():
+    with pytest.raises(SystemExit):
+        create_descriptor(argparse.Namespace())

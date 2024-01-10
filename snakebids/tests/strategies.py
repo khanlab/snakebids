@@ -5,7 +5,15 @@ import itertools as it
 from os import PathLike
 from pathlib import Path
 from string import ascii_letters, digits
-from typing import TYPE_CHECKING, Any, Container, Hashable, Iterable, Sequence, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Container,
+    Hashable,
+    Iterable,
+    Sequence,
+    TypeVar,
+)
 
 import hypothesis.strategies as st
 from bids.layout import Config as BidsConfig
@@ -31,6 +39,34 @@ valid_entities: tuple[str, ...] = tuple(BidsConfig.load("bids").entities.keys())
 
 def nothing() -> Any:
     return st.nothing()  # type: ignore
+
+
+class PathStrategy(st.SearchStrategy[Path]):
+    def resolve(self) -> st.SearchStrategy[Path]:
+        ...
+
+
+def paths(*, absolute: bool | None = None) -> PathStrategy:
+    valid_chars = st.characters(
+        min_codepoint=48, max_codepoint=122, whitelist_categories=["Ll", "Lu"]
+    )
+    paths = st.lists(st.text(valid_chars)).map(lambda x: Path(*x))
+
+    def relative_paths():
+        return paths.filter(lambda p: not p.is_absolute())
+
+    def absolute_paths():
+        return paths.map(lambda p: Path("/", p))
+
+    if absolute:
+        result = absolute_paths()
+    elif absolute is False:
+        result = relative_paths()
+    else:
+        result = absolute_paths() | relative_paths()
+
+    result.resolve = lambda: result.map(lambda p: p.resolve())  # type: ignore
+    return result  # type: ignore
 
 
 def bids_entity(
@@ -151,45 +187,69 @@ def bids_entity_lists(
 
 
 @st.composite
-def input_configs(draw: st.DrawFn) -> InputConfig:
-    filters = draw(
-        st.one_of(
-            st.dictionaries(
-                bids_entity().map(str),
-                st.one_of(
-                    st.booleans(),
-                    bids_value(),
-                    st.lists(st.one_of(bids_value(), st.booleans())),
+def input_configs(
+    draw: st.DrawFn, *, filters: bool = True, wildcards: bool = True, paths: bool = True
+) -> InputConfig:
+    sel_filters = (
+        draw(
+            st.one_of(
+                st.dictionaries(
+                    bids_entity().map(str),
+                    st.one_of(
+                        st.booleans(),
+                        bids_value(),
+                        st.lists(st.one_of(bids_value(), st.booleans())),
+                    ),
                 ),
-            ),
-            st.none(),
+                st.none(),
+            )
         )
+        if filters
+        else None
     )
 
-    wildcards = draw(st.one_of(st.lists(bids_entity().map(str)), st.none()))
-    custom_path = draw(
-        st.one_of(
-            st.text(
-                alphabet=st.characters(
-                    blacklist_categories=("Cs",), blacklist_characters=("\x00",)
-                )
-            ),
-            st.none(),
+    sel_wildcards = (
+        draw(st.one_of(st.lists(bids_entity().map(str)), st.none()))
+        if wildcards
+        else None
+    )
+    sel_path = (
+        draw(
+            st.one_of(
+                st.text(
+                    alphabet=st.characters(
+                        blacklist_categories=("Cs",), blacklist_characters=("\x00",)
+                    )
+                ),
+                st.none(),
+            )
         )
+        if paths
+        else None
     )
 
     pybids_inputs: InputConfig = {}
-    if wildcards is not None:
-        pybids_inputs.update({"wildcards": wildcards})
-    if filters is not None:
-        pybids_inputs.update({"filters": filters})
-    if custom_path is not None:
-        pybids_inputs.update({"custom_path": custom_path})
+    if sel_wildcards is not None:
+        pybids_inputs.update({"wildcards": sel_wildcards})
+    if sel_filters is not None:
+        pybids_inputs.update({"filters": sel_filters})
+    if sel_path is not None:
+        pybids_inputs.update({"custom_path": sel_path})
     return pybids_inputs
 
 
-def inputs_configs() -> st.SearchStrategy[InputsConfig]:
-    return st.dictionaries(st.text(min_size=1), input_configs())
+def inputs_configs(
+    *,
+    keys: st.SearchStrategy[str] | None = None,
+    filters: bool = True,
+    wildcards: bool = True,
+    paths: bool = True,
+) -> st.SearchStrategy[InputsConfig]:
+    return st.dictionaries(
+        keys if keys is not None else st.text(min_size=1),
+        input_configs(filters=filters, wildcards=wildcards, paths=paths),
+        max_size=5,
+    )
 
 
 @st.composite
