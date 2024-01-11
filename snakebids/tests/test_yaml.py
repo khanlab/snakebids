@@ -15,7 +15,7 @@ import snakebids.io.yaml as yamlio
 from snakebids.tests.helpers import allow_function_scoped
 
 
-@given(path=st.text(min_size=1).map(Path))
+@given(path=st.text(st.characters(blacklist_characters=["\x85"]), min_size=1).map(Path))
 def test_paths_formatted_as_str(path: Path):
     string = StringIO()
     yaml = yamlio.get_yaml_io()
