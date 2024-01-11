@@ -24,6 +24,10 @@ classifiers = [
 python = "{{ python_version }}"
 snakemake = ">={{ snakemake_version }},<8"
 snakebids = ">={{ snakebids_version }}"
+pandas = [
+    { version = "<=2.0.3", python = "<3.9" },
+    { version = ">=2.1.1", python = ">=3.12" },
+]
 
 [tool.poetry.scripts]
 {{ name_slug }} = "{{ name_slug }}.run:main"

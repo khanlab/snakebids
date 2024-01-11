@@ -65,7 +65,7 @@ bids_version:
   when: false
 
 python_version:
-  default: ">=3.8,<3.12"
+  default: ">=3.8,<3.13"
   when: false
 
 snakebids_version:
@@ -96,27 +96,16 @@ _message_after_copy: >
 
     $ cd {{ _copier_conf.dst_path }}
 
-  {% if build_system == "poetry" -%}
   {{ Fore.BLUE }}2.{{ Fore.RESET }} Install dependencies.
 
+  {% if build_system == "poetry" %}
     $ poetry install
-
-  {%- else -%}
-  {{ Fore.BLUE + "2." + Fore.RESET + """ Install dependencies. This may vary
-  depending on your tooling. The following are examples (the first example
-  should work on any python environment; the others require 3rd party tools):
-  """ | wordwrap(80)}}
-
-    * {{Fore.YELLOW}}Virtual Environment and setuptools:{{Fore.RESET}}
-      $ python -m venv .venv
-      $ source .venv/bin/activate
-      $ pip install .
-
-    * {{Fore.YELLOW}}Hatch:{{Fore.RESET}}
-      $ hatch env create
-
-    * {{Fore.YELLOW}}PDM:{{Fore.RESET}}
-      $ pdm install
+  {%- elif build_system == "hatch" %}
+    $ hatch env create
+  {%- else %}
+    $ python -m venv .venv
+    $ source .venv/bin/activate
+    $ pip install .
   {%- endif %}
 
 
@@ -125,15 +114,12 @@ _message_after_copy: >
   {% if build_system == "poetry" %}
     $ poetry run {{ test_run_cmd }}
 
+  {%- elif build_system == "hatch" %}
+    $ hatch env run -- {{ test_run_cmd }}
+
   {%- else %}
-    * {{Fore.YELLOW}}Virtual Environment and setuptools:{{Fore.RESET}}
-      $ {{ test_run_cmd }}
+    $ {{ test_run_cmd }}
 
-    * {{Fore.YELLOW}}Hatch:{{Fore.RESET}}
-      $ hatch env run -- {{ test_run_cmd }}
-
-    * {{Fore.YELLOW}}PDM:{{Fore.RESET}}
-      $ pdm run {{ test_run_cmd }}
   {%- endif %}
 
 _jinja_extensions:

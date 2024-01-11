@@ -270,7 +270,7 @@ def test_pyproject_correctly_formatted(
         ("setuptools", "setuptools"),
         ("poetry", "poetry"),
         ("hatch", "hatch"),
-        ("flit", "pdm"),
+        ("flit", "setuptools"),
     ],
 )
 def test_template_dry_runs_successfully(tmp_path: Path, build: BuildBackend, venv: str):
