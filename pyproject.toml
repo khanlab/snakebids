@@ -23,9 +23,7 @@ style = "pep440"
 bump = true
 
 [tool.poetry-dynamic-versioning.substitution]
-files = [
-    'snakebids/__init__.py',
-]
+files = ['snakebids/__init__.py']
 patterns = [
     "(^\\s+\"snakebids_version\":\\s*\")[^'\"]*(\")",
     "(^__version__\\s*(?::.*?)?=\\s*['\"])[^'\"]*(['\"])",
@@ -66,7 +64,6 @@ scipy = [
 pandas = [
     { version = "<=2.0.3", python = "<3.9" },
     { version = ">=2.1.1", python = ">=3.12" },
-
 ]
 # minimum 8.2.0 to use post-copy mesages
 copier = ">=8.2.0"
@@ -132,8 +129,8 @@ expr = "platform.python_version()"
 args = [{ name = "container_id", positional = true, required = true }]
 uses = { VERSION = "_get_version" }
 cmd = """
-    docker build 'containers/${container_id}' \
-        --tag 'snakebids/${container_id}:${VERSION}' \
+    docker build "containers/${container_id}" \
+        --tag "snakebids/${container_id}:${VERSION}" \
         --build-arg="PYTHON_VERSION=${VERSION}"
 """
 
@@ -143,10 +140,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-omit = [
-    "snakebids/project_template/**",
-    "snakebids/tests/**",
-]
+omit = ["snakebids/project_template/**", "snakebids/tests/**"]
 
 [tool.coverage.report]
 exclude_lines = [
@@ -154,7 +148,7 @@ exclude_lines = [
     "@overload",
     'class [a-zA-Z0-9_]+\([^)]*Protocol.*\)',
     'if TYPE_CHECKING',
-    "def __dir__"
+    "def __dir__",
 ]
 
 [tool.isort]
@@ -170,31 +164,31 @@ reportImportCycles = false
 
 [tool.ruff]
 select = [
-    "E",    # pycodestyle error
-    "W",    # pycodestyle warning
-    "F",    # pyflakes
-    "N",    # pep8-naming
-    "UP",   # pyupgrade
-    "YTT",  # flake8-2020
-    "S",    # flake8-bandit
-    "BLE",  # flake8-blind-except
-    "B",    # flake8-bugbear
-    "A",    # flake8-builtins
-    "COM",  # flake8-commas
-    "C4",   # flake8-comprehensions
-    "T10",  # flake8-debugger
-    "EM",   # flake8-errmsg
-    "FA",   # flake8-future-annotations
-    "ISC",  # flake8-implicit-str-concat
-    "ICN",  # flake8-import-conventions
-    "G",    # flake8-logging-format
-    "INP",  # flake8-no-pep420
-    "PIE",  # flake8-pie
-    "PT",   # flake8-pytest-style
-    "RSE",  # flake8-raise
-    "RET",  # flake8-return
-    "SLF",  # flake8-self
-    "SIM",  # flake8-simplify
+    "E",   # pycodestyle error
+    "W",   # pycodestyle warning
+    "F",   # pyflakes
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "YTT", # flake8-2020
+    "S",   # flake8-bandit
+    "BLE", # flake8-blind-except
+    "B",   # flake8-bugbear
+    "A",   # flake8-builtins
+    "COM", # flake8-commas
+    "C4",  # flake8-comprehensions
+    "T10", # flake8-debugger
+    "EM",  # flake8-errmsg
+    "FA",  # flake8-future-annotations
+    "ISC", # flake8-implicit-str-concat
+    "ICN", # flake8-import-conventions
+    "G",   # flake8-logging-format
+    "INP", # flake8-no-pep420
+    "PIE", # flake8-pie
+    "PT",  # flake8-pytest-style
+    "RSE", # flake8-raise
+    "RET", # flake8-return
+    "SLF", # flake8-self
+    "SIM", # flake8-simplify
     # We use os.path a lot in "legitimate" ways, so this ruleset has too many
     # false positives
     # "PTH",  # flake8-use-pathlib
@@ -210,11 +204,11 @@ select = [
 ]
 ignore = [
     "PLR0913",
-    "D105",     # missing docstring in magic method
-    "D100",     # Require docstring in public modules
-    "D104",     # Require docstring in public packages
-    "S603",     # Subprocess without shell equals true
-    "S607",     # start-process-with-partial-path
+    "D105",    # missing docstring in magic method
+    "D100",    # Require docstring in public modules
+    "D104",    # Require docstring in public packages
+    "S603",    # Subprocess without shell equals true
+    "S607",    # start-process-with-partial-path
     # recommended ignores for ruff format
     "W191",
     "E111",
@@ -241,8 +235,8 @@ namespace-packages = ["snakebids/plugins"]
 "snakebids/project_template/**" = ["N999"]
 "snakebids/tests/**" = [
     "D",
-    "S101",     # assert
-    "S307",     # Use of eval
+    "S101", # assert
+    "S307", # Use of eval
     "SLF",
 ]
 
