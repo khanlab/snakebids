@@ -30,6 +30,11 @@ requires-python = "{{ python_version }}"
 dependencies = [
     "snakemake >= {{ snakemake_version }},<8",
     "snakebids >= {{ snakebids_version }}",
+    {#- newer pulps are incompatible with old snakemakes, and we need to support
+    old snakemakes for python versions <3.11. So cap pulp to the last working
+    version
+    #}
+    "pulp < 2.8.0",
 ]
 
 [project.scripts]
