@@ -180,6 +180,7 @@ exclude_lines = [
     'class [a-zA-Z0-9_]+\([^)]*Protocol.*\)',
     'if TYPE_CHECKING',
     "def __dir__",
+    '@(abc\.)abstractmethod'
 ]
 
 [tool.isort]
