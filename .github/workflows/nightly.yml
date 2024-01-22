@@ -3,20 +3,13 @@ name: Weekly testing and recalibration of test timings
 on:
   schedule:
     - cron: "5 3 * * 2"
-  push:
-    branches:
-      - '*'
-      - '!push-action/*'
-  pull_request:
-    branches:
-      - '*'
-      - '!push-action/*'
 
 jobs:
   calibrate-timings:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
+      contents: write
 
     steps:
       - name: install
@@ -75,7 +68,7 @@ jobs:
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
     steps:
-      - uses: khanlab/actions/.github/actions/action-setup_task-installPyProject@feat/flexible-installs
+      - uses: khanlab/actions/.github/actions/action-setup_task-installPyProject@v0.3.4
         id: setup
         with:
           python-version: ${{ matrix.python-version }}
@@ -101,7 +94,7 @@ jobs:
         split: ['1', '2', '3', '4', '5']
       fail-fast: false
     steps:
-      - uses: khanlab/actions/.github/actions/action-setup_task-installPyProject@feat/flexible-installs
+      - uses: khanlab/actions/.github/actions/action-setup_task-installPyProject@v0.3.4
         id: setup
         with:
           python-version: ${{ matrix.python-version }}
