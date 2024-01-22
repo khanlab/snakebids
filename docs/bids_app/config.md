@@ -1,15 +1,15 @@
 {#bids-app-config}
-Configuration
-=============
+# Configuration
 
 Snakebids is configured with a YAML (or JSON) file that extends the standard [snakemake config file](https://snakemake.readthedocs.io/en/stable/snakefiles/configuration.html#standard-configuration) with variables that snakebids uses to parse an input BIDS dataset and expose the snakebids workflow to the command line.
 
-Config Variables
-----------------
+## Config Variables
 
 ### `pybids_inputs`
 
 A dictionary that describes each type of input you want to grab from an input BIDS dataset. Snakebids will parse your dataset with {func}`generate_inputs() <snakebids.generate_inputs>`, converting each input type into a {class}`BidsComponent <snakebids.BidsComponent>`. The value of each item should be a dictionary with keys `filters` and `wildcards`.
+
+#### Filters
 
 The value of `filters` should be a dictionary where each key corresponds to a BIDS entity, and the value specifies which values of that entity should be grabbed. The dictionary for each input is sent to the [PyBIDS' `get()` function ](#bids.layout.BIDSLayout). `filters` can be set according to a few different formats:
 
@@ -26,10 +26,10 @@ The value of `filters` should be a dictionary where each key corresponds to a BI
   the bold component would match any paths under the `func/` datatype folder, with the suffix `bold` and the extension `.nii.gz`.
 
   ```
-  sub-xxx/.../func/ent1-xxx_ent2-xxx_..._bold.nii.gz
+  sub-xxx/.../func/sub-xxx_ses-xxx_..._bold.nii.gz
   ```
 
-* [`boolean`](#bool): constrains presence or absence of the entity without restricting its value. `False` requires that the entity be **absent**, while `True` requires that the  entity be **present**, regardless of value.
+* [`boolean`](#bool): constrains presence or absence of the entity without restricting its value. `False` requires that the entity be **absent**, while `True` requires the entity to be **present**, regardless of value.
   ```yaml
   pybids_inputs:
     derivs:
@@ -38,7 +38,74 @@ The value of `filters` should be a dictionary where each key corresponds to a BI
         desc: True
         acquisition: False
   ```
-  The above example maps all paths in the `func/` datatype folder that have a `_desc-` entity but do not have the `_acq-` entity.
+  The above example selects all paths in the `func/` datatype folder that have a `_desc-` entity but do not have the `_acq-` entity.
+
+* [`list`](#list): Specify multiple string or boolean filters. Any path matching any one of the filters will be selected. Using `False` as one of the filters allows the entity to optionally be absent in addition to matching one of the string filters. Using `True` along with text is redundant, as `True` will cause any value to be selected. Using `True` with `False` is equivalent to not providing the filter at all.
+
+  These filters:
+
+  ```yaml
+  pybids_inputs:
+    derivs:
+      filters:
+        acquisition:
+          - False
+          - MPRAGE
+          - MP2RAGE
+  ```
+
+  would select all of the following paths:
+
+  ```
+  sub-001/ses-1/anat/sub-001_ses-001_acq-MPRAGE_run-1_T1w.nii.gz
+  sub-001/ses-1/anat/sub-001_ses-001_acq-MP2RAGE_run-1_T1w.nii.gz
+  sub-001/ses-1/anat/sub-001_ses-001_run-1_T1w.nii.gz
+  ```
+
+
+* To use regex for filtering, use an additional subkey set either to [`match`](#re.match) or [`search`](#re.search), depending on which regex method you wish to use. This key may be set to any one of the above items (`str`, `bool`, or `list`). Only one such key may be used.
+
+  These filters:
+
+  ```yaml
+  pybids_inputs:
+    derivs:
+      filters:
+        suffix:
+          search: '[Tt]1'
+        acquisition:
+          match: MP2?RAGE
+  ```
+
+  would select all of the following paths:
+
+  ```
+  sub-001/ses-1/anat/sub-001_ses-001_acq-MPRAGE_run-1_T1.nii.gz
+  sub-001/ses-1/anat/sub-001_ses-001_acq-MP2RAGE_run-1_t1w.nii.gz
+  sub-001/ses-1/anat/sub-001_ses-001_acq-MPRAGE_run-1_qT1w.nii.gz
+  ```
+
+````{note}
+`match` and `search` are both _filtering methods_. In addition to these, `get` is also a valid filtering method and may be used as the subkey for a filter. However, this is equivalent to directly providing the desired filter without a subkey:
+
+```yaml
+pybids_inputs:
+  derivs:
+    filters:
+      suffix:
+        get: T1w
+
+# is the same as
+pybids_inputs:
+  derivs:
+    filters:
+      suffix: T1w
+```
+
+In other words, `get` is the default filtering method.
+````
+
+#### Wildcards
 
 The value of `wildcards` should be a list of BIDS entities. Snakebids collects the values of any entities specified and saves them in the {attr}`entities <snakebids.BidsComponent.entities>` and {attr}`~snakebids.BidsComponent.zip_lists` entries of the corresponding {class}`BidsComponent <snakebids.BidsComponent>`. In other words, these are the entities to be preserved in output paths derived from the input being described. Placing an entity in `wildcards` does not require the entity be present. If an entity is not found, it will be left out of {attr}`entities <snakebids.BidsComponent.entities>`. To require the presence of an entity, place it under `filters` set to `true`.
 

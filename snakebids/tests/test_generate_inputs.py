@@ -13,7 +13,7 @@ import tempfile
 import warnings
 from collections import defaultdict
 from pathlib import Path
-from typing import Iterable, Literal, NamedTuple, TypedDict, TypeVar, cast
+from typing import Any, Iterable, Literal, NamedTuple, TypedDict, TypeVar, cast
 
 import attrs
 import more_itertools as itx
@@ -25,19 +25,18 @@ from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 from snakemake.io import expand as sb_expand
 
+from snakebids.core._querying import PostFilter, UnifiedFilter, get_matching_files
 from snakebids.core.datasets import BidsComponent, BidsDataset
 from snakebids.core.input_generation import (
     _all_custom_paths,
     _gen_bids_layout,
-    _get_lists_from_bids,
+    _get_components,
     _normalize_database_args,
     _parse_bids_path,
     _parse_custom_path,
-    _Postfilter,
-    _UnifiedFilter,
     generate_inputs,
 )
-from snakebids.exceptions import ConfigError, RunError
+from snakebids.exceptions import ConfigError, PybidsError, RunError
 from snakebids.paths._presets import bids
 from snakebids.tests import strategies as sb_st
 from snakebids.tests.helpers import (
@@ -49,6 +48,7 @@ from snakebids.tests.helpers import (
     example_if,
     get_bids_path,
     get_zip_list,
+    mock_data,
     reindex_dataset,
 )
 from snakebids.types import InputsConfig
@@ -157,6 +157,28 @@ class TestNormalizeDatabaseArgs:
     def test_non_deprecated_text_in_reset_raises_error(self, pybidsdb_reset: bool):
         with pytest.raises(TypeError):
             _normalize_database_args(None, pybidsdb_reset, None, None)
+
+
+def test_regex_search_removed_from_filters():
+    assert not len(UnifiedFilter.from_filter_dict({"regex_search": "foo"}).prefilters)
+
+
+@given(
+    filters=st.dictionaries(st.text(), st.text() | st.booleans() | st.lists(st.text()))
+)
+def test_get_matching_files_skips_get_when_empty_prefilter(filters: dict[str, Any]):
+    assert (
+        get_matching_files(
+            ...,  # type: ignore
+            UnifiedFilter.from_filter_dict({**filters, "foo": []}),
+        )
+        == []
+    )
+
+
+def test_attribute_errors_from_pybids_qualified_and_raised():
+    with pytest.raises(PybidsError, match="Pybids has encountered a problem"):
+        get_matching_files(..., UnifiedFilter.from_filter_dict({}))  # type: ignore
 
 
 class TestFilterBools:
@@ -359,7 +381,7 @@ class TestFilterBools:
         entity=sb_st.bids_entity(path_safe=True),
         data=st.data(),
     )
-    def test_filter_works_when_false_in_list(
+    def test_text_filter_selects_paths_when_in_list_with_false(
         self,
         tmpdir: Path,
         template: BidsComponent,
@@ -422,7 +444,7 @@ class TestFilterBools:
         entity=sb_st.bids_entity(path_safe=True),
         data=st.data(),
     )
-    def test_filter_blank_paths_when_false_in_list(
+    def test_filter_false_in_list_selects_paths(
         self,
         tmpdir: Path,
         template: BidsComponent,
@@ -469,6 +491,327 @@ class TestFilterBools:
 
         result = generate_inputs(root, pybids_inputs)
         assert result == BidsDataset({"template": dataset["template"]})
+
+
+class TestFilterMethods:
+    @pytest.fixture(autouse=True)
+    def bids_fs(self, bids_fs: FakeFilesystem | None):
+        return bids_fs
+
+    @pytest.fixture
+    def tmpdir(self, fakefs_tmpdir: Path):
+        return fakefs_tmpdir
+
+    @example(
+        component=BidsComponent(
+            name="template",
+            path="sub-{subject}/sub-{subject}_mt-{mt}",
+            zip_lists={
+                "subject": ["0", "00"],
+                "mt": ["on", "on"],
+            },
+        ),
+        data=mock_data(["0"]),
+    )
+    @given(
+        component=sb_st.bids_components(
+            name="template",
+            min_entities=2,
+            restrict_patterns=True,
+            unique=True,
+            extra_entities=False,
+            # pybids bug prevents regex matching from working properly with extension
+            blacklist_entities=["extension"],
+        ),
+        data=st.data(),
+    )
+    @settings(
+        deadline=None,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+            HealthCheck.too_slow,
+        ],
+    )
+    def test_regex_match_selects_paths(
+        self, tmpdir: Path, component: BidsComponent, data: st.DataObject
+    ):
+        root = tempfile.mkdtemp(dir=tmpdir)
+        entity = itx.first(component.entities)
+        selection = data.draw(
+            st.lists(
+                st.sampled_from(component.entities[entity]), unique=True, min_size=1
+            )
+        )
+        dataset = BidsDataset.from_iterable(
+            [attrs.evolve(component, path=os.path.join(root, component.path))]
+        )
+        create_dataset("", dataset)
+        pybids_inputs: InputsConfig = {
+            "template": {
+                "wildcards": [
+                    BidsEntity.from_tag(wildcard).entity
+                    for wildcard in component.wildcards
+                ],
+                "filters": {
+                    BidsEntity.from_tag(entity).entity: {
+                        "match": "|".join(re.escape(sel) for sel in selection)
+                    }
+                },
+            }
+        }
+        result = generate_inputs(root, pybids_inputs)
+        assert result == BidsDataset(
+            {"template": dataset["template"].filter(**{entity: selection})}
+        )
+
+    @given(
+        component=sb_st.bids_components(
+            name="template",
+            min_entities=2,
+            restrict_patterns=True,
+            unique=True,
+            extra_entities=False,
+            # only specified entities work with free text
+            whitelist_entities=[
+                "subject",
+                "session",
+                "sample",
+                "task",
+                "acquisition",
+                "ceagent",
+                "staning",
+                "tracer",
+                "reconstruction",
+                "direction",
+                "proc",
+                "modality",
+                "recording",
+                "space",
+                "split",
+                "atlas",
+                "roi",
+                "label",
+                "from",
+                "to",
+                "res",
+                "den",
+                "model",
+                "subset",
+                "desc",
+                "tracksys",
+            ],
+        ),
+    )
+    @settings(
+        deadline=None,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+            HealthCheck.too_slow,
+        ],
+    )
+    def test_regex_search_selects_paths(self, tmpdir: Path, component: BidsComponent):
+        root = tempfile.mkdtemp(dir=tmpdir)
+        entity = itx.first(component.entities)
+        assume(f"prefix{component[entity][0]}suffix" not in component.entities[entity])
+        zip_lists = {
+            ent: (
+                [*value, f"prefix{value[0]}suffix"]
+                if ent is entity
+                else [*value, value[0]]
+            )
+            for ent, value in component.zip_lists.items()
+        }
+        dataset = BidsDataset.from_iterable(
+            [
+                attrs.evolve(
+                    component,
+                    path=os.path.join(root, component.path),
+                    zip_lists=zip_lists,
+                )
+            ]
+        )
+        create_dataset("", dataset)
+        pybids_inputs: InputsConfig = {
+            "template": {
+                "wildcards": [
+                    BidsEntity.from_tag(wildcard).entity
+                    for wildcard in component.wildcards
+                ],
+                "filters": {
+                    BidsEntity.from_tag(entity).entity: {
+                        "search": "|".join(
+                            re.escape(val) for val in component.entities[entity]
+                        )
+                    }
+                },
+            }
+        }
+        result = generate_inputs(root, pybids_inputs)
+        assert result == BidsDataset({"template": dataset["template"]})
+
+    @example(
+        component=BidsComponent(
+            name="template",
+            path="sub-{subject}/sub-{subject}_mt-{mt}",
+            zip_lists={
+                "subject": ["0", "00"],
+                "mt": ["on", "on"],
+            },
+        ),
+        data=mock_data(["0"]),
+    )
+    @given(
+        component=sb_st.bids_components(
+            name="template",
+            min_entities=2,
+            restrict_patterns=True,
+            unique=True,
+            extra_entities=False,
+        ),
+        data=st.data(),
+    )
+    @settings(
+        deadline=None,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+            HealthCheck.too_slow,
+        ],
+    )
+    def test_get_method_selects_via_direct_matching(
+        self, tmpdir: Path, component: BidsComponent, data: st.DataObject
+    ):
+        root = tempfile.mkdtemp(dir=tmpdir)
+        entity = itx.first(component.entities)
+        selection = data.draw(
+            st.lists(
+                st.sampled_from(component.entities[entity]), unique=True, min_size=1
+            )
+        )
+        dataset = BidsDataset.from_iterable(
+            [attrs.evolve(component, path=os.path.join(root, component.path))]
+        )
+        create_dataset("", dataset)
+        pybids_inputs: InputsConfig = {
+            "template": {
+                "wildcards": [
+                    BidsEntity.from_tag(wildcard).entity
+                    for wildcard in component.wildcards
+                ],
+                "filters": {BidsEntity.from_tag(entity).entity: {"get": selection}},
+            }
+        }
+        result = generate_inputs(root, pybids_inputs)
+        assert result == BidsDataset(
+            {"template": dataset["template"].filter(**{entity: selection})}
+        )
+
+    @given(
+        component=sb_st.bids_components(
+            name="template",
+            min_entities=2,
+            max_entities=2,
+            # Again, extension doesn't work with regex
+            blacklist_entities={"extension"},
+            min_values=2,
+            restrict_patterns=True,
+            unique=True,
+            cull=False,
+            extra_entities=False,
+        ),
+    )
+    @settings(
+        deadline=None,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+            HealthCheck.too_slow,
+        ],
+    )
+    def test_combining_match_and_get_selects_correct_paths(
+        self, tmpdir: Path, component: BidsComponent
+    ):
+        root = tempfile.mkdtemp(dir=tmpdir)
+        entity1 = itx.first(component.entities)
+        entity2 = itx.nth_or_last(component.entities, 1)
+        dataset = BidsDataset.from_iterable(
+            [attrs.evolve(component, path=os.path.join(root, component.path))]
+        )
+        create_dataset("", dataset)
+        pybids_inputs: InputsConfig = {
+            "template": {
+                "wildcards": [
+                    BidsEntity.from_tag(wildcard).entity
+                    for wildcard in component.wildcards
+                ],
+                "filters": {
+                    BidsEntity.from_tag(entity1).entity: {"get": component[entity1][0]},
+                    BidsEntity.from_tag(entity2).entity: {
+                        "match": re.escape(component[entity2][0])
+                    },
+                },
+            }
+        }
+        result = generate_inputs(root, pybids_inputs)
+        assert len(itx.first(itx.first(result.values()).zip_lists.values())) == 1
+
+    @given(
+        methods=st.lists(
+            st.sampled_from(["match", "get", "search"]), unique=True, min_size=2
+        )
+    )
+    @allow_function_scoped
+    def test_filter_with_multiple_methods_raises_error(
+        self, tmpdir: Path, methods: list[str]
+    ):
+        dataset = BidsDataset.from_iterable(
+            [BidsComponent(zip_lists={}, name="template", path=str(tmpdir))]
+        )
+        create_dataset("", dataset)
+        pybids_inputs: InputsConfig = {
+            "template": {
+                "filters": {
+                    "foo": {method: "foo" for method in methods}  # type: ignore
+                },
+            }
+        }
+        with pytest.raises(ConfigError, match="may not have more than one key"):
+            generate_inputs(tmpdir, pybids_inputs)
+
+    @pytest.mark.disable_fakefs(True)
+    def test_filter_with_no_methods_raises_error(self, tmpdir: Path):
+        dataset = BidsDataset.from_iterable(
+            [BidsComponent(zip_lists={}, name="template", path=str(tmpdir))]
+        )
+        create_dataset("", dataset)
+        pybids_inputs: InputsConfig = {
+            "template": {
+                "filters": {"foo": {}},
+            }
+        }
+        with pytest.raises(ConfigError, match="was not given any keys"):
+            generate_inputs(tmpdir, pybids_inputs)
+
+    @given(
+        method=st.text().filter(lambda s: s not in {"get", "match", "search"}),
+    )
+    @settings(
+        deadline=None,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+            HealthCheck.too_slow,
+        ],
+    )
+    def test_filter_with_invalid_method_raises_error(self, tmpdir: Path, method: str):
+        dataset = BidsDataset.from_iterable(
+            [BidsComponent(zip_lists={}, name="template", path=str(tmpdir))]
+        )
+        create_dataset("", dataset)
+        pybids_inputs: InputsConfig = {
+            "template": {
+                "filters": {"foo": {method: []}},  # type: ignore
+            }
+        }
+        with pytest.raises(ConfigError, match="Invalid query method specified"):
+            generate_inputs(tmpdir, pybids_inputs)
 
 
 class TestAbsentConfigEntries:
@@ -543,7 +886,7 @@ class TestPostfilter:
     def test_throws_error_if_labels_and_excludes_are_given(
         self, args: tuple[list[str] | str, list[str] | str]
     ):
-        filters = _Postfilter()
+        filters = PostFilter()
         with pytest.raises(
             ValueError,
             match="Cannot define both participant_label and exclude_participant_label ",
@@ -552,7 +895,7 @@ class TestPostfilter:
 
     @given(st.text(), st_lists_or_text)
     def test_returns_participant_label_as_dict(self, key: str, label: list[str] | str):
-        filters = _Postfilter()
+        filters = PostFilter()
         filters.add_filter(key, label, None)
         if isinstance(label, str):
             assert filters.inclusions == {key: [label]}
@@ -569,7 +912,7 @@ class TestPostfilter:
     def test_exclude_gives_regex_that_matches_anything_except_exclude(
         self, key: str, excluded: list[str] | str, dummy_values: list[str], padding: str
     ):
-        filters = _Postfilter()
+        filters = PostFilter()
         # Make sure the dummy_values and padding we'll be testing against are different
         # from our test values
         for value in dummy_values:
@@ -693,7 +1036,7 @@ class TestCustomPaths:
         entities = {"A": ["A", "B", "C"], "B": ["1", "2", "3"]}
         template = Path("{A}/A-{A}_B-{B}")
         test_path = self.generate_test_directory(entities, template, tmp_path)
-        benchmark(_parse_custom_path, test_path, _UnifiedFilter.from_filter_dict({}))
+        benchmark(_parse_custom_path, test_path, UnifiedFilter.from_filter_dict({}))
 
     @allow_function_scoped
     @given(path_entities=path_entities())
@@ -706,7 +1049,7 @@ class TestCustomPaths:
         test_path = self.generate_test_directory(entities, template, temp_dir)
 
         # Test without any filters
-        result = _parse_custom_path(test_path, _UnifiedFilter.from_filter_dict({}))
+        result = _parse_custom_path(test_path, UnifiedFilter.from_filter_dict({}))
         zip_lists = get_zip_list(entities, it.product(*entities.values()))
         assert BidsComponent(
             name="foo", path=get_bids_path(zip_lists), zip_lists=zip_lists
@@ -726,7 +1069,7 @@ class TestCustomPaths:
 
         # Test with filters
         result_filtered = MultiSelectDict(
-            _parse_custom_path(test_path, _UnifiedFilter.from_filter_dict(filters))
+            _parse_custom_path(test_path, UnifiedFilter.from_filter_dict(filters))
         )
         zip_lists = MultiSelectDict(
             {
@@ -752,12 +1095,12 @@ class TestCustomPaths:
         entities, template, filters = path_entities
         test_path = self.generate_test_directory(entities, template, temp_dir)
         # Test with exclusion filters
-        exclude_filters = _Postfilter()
+        exclude_filters = PostFilter()
         for key, values in filters.items():
             exclude_filters.add_filter(key, None, values)
         result_excluded = MultiSelectDict(
             _parse_custom_path(
-                test_path, _UnifiedFilter.from_filter_dict({}, exclude_filters)
+                test_path, UnifiedFilter.from_filter_dict({}, exclude_filters)
             )
         )
 
@@ -779,6 +1122,29 @@ class TestCustomPaths:
         ) == BidsComponent(
             name="foo", path=get_bids_path(result_excluded), zip_lists=result_excluded
         )
+
+    @given(
+        boolean=st.booleans(),
+        filter=st.none() | st.lists(st.text()),
+        path_entities=path_entities(),
+    )
+    @allow_function_scoped
+    def test_errors_when_bools_given_as_filters(
+        self,
+        temp_dir: Path,
+        path_entities: PathEntities,
+        boolean: bool,
+        filter: list[str] | None,
+    ):
+        entities, template, _ = path_entities
+        test_path = self.generate_test_directory(entities, template, temp_dir)
+        with pytest.raises(ValueError, match="Boolean filters in items with custom "):
+            _parse_custom_path(
+                test_path,
+                UnifiedFilter.from_filter_dict(
+                    {"foo": boolean if filter is None else [*filter, boolean]}
+                ),
+            )
 
 
 def test_custom_pybids_config(tmpdir: Path):
@@ -1094,7 +1460,11 @@ def test_get_lists_from_bids_raises_run_error():
     }
     with pytest.raises(RunError):
         next(
-            _get_lists_from_bids(bids_layout, pybids_inputs, postfilters=_Postfilter())
+            _get_components(
+                bids_layout=bids_layout,
+                inputs_config=pybids_inputs,
+                postfilters=PostFilter(),
+            )
         )
 
 
@@ -1134,7 +1504,9 @@ def test_get_lists_from_bids():
             pybids_inputs["t1"]["custom_path"] = wildcard_path_t1
             pybids_inputs["t2"]["custom_path"] = wildcard_path_t2
 
-        result = _get_lists_from_bids(layout, pybids_inputs, postfilters=_Postfilter())
+        result = _get_components(
+            bids_layout=layout, inputs_config=pybids_inputs, postfilters=PostFilter()
+        )
         for bids_lists in result:
             if bids_lists.input_name == "t1":
                 template = BidsComponent(
