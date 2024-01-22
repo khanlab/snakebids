@@ -87,7 +87,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    needs: [ 'build-cache-env'  ]
+    needs: [ 'build-cache-env' ]
     strategy:
       matrix:
         python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
@@ -101,6 +101,7 @@ jobs:
           cache-key: nightly
           install-deps-only: dev
           install-library: false
+
       - name: install lib
         run: poetry run pip install .
 
