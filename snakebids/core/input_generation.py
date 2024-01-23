@@ -53,6 +53,7 @@ def generate_inputs(
     participant_label: Iterable[str] | str | None = ...,
     exclude_participant_label: Iterable[str] | str | None = ...,
     use_bids_inputs: Literal[True] | None = ...,
+    index_metadata: bool = ...,
     validate: bool = ...,
     pybids_database_dir: Path | str | None = ...,
     pybids_reset_database: bool = ...,
@@ -71,7 +72,8 @@ def generate_inputs(
     limit_to: Iterable[str] | None = ...,
     participant_label: Iterable[str] | str | None = ...,
     exclude_participant_label: Iterable[str] | str | None = ...,
-    use_bids_inputs: Literal[False] = ...,
+    use_bids_inputs: Literal[False] = ...,    
+    index_metadata: bool = ...,
     validate: bool = ...,
     pybids_database_dir: Path | str | None = ...,
     pybids_reset_database: bool = ...,
@@ -90,6 +92,7 @@ def generate_inputs(
     participant_label: Iterable[str] | str | None = None,
     exclude_participant_label: Iterable[str] | str | None = None,
     use_bids_inputs: bool | None = None,
+    index_metadata: bool = False,
     validate: bool = False,
     pybids_database_dir: Path | str | None = None,
     pybids_reset_database: bool | None = None,
@@ -159,6 +162,10 @@ def generate_inputs(
         If False, returns the classic :class:`BidsDatasetDict` instead of
         :class`BidsDataset`. Setting to True is deprecated as of v0.8, as this is now
         the default behaviour
+
+    index_metadata
+        If True indexes metadata of BIDS directory using pybids, otherwise skips
+        indexing.
 
     validate
         If True performs validation of BIDS directory using pybids, otherwise
@@ -274,6 +281,7 @@ ses-{session}_run-{run}_T1w.nii.gz",
             pybids_config=pybids_config,
             pybidsdb_dir=pybidsdb_dir,
             pybidsdb_reset=pybidsdb_reset,
+            index_metadata=index_metadata,
             validate=validate,
         )
         if not _all_custom_paths(pybids_inputs)
@@ -389,6 +397,7 @@ def _gen_bids_layout(
     pybidsdb_dir: Path | str | None,
     pybidsdb_reset: bool,
     pybids_config: Path | str | None = None,
+    index_metadata: bool = False,
     validate: bool = False,
 ) -> BIDSLayout:
     """Create (or reindex) the BIDSLayout.
@@ -435,7 +444,7 @@ def _gen_bids_layout(
         config=pybids_config,
         database_path=pybidsdb_dir,
         reset_database=pybidsdb_reset,
-        indexer=BIDSLayoutIndexer(validate=False, index_metadata=False),
+        indexer=BIDSLayoutIndexer(validate=False, index_metadata=index_metadata),
     )
 
 
