@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import io
 from io import StringIO
 from pathlib import Path
+from typing import Any, OrderedDict
 
 import pytest
 from hypothesis import given
@@ -14,8 +16,10 @@ import snakebids.io.config as configio
 import snakebids.io.yaml as yamlio
 from snakebids.tests.helpers import allow_function_scoped
 
+YAML_SAFE_CHARS = st.characters(blacklist_characters=["\x85"])
 
-@given(path=st.text(st.characters(blacklist_characters=["\x85"]), min_size=1).map(Path))
+
+@given(path=st.text(YAML_SAFE_CHARS, min_size=1).map(Path))
 def test_paths_formatted_as_str(path: Path):
     string = StringIO()
     yaml = yamlio.get_yaml_io()
@@ -71,3 +75,22 @@ class TestWriteConfig:
         mocks = self.io_mocks(mocker)
         configio.write_config(path, {}, force_overwrite=True)
         assert mocks["jsondump"].call_count ^ mocks["yamldump"].call_count
+
+    @given(
+        data=st.recursive(
+            st.text(YAML_SAFE_CHARS),
+            lambda children: st.dictionaries(st.text(YAML_SAFE_CHARS), children),
+        )
+    )
+    def test_ordered_dict_roundtrips_as_dict(self, data: dict[str, Any]):
+        def to_odict(data: dict[str, Any] | str) -> OrderedDict[str, Any] | str:
+            if isinstance(data, str):
+                return data
+            return OrderedDict({key: to_odict(value) for key, value in data.items()})
+
+        stream = io.StringIO()
+        yaml = yamlio.get_yaml_io()
+        odict = to_odict(data)
+        yaml.dump(odict, stream)
+        stream.seek(0)
+        assert yaml.load(stream) == data

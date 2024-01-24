@@ -304,3 +304,36 @@ def test_template_dry_runs_successfully(tmp_path: Path, build: BuildBackend, ven
         print(cmd.stderr, file=sys.stderr)
         raise
     assert "All set" in cmd.stdout.decode()
+
+
+def test_template_dry_runs_with_current_repository(tmp_path: Path):
+    app_name = "snakebids_app"
+    data = get_empty_data(app_name, "setuptools")
+
+    copier.run_copy(
+        str(Path(itx.first(snakebids.__path__), "project_template")),
+        tmp_path / app_name,
+        data=data,
+        unsafe=True,
+    )
+    app_path = tmp_path / app_name
+    cmd = sp.run(
+        [
+            sys.executable,
+            app_path / app_name / "run.py",
+            app_path / "tests/data",
+            app_path / "tests/results",
+            "participant",
+            "-c1",
+            "--skip-bids-validation",
+        ],
+        capture_output=True,
+        check=False,
+    )
+    try:
+        cmd.check_returncode()
+    except Exception:
+        print(cmd.stdout.decode())
+        print(cmd.stderr.decode(), file=sys.stderr)
+        raise
+    assert "All set" in cmd.stdout.decode()
