@@ -81,7 +81,7 @@ pre-commit = "^3.0.0"
 # a mkinit dep has the 'platform_system == "Windows"' as a marker on an incompatible dependeny
 #   (pydantic<2.0 cf copier), so set the inverse as a marker here so mkinit can
 #   still be resolved
-mkinit = { git = "https://github.com/pvandyken/mkinit.git", rev = "f9896e5", markers = "platform_system != 'Windows'" }
+mkinit = { version="^1.1.0", markers = "platform_system != 'Windows'" }
 hypothesis = "^6.34.1"
 pytest-benchmark = "^4.0.0"
 pyfakefs = "^5.1.0"
