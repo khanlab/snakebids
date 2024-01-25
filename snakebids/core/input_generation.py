@@ -420,6 +420,9 @@ def _gen_bids_layout(
         A boolean that determines whether to reset / overwrite
         existing database.
 
+    index_metadata
+        A boolen that determines whether to parse and index metadata
+
     validate
         A boolean that determines whether to validate the bids dataset
 
