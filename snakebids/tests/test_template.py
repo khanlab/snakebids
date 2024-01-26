@@ -306,7 +306,9 @@ def test_template_dry_runs_successfully(tmp_path: Path, build: BuildBackend, ven
     assert "All set" in cmd.stdout.decode()
 
 
-def test_template_dry_runs_with_current_repository(tmp_path: Path):
+def test_template_dry_runs_with_current_repository(
+    tmp_path: Path, request: pytest.FixtureRequest
+):
     app_name = "snakebids_app"
     data = get_empty_data(app_name, "setuptools")
 
@@ -316,16 +318,18 @@ def test_template_dry_runs_with_current_repository(tmp_path: Path):
         data=data,
         unsafe=True,
     )
-    app_path = tmp_path / app_name
     cmd = sp.run(
         [
-            sys.executable,
-            app_path / app_name / "run.py",
-            app_path / "tests/data",
-            app_path / "tests/results",
-            "participant",
-            "-c1",
-            "--skip-bids-validation",
+            "docker",
+            "run",
+            "-v",
+            f"{tmp_path / app_name}:/app",
+            "-v",
+            f"{request.config.rootpath}:/src",
+            "--rm",
+            f"snakebids/test-template:{platform.python_version()}",
+            "setuptools",
+            app_name,
         ],
         capture_output=True,
         check=False,
