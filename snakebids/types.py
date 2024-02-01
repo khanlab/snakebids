@@ -12,10 +12,22 @@ _T_contra = TypeVar("_T_contra", contravariant=True)
 _S_co = TypeVar("_S_co", covariant=True)
 
 
+class FilterSpec(TypedDict, total=False):
+    """Optional filter specification allowing regex matching."""
+
+    get: str | bool | Sequence[str | bool]
+    match: str
+    search: str
+
+
+FilterValue: TypeAlias = "str | bool | Sequence[str | bool] | FilterSpec"
+FilterMap: TypeAlias = "Mapping[str, FilterValue]"
+
+
 class InputConfig(TypedDict, total=False):
     """Configuration for a single bids component."""
 
-    filters: Mapping[str, str | bool | Sequence[str | bool]]
+    filters: FilterMap
     """Filters to pass on to :class:`BIDSLayout.get() <bids.layout.BIDSLayout>`
 
     Each key refers to the name of an entity. Values may take the following forms:
