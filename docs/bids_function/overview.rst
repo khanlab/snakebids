@@ -1,5 +1,5 @@
-Overview
-========
+Bids Function
+=============
 
 The ``bids`` function generates a BIDS-like filepath corresponding to its keyword arguments. The generated filepath has the form::
 
@@ -60,3 +60,8 @@ Now if you want to process all inputs of a given form regardless of how their wi
             **inputs.subj_wildcards
         ),
     )
+
+Specs
+-----
+
+The structure of the built path is based on the currently active BIDS spec. More information can be found on the :ref:`specs <specs>` page.

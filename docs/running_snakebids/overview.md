@@ -1,5 +1,4 @@
-Overview
-========
+# Running Snakebids
 
 Once you've specified a snakebids app with a config file and one or more workflow files, you're ready to invoke your snakebids app with the standard BIDS app CLI.
 
@@ -12,15 +11,14 @@ Note that if any rules in the Snakebids workflow use Singularity containers, spe
 1. Inputs are copied into a working subdirectory of the output directory before any processing that requires a Singularity container is performed, or:
 2. The `SINGULARITY_BINDPATH` environment variable binds the location of the input dataset.
 
-Indexing of large datasets can be a time-consuming process. Leveraging the functionality of `PyBIDS`, Snakebids offers a convenient solution by allowing you to create or utilize an existing database. With this approach, the indexing of datasets is only performed when explictly requested, typically when there are changes to the dataset. To create or use an existing database, you can invoke the following CLI arguments: 
+Indexing of large datasets can be a time-consuming process. Leveraging the functionality of `PyBIDS`, Snakebids offers a convenient solution by allowing you to create or utilize an existing database. With this approach, the indexing of datasets is only performed when explicitly requested, typically following changes to the dataset. To create or use an existing database, you can invoke the following CLI arguments:
 
 1. `--pybidsdb-dir {dir}`: specify the path to the database directory
 1. `--pybidsdb-reset`: indicate that an existing database should be updated
 
 The boilerplate app starts with the validator plugin enabled - without it, validation is not performed. By default, this feature uses the command-line (node.js) version of the [validator](https://www.npmjs.com/package/bids-validator). If this is not found to be installed on the system, the `pybids` version of validation will be performed instead. To opt-out of validation, invoke the `--skip-bids-validation` flag. Details related to using and creating plugins can be found on the [plugins](/bids_app/plugins) page.
 
-Workflow mode
-=============
+## Workflow mode
 
 Snakebids apps use a BIDS app CLI, giving great flexibility when switching datasets. However, when developing a Snakebids app or when running the app repeatedly on the same dataset, it can be more convenient to directly call the Snakemake CLI. Snakebids facilitates this using workflow mode.
 

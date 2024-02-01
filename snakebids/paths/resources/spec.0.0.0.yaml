@@ -1,3 +1,14 @@
+version: "v0.0.0"
+description: |
+  Get the v0.0.0 BidsPathSpec.
+
+  This spec alone equips :func:`~snakebids.bids` with 2 extra arguments:
+  ``include_subject_dir`` and ``include_session_dir``. These default to
+  ``True``, but if set ``False``, remove the subject and session dirs
+  respectively from the output path. For future specs, this behaviour should be
+  achieved by modifying the spec and generating a new :func:`~snakebids.bids`
+  function
+spec:
 - entity: "subject"
   tag: "sub"
   dir: true

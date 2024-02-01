@@ -38,7 +38,7 @@ from snakebids.core.input_generation import (
     generate_inputs,
 )
 from snakebids.exceptions import ConfigError, RunError
-from snakebids.paths.presets import bids
+from snakebids.paths._presets import bids
 from snakebids.tests import strategies as sb_st
 from snakebids.tests.helpers import (
     Benchmark,
@@ -52,12 +52,8 @@ from snakebids.tests.helpers import (
     reindex_dataset,
 )
 from snakebids.types import InputsConfig
-from snakebids.utils.utils import (
-    DEPRECATION_FLAG,
-    BidsEntity,
-    BidsParseError,
-    MultiSelectDict,
-)
+from snakebids.utils.containers import MultiSelectDict
+from snakebids.utils.utils import DEPRECATION_FLAG, BidsEntity, BidsParseError
 
 T = TypeVar("T")
 

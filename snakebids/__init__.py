@@ -1,40 +1,31 @@
+# type: ignore
 __version__ = "0.0.0"
 
 __submodules__ = ["core", "paths"]
-__explicit__ = ["factory_specs"]
-
-from snakebids.paths import specs as factory_specs
 
 # isort: split
 # <AUTOGEN_INIT>
-from snakebids.core import (
-    BidsComponent,
-    BidsComponentRow,
-    BidsDataset,
-    BidsDatasetDict,
-    BidsPartialComponent,
-    filter_list,
-    generate_inputs,
-    get_filtered_ziplist_index,
-    get_wildcard_constraints,
-    write_derivative_json,
-)
-from snakebids.paths import (
-    bids,
-)
+import lazy_loader
+
+__getattr__, __dir__, __all__ = lazy_loader.attach_stub(__name__, __file__)
 
 __all__ = [
     "BidsComponent",
     "BidsComponentRow",
     "BidsDataset",
     "BidsDatasetDict",
+    "BidsFunction",
     "BidsPartialComponent",
+    "BidsPathEntitySpec",
+    "BidsPathSpec",
+    "BidsPathSpecFile",
     "bids",
-    "factory_specs",
+    "bids_factory",
     "filter_list",
     "generate_inputs",
     "get_filtered_ziplist_index",
     "get_wildcard_constraints",
+    "set_bids_spec",
     "write_derivative_json",
 ]
 # </AUTOGEN_INIT>

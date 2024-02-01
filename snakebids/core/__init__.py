@@ -1,25 +1,13 @@
+# type: ignore
 __submodules__ = ["filtering", "input_generation", "datasets"]
 
 __ignore__ = ["T_co"]
 
-from snakebids.core.datasets import (
-    BidsComponent,
-    BidsComponentRow,
-    BidsDataset,
-    BidsDatasetDict,
-    BidsPartialComponent,
-)
 
 # <AUTOGEN_INIT>
-from snakebids.core.filtering import (
-    filter_list,
-    get_filtered_ziplist_index,
-)
-from snakebids.core.input_generation import (
-    generate_inputs,
-    get_wildcard_constraints,
-    write_derivative_json,
-)
+import lazy_loader
+
+__getattr__, __dir__, __all__ = lazy_loader.attach_stub(__name__, __file__)
 
 __all__ = [
     "BidsComponent",

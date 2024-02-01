@@ -21,14 +21,9 @@ from snakebids.core.filtering import filter_list
 from snakebids.exceptions import DuplicateComponentError
 from snakebids.io.console import get_console_size
 from snakebids.io.printing import format_zip_lists, quote_wrap
-from snakebids.types import UserDictPy38, ZipList
-from snakebids.utils.utils import (
-    ImmutableList,
-    MultiSelectDict,
-    get_wildcard_dict,
-    property_alias,
-    zip_list_eq,
-)
+from snakebids.types import ZipList
+from snakebids.utils.containers import ImmutableList, MultiSelectDict, UserDictPy38
+from snakebids.utils.utils import get_wildcard_dict, property_alias, zip_list_eq
 
 
 class BidsDatasetDict(TypedDict):

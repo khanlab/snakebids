@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Sequence
 
 from snakebids.types import ZipList
-from snakebids.utils.utils import MultiSelectDict
+from snakebids.utils.containers import MultiSelectDict
 
 
 def regex(filepattern: str) -> str:

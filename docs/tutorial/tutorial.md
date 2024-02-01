@@ -1,8 +1,10 @@
 # Tutorial
 
+
 % links
 [expand_func]: inv:snakemake:std:label#snakefiles_expand
 
+(tutorial_getting_started)=
 ## Getting started
 
 In this example we will make a workflow to smooth ``bold`` scans from a bids dataset.
@@ -62,11 +64,11 @@ $ cp -r snakebids/docs/tutorial/bids ./data
 
 It's also perfectly possible (and probably better!) to try the tutorial on your own dataset. Just adjust any paths below so that they match your data!
 
-# Part I: Snakemake
+(snakemake_tutorial)=
+## Part I: Snakemake
 
 (step_0)=
-
-## Step 0: a basic non-generic workflow
+### Step 0: a basic non-generic workflow
 
 In this rule, we start by creating a rule that is effectively hard-coding the paths for input and output to re-create the command as above.
 
@@ -89,8 +91,7 @@ When we invoke ``snakemake``, it uses the first rule in the snakefile as the ``t
 So far, we just have a fancy way of specifying the exact same command we started with, so there is no added benefit (yet). But we will soon add to this rule to make it more generalizable.
 
 (step_1)=
-
-## Step 1: adding wildcards
+### Step 1: adding wildcards
 
 First step to make the workflow generalizeable is to replace the hard-coded identifiers (e.g. the subject, task and run) with wildcards.
 
@@ -127,8 +128,7 @@ Now, try changing the output smoothing value, e.g. ``fwhm-10mm``, and see what h
 As expected the command still uses a smoothing value of 2.12, since that has been hard-coded, but we will see how to rectify this in the next step.
 
 (step_2)=
-
-## Step 2: adding a params function
+### Step 2: adding a params function
 
 As we noted, the sigma parameter needs to be computed from the FWHM. We can use a function to do this. Functions can be used for any ``input`` or ``params``, and must take ``wildcards`` as an input argument, which provides a mechanism to pass the wildcards (determined from the output file) to the function.
 
@@ -169,8 +169,7 @@ Now try running the workflow again, with `fwhm-5` as well as `fwhm-10`.
 ```
 
 (step_3)=
-
-## Step 3: adding a target rule
+### Step 3: adding a target rule
 
 Now we have a generic rule, but it is pretty tedious to have to type out the filename of each target from the command-line in order to use it.
 
@@ -206,8 +205,7 @@ The entire Snakefile for reference is:
 ```
 
 (step_4)=
-
-## Step 4: adding a config file
+### Step 4: adding a config file
 
 We have a functional workflow, but suppose you need to configure or run it on another bids dataset with different subjects, tasks, runs, or you want to run it for different smoothing values. You have to actually modify your workflow in order to do this.
 
@@ -247,13 +245,14 @@ After these changes, the workflow should still run just like the last step, but 
 
 ```
 
-# Part II: Snakebids
+
+(snakebids_tutorial)=
+## Part II: Snakebids
 
 Now that we have a fully functioning and generic Snakemake workflow, let's see what Snakebids can add.
 
 (step_5)=
-
-## Step 5: the bids() function
+### Step 5: the bids() function
 
 The first thing we can make use of is the {func}`~snakebids.bids` function. This provides an easy way to generate bids filenames. This is especially useful when defining output files in your workflow and you have many bids entities.
 
@@ -295,7 +294,8 @@ The Snakefile with the output filename replaced (in both rules) is below:
   :caption: Snakefile
 ```
 
-## Step 6: parsing the BIDS dataset
+
+### Step 6: parsing the BIDS dataset
 
 So far, we have had to manually enter the path to input bold file in the config file, and also specify what subjects, tasks, and runs we want processed. Can't we use the fact that we have a BIDS dataset to automate this a bit more?
 
@@ -381,7 +381,8 @@ Notice that `inputs['bold'].path`{l=python} is the same as the path we wrote und
 :emphasize-lines: 3
 ```
 
-## Step 7: using input wildcards
+
+### Step 7: using input wildcards
 
 {attr}`BidsComponent.path <snakebids.BidsComponent.path>` already grants us a lot of flexibility, but we can still do more! In addition to the three main attributes of {class}`BidsComponents <snakebids.BidsComponent>` already described, the class offers a number of special properties we can use in our workflows. First, we'll look at {attr}`BidsComponent.wildcards <snakebids.BidsComponent.wildcards>`. This is a dict that maps each entity to the brace-wrapped `{wildcards}` we specified in `pybids_config`. If you printed this value in our test workflow, it would look like this:
 
@@ -449,7 +450,7 @@ For reference, here is the updated config file and Snakefile after these changes
   :caption: Snakefile
 ```
 
-## Step 8: creating a command-line executable
+### Step 8: creating a command-line executable
 
 Now that we have pybids parsing to dynamically configure our workflow inputs based on our BIDS dataset, we are ready to turn our workflow into a [BIDS App](http://bids-apps.neuroimaging.io/). BIDS Apps are command-line apps with a standardized interface (e.g. three required positional arguments: ``bids_directory``, ``output_directory``, and ``analysis_level``).
 
