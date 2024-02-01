@@ -72,7 +72,7 @@ def generate_inputs(
     limit_to: Iterable[str] | None = ...,
     participant_label: Iterable[str] | str | None = ...,
     exclude_participant_label: Iterable[str] | str | None = ...,
-    use_bids_inputs: Literal[False] = ...,    
+    use_bids_inputs: Literal[False] = ...,
     index_metadata: bool = ...,
     validate: bool = ...,
     pybids_database_dir: Path | str | None = ...,

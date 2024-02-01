@@ -1,14 +1,10 @@
 # ruff: noqa: PLR2004
 from __future__ import annotations
-from distutils import extension
 
 import filecmp
 import functools as ft
 import itertools as it
-import json
 import keyword
-from multiprocessing.sharedctypes import Value
-from operator import index
 import os
 import re
 import shutil
@@ -872,21 +868,20 @@ def test_nonstandard_custom_pybids_config(tmpdir: Path):
 def test_index_metadata(mocker: MockerFixture):
     from snakebids.core import input_generation
 
-    spy = mocker.spy(input_generation,"BIDSLayoutIndexer")
-    mocker.patch.object(input_generation,"BIDSLayout",side_effect=ValueError)
-    
+    spy = mocker.spy(input_generation, "BIDSLayoutIndexer")
+    mocker.patch.object(input_generation, "BIDSLayout", side_effect=ValueError)
 
     # Simplest case -- one input type, using pybids
     with pytest.raises(ValueError):
         generate_inputs(
-            pybids_inputs={'foo':{}},
+            pybids_inputs={"foo": {}},
             bids_dir=...,  # type: ignore
             derivatives=...,  # type: ignore
-            index_metadata=True
+            index_metadata=True,
         )
- 
+
     spy.assert_called_once_with(
-        validate=False, 
+        validate=False,
         index_metadata=True,
     )
 
