@@ -872,7 +872,7 @@ def test_index_metadata(mocker: MockerFixture):
     mocker.patch.object(input_generation, "BIDSLayout", side_effect=ValueError)
 
     # Simplest case -- one input type, using pybids
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa
         generate_inputs(
             pybids_inputs={"foo": {}},
             bids_dir=...,  # type: ignore
