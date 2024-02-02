@@ -1227,6 +1227,27 @@ def test_nonstandard_custom_pybids_config(tmpdir: Path):
         )
 
 
+def test_index_metadata(mocker: MockerFixture):
+    from snakebids.core import input_generation
+
+    spy = mocker.spy(input_generation, "BIDSLayoutIndexer")
+    mocker.patch.object(input_generation, "BIDSLayout", side_effect=ValueError)
+
+    # Simplest case -- one input type, using pybids
+    with pytest.raises(ValueError):  # noqa
+        generate_inputs(
+            pybids_inputs={"foo": {}},
+            bids_dir=...,  # type: ignore
+            derivatives=...,  # type: ignore
+            index_metadata=True,
+        )
+
+    spy.assert_called_once_with(
+        validate=False,
+        index_metadata=True,
+    )
+
+
 def test_t1w():
     # create config
     real_bids_dir = "snakebids/tests/data/bids_t1w"
