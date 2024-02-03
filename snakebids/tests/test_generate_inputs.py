@@ -710,8 +710,9 @@ class TestFilterMethods:
             name="template",
             min_entities=2,
             max_entities=2,
-            # Again, extension doesn't work with regex
-            blacklist_entities={"extension"},
+            # Again, extension doesn't work with regex. run causes problem with
+            # numeral strings
+            blacklist_entities={"extension", "run"},
             min_values=2,
             restrict_patterns=True,
             unique=True,
