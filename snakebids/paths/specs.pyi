@@ -7,13 +7,13 @@ from ._utils import BidsPathSpec
 
 LATEST: str
 
-def v0_10_1(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
+def v0_11_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
     """Spec corresponding to `BIDS v1.9.0`_.
 
     Significantly expanded from the v0.0.0 spec, now including long names for every
-    relevant entity. In addition to the spec, it includes `from` and `to` entities
-    intended for transformations. Unknown entities are placed just before desc, so that
-    the description entity is always last.
+    relevant entity. In addition to the official spec, it includes `from` and `to`
+    entities intended for transformations. Unknown entities are placed just before desc,
+    so that the description entity is always last.
 
     .. _BIDS v1.9.0: https://bids-specification.readthedocs.io/en/v1.9.0/
 
@@ -73,9 +73,9 @@ def latest(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
     """Spec corresponding to `BIDS v1.9.0`_.
 
     Significantly expanded from the v0.0.0 spec, now including long names for every
-    relevant entity. In addition to the spec, it includes `from` and `to` entities
-    intended for transformations. Unknown entities are placed just before desc, so that
-    the description entity is always last.
+    relevant entity. In addition to the official spec, it includes `from` and `to`
+    entities intended for transformations. Unknown entities are placed just before desc,
+    so that the description entity is always last.
 
     .. _BIDS v1.9.0: https://bids-specification.readthedocs.io/en/v1.9.0/
 

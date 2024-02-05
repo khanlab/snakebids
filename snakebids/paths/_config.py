@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 #       poetry run poe update-bids
 #
 
-VALID_SPECS: TypeAlias = Literal["v0_10_1", "v0_0_0", "latest"]
+VALID_SPECS: TypeAlias = Literal["v0_11_0", "v0_0_0", "latest"]
 # </AUTOUPDATE>
 
 __all__ = ["set_bids_spec"]
