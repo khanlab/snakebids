@@ -1,3 +1,0 @@
-FROM busybox:1
-COPY buildstamp buildstamp
-RUN --mount=type=cache,target="/root/.cache/go-build"     --mount=type=bind,source=.,target=/var/dance-cache     cp -p -R /var/dance-cache/. "/root/.cache/go-build" || true
