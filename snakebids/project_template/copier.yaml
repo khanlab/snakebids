@@ -69,7 +69,7 @@ python_version:
   when: false
 
 snakebids_version:
-  default: ">={{ curr_snakebids_version or '0.9.3' }}"
+  default: ">={{ curr_snakebids_version or '0.12.0' }}"
   when: false
 
 snakebids_is_direct_reference:
