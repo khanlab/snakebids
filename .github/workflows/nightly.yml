@@ -38,9 +38,11 @@ jobs:
         env:
           HYPOTHESIS_PROFILE: pr
         run: >-
-          poetry run pytest -n auto --store-durations
+          poetry run pytest -n auto --store-durations --clean-durations
           --doctest-modules --ignore=docs
           --ignore=snakebids/project_template --benchmark-disable
+      - name: remove spuriously include "Dancefile.inject"
+        run: git clean -df
       - name: Check if there are changes
         id: changes
         run: |
@@ -58,7 +60,7 @@ jobs:
           branch: maint/update-test-timings
           title: Merge updated test timings
           labels: maintenance
-          body: |
+          body: >
             The number of tests has changed since the last generated test-timings
             file. This PR contains an automatically regenerated file.
 
