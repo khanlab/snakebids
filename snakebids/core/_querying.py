@@ -320,43 +320,44 @@ def _compile_filters(filters: FilterMap, *, with_regex: bool) -> CompiledFilter:
         When filter configuration is invalidly specified.
     """
 
-    def _compile_filt(filt: Iterable[str | bool]):
-        return [
-            Query.ANY if f is True else Query.NONE if f is False else f for f in filt
-        ]
+    def wrap(filt: str, method: str):
+        if method == "get":
+            return filt
+        # use flag group to remove the default case-insensitivity enforced by pybids
+        filt = f"(?-i:{filt})"
+        if method == "match":
+            # pybids only does search, so surround string filters with position anchors
+            # to simulate match
+            filt = f"^(?:{filt})$"
+        return filt
 
     result: CompiledFilter = {}
-    for key, filt in filters.items():
+    for key, raw_filter in filters.items():
         try:
-            filt_type = itx.one(filt.keys(), too_short=TypeError)  # type: ignore
+            filt_type = itx.one(raw_filter.keys(), too_short=TypeError)  # type: ignore
         except ValueError as err:
-            raise _TooManyKeysError(key, filt) from err
+            raise _TooManyKeysError(key, raw_filter) from err
         except TypeError as err:
-            raise _TooFewKeysError(key, filt) from err
+            raise _TooFewKeysError(key, raw_filter) from err
         except AttributeError:
             if TYPE_CHECKING:
-                assert not isinstance(filt, dict)
-            f = filt
+                assert not isinstance(raw_filter, dict)
+            filt = raw_filter
             filt_type = "get"
         else:
             if filt_type not in {"match", "search", "get"}:
-                raise _InvalidKeyError(key, filt)
+                raise _InvalidKeyError(key, raw_filter)
             if TYPE_CHECKING:
-                assert isinstance(filt, dict)
-            f = cast("str | bool | Sequence[str | bool]", filt[filt_type])
+                assert isinstance(raw_filter, dict)
+            filt = cast("str | bool | Sequence[str | bool]", raw_filter[filt_type])
 
-        # these two must both be true or both be false
-        if with_regex ^ (filt_type != "get"):
+        # these two must not be simultaneously true or false
+        if with_regex == (filt_type == "get"):
             continue
 
-        result[key] = _compile_filt(itx.always_iterable(f))
-
-        if filt_type == "match":
-            # pybids only does search, so surround string filters with position anchors
-            # to simulate match
-            result[key] = [
-                f"^(?:{filt})$" if isinstance(filt, str) else filt
-                for filt in result[key]
-            ]
+        result[key] = [
+            Query.ANY if f is True else Query.NONE if f is False else wrap(f, filt_type)
+            for f in itx.always_iterable(filt)
+        ]
 
     return result

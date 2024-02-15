@@ -505,6 +505,17 @@ class TestFilterMethods:
     @example(
         component=BidsComponent(
             name="template",
+            path="sub-{subject}/ses-{session}/sub-{subject}_ses-{session}",
+            zip_lists={
+                "session": ["0A", "0a"],
+                "subject": ["0", "00"],
+            },
+        ),
+        data=mock_data(["0a"]),
+    )
+    @example(
+        component=BidsComponent(
+            name="template",
             path="sub-{subject}/sub-{subject}_mt-{mt}",
             zip_lists={
                 "subject": ["0", "00"],
