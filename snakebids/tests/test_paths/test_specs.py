@@ -53,14 +53,14 @@ def test_session_dir_can_be_excluded():
 def test_spec_can_be_set_with_str():
     set_bids_spec("v0_0_0")
     assert bids(acquisition="foo") == "acquisition-foo"
-    set_bids_spec("v0_10_1")
+    set_bids_spec("v0_11_0")
     assert bids(acquisition="foo") == "acq-foo"
 
 
 def test_spec_can_be_set_with_obj():
     set_bids_spec(specs.v0_0_0())
     assert bids(acquisition="foo") == "acquisition-foo"
-    set_bids_spec(specs.v0_10_1())
+    set_bids_spec(specs.v0_11_0())
     assert bids(acquisition="foo") == "acq-foo"
 
 

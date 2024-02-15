@@ -133,7 +133,7 @@ def get_latest(versions: Iterable[BidsPathSpecFile]) -> tuple[str, BidsPathSpecF
 
 def main():
     """update_bids entrypoint."""
-    all_specs = list(get_specs())
+    all_specs = sorted(get_specs(), key=lambda o: o["version"])
     latest_version, latest_spec = get_latest(all_specs)
     generate_stub(
         specs,

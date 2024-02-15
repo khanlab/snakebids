@@ -16,7 +16,7 @@ import snakebids.io.config as configio
 import snakebids.io.yaml as yamlio
 from snakebids.tests.helpers import allow_function_scoped
 
-YAML_SAFE_CHARS = st.characters(blacklist_characters=["\x85"])
+YAML_SAFE_CHARS = st.characters(blacklist_characters=["\\"], blacklist_categories=["C"])
 
 
 @given(path=st.text(YAML_SAFE_CHARS, min_size=1).map(Path))

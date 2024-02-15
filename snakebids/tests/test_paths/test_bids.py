@@ -302,7 +302,7 @@ def make_bids_testsuite(spec: BidsPathSpec):
 
 TestV0_0_0 = make_bids_testsuite(specs.v0_0_0())
 
-TestV0_10_1 = make_bids_testsuite(specs.v0_10_1())
+TestV0_10_1 = make_bids_testsuite(specs.v0_11_0())
 
 
 def test_benchmark_bids(benchmark: Benchmark):

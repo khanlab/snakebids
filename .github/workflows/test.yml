@@ -32,7 +32,7 @@ jobs:
         run: |
           poetry run poe update-bids
           git diff --quiet || (
-            git status
+            git diff
             echo 'bids specs out of date, run `poetry run poe update-bids`'
             exit 1
           )

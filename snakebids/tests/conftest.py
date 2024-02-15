@@ -10,7 +10,7 @@ from hypothesis import database, settings
 from pyfakefs.fake_filesystem import FakeFilesystem
 
 import snakebids.paths.resources as specs
-from snakebids import resources
+from snakebids import resources, set_bids_spec
 
 ## Hypothesis profiles
 
@@ -27,9 +27,10 @@ settings.register_profile("dev", database=database.InMemoryExampleDatabase())
 
 settings.load_profile(os.getenv("HYPOTHESIS_PROFILE", "dev"))
 
+set_bids_spec("v0_0_0")
+
+
 # Fixtures
-
-
 @pytest.fixture
 def fakefs(
     request: pytest.FixtureRequest,
