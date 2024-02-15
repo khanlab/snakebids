@@ -168,10 +168,7 @@ class _Runner:
         if not self._parser_built:
             self.pm.hook.initialize_config(config=self.config)
             for group in self.parser._action_groups:  # noqa: SLF001
-                if group.title is not None and group.title not in {
-                    "positional arguments",
-                    "optional arguments",
-                }:
+                if group.title is not None:
                     self.argument_groups[group.title] = group
             self.pm.hook.add_cli_arguments(
                 parser=self.parser,
