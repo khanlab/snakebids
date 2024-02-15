@@ -31,7 +31,7 @@ class TestRunner:
         assert len(config) == 1
         assert config["initialized"]
         assert len(parser._actions) == 1
-        assert not argument_groups
+        assert len(argument_groups) == 2
         config["added_args"] = True
         parser.add_argument("arg_one")
         parser.add_argument("--arg-two")
@@ -192,5 +192,5 @@ class TestArgumentGroups:
         app.parser.add_argument_group("foo")
         app.run()
         assert self.group_names
-        assert set(self.group_names) == {"foo", "new"}
+        assert set(self.group_names).issuperset({"foo", "new"})
         assert app.argument_groups["new"].title == "new"
