@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -12,7 +13,7 @@ from typing import (
     overload,
 )
 
-from typing_extensions import Required, Unpack
+from typing_extensions import Required, TypeAlias, Unpack
 
 if TYPE_CHECKING:
     from argparse import _SUPPRESS_T, _ActionStr, _ArgumentGroup, _NArgsStr
@@ -20,20 +21,43 @@ if TYPE_CHECKING:
 _T = TypeVar("_T")
 
 
-class AddArgumentArgs(TypedDict, Generic[_T], total=False):
-    """Arguments for add_argument, with ``dest`` required."""
+if sys.version_info >= (3, 11):
 
-    action: _ActionStr | type[argparse.Action]
-    nargs: int | _NArgsStr | _SUPPRESS_T | None
-    const: Any
-    default: Any
-    type: Callable[[str], _T] | argparse.FileType
-    choices: Iterable[_T] | None
-    required: bool
-    help: str | None
-    metavar: str | tuple[str, ...] | None
-    dest: Required[str]
-    version: str
+    class AddArgumentArgs(TypedDict, Generic[_T], total=False):
+        """Arguments for add_argument, with ``dest`` required."""
+
+        action: _ActionStr | type[argparse.Action]
+        nargs: int | _NArgsStr | _SUPPRESS_T | None
+        const: Any
+        default: Any
+        type: Callable[[str], _T] | argparse.FileType
+        choices: Iterable[_T] | None
+        required: bool
+        help: str | None
+        metavar: str | tuple[str, ...] | None
+        dest: Required[str]
+        version: str
+
+    AnyArgumentArgs: TypeAlias = "AddArgumentArgs[Any]"
+
+else:
+
+    class AddArgumentArgs(TypedDict, total=False):
+        """Arguments for add_argument, with ``dest`` required."""
+
+        action: _ActionStr | type[argparse.Action]
+        nargs: int | _NArgsStr | _SUPPRESS_T | None
+        const: Any
+        default: Any
+        type: Callable[[str], Any] | argparse.FileType
+        choices: Iterable[Any] | None
+        required: bool
+        help: str | None
+        metavar: str | tuple[str, ...] | None
+        dest: Required[str]
+        version: str
+
+    AnyArgumentArgs: TypeAlias = "AddArgumentArgs"
 
 
 class PluginBase:
@@ -75,7 +99,7 @@ class PluginBase:
         self,
         parser: argparse.ArgumentParser | _ArgumentGroup,
         *name_or_flags: str,
-        **kwargs: Unpack[AddArgumentArgs[Any]],
+        **kwargs: Unpack[AnyArgumentArgs],
     ) -> argparse.Action | None:
         """Add argument to parser if provided dest is not already present."""
         if self.PREFIX and not kwargs["dest"].startswith(self.PREFIX):
@@ -88,7 +112,7 @@ class PluginBase:
         self,
         parser: argparse.ArgumentParser | _ArgumentGroup,
         *name_or_flags: str,
-        **kwargs: Unpack[AddArgumentArgs[Any]],
+        **kwargs: Unpack[AnyArgumentArgs],
     ) -> argparse.Action | None:
         """Add argument to parser, applying prefix to dest as necesary."""
         if self.PREFIX and not kwargs["dest"].startswith(self.PREFIX):
