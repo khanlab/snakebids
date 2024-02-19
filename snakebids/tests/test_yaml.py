@@ -57,7 +57,9 @@ class TestWriteConfig:
             mocks["yamldump"].assert_called_once_with({}, path)
 
     @allow_function_scoped
-    @given(path=st.text().filter(lambda s: Path(s) not in {Path(), Path("/")}))
+    @given(
+        path=st.text().filter(lambda s: Path(s).resolve() not in {Path(), Path("/")})
+    )
     def test_doesnt_overwrite_file(self, path: str, fakefs: FakeFilesystem):
         fakefs.reset()
         fakefs.create_file(path)
@@ -65,7 +67,9 @@ class TestWriteConfig:
             configio.write_config(path, {})
 
     @allow_function_scoped
-    @given(path=st.text().filter(lambda s: Path(s) not in {Path(), Path("/")}))
+    @given(
+        path=st.text().filter(lambda s: Path(s).resolve() not in {Path(), Path("/")})
+    )
     def test_overwrites_file_if_forced(
         self, path: str, fakefs: FakeFilesystem, mocker: MockerFixture
     ):
