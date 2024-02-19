@@ -173,7 +173,7 @@ def test_gets_correct_snakebids_version(
             pyproject["tool"]["poetry"]["dependencies"]["snakebids"] == f">={expected}"
         )
     else:
-        assert f"snakebids >= {expected}" in pyproject["project"]["dependencies"]
+        assert f"snakebids >={expected}" in pyproject["project"]["dependencies"]
 
 
 @given(
