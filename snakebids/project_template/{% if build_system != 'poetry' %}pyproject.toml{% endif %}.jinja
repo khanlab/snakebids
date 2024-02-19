@@ -51,3 +51,9 @@ build-backend = "hatchling.build"
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 {%- endif %}
+
+{%- if snakebids_is_direct_reference == "True" and build_system == "hatch" %}
+
+[tool.hatch.metadata]
+allow-direct-references = true
+{%- endif %}

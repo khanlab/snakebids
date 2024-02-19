@@ -72,6 +72,10 @@ snakebids_version:
   default: ">={{ curr_snakebids_version or '0.9.3' }}"
   when: false
 
+snakebids_is_direct_reference:
+  default: "{{ snakebids_version.strip().startswith('@') }}"
+  when: false
+
 snakemake_version:
   default: "7.20"
   when: false
