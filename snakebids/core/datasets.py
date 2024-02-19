@@ -394,17 +394,20 @@ class BidsPartialComponent:
             return list(itx.always_iterable(item))
 
         allow_missing_seq = sequencify(allow_missing)
-        inner_expand = list(
-            # order preserving deduplication
-            dict.fromkeys(
-                sn_expand(
-                    list(itx.always_iterable(paths)),
-                    zip,
-                    allow_missing=True if wildcards else allow_missing_seq,
-                    **self.zip_lists,
+        if self.zip_lists:
+            inner_expand = list(
+                # order preserving deduplication
+                dict.fromkeys(
+                    sn_expand(
+                        list(itx.always_iterable(paths)),
+                        zip,
+                        allow_missing=True if wildcards else allow_missing_seq,
+                        **self.zip_lists,
+                    )
                 )
             )
-        )
+        else:
+            inner_expand = list(itx.always_iterable(paths))
         if not wildcards:
             return inner_expand
 
