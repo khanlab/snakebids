@@ -70,11 +70,11 @@ def _handle_subses_dir(
             "will be removed in a future release. Builder functions without "
             "directories can be created using the bids_factory and spec "
             "functions:\n"
-            "   from snakebids.paths import set_bids_spec, specs\n"
-            "   set_bids_spec(specs.v0_0_0(subject_dir=False, "
-            "session_dir=False))"
-        )
-        warnings.warn(wrn_msg, stacklevel=1)
+            "\tfrom snakebids.paths import bids_factory, specs\n"
+            "\tbids_ses = bids_factory(specs.v0_0_0(subject_dir=False))\n"
+            "\tbids_ses(...)\n"
+        ).expandtabs(4)
+        warnings.warn(wrn_msg, stacklevel=4)
     if newspec:
         return bids_factory(newspec)(
             root,
@@ -226,18 +226,6 @@ def bids_factory(spec: BidsPathSpec, *, _implicit: bool = False) -> BidsFunction
         for key, value in parsed.items():
             custom_parts.append(f"{key}-{value}")
 
-        if custom_parts and _implicit and not in_interactive_session():
-            wrn_msg = (
-                f"The segment '{custom_parts}' has custom entities not part of the "
-                "current BIDS spec, but a spec has not been explicitly declared. This "
-                "could break when snakebids is upgraded, as specs can be updated "
-                "without warning, and these entities may be included in future specs. "
-                "Please declare a spec using:\n"
-                "   from snakebids import set_bids_spec\n"
-                f'   set_bids_spec("{specs.LATEST}")'
-            )
-            warnings.warn(wrn_msg, stacklevel=1)
-
         if datatype:
             path_parts.append(datatype)
         path_parts.append(
@@ -246,6 +234,21 @@ def bids_factory(spec: BidsPathSpec, *, _implicit: bool = False) -> BidsFunction
 
         tail = f"_{suffix}{extension or ''}" if suffix else extension or ""
 
-        return os.path.join(*path_parts) + tail
+        result = os.path.join(*path_parts) + tail
+        if custom_parts and _implicit and not in_interactive_session():
+            wrn_msg = (
+                f"Path generated with custom entities not part of the default BIDS "
+                "spec, and a spec has not been explicitly declared. This could break "
+                "when snakebids is upgraded, as the default spec can be updated "
+                "without warning, and these entities may be included in future specs.\n"
+                f"\tpath = {result!r}\n"
+                f"\tentities = {custom_parts!r}\n\n"
+                "Please declare a spec using:\n"
+                "\tfrom snakebids import set_bids_spec\n"
+                f'\tset_bids_spec("{specs.LATEST}")\n'
+            ).expandtabs(4)
+            warnings.warn(wrn_msg, stacklevel=3)
+
+        return result
 
     return bids

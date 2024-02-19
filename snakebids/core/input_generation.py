@@ -332,14 +332,14 @@ def _normalize_database_args(
             "The parameter `pybids_database_dir` in generate_inputs() is deprecated "
             "and will be removed in the next release. To set the pybids database, use "
             "the `pybidsdb_dir` parameter instead.",
-            stacklevel=1,
+            stacklevel=3,
         )
     if pybids_reset_database is not None:
         warnings.warn(
             "The parameter `pybids_reset_database` in generate_inputs() is deprecated "
             "and will be removed in the next release. To reset the pybids database, "
             "use the `pybidsdb_reset` parameter instead.",
-            stacklevel=1,
+            stacklevel=3,
         )
 
     pybidsdb_dir = pybidsdb_dir or pybids_database_dir
@@ -361,7 +361,7 @@ def _normalize_database_args(
             "The config value `pybids_db_dir` is deprecated and will be removed in a "
             "future release. To access a CLI-specified pybids database directory, use "
             '`config.get("pybidsdb_dir")` instead.',
-            stacklevel=1,
+            stacklevel=3,
         )
         pybidsdb_dir = str(pybidsdb_dir)[depr_len:-depr_len]
     try:
@@ -375,7 +375,7 @@ def _normalize_database_args(
                 "The config value `pybids_db_reset` is deprecated and will be removed "
                 "in a future release. To access CLI-specified pybids database reset "
                 'instructions, use `config.get("pybidsdb_reset")` instead.',
-                stacklevel=1,
+                stacklevel=3,
             )
     except ValueError as err:
         msg = "pybidsdb_reset must be a boolean"
