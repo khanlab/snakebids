@@ -69,7 +69,7 @@ python_version:
   when: false
 
 snakebids_version:
-  default: "{{ snakebids_version or '0.9.3' }}"
+  default: ">={{ curr_snakebids_version or '0.9.3' }}"
   when: false
 
 snakemake_version:
@@ -128,3 +128,4 @@ _jinja_extensions:
   - snakebids.jinja2_ext.colorama.ColoramaExtension
   - snakebids.jinja2_ext.toml_encode.TomlEncodeExtension
   - snakebids.jinja2_ext.snakebids_version.SnakebidsVersionExtension
+  - snakebids.jinja2_ext.format_dep_spec.FormatDepSpec

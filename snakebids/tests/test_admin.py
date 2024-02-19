@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import re
 import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
+import more_itertools as itx
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
@@ -18,21 +21,19 @@ def parser():
     return gen_parser()
 
 
-class TestAdminCli:
-    def test_fails_if_no_subcommand(
-        self, parser: ArgumentParser, mocker: MockerFixture
-    ):
-        mocker.patch.object(sys, "argv", ["snakebids"])
-        with pytest.raises(SystemExit):
-            parser.parse_args()
+def test_fails_if_no_subcommand(parser: ArgumentParser, mocker: MockerFixture):
+    mocker.patch.object(sys, "argv", ["snakebids"])
+    with pytest.raises(SystemExit):
+        parser.parse_args()
 
-    def test_fails_if_invalid_subcommand(
-        self, parser: ArgumentParser, mocker: MockerFixture
-    ):
-        mocker.patch.object(sys, "argv", ["snakebids", "dummy"])
-        with pytest.raises(SystemExit):
-            parser.parse_args()
 
+def test_fails_if_invalid_subcommand(parser: ArgumentParser, mocker: MockerFixture):
+    mocker.patch.object(sys, "argv", ["snakebids", "dummy"])
+    with pytest.raises(SystemExit):
+        parser.parse_args()
+
+
+class TestCreateCommand:
     @given(
         name=st.text()
         .filter(lambda s: not re.match(r"^[a-zA-Z_][a-zA-Z_0-9]*$", s))
@@ -78,6 +79,95 @@ class TestAdminCli:
         capture = capsys.readouterr()
         assert "does not exist" in capture.err
         assert str(path.parent) in capture.err
+
+    def test_create_fails_when_markers_in_snakebids_version(
+        self,
+        parser: ArgumentParser,
+        mocker: MockerFixture,
+        capsys: pytest.CaptureFixture[str],
+    ):
+        mocker.patch.object(
+            sys,
+            "argv",
+            ["snakebids", "create", "name", "--snakebids-version", "... ; markers"],
+        )
+        args = parser.parse_args()
+        with pytest.raises(SystemExit):
+            args.func(args)
+        capture = capsys.readouterr()
+        assert "may not specify markers" in capture.err
+
+    def test_create_fails_when_get_spec_has_at_sign(
+        self,
+        parser: ArgumentParser,
+        mocker: MockerFixture,
+        capsys: pytest.CaptureFixture[str],
+    ):
+        mocker.patch.object(
+            sys,
+            "argv",
+            ["snakebids", "create", "name", "--snakebids-version", "@ git+...@...@..."],
+        )
+        args = parser.parse_args()
+        with pytest.raises(SystemExit):
+            args.func(args)
+        capture = capsys.readouterr()
+        assert "in git requirement" in capture.err
+
+    def test_create_fails_when_snakebids_version_specifies_extras(
+        self,
+        parser: ArgumentParser,
+        mocker: MockerFixture,
+        capsys: pytest.CaptureFixture[str],
+    ):
+        mocker.patch.object(
+            sys,
+            "argv",
+            ["snakebids", "create", "name", "--snakebids-version", "[...] ..."],
+        )
+        args = parser.parse_args()
+        with pytest.raises(SystemExit):
+            args.func(args)
+        capture = capsys.readouterr()
+        assert "may not specify extras" in capture.err
+
+    @given(
+        name=st.from_regex(r"^[a-zA-Z_][a-zA-Z_0-9]*$"),
+        version=st.text(st.characters(blacklist_characters=["@", ";", "["]))
+        | st.none(),
+    )
+    @allow_function_scoped
+    def test_create_calls_copier_correctly(
+        self,
+        parser: ArgumentParser,
+        mocker: MockerFixture,
+        name: str,
+        version: str | None,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ):
+        import snakebids
+        from snakebids.admin import copier
+
+        run_copy = mocker.patch.object(copier, "run_copy")
+        path = tmp_path / name
+        args = ["snakebids", "create", str(path)]
+        if version is not None:
+            args.extend(["--snakebids-version", version])
+        mocker.patch.object(sys, "argv", args)
+        args = parser.parse_args()
+        args.func(args)
+        capture = capsys.readouterr()
+        assert "Creating Snakebids app at" in capture.err
+        run_copy.assert_called_once_with(
+            str(Path(itx.first(snakebids.__path__), "project_template")),
+            path,
+            data={
+                "app_full_name": name,
+                **({"snakebids_version": version} if version is not None else {}),
+            },
+            unsafe=True,
+        )
 
     def test_create_succeeds(self, parser: ArgumentParser, mocker: MockerFixture):
         mocker.patch.object(sys, "argv", ["snakebids", "create"])

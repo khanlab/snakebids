@@ -15,7 +15,7 @@ class SnakebidsVersionExtension(Extension):
     """
 
     def __init__(self, env: jinja2.Environment):
-        env.globals["snakebids_version"] = self._lookup_version()  # type: ignore
+        env.globals["curr_snakebids_version"] = self._lookup_version()  # type: ignore
         super().__init__(env)
 
     def _lookup_version(self):
