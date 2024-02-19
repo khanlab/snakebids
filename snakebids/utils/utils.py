@@ -5,6 +5,7 @@ import json
 import operator as op
 import os
 import re
+import textwrap
 from os import PathLike
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, Protocol, Sequence, TypeVar, cast
@@ -322,3 +323,8 @@ def get_wildcard_dict(entities: str | Iterable[str], /) -> dict[str, str]:
 def entity_to_wildcard(entities: str | Iterable[str], /):
     """Turn entity strings into wildcard dicts as {"entity": "{entity}"}."""
     return {entity: f"{{{entity}}}" for entity in itx.always_iterable(entities)}
+
+
+def text_fold(text: str):
+    """Fold a block of text into a single line as in yaml folded multiline string."""
+    return " ".join(textwrap.dedent(text).strip().splitlines())

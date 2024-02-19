@@ -14,10 +14,12 @@ import pathvalidate
 import prompt_toolkit.validation
 import pytest
 import requests_mock
-from hypothesis import HealthCheck, given, settings
+from hypothesis import HealthCheck, assume, given, settings
 from hypothesis import strategies as st
 from pytest_mock.plugin import MockerFixture
-from typing_extensions import Unpack
+from typing_extensions import NotRequired, Unpack
+
+from snakebids.jinja2_ext.format_dep_spec import format_poetry
 
 if sys.version_info < (3, 11):
     import tomli as tomllib
@@ -41,6 +43,7 @@ class DataFields(TypedDict):
     app_version: str
     create_doc_template: bool
     license: str
+    snakebids_version: NotRequired[str]
 
 
 def get_empty_data(app_name: str, build: BuildBackend) -> DataFields:
@@ -102,6 +105,21 @@ def test_invalid_email_raises_error(email: str, tmp_path: Path):
             data=data,
             unsafe=True,
         )
+
+
+@pytest.mark.parametrize("spec_type", ["version", "url", "path", "git"])
+@given(spec=st.text().map(lambda s: s.strip()).filter(lambda s: not s.startswith("@")))
+def test_format_poetry(spec_type: Literal["version", "url", "path", "git"], spec: str):
+    prefix = {"url": "@ ", "path": "@ file://", "git": "@ git+", "version": ""}[
+        spec_type
+    ]
+    if spec_type == "url":
+        assume("file://" not in spec and "git+" not in spec)
+    parsed = tomllib.loads("spec = " + format_poetry(prefix + spec))["spec"]
+    if spec_type == "version":
+        assert parsed == spec
+    else:
+        assert parsed[spec_type] == spec
 
 
 @pytest.mark.parametrize("build", BUILD_BACKENDS)
@@ -209,6 +227,7 @@ def test_correct_build_system_used(
     app_version=st.text(min_size=1),
     create_doc_template=st.just(False),
     license=st.text(),
+    snakebids_version=st.text().filter(lambda s: not s.strip().startswith("@")),
 )
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture], deadline=5000)
 @pytest.mark.parametrize("build", BUILD_BACKENDS)
@@ -242,6 +261,10 @@ def test_pyproject_correctly_formatted(
             )
         else:
             assert "authors" not in pyproject["tool"]["poetry"]
+        assert (
+            pyproject["tool"]["poetry"]["dependencies"]["snakebids"]
+            == kwargs["snakebids_version"]  # type: ignore
+        )
         return
 
     assert kwargs["app_full_name"] == pyproject["project"]["name"]
@@ -261,6 +284,9 @@ def test_pyproject_correctly_formatted(
         assert author_obj == pyproject["project"]["authors"][0]
     else:
         assert "authors" not in pyproject["project"]
+    assert pyproject["project"]["dependencies"].index(
+        f"snakebids {kwargs['snakebids_version']}"  # type: ignore
+    )
 
 
 @needs_docker(f"snakebids/test-template:{platform.python_version()}")
