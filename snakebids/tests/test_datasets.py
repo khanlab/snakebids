@@ -340,6 +340,16 @@ class TestExpandables:
         for path, entity_vals in zip(paths, zip(*component.zip_lists.values())):
             assert bids(**dict(zip(component.zip_lists.keys(), entity_vals))) == path
 
+    @given(path=st.text())
+    def test_expandable_with_no_wildcards_returns_path_unaltered(self, path: str):
+        component = BidsPartialComponent(zip_lists={})
+        assert itx.one(component.expand(path)) == path
+
+    @given(component=sb_st.expandables(min_values=0, max_values=0, path_safe=True))
+    def test_expandable_with_no_entries_returns_empty_list(self, component: Expandable):
+        path_tpl = bids(**get_wildcard_dict(component.zip_lists))
+        assert component.expand(path_tpl) == []
+
 
 class TestBidsComponentExpand:
     """
