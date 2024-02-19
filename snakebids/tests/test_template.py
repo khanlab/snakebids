@@ -299,44 +299,12 @@ def test_pyproject_correctly_formatted(
         ("flit", "setuptools"),
     ],
 )
-def test_template_dry_runs_successfully(tmp_path: Path, build: BuildBackend, venv: str):
-    app_name = "snakebids_app"
-    data = get_empty_data(app_name, build)
-
-    copier.run_copy(
-        str(Path(itx.first(snakebids.__path__), "project_template")),
-        tmp_path / app_name,
-        data=data,
-        unsafe=True,
-    )
-    cmd = sp.run(
-        [
-            "docker",
-            "run",
-            "-v",
-            f"{tmp_path / app_name}:/app",
-            "--rm",
-            f"snakebids/test-template:{platform.python_version()}",
-            venv,
-            app_name,
-        ],
-        capture_output=True,
-        check=False,
-    )
-    try:
-        cmd.check_returncode()
-    except Exception:
-        print(cmd.stdout)
-        print(cmd.stderr, file=sys.stderr)
-        raise
-    assert "All set" in cmd.stdout.decode()
-
-
-def test_template_dry_runs_with_current_repository(
-    tmp_path: Path, request: pytest.FixtureRequest
+def test_template_dry_runs_successfully(
+    tmp_path: Path, request: pytest.FixtureRequest, build: BuildBackend, venv: str
 ):
     app_name = "snakebids_app"
-    data = get_empty_data(app_name, "setuptools")
+    data = get_empty_data(app_name, build)
+    data["snakebids_version"] = "@ file:///src"
 
     copier.run_copy(
         str(Path(itx.first(snakebids.__path__), "project_template")),
@@ -354,7 +322,7 @@ def test_template_dry_runs_with_current_repository(
             f"{request.config.rootpath}:/src",
             "--rm",
             f"snakebids/test-template:{platform.python_version()}",
-            "setuptools",
+            venv,
             app_name,
         ],
         capture_output=True,
@@ -363,7 +331,7 @@ def test_template_dry_runs_with_current_repository(
     try:
         cmd.check_returncode()
     except Exception:
-        print(cmd.stdout.decode())
-        print(cmd.stderr.decode(), file=sys.stderr)
+        print(cmd.stdout)
+        print(cmd.stderr, file=sys.stderr)
         raise
     assert "All set" in cmd.stdout.decode()
