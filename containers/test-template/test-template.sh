@@ -11,9 +11,9 @@ case "$method" in
     "setuptools" )
         python -m venv .venv
         .venv/bin/python -m pip install .
-        if [ -d /src ]; then
-            .venv/bin/python -m pip install /src
-        fi
+        # if [ -d /src ]; then
+        #     .venv/bin/python -m pip install /src
+        # fi
         PATH=".venv/bin:$PATH" eval "$script"
         ;;
     "poetry" )
