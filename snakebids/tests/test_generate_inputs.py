@@ -112,9 +112,14 @@ class TestNormalizeDatabaseArgs:
         pybids_database_dir: str,
         pybids_database_reset: bool,
     ):
-        assert (pybids_database_dir, pybids_database_reset) == _normalize_database_args(
-            None, None, pybids_database_dir, pybids_database_reset
-        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            assert (
+                pybids_database_dir,
+                pybids_database_reset,
+            ) == _normalize_database_args(
+                None, None, pybids_database_dir, pybids_database_reset
+            )
 
     @given(
         pybidsdb_reset=st.booleans() | st.none(),
