@@ -636,10 +636,12 @@ def _get_component(
         path = itx.one(paths)
     except ValueError as err:
         msg = (
-            f"More than one snakemake filename for {input_name}, taking the "
-            f"first. To correct this, use the --filter_{input_name} option to "
-            f"narrow the search. Found filenames: {paths}"
-        )
+            f"Multiple path templates for one component. Use --filter_{input_name} to "
+            f"narrow your search or --wildcards_{input_name} to make the template more "
+            "generic.\n"
+            f"\tcomponent = {input_name!r}\n"
+            f"\tpath_templates = [\n\t\t" + ",\n\t\t".join(map(repr, paths)) + "\n\t]\n"
+        ).expandtabs(4)
         raise ConfigError(msg) from err
 
     if filters.has_empty_postfilter:

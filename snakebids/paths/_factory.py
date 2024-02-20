@@ -237,10 +237,9 @@ def bids_factory(spec: BidsPathSpec, *, _implicit: bool = False) -> BidsFunction
         result = os.path.join(*path_parts) + tail
         if custom_parts and _implicit and not in_interactive_session():
             wrn_msg = (
-                f"Path generated with custom entities not part of the default BIDS "
-                "spec, and a spec has not been explicitly declared. This could break "
-                "when snakebids is upgraded, as the default spec can be updated "
-                "without warning, and these entities may be included in future specs.\n"
+                f"Path generated with unrecognized entities, and a snakebids spec has "
+                "not been explicitly declared. This could break in future snakebids "
+                "versions, as the default spec can be changed without warning.\n"
                 f"\tpath = {result!r}\n"
                 f"\tentities = {custom_parts!r}\n\n"
                 "Please declare a spec using:\n"
