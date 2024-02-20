@@ -89,8 +89,22 @@ jobs:
           --doctest-modules --ignore=docs
           --ignore=snakebids/project_template --benchmark-disable
 
+      - name: save coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.python-version }}-${{ matrix.split }}
+          path: ./coverage.xml
+
+  upload_coverage:
+    runs-on: ubuntu-latest
+    needs: [ 'test' ]
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+      - name: download coverage reports
+        uses: actions/download-artifact@v4
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           verbose: true
         env:
