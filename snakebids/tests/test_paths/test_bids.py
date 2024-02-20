@@ -44,29 +44,31 @@ def make_bids_testsuite(spec: BidsPathSpec):
         nonstandard: bool = True,
         custom: bool = True,
     ):
+        std_ents = (
+            sb_st.bids_entity(whitelist_entities=entities)
+            if entities is not None
+            else sb_st.nothing()
+        )
+        custom_ents = (
+            _values()
+            .map(BidsEntity)
+            .filter(
+                lambda s: str(s)
+                not in (
+                    {"datatype", "suffix", "extension", "prefix"} | set(std_entities)
+                )
+            )
+            if custom
+            else sb_st.nothing()
+        )
+        nonstd_ents = (
+            sb_st.bids_entity(whitelist_entities=["datatype", "suffix", "extension"])
+            if nonstandard
+            else sb_st.nothing()
+        )
         return (
             st.dictionaries(
-                keys=st.one_of(
-                    # standard
-                    sb_st.bids_entity(whitelist_entities=entities)
-                    if entities is not None
-                    else sb_st.nothing(),
-                    # custom entities
-                    _values()
-                    .map(BidsEntity)
-                    .filter(
-                        lambda s: str(s)
-                        not in {"datatype", "suffix", "extension", "prefix"}
-                    )
-                    if custom
-                    else sb_st.nothing(),
-                    # nonstandard entities
-                    sb_st.bids_entity(
-                        whitelist_entities=["datatype", "suffix", "extension"]
-                    )
-                    if nonstandard
-                    else sb_st.nothing(),
-                ),
+                keys=std_ents | custom_ents | nonstd_ents,
                 # The boolean here is to decide whether to use the entity or the tag in
                 # the BidsEntity generated above
                 values=st.tuples(
