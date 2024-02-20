@@ -8,6 +8,7 @@ from typing import Any, Mapping, Sequence
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
+from pathvalidate import Platform, is_valid_filepath
 from pytest_mock import MockerFixture
 from pytest_mock.plugin import MockType
 
@@ -238,7 +239,7 @@ class TestFinalizeConfig:
             root=Path("results"),
         )
 
-    @given(tail=st.text())
+    @given(tail=st.text().filter(lambda s: is_valid_filepath(s, Platform.LINUX)))
     @allow_function_scoped
     def test_output_under_results_triggers_workflow_mode(
         self,
