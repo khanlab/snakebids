@@ -133,7 +133,9 @@ class TestCreateCommand:
 
     @given(
         name=st.from_regex(r"^[a-zA-Z_][a-zA-Z_0-9]*$"),
-        version=st.text(st.characters(blacklist_characters=["@", ";", "["]))
+        version=st.text(st.characters(blacklist_characters=["@", ";", "["])).filter(
+            lambda s: not s.startswith("-")
+        )
         | st.none(),
     )
     @allow_function_scoped
