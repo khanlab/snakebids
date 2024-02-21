@@ -18,12 +18,12 @@ runs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
     - name: Cache Template Testing Containers
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: container-test-template-cache
         key: ${{ runner.os }}-test-template-cache-${{ hashFiles('containers/test-template/**') }}-${{ inputs.python-version }}
     - name: Inject container-test-template-cache into docker
-      uses: reproducible-containers/buildkit-cache-dance@v2.1.2
+      uses: reproducible-containers/buildkit-cache-dance@v2.1.4
       with:
         cache-source: container-test-template-cache
     - name: Build Docker container for cache
