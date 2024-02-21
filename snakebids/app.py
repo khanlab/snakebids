@@ -84,26 +84,26 @@ class SnakeBidsApp:
                 "`SnakeBidsApp.parser` is deprecated and no longer has any effect. To "
                 "modify the parser, use the new `bidsapp` module."
             )
-            warnings.warn(msg, stacklevel=1)
+            warnings.warn(msg, stacklevel=3)
         if self.config is not None:
             msg = (
                 "`SnakeBidsApp.config` is deprecated and no longer has any effect. To "
                 "modify the config, use the new `bidsapp` module."
             )
-            warnings.warn(msg, stacklevel=1)
+            warnings.warn(msg, stacklevel=3)
         if self.args is not None:
             msg = (
                 "`SnakeBidsApp.args` is deprecated and no longer has any effect. To "
                 "modify CLI arguments, use the new `bidsapp` module."
             )
-            warnings.warn(msg, stacklevel=1)
+            warnings.warn(msg, stacklevel=3)
         if self.version is not None:
             msg = (
                 "`SnakeBidsApp.version` is deprecated and no longer has any effect. To "
                 "explcitly set the app version, use the `snakebids.plugins.Version` "
                 "plugin"
             )
-            warnings.warn(msg, stacklevel=1)
+            warnings.warn(msg, stacklevel=3)
 
     def _get_args(self):
         args: dict[str, Any] = {}

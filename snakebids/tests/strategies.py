@@ -41,32 +41,33 @@ def nothing() -> Any:
     return st.nothing()  # type: ignore
 
 
-class PathStrategy(st.SearchStrategy[Path]):
-    def resolve(self) -> st.SearchStrategy[Path]:
-        ...
+def paths(
+    *,
+    min_segments: int = 0,
+    max_segments: int | None = None,
+    absolute: bool | None = None,
+    resolve: bool = False,
+) -> st.SearchStrategy[Path]:
+    valid_chars = st.characters(blacklist_characters=["/", "\x00"], codec="UTF-8")
+    paths = st.lists(
+        st.text(valid_chars, min_size=1), min_size=min_segments, max_size=max_segments
+    ).map(lambda x: Path(*x))
 
+    relative_paths = paths.filter(lambda p: not p.is_absolute())
 
-def paths(*, absolute: bool | None = None) -> PathStrategy:
-    valid_chars = st.characters(
-        min_codepoint=48, max_codepoint=122, whitelist_categories=["Ll", "Lu"]
-    )
-    paths = st.lists(st.text(valid_chars)).map(lambda x: Path(*x))
-
-    def relative_paths():
-        return paths.filter(lambda p: not p.is_absolute())
-
-    def absolute_paths():
-        return paths.map(lambda p: Path("/", p))
+    absolute_paths = paths.map(lambda p: Path("/", p))
 
     if absolute:
-        result = absolute_paths()
+        result = absolute_paths
     elif absolute is False:
-        result = relative_paths()
+        result = relative_paths
     else:
-        result = absolute_paths() | relative_paths()
+        result = absolute_paths | relative_paths
 
-    result.resolve = lambda: result.map(lambda p: p.resolve())  # type: ignore
-    return result  # type: ignore
+    if resolve:
+        return result.map(lambda p: p.resolve())
+
+    return result
 
 
 def bids_entity(
@@ -241,6 +242,8 @@ def input_configs(
 def inputs_configs(
     *,
     keys: st.SearchStrategy[str] | None = None,
+    min_size: int = 0,
+    max_size: int | None = 5,
     filters: bool = True,
     wildcards: bool = True,
     paths: bool = True,
@@ -248,7 +251,8 @@ def inputs_configs(
     return st.dictionaries(
         keys if keys is not None else st.text(min_size=1),
         input_configs(filters=filters, wildcards=wildcards, paths=paths),
-        max_size=5,
+        min_size=min_size,
+        max_size=max_size,
     )
 
 

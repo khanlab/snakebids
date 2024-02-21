@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 from typing import Literal
 
+import more_itertools as itx
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
@@ -35,6 +37,15 @@ class TestMakesUnderscoreDashAliases:
         assert all(nm.__dict__.values())
         assert len(nm.__dict__) == len(args)
 
+    @given(arg=st.text().filter(lambda s: not s.startswith("-") and len(s)))
+    def test_positional_args_added_without_conversion(self, arg: str):
+        cli = CliConfig()
+        parser = argparse.ArgumentParser()
+        config = {"parse_args": {arg: {"help": "..."}}}
+        cli.add_cli_arguments(parser, config)
+        nm = parser.parse_args(["..."])
+        assert itx.one(nm.__dict__.values()) == "..."
+
     def test_fails_if_undefined_type_given(self):
         cli = CliConfig()
         config = {"parse_args": {"--new-param": {"type": "UnheardClass"}}}
@@ -62,6 +73,20 @@ def test_convert_arg_to_builtin():
     cli.add_cli_arguments(parser, {"parse_args": new_args})
     args = parser.parse_args(["--new-param", "12"])
     assert isinstance(args.new_param, int)
+
+
+def test_path_works_as_builtin():
+    cli = CliConfig()
+    parser = argparse.ArgumentParser()
+    new_args = {
+        "--new-param": {
+            "help": "Generic Help Message",
+            "type": "Path",
+        }
+    }
+    cli.add_cli_arguments(parser, {"parse_args": new_args})
+    args = parser.parse_args(["--new-param", "foo"])
+    assert args.new_param == Path("foo")
 
 
 def test_non_serialiable_type_raises_error():
