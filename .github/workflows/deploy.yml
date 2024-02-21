@@ -27,7 +27,7 @@ jobs:
           ref: ${{ steps.extract_branch.outputs.branch }}
 
       - name: Draft change log
-        uses: release-drafter/release-drafter@v5
+        uses: release-drafter/release-drafter@v6
         id: release-drafter
         with:
           commitish: ${{ steps.extract_branch.outputs.branch }}
@@ -46,7 +46,7 @@ jobs:
           fi
 
       - name: Publish change log
-        uses: release-drafter/release-drafter@v5
+        uses: release-drafter/release-drafter@v6
         with:
           commitish: ${{ steps.extract_branch.outputs.branch }}
           publish: true
@@ -69,7 +69,7 @@ jobs:
           git fetch --tags
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.9'
 
