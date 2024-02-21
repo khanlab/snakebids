@@ -48,7 +48,7 @@ def paths(
     absolute: bool | None = None,
     resolve: bool = False,
 ) -> st.SearchStrategy[Path]:
-    valid_chars = st.characters(blacklist_characters=["/", "\x00"])
+    valid_chars = st.characters(blacklist_characters=["/", "\x00"], codec="UTF-8")
     paths = st.lists(
         st.text(valid_chars), min_size=min_segments, max_size=max_segments
     ).map(lambda x: Path(*x))
