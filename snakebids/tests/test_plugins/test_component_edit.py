@@ -8,10 +8,12 @@ import re
 from pathlib import Path
 from typing import Any, ClassVar
 
+import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
 import snakebids.tests.strategies as sb_st
+from snakebids.exceptions import MisspecifiedCliFilterError
 from snakebids.plugins.component_edit import ComponentEdit
 from snakebids.tests.helpers import allow_function_scoped
 from snakebids.types import InputsConfig, OptionalFilter
@@ -131,6 +133,50 @@ class TestAddArguments:
         args = p.parse_args(argv)
         for key in pybids_inputs:
             assert args.__dict__[f"{comp_edit.PREFIX}.filter.{key}"]["entity"] is False
+
+    @given(
+        pybids_inputs=sb_st.inputs_configs(min_size=1, max_size=1),
+        flag=st.text().filter(
+            lambda s: s.lower() not in {"none", "any", "optional", "required"}
+        ),
+    )
+    def test_filter_with_bad_flag_errors(self, pybids_inputs: InputsConfig, flag: str):
+        p = argparse.ArgumentParser()
+        comp_edit = ComponentEdit()
+        comp_edit.add_cli_arguments(p, {"pybids_inputs": pybids_inputs})
+        argv = list(
+            it.chain.from_iterable(
+                [[f"--filter-{key}", f"entity:{flag}"] for key in pybids_inputs]
+            )
+        )
+
+        with pytest.raises(
+            MisspecifiedCliFilterError,
+            match=re.compile(rf"following filter provided.*entity:{re.escape(flag)}"),
+        ):
+            p.parse_args(argv)
+
+    @given(
+        pybids_inputs=sb_st.inputs_configs(min_size=1, max_size=1),
+        filt=st.text().filter(
+            lambda s: "=" not in s and ":" not in s and not s.startswith("-")
+        ),
+    )
+    def test_filters_with_no_delimiter_errors(
+        self, pybids_inputs: InputsConfig, filt: str
+    ):
+        p = argparse.ArgumentParser()
+        comp_edit = ComponentEdit()
+        comp_edit.add_cli_arguments(p, {"pybids_inputs": pybids_inputs})
+        argv = list(
+            it.chain.from_iterable([[f"--filter-{key}", filt] for key in pybids_inputs])
+        )
+
+        with pytest.raises(
+            MisspecifiedCliFilterError,
+            match=re.compile(rf"following filter provided.*{re.escape(filt)}"),
+        ):
+            p.parse_args(argv)
 
 
 @st.composite

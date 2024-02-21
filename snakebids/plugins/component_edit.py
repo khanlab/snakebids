@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -30,12 +31,15 @@ class FilterParse(argparse.Action):
             return
 
         for pair in values:
-            if "=" in pair:
-                # split it into key and value
-                key, value = pair.split("=", 1)
-            elif ":" in pair:
-                key, spec = pair.split(":", 1)
-                spec = spec.lower()
+            eq = pair.find("=")
+            col = pair.find(":")
+            delim = min(eq if eq >= 0 else math.inf, col if col >= 0 else math.inf)
+            if delim is math.inf:
+                raise MisspecifiedCliFilterError(pair)
+            key = pair[:delim]
+            value = pair[delim + 1 :]
+            if delim == col:
+                spec = value.lower()
                 if spec == "optional":
                     value = OptionalFilter
                 elif spec in ["required", "any"]:
@@ -45,8 +49,6 @@ class FilterParse(argparse.Action):
                 else:
                     # The flag isn't recognized
                     raise MisspecifiedCliFilterError(pair)
-            else:
-                raise MisspecifiedCliFilterError(pair)
 
             # assign into dictionary
             getattr(namespace, self.dest)[key] = value

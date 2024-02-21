@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import copy
 import tempfile
 from pathlib import Path
@@ -13,7 +14,7 @@ from pytest_mock import MockerFixture
 from pytest_mock.plugin import MockType
 
 from snakebids import bidsapp
-from snakebids.exceptions import ConfigError
+from snakebids.exceptions import ConfigError, RunError
 from snakebids.plugins import Version
 from snakebids.plugins.snakemake import (
     CONFIGFILE_CHOICES,
@@ -56,6 +57,18 @@ class TestFindSnakefileConfig:
         tmp = Path(tempfile.mkdtemp(dir=fakefs_tmpdir))
         with pytest.raises(ConfigError, match="Error: no config file"):
             SnakemakeBidsApp(snakemake_dir=tmp, snakefile_path=Path())
+
+
+class TestAddCliArguments:
+    def test_snakemake_help_arg_added(self, mocker: MockerFixture):
+        from snakebids.plugins.snakemake import snakemake
+
+        mock = mocker.patch.object(snakemake, "main")
+        smk = SnakemakeBidsApp.create_empty()
+        parser = argparse.ArgumentParser()
+        smk.add_cli_arguments(parser)
+        parser.parse_args(["--help-snakemake"])
+        mock.assert_called_once_with(["-h"])
 
 
 class TestResolvePath:
@@ -181,9 +194,7 @@ class TestFinalizeConfig:
         )
 
     @given(
-        path=sb_st.paths()
-        .resolve()
-        .filter(
+        path=sb_st.paths(resolve=True).filter(
             lambda p: p != Path().resolve()
             and not str(p).startswith(str(Path("results").resolve()))
         )
@@ -270,7 +281,7 @@ class TestFinalizeConfig:
         )
 
     @given(
-        output=st.sampled_from(["", "results"]).map(Path) | sb_st.paths().resolve(),
+        output=st.sampled_from(["", "results"]).map(Path) | sb_st.paths(resolve=True),
         configfile=sb_st.paths(absolute=False),
     )
     @allow_function_scoped
@@ -304,7 +315,7 @@ class TestFinalizeConfig:
         assert smk.configfile_outpath == configfile
 
     @given(
-        output=st.sampled_from(["", "results"]).map(Path) | sb_st.paths().resolve(),
+        output=st.sampled_from(["", "results"]).map(Path) | sb_st.paths(resolve=True),
         configfile=sb_st.paths(),
         config_output=sb_st.paths(),
     )
@@ -321,6 +332,27 @@ class TestFinalizeConfig:
         smk.finalize_config(config)
 
         assert smk.configfile_outpath == config_output
+
+    @given(
+        err=st.text(), output=sb_st.paths(absolute=True, min_segments=1, max_segments=1)
+    )
+    @allow_function_scoped
+    def test_exits_on_run_error(
+        self,
+        mocker: MockerFixture,
+        capsys: pytest.CaptureFixture[str],
+        err: str,
+        output: Path,
+    ):
+        smk = SnakemakeBidsApp.create_empty()
+        mocks = get_io_mocks(mocker)
+        mocks["prepare_output"].side_effect = RunError(err)
+        config = {"output_dir": output.resolve()}
+
+        with pytest.raises(SystemExit):
+            smk.finalize_config(config)
+        cap = capsys.readouterr()
+        assert err == cap.err[:-1]
 
 
 class TestVersion:
