@@ -11,7 +11,22 @@ updates:
     # PR label
     labels:
       - "skip_changelog"
+    commit-message:
+      prefix: "[.github/workflows]"
     # Group to submit a single PR if possible
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "github-actions"
+    directory: "/.github/actions/build-test-container"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "skip_changelog"
+    commit-message:
+      prefix: "[.github/actions/build-test-container]"
     groups:
       github-actions:
         patterns:
