@@ -288,7 +288,7 @@ class SnakemakeBidsApp:
             try:
                 prepare_bidsapp_output(config["output_dir"], self.force_output)
             except RunError as err:
-                print(err.msg)
+                print(err.msg, file=sys.stderr)
                 sys.exit(1)
             self.cwd = config["output_dir"]
             root = Path()

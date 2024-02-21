@@ -10,7 +10,6 @@ import attrs
 from snakebids import bidsapp
 from snakebids.exceptions import ConfigError
 from snakebids.io.yaml import get_yaml_io
-from snakebids.plugins.base import PluginBase
 
 
 def _make_underscore_dash_aliases(name: str) -> set[str]:
@@ -60,7 +59,7 @@ def _find_type(name: str, *, yamlsafe: bool = True) -> type[Any]:
 
 
 @attrs.define
-class CliConfig(PluginBase):
+class CliConfig:
     """Configure CLI arguments directly in config.
 
     Arguments are provided in config in a dictionary stored under ``cli_key``. Each
@@ -124,15 +123,10 @@ class CliConfig(PluginBase):
             # a str to allow the edge case where it's already
             # been converted
             if "type" in arg:
-                try:
-                    arg_dict = {**arg, "type": _find_type(str(arg["type"]))}
-                except KeyError as err:
-                    msg = f"{arg['type']} is not available as a type for {name}"
-                    raise TypeError(msg) from err
+                arg_dict = {**arg, "type": _find_type(str(arg["type"]))}
             else:
                 arg_dict = arg
-            self.add_argument(
-                parser,
+            parser.add_argument(
                 *_make_underscore_dash_aliases(name),
                 **arg_dict,  # type: ignore
             )
