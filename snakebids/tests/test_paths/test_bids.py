@@ -144,6 +144,12 @@ def make_bids_testsuite(spec: BidsPathSpec):
         def test_no_underscore_at_end_if_no_suffix(self, entities: dict[str, str]):
             assert bids(**entities)[-1] != "_"
 
+        @given(entities=_bids_args(nonstandard=True, entities=None))
+        def test_no_underscore_at_beginning_if_only_suffix(
+            self, entities: dict[str, str]
+        ):
+            assert bids(**entities)[0] != "_"
+
         @given(entities=_bids_args(), root=_roots())
         def test_beginning_of_path_always_root(
             self, entities: dict[str, str], root: str
@@ -322,4 +328,6 @@ def test_benchmark_bids(benchmark: Benchmark):
         england="britain",
         space="cosmos",
         rome="fell",
+        suffix="suffix",
+        extension=".ext",
     )
