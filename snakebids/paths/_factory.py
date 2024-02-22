@@ -228,13 +228,21 @@ def bids_factory(spec: BidsPathSpec, *, _implicit: bool = False) -> BidsFunction
 
         if datatype:
             path_parts.append(datatype)
+        tail = [suffix] if suffix is not None else []
         path_parts.append(
-            "_".join(it.chain(spec_parts[:split], custom_parts, spec_parts[split:]))
+            "_".join(
+                it.chain(
+                    spec_parts[:split],
+                    custom_parts,
+                    spec_parts[split:],
+                    tail,
+                )
+            )
         )
+        result = os.path.join(*path_parts)
+        if extension is not None:
+            result += extension
 
-        tail = f"_{suffix}{extension or ''}" if suffix else extension or ""
-
-        result = os.path.join(*path_parts) + tail
         if custom_parts and _implicit and not in_interactive_session():
             wrn_msg = (
                 f"Path generated with unrecognized entities, and a snakebids spec has "
