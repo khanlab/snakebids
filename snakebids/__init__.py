@@ -3,6 +3,8 @@ __version__ = "0.0.0"
 
 __submodules__ = ["core", "paths"]
 
+from snakebids import _warningformat  # noqa: F401
+
 # isort: split
 # <AUTOGEN_INIT>
 import lazy_loader
