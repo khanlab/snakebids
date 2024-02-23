@@ -175,7 +175,7 @@ omit = ["snakebids/project_template/**", "snakebids/tests/**"]
 
 [tool.coverage.report]
 exclude_lines = [
-    "pragma: not covered",
+    "pragma: no cover",
     "@overload",
     'class [a-zA-Z0-9_]+\([^)]*Protocol.*\)',
     'if TYPE_CHECKING',
