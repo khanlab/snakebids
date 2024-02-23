@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import textwrap
 import warnings
-from pathlib import Path
 
 from colorama import Fore, Style
 
@@ -23,9 +22,15 @@ def formatwarning(
 ):
     """Format warning messages."""
     if line is None:
-        with Path(filename).open() as f:
-            for _ in range(lineno):
-                line = f.readline().strip()
+        try:
+            import linecache
+
+            line = linecache.getline(filename, lineno)
+        except Exception:  # noqa: BLE001
+            # When a warning is logged during Python shutdown, linecache
+            # and the import machinery don't work anymore
+            line = None
+            linecache = None
 
     return WARN_TEMPLATE.format(
         message=textwrap.indent(
