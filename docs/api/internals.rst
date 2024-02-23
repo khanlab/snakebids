@@ -21,12 +21,6 @@ snakemake_io
     :members:
 
 
-cli
----
-
-.. automodule:: snakebids.cli
-    :members:
-
 exceptions
 ----------
 
