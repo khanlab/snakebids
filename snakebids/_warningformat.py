@@ -26,7 +26,7 @@ def formatwarning(
             import linecache
 
             line = linecache.getline(filename, lineno).rstrip()
-        except Exception:  # noqa: BLE001
+        except Exception:  # noqa: BLE001 # pragma: no cover
             # When a warning is logged during Python shutdown, linecache
             # and the import machinery don't work anymore
             line = None
