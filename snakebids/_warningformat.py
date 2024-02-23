@@ -34,17 +34,7 @@ def formatwarning(
 
     return WARN_TEMPLATE.format(
         message=textwrap.indent(
-            "\n".join(
-                "\n".join(
-                    textwrap.wrap(
-                        line,
-                        width=80,
-                    )
-                )
-                for line in (
-                    message.args[0] if isinstance(message, Warning) else message
-                ).splitlines()
-            ),
+            message.args[0] if isinstance(message, Warning) else message,
             prefix="  ",
         ),
         category=category.__name__,
