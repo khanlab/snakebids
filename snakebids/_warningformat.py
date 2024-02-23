@@ -6,7 +6,7 @@ import warnings
 from colorama import Fore, Style
 
 WARN_TEMPLATE = f"""\
-{Fore.RED}{Style.BRIGHT}[{{category}}]{Style.NORMAL} {{filename}}:{{lineno}} \
+{Fore.YELLOW}{Style.BRIGHT}[{{category}}]{Style.NORMAL} {{filename}}:{{lineno}} \
 {Fore.RESET}{{line}}
 {{message}}
 
