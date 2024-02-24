@@ -10,14 +10,11 @@ script="'${script_name}' tests/data tests/result participant -c1 --skip-bids-val
 case "$method" in
     "setuptools" )
         python -m venv .venv
-        .venv/bin/python -m pip install .
-        # if [ -d /src ]; then
-        #     .venv/bin/python -m pip install /src
-        # fi
+        .venv/bin/python -m pip install --no-color .
         PATH=".venv/bin:$PATH" eval "$script"
         ;;
     "poetry" )
-        poetry install
+        poetry install --no-ansi
         eval "poetry run $script"
         ;;
     "hatch" )
@@ -27,6 +24,12 @@ case "$method" in
     "pdm" )
         pdm install
         eval "pdm run $script"
+        ;;
+    "docs" )
+        python -m venv .venv
+        .venv/bin/python -m pip install .
+        .venv/bin/python -m pip install -r docs/requirements.txt
+        .venv/bin/sphinx-build docs build/docs -W
         ;;
     * )
         >&2 echo "Invalid method"

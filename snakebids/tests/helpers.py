@@ -289,14 +289,18 @@ def needs_docker(container: str):
         @ft.wraps(func)
         def wrapper(*args: _P.args, **kwargs: _P.kwargs):
             try:
-                sp.run(["docker"], check=True)
+                sp.run(["docker"], check=True, capture_output=True)
             except (sp.CalledProcessError, FileNotFoundError):
                 pytest.fail(
                     "docker is not available on this machine. To skip docker tests, "
                     "use '-m \"not docker\"'"
                 )
             try:
-                sp.run(["docker", "image", "inspect", container], check=True)
+                sp.run(
+                    ["docker", "image", "inspect", container],
+                    capture_output=True,
+                    check=True,
+                )
             except sp.CalledProcessError as err:
                 if not (
                     match := re.match(r"snakebids/([\w\-]+)\:[a-zA-Z0-9\-]+", container)
