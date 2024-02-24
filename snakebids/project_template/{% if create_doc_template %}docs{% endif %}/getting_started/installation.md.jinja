@@ -1,4 +1,4 @@
-## Installation
+# Installation
 
 Install from github with pip:
 
@@ -8,7 +8,7 @@ pip install -e git+https://github.com/{{github}}/{{name_slug}}#egg={{name_slug}}
 
 Note: you can re-run this command to re-install with the latest version
 
-## Running the app
+# Running the app
 
 Do a dry-run first (`-n`) and simply print (`-p`) what would be run:
 
@@ -24,7 +24,7 @@ Run the app, using all cores::
 
 If any workflow rules require containers, then run with the `--use-singularity` option.
 
-## Generating a report
+# Generating a report
 
 After your processing is complete, you can use snakemake's `--report` feature to generate
 an HTML report. This report will include a graph of all the jobs run, with clickable nodes
@@ -38,13 +38,13 @@ To generate a report, run:
 {{name_slug}} /path/to/bids/dir /path/to/output/dir participant --report
 ```
 
-## Compute Canada Instructions
+# Compute Canada Instructions
 
-### Setting up a dev environment
+## Setting up a dev environment
 
 Here are some instructions to get your python environment set-up on graham to run {{name_slug}}:
 
-# Create a virtualenv and activate it:
+### Create a virtualenv and activate it:
 
 ```bash
 cd $SCRATCH
@@ -53,9 +53,9 @@ virtualenv venv_{{name_slug}}
 source venv_{{name_slug}}/bin/activate
 ```
 
-# Follow the steps above to install from github repository
+### Follow the steps above to install from github repository
 
-### Install job submission helpers
+## Install job submission helpers
 
 Snakemake can submit jobs with SLURM, but you need to set-up a Snakemake profile to enable this. The Khan lab has a
 snakemake profile that is configured for graham but is customizable upon install, please see `cc-slurm <https://github.com/khanlab/cc-slurm>` for more info.
@@ -64,7 +64,7 @@ If you don't need Snakemake to parallelize jobs across different nodes, you can 
 
 These are used in the instructions below.
 
-### Running jobs on Compute Canada
+## Running jobs on Compute Canada
 
 In an interactive job (for testing):
 

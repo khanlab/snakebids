@@ -331,7 +331,44 @@ def test_template_dry_runs_successfully(
     try:
         cmd.check_returncode()
     except Exception:
-        print(cmd.stdout)
-        print(cmd.stderr, file=sys.stderr)
+        print(cmd.stdout.decode())
+        print(cmd.stderr.decode(), file=sys.stderr)
         raise
     assert "All set" in cmd.stdout.decode()
+
+
+@needs_docker(f"snakebids/test-template:{platform.python_version()}")
+def test_template_docs_build(tmp_path: Path, request: pytest.FixtureRequest):
+    app_name = "snakebids_app"
+    data = get_empty_data(app_name, "setuptools")
+    data["create_doc_template"] = True
+    data["snakebids_version"] = "@ file:///src"
+
+    copier.run_copy(
+        str(Path(itx.first(snakebids.__path__), "project_template")),
+        tmp_path / app_name,
+        data=data,
+        unsafe=True,
+    )
+    cmd = sp.run(
+        [
+            "docker",
+            "run",
+            "-v",
+            f"{tmp_path / app_name}:/app",
+            "-v",
+            f"{request.config.rootpath}:/src",
+            "--rm",
+            f"snakebids/test-template:{platform.python_version()}",
+            "docs",
+            app_name,
+        ],
+        capture_output=True,
+        check=False,
+    )
+    try:
+        cmd.check_returncode()
+    except Exception:
+        print(cmd.stdout.decode())
+        print(cmd.stderr.decode(), file=sys.stderr)
+        raise

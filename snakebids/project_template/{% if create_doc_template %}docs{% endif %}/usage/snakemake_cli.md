@@ -1,4 +1,4 @@
-## Snakemake Command line interface
+# Snakemake Command line interface
 
 ```{argparse}
 :module: snakemake
