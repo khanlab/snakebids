@@ -29,6 +29,5 @@ build:
     post_create_environment:
       - pip install poetry
       - poetry self add "poetry-dynamic-versioning[plugin]"
-      - poetry config virtualenvs.create false
     post_install:
-      - poetry install --with docs
+      - VIRTUAL_ENV=$READTHEDOCS_VIRTUALENV_PATH python -m poetry install --with docs
