@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Install
-        uses: khanlab/actions/.github/actions/action-setup_task-installPyProject@v0.3.5
+        uses: khanlab/actions/.github/actions/action-setup_task-installPyProject@v0.3.6
         with:
           python-version: '3.11'
           install-library: true
@@ -50,7 +50,7 @@ jobs:
       matrix:
         python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
     steps:
-    - uses: khanlab/actions/.github/actions/action-setup_task-installPyProject@v0.3.5
+    - uses: khanlab/actions/.github/actions/action-setup_task-installPyProject@v0.3.6
       id: setup
       with:
         python-version: ${{ matrix.python-version }}
@@ -69,7 +69,7 @@ jobs:
       fail-fast: false
     steps:
       - name: install
-        uses: khanlab/actions/.github/actions/action-setup_task-installPyProject@v0.3.5
+        uses: khanlab/actions/.github/actions/action-setup_task-installPyProject@v0.3.6
         id: setup
         with:
           python-version: ${{ matrix.python-version }}
