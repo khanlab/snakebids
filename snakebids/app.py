@@ -20,16 +20,17 @@ from os import PathLike
 from pathlib import Path
 from typing import Any, Callable
 
-import attr
+import attrs
 import boutiques.creator as bc  # type: ignore
 
 from snakebids import bidsapp
 from snakebids import plugins as sb_plugins
+from snakebids.bidsapp.run import _Runner
 
 logger = logging.Logger(__name__)
 
 
-@attr.define(slots=False)
+@attrs.define
 class SnakeBidsApp:
     """Snakebids app with config and arguments.
 
@@ -69,23 +70,36 @@ class SnakeBidsApp:
     """
 
     snakemake_dir: Path
-    plugins: list[Callable[[SnakeBidsApp], None | SnakeBidsApp]] = attr.Factory(list)
+    plugins: list[Callable[[SnakeBidsApp], None | SnakeBidsApp]] = attrs.Factory(list)
     skip_parse_args: bool = False
-    parser: Any = None
+    _parser: Any = attrs.field(default=None, alias="parser")
     configfile_path: Path | None = None
     snakefile_path: Path | None = None
-    config: Any = None
+    _config: Any = attrs.field(default=None, alias="config")
     version: str | None = None
     args: Any = None
 
+    _app_holder: _Runner | None = attrs.field(default=None, init=False)
+
+    @property
+    def _app(self):
+        if self._app_holder is None:
+            self._check_deprecations()
+
+            self._app_holder = bidsapp.app(
+                [sb_plugins.SnakemakeBidsApp(**self._get_args()), *self.plugins],
+                description="Snakebids helps build BIDS Apps with Snakemake",
+            )
+        return self._app_holder
+
     def _check_deprecations(self):
-        if self.parser is not None:
+        if self._parser is not None:
             msg = (
                 "`SnakeBidsApp.parser` is deprecated and no longer has any effect. To "
                 "modify the parser, use the new `bidsapp` module."
             )
             warnings.warn(msg, stacklevel=3)
-        if self.config is not None:
+        if self._config is not None:
             msg = (
                 "`SnakeBidsApp.config` is deprecated and no longer has any effect. To "
                 "modify the config, use the new `bidsapp` module."
@@ -105,6 +119,16 @@ class SnakeBidsApp:
             )
             warnings.warn(msg, stacklevel=3)
 
+    @property
+    def config(self):
+        """Get config dict (before arguments are parsed)."""
+        return self._app.build_parser().config
+
+    @property
+    def parser(self):
+        """Get parser."""
+        return self._app.build_parser().parser
+
     def _get_args(self):
         args: dict[str, Any] = {}
         args["snakemake_dir"] = self.snakemake_dir
@@ -116,26 +140,11 @@ class SnakeBidsApp:
 
     def run_snakemake(self) -> None:
         """Run snakemake with the given config, after applying plugins."""
-        self._check_deprecations()
-
-        bidsapp.app(
-            [sb_plugins.SnakemakeBidsApp(**self._get_args()), *self.plugins],
-            description="Snakebids helps build BIDS Apps with Snakemake",
-        ).run()
+        self._app.run()
 
     def create_descriptor(self, out_file: PathLike[str] | str) -> None:
         """Generate a boutiques descriptor for this Snakebids app."""
-        self._check_deprecations()
-
-        parser = (
-            bidsapp.app(
-                [sb_plugins.SnakemakeBidsApp(**self._get_args()), *self.plugins],
-                description="Snakebids helps build BIDS Apps with Snakemake",
-            )
-            .build_parser()
-            .parser
-        )
         new_descriptor = bc.CreateDescriptor(  # type: ignore
-            parser, execname="run.py"
+            self.parser, execname="run.py"
         )
         new_descriptor.save(out_file)  # type: ignore
