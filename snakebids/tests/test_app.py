@@ -3,11 +3,15 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
+from hypothesis import given
 from pytest_mock import MockerFixture
 
 from snakebids.app import SnakeBidsApp
+from snakebids.cli import add_dynamic_args
+from snakebids.tests import strategies as sb_st
 
 
 class TestDeprecations:
@@ -68,6 +72,18 @@ def test_plugins_carried_forward(mocker: MockerFixture):
     plugins = app_spy.call_args[0][0]
     assert isinstance(plugins, list)
     assert len(plugins) == 3  # type: ignore  # noqa: PLR2004
+
+
+@given(
+    parser=sb_st.everything(),
+    parse_args=sb_st.everything(),
+    pybids_inputs=sb_st.everything(),
+)
+def test_add_dynamic_args_raises_warning(
+    parser: Any, parse_args: Any, pybids_inputs: Any
+):
+    with pytest.warns(UserWarning, match="is deprecated and no longer has any effect"):
+        add_dynamic_args(parser, parse_args, pybids_inputs)
 
 
 class TestGenBoutiques:
