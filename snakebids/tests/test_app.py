@@ -9,7 +9,7 @@ from typing import Any, cast
 
 import hypothesis.strategies as st
 import pytest
-import snakemake
+import snakemake.cli
 from hypothesis import HealthCheck, assume, example, given, settings
 from pytest_mock.plugin import MockerFixture
 
@@ -122,7 +122,7 @@ class TestRunSnakemake:
             "write_output_mode": mocker.patch.object(sn_app, "write_output_mode"),
             "prepare_output": mocker.patch.object(sn_app, "prepare_bidsapp_output"),
             "write_config": mocker.patch.object(sn_app, "write_config"),
-            "snakemake": mocker.patch.object(snakemake, "main"),
+            "snakemake": mocker.patch.object(snakemake.cli, "main"),
         }
 
     @given(

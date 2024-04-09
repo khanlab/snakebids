@@ -12,7 +12,7 @@ from typing import Any, Callable
 import attr
 import boutiques.creator as bc  # type: ignore
 import snakemake
-from snakemake.io import load_configfile
+from snakemake.common.configfile import load_configfile
 
 from snakebids.cli import (
     SnakebidsArgs,
@@ -247,7 +247,7 @@ class SnakeBidsApp:
 
         # Run snakemake (passing any leftover args from argparse)
         # Filter any blank strings before submitting
-        snakemake.main(  # type: ignore
+        snakemake.cli.main(  # type: ignore
             [
                 *filter(
                     None,
