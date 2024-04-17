@@ -62,8 +62,8 @@ class ImmutableList(Sequence[_T_co], Generic[_T_co]):
         return f"{self.__class__.__name__}({list(self._data)})"
 
     @override
-    def __contains__(self, item: object, /) -> bool:
-        return item in self._data
+    def __contains__(self, value: object) -> bool:
+        return value in self._data
 
     @override
     def __hash__(self):
