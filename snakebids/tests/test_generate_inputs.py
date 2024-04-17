@@ -899,17 +899,6 @@ class TestPostfilter:
     valid_chars = st.characters(blacklist_characters=["\n"])
     st_lists_or_text = st.lists(st.text(valid_chars)) | st.text(valid_chars)
 
-    @given(st.tuples(st_lists_or_text, st_lists_or_text))
-    def test_throws_error_if_labels_and_excludes_are_given(
-        self, args: tuple[list[str] | str, list[str] | str]
-    ):
-        filters = PostFilter()
-        with pytest.raises(
-            ValueError,
-            match="Cannot define both participant_label and exclude_participant_label ",
-        ):
-            filters.add_filter("foo", *args)
-
     @given(st.text(), st_lists_or_text)
     def test_returns_participant_label_as_dict(self, key: str, label: list[str] | str):
         filters = PostFilter()
@@ -1277,20 +1266,6 @@ def test_t1w():
             "wildcards": ["acquisition", "subject", "session", "run"],
         }
     }
-
-    # Can't define particpant_label and exclude_participant_label
-    with pytest.raises(
-        ValueError,
-        match="Cannot define both participant_label and "
-        "exclude_participant_label at the same time",
-    ):
-        result = generate_inputs(
-            pybids_inputs=pybids_inputs,
-            bids_dir=real_bids_dir,
-            derivatives=derivatives,
-            participant_label="001",
-            exclude_participant_label="002",
-        )
 
     # Simplest case -- one input type, using pybids
     result = generate_inputs(
@@ -1707,7 +1682,7 @@ class TestParticipantFiltering:
     @settings(
         deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture]
     )
-    def test_participant_label_filters_comps_with_subject(
+    def test_exclude_and_participant_label_filter_correctly(
         self, data: st.DataObject, dataset: BidsDataset, tmpdir: Path
     ):
         root = tempfile.mkdtemp(dir=tmpdir)
@@ -1716,33 +1691,19 @@ class TestParticipantFiltering:
             for comp in dataset.values()
         )
         sampler = st.sampled_from(itx.first(rooted.values()).entities["subject"])
-        label = data.draw(st.lists(sampler, unique=True) | sampler)
-        reindexed = reindex_dataset(root, rooted, participant_label=label)
-        assert set(itx.first(reindexed.values()).entities["subject"]) == set(
-            itx.always_iterable(label)
+        excluded = data.draw(st.lists(sampler, unique=True) | sampler | st.none())
+        included = data.draw(st.lists(sampler, unique=True) | sampler | st.none())
+        reindexed = reindex_dataset(
+            root, rooted, exclude_participant_label=excluded, participant_label=included
         )
-
-    @given(
-        data=st.data(),
-        dataset=dataset_with_subject(),
-    )
-    @settings(
-        deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture]
-    )
-    def test_exclude_participant_label_filters_comp_with_subject(
-        self, data: st.DataObject, dataset: BidsDataset, tmpdir: Path
-    ):
-        root = tempfile.mkdtemp(dir=tmpdir)
-        rooted = BidsDataset.from_iterable(
-            attrs.evolve(comp, path=os.path.join(root, comp.path))
-            for comp in dataset.values()
-        )
-        sampler = st.sampled_from(itx.first(rooted.values()).entities["subject"])
-        label = data.draw(st.lists(sampler, unique=True) | sampler)
-        reindexed = reindex_dataset(root, rooted, exclude_participant_label=label)
         reindexed_subjects = set(itx.first(reindexed.values()).entities["subject"])
-        original_subjects = set(itx.first(rooted.values()).entities["subject"])
-        assert reindexed_subjects == original_subjects - set(itx.always_iterable(label))
+        expected_subjects = set(itx.first(rooted.values()).entities["subject"])
+        if included is not None:
+            expected_subjects &= set(itx.always_iterable(included))
+        if excluded is not None:
+            expected_subjects -= set(itx.always_iterable(excluded))
+
+        assert reindexed_subjects == expected_subjects
 
     @pytest.mark.parametrize("mode", ["include", "exclude"])
     @given(
