@@ -57,12 +57,6 @@ class PostFilter:
         ValueError
             Raised if both include and exclude values are stipulated.
         """
-        if inclusions is not None and exclusions is not None:
-            msg = (
-                "Cannot define both participant_label and exclude_participant_label at "
-                "the same time"
-            )
-            raise ValueError(msg)
         if inclusions is not None:
             self.inclusions[key] = list(itx.always_iterable(inclusions))
         if exclusions is not None:
