@@ -60,9 +60,9 @@ class TestFindSnakefileConfig:
 
 class TestAddCliArguments:
     def test_snakemake_help_arg_added(self, mocker: MockerFixture):
-        from snakebids.plugins.snakemake import snakemake
+        import snakebids.plugins.snakemake
 
-        mock = mocker.patch.object(snakemake, "main")
+        mock = mocker.patch.object(snakebids.plugins.snakemake, "snakemake_main")
         smk = SnakemakeBidsApp.create_empty()
         parser = argparse.ArgumentParser()
         smk.add_cli_arguments(parser)
@@ -151,14 +151,13 @@ class TestUpdateNamespace:
 
 
 def get_io_mocks(mocker: MockerFixture):
-    import snakemake  # noqa: I001
-    import snakemake.io
+    import snakebids.snakemake_compat  # noqa: I001
     import snakebids.plugins.snakemake as sn_app
 
     mocker.stopall()
     mocker.patch.object(sn_app.impm, "version", return_value="version")
     mocker.patch.object(
-        snakemake.io,
+        snakebids.snakemake_compat.configfile,
         "open",
         mocker.mock_open(read_data='{"a_key": "a value"}'),
     )
@@ -166,7 +165,7 @@ def get_io_mocks(mocker: MockerFixture):
         "write_output_mode": mocker.patch.object(sn_app, "write_output_mode"),
         "prepare_output": mocker.patch.object(sn_app, "prepare_bidsapp_output"),
         "write_config": mocker.patch.object(sn_app, "write_config"),
-        "snakemake": mocker.patch.object(snakemake, "main"),
+        "snakemake": mocker.patch.object(sn_app, "snakemake_main"),
     }
 
 

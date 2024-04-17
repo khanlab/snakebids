@@ -28,13 +28,14 @@ classifiers = [
 
 requires-python = "{{ python_version }}"
 dependencies = [
-    "snakemake >= {{ snakemake_version }},<8",
     "snakebids {{ snakebids_version | toml_encode }}",
+    "snakemake>={{ snakemake_version }},<8; python_version < \"3.11\"",
+    "snakemake>=8.1.2; python_version >= \"3.11\"",
     {#- newer pulps are incompatible with old snakemakes, and we need to support
     old snakemakes for python versions <3.11. So cap pulp to the last working
     version
     #}
-    "pulp < 2.8.0",
+    "pulp < 2.8.0; python_version < \"3.11\"",
 ]
 
 [project.scripts]

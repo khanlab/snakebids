@@ -17,7 +17,6 @@ from typing import (
 
 import more_itertools as itx
 from bids import BIDSLayout, BIDSLayoutIndexer
-from snakemake.script import Snakemake
 
 from snakebids.core._querying import (
     FilterSpecError,
@@ -32,6 +31,7 @@ from snakebids.exceptions import (
     DuplicateComponentError,
     RunError,
 )
+from snakebids.snakemake_compat import Snakemake
 from snakebids.types import InputConfig, InputsConfig, ZipList
 from snakebids.utils.snakemake_io import glob_wildcards
 from snakebids.utils.utils import (

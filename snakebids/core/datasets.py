@@ -13,7 +13,6 @@ import attr
 import more_itertools as itx
 from bids import BIDSLayout
 from pvandyken.deprecated import deprecated
-from snakemake.io import expand as sn_expand
 from typing_extensions import Self, TypedDict
 
 import snakebids.utils.sb_itertools as sb_it
@@ -21,6 +20,7 @@ from snakebids.core.filtering import filter_list
 from snakebids.exceptions import DuplicateComponentError
 from snakebids.io.console import get_console_size
 from snakebids.io.printing import format_zip_lists, quote_wrap
+from snakebids.snakemake_compat import expand as sn_expand
 from snakebids.types import ZipList
 from snakebids.utils.containers import ImmutableList, MultiSelectDict, UserDictPy38
 from snakebids.utils.utils import get_wildcard_dict, property_alias, zip_list_eq

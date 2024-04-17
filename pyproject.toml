@@ -36,8 +36,8 @@ python = ">=3.8,<4.0"
 # keep upper limit
 pybids = ">=0.16.0,<0.17"
 snakemake = [
-    { version = ">=5.28.0,<8", python = ">=3.8" },
-    { version = ">=7.18.2,<8", python = ">=3.11" },
+    { version = ">=5.28.0,<8", python = "<3.11" },
+    { version = ">=7.18.2", python = ">=3.11" },
 ]
 typing-extensions = ">=3.10.0"
 # minimum 22.2 to get "alias" parameter on attrs.field
