@@ -40,7 +40,8 @@ snakemake = [
     { version = ">=7.18.2,<8", python = ">=3.11" },
 ]
 typing-extensions = ">=3.10.0"
-attrs = ">=21.2.0"
+# minimum 22.2 to get "alias" parameter on attrs.field
+attrs = ">=22.2.0"
 boutiques = "^0.5.25"
 more-itertools = ">=8"
 # package developed in complete tandem with snakebids, so no need for a range
