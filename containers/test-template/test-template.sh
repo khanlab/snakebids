@@ -6,6 +6,7 @@ method="$1"
 script_name="$2"
 
 cp -r /app/* /work
+cp -r /snakebids /src
 script="'${script_name}' tests/data tests/result participant -c1 --skip-bids-validation"
 case "$method" in
     "setuptools" )
