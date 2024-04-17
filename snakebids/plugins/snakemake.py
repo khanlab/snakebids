@@ -9,8 +9,6 @@ from typing import Any, Callable, Sequence, TypeVar
 
 import attrs
 import more_itertools as itx
-import snakemake
-from snakemake.io import load_configfile
 from typing_extensions import overload, override
 
 from snakebids import bidsapp
@@ -20,6 +18,8 @@ from snakebids.plugins.bidsargs import BidsArgs
 from snakebids.plugins.cli_config import CliConfig
 from snakebids.plugins.component_edit import ComponentEdit
 from snakebids.plugins.pybidsdb import Pybidsdb
+from snakebids.snakemake_compat import load_configfile
+from snakebids.snakemake_compat import main as snakemake_main
 from snakebids.utils.output import (
     prepare_bidsapp_output,
     write_output_mode,
@@ -66,7 +66,7 @@ class SnakemakeHelpAction(argparse.Action):
         values: str | Sequence[Any] | None,
         option_string: str | None = None,
     ):
-        snakemake.main(["-h"])  # type: ignore
+        snakemake_main(["-h"])  # type: ignore
 
 
 def _get_file_paths(
@@ -330,7 +330,7 @@ class SnakemakeBidsApp:
     @bidsapp.hookimpl
     def run(self, config: dict[str, Any]):
         """Run snakemake with the given config, after applying plugins."""
-        snakemake.main(  # type: ignore
+        snakemake_main(  # type: ignore
             [
                 *filter(
                     None,

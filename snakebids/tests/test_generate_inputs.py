@@ -23,7 +23,6 @@ from hypothesis import HealthCheck, assume, example, given, settings
 from hypothesis import strategies as st
 from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
-from snakemake.io import expand as sb_expand
 
 from snakebids.core._querying import PostFilter, UnifiedFilter, get_matching_files
 from snakebids.core.datasets import BidsComponent, BidsDataset
@@ -38,6 +37,7 @@ from snakebids.core.input_generation import (
 )
 from snakebids.exceptions import ConfigError, PybidsError, RunError
 from snakebids.paths._presets import bids
+from snakebids.snakemake_compat import expand as sb_expand
 from snakebids.tests import strategies as sb_st
 from snakebids.tests.helpers import (
     Benchmark,
