@@ -23,7 +23,7 @@ runs:
         path: container-test-template-cache
         key: ${{ runner.os }}-test-template-cache-${{ hashFiles('containers/test-template/**') }}-${{ inputs.python-version }}
     - name: Inject container-test-template-cache into docker
-      uses: reproducible-containers/buildkit-cache-dance@v2.1.4
+      uses: reproducible-containers/buildkit-cache-dance@v3.0.0
       with:
         cache-source: container-test-template-cache
     - name: Build Docker container for cache
