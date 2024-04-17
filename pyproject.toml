@@ -64,23 +64,23 @@ pandas = [
     { version = "<=2.0.3", python = "<3.9" },
     { version = ">=2.1.1", python = ">=3.12" },
 ]
-# minimum 8.2.0 to use post-copy mesages
-copier = ">=8.2.0"
+# minimum 9.2.0 because of breaking dependency changes and changes to validation errors
+copier = ">=9.2.0"
 jinja2-time = ">=0.2.0"
 # minimum 2.31.0 because of security vulnerability
 requests = ">=2.31.0"
 ruamel-yaml = ">=0.17.2"
 lazy-loader = ">=0.3"
 # Docutils is a requirement of snakemake, for snakebids otherwise it is merely a doc
-# dependency. Can't do 0.21 with poetry because of https://github.com/python-poetry/poetry/issues/9293
-docutils = "!=0.21.1"
+# dependency. 0.21.post1 needs to be excluded because of
+# https://github.com/python-poetry/poetry/issues/9293
+docutils = "!=0.21.post1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.0.0"
 pytest-mock = "^3.7.0"
 poethepoet = "^0.25.1"
 pre-commit = "^3.0.0"
-# need custom fork of mkinit to handle .pyi files. PR to main repo pending
 # a mkinit dep has the 'platform_system == "Windows"' as a marker on an incompatible dependeny
 #   (pydantic<2.0 cf copier), so set the inverse as a marker here so mkinit can
 #   still be resolved
@@ -90,7 +90,9 @@ pytest-benchmark = "^4.0.0"
 pyfakefs = "^5.1.0"
 pyparsing = "^3.0.9"
 pathvalidate = "^3.0.0"
-pyright = "^1.1.339"
+# Bug in .358 preventing the types from the converter arguments of attrs classes to
+# propogate properly
+pyright = "^1.1.339,<1.1.358"
 ruff = "^0.1.7"
 pytest-xdist = "^3.3.1"
 pytest-split = "^0.8.1"

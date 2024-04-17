@@ -11,7 +11,6 @@ from typing import Any, Final, Literal, TypedDict
 import copier
 import more_itertools as itx
 import pathvalidate
-import prompt_toolkit.validation
 import pytest
 import requests_mock
 from hypothesis import HealthCheck, assume, given, settings
@@ -98,7 +97,7 @@ def invalid_emails():
 def test_invalid_email_raises_error(email: str, tmp_path: Path):
     data = get_empty_data("testapp", "setuptools")
     data["email"] = email
-    with pytest.raises(prompt_toolkit.validation.ValidationError):
+    with pytest.raises(ValueError, match="Must be a valid email"):
         copier.run_copy(
             str(Path(itx.first(snakebids.__path__), "project_template")),
             tmp_path / data["app_full_name"],
@@ -184,7 +183,7 @@ def test_gets_correct_snakebids_version(
 @allow_function_scoped
 def test_invalid_app_name_raises_error(name: str, tmp_path: Path):
     data = get_empty_data(name, "setuptools")
-    with pytest.raises(prompt_toolkit.validation.ValidationError):
+    with pytest.raises(ValueError, match="Name must be a valid"):
         copier.run_copy(
             str(Path(itx.first(snakebids.__path__), "project_template")),
             tmp_path / data["app_full_name"],

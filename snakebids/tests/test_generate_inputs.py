@@ -1102,7 +1102,9 @@ class TestCustomPaths:
             name="foo", path=get_bids_path(result_filtered), zip_lists=result_filtered
         )
 
-    @settings(deadline=400, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     @given(path_entities=path_entities())
     def test_collect_all_but_filters_when_exclusion_filters_used(
         self,

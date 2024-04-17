@@ -14,7 +14,7 @@ def get_yaml_io():
         return dumper.represent_scalar(
             "tag:yaml.org,2002:str",
             str(data),
-        )  # type: ignore
+        )
 
     def to_dict(dumper: Dumper, data: OrderedDict[Any, Any]):
         return dumper.represent_dict(dict(data))
