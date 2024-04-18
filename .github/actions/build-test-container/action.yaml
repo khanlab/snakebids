@@ -20,28 +20,22 @@ runs:
     - name: Cache Template Testing Containers
       uses: actions/cache@v4
       with:
-        path: |
-          var-cache-apt
-          var-lib-apt
+        path: /tmp/.buildx-cache
         key: ${{ runner.os }}-test-template-cache-${{ hashFiles('containers/test-template/**') }}-${{ inputs.python-version }}
-    - name: Inject container-test-template-cache into docker
-      uses: reproducible-containers/buildkit-cache-dance@v3.0.0
-      with:
-        cache-map: |
-          {
-            "var-cache-apt": "/var/cache/apt",
-            "var-lib-apt": "/var/lib/apt"
-          }
-        skip-extraction: ${{ steps.cache.outputs.cache-hit }}
     - name: Build Docker container for cache
       uses: docker/build-push-action@v5
       with:
         context: containers/test-template
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        cache-from: type=local,src=/tmp/.buildx-cache
+        cache-to: type=local,dest=/tmp/.buildx-cache-new,mod=max
         push: false
         load: ${{ inputs.load == 'true' }}
         tags: snakebids/test-template:${{ inputs.python-version }}
         platforms: linux/amd64
         build-args: |
           PYTHON_VERSION=${{ inputs.python-version }}
+    - name: Move cache
+      shell: bash
+      run: |
+        rm -rf /tmp/.buildx-cache
+        mv /tmp/.buildx-cache-new /tmp/.buildx-cache
