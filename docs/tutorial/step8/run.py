@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-import os
-from snakebids.app import SnakeBidsApp
+from pathlib import Path
 
+from snakebids import bidsapp, plugins
 
-
-def main():
-    app = SnakeBidsApp(os.path.abspath(os.path.dirname(__file__)))
-    app.run_snakemake()
-
+app = bidsapp.app(
+    [
+        plugins.SnakemakeBidsApp(Path(__file__).resolve().parent),
+    ]
+)
 
 if __name__ == "__main__":
-    main()
+    app.run()

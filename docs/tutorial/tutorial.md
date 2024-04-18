@@ -454,7 +454,7 @@ For reference, here is the updated config file and Snakefile after these changes
 
 Now that we have pybids parsing to dynamically configure our workflow inputs based on our BIDS dataset, we are ready to turn our workflow into a [BIDS App](http://bids-apps.neuroimaging.io/). BIDS Apps are command-line apps with a standardized interface (e.g. three required positional arguments: ``bids_directory``, ``output_directory``, and ``analysis_level``).
 
-We do this in snakebids by creating an executable python script, which uses the {class}`SnakeBidsApp <snakebids.app.SnakeBidsApp>` class from {mod}`snakebids.app` to run snakemake. An example of this `run.py` script is shown below.
+We do this in snakebids by creating a python script containing a {func}`bidsapp.app <snakebids.bidsapp.app>` built with the Snakemake integration plugin {class}`SnakemakeBidsApp <snakebids.plugins.SnakemakeBidsApp>`. An example of this `run.py` script is shown below.
 
 ```{literalinclude} step8/run.py
   :language: python
@@ -462,7 +462,15 @@ We do this in snakebids by creating an executable python script, which uses the 
   :caption: run.py
 ```
 
-However, we will first need to add some additional information to our config file, mainly to define how to parse command-line arguments for this app. This is done with a new `parse_args` dict in the config:
+This creates a bidsapp with all the standard arguments. The usage will look something like this:
+
+```bash
+./run.py INPUT_DATASET OUTPUT_DATASET [participant|group] [--derivatives] [--participant-label LABEL...]
+```
+
+A more complete description of bidsapp usage can be found at <project:#running-snakebids>.
+
+Additional argument can be added using the `config.yml`. For instance, we can turn our `fwhm` setting into a CLI parameter with the following:
 
 ```{literalinclude} step8/config.yml
 :language: yaml
@@ -472,21 +480,17 @@ However, we will first need to add some additional information to our config fil
 :lineno-match:
 ```
 
-The above is standard boilerplate for any BIDS app. You can also define any new command-line arguments you wish. Snakebids uses the {mod}`argparse` module, and each entry in this `parse_args` dict thus becomes a call to {meth}`add_argument() <argparse.ArgumentParser.add_argument>` from {class}`argparse.ArgumentParser`. When you run the workflow, snakebids adds the named argument values to the config dict, so your workflow can make use of it as if you had manually added the variable to your configfile.
+Snakebids uses the {mod}`argparse` module, and each entry in this `parse_args` dict becomes a call to {meth}`add_argument() <argparse.ArgumentParser.add_argument>` from {class}`argparse.ArgumentParser`. When you run the workflow, snakebids adds the named argument values to the config dict, so your workflow can make use of it as if you had manually added the variable to your configfile. See <project:#parse-args-config> for more details.
 
-Arguments that will receive paths should be given the item `type: Path`, as is done for `--derivatives` in the example above. Without this annotation, paths given to keyword arguments will be interpreted relative to the output directory. Indicating `type: Path` will tell Snakebids to first resolve the path according to your current working directory.
+In the above example, snakebids will automatically insert a key called `fwhm` into the snakemake `config` containing the values provided from the command line (or the default, if no values are provided).
 
-```{note}
-`bids_dir` and `output_dir` are always resolved relative to the current directory and do not need any extra annotation.
-```
-
-BIDS apps also have a required `analysis_level` positional argument, so there are some config variables to set this as well. The analysis levels are in an `analysis_levels` list in the config, and also as keys in a `targets_by_analysis_level` dict, which can be used to map each analysis level to the name of a target rule:
+The `analysis_level` positional argument can also be modified in the config. The available levels are in an `analysis_levels` list in the config. Specific snakemake targets can be mapped to these levels in the  `targets_by_analysis_level` dict:
 
 ```{literalinclude} step8/config.yml
 :language: yaml
 :caption: config.yml
 :linenos:
-:start-at: targets_by_analysis_level
+:start-at: analysis_levels
 :end-before: parse_args
 :lineno-match:
 ```

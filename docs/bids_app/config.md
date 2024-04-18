@@ -144,6 +144,7 @@ A list of analysis levels in the BIDS app. Typically, this will include particip
 
 A mapping from the name of each ``analysis_level`` to the list of rules or files to be run for that analysis level.
 
+(parse-args-config)=
 ### `parse_args`
 
 A dictionary of command-line parameters to make available as part of the BIDS app. Each item of the mapping is passed to [argparse's `add_argument` function](#argparse.ArgumentParser.add_argument). A number of default entries are present in a new snakebids project's config file that structure the BIDS app's CLI, but additional command-line arguments can be added as necessary.
