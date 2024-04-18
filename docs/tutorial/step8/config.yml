@@ -1,10 +1,5 @@
 bids_dir: 'data'
 
-fwhm:
-  - 5
-  - 10
-  - 15
-  - 20
 
 pybids_inputs:
   bold:
@@ -19,52 +14,21 @@ pybids_inputs:
       - task
       - run
 
+analysis_levels:
+ - participant
 
 targets_by_analysis_level:
   participant:
     - ''  # if '', then the first rule is run
 
-analysis_levels: &analysis_levels
- - participant
-
 parse_args:
-  bids_dir:
-    help: |
-      The directory with the input dataset formatted according to the BIDS
-      standard.
-
-  output_dir:
-    help: |
-      The directory where the output files should be stored. If you are running
-      group level analysis this folder should be prepopulated with the results
-      of the participant level analysis.
-
-  analysis_level:
-    help: Level of the analysis that will be performed.
-    choices: *analysis_levels
-
-  --participant_label:
-    help: |
-      The label(s) of the participant(s) that should be analyzed. The label
-      corresponds to sub-<participant_label> from the BIDS spec (so it does not
-      include "sub-"). If this parameter is not provided all subjects should be
-      analyzed. Multiple participants can be specified with a space separated
-      list.
-    nargs: '+'
-
-  --exclude_participant_label:
-    help: |
-      The label(s) of the participant(s) that should be excluded. The label
-      corresponds to sub-<participant_label> from the BIDS spec (so it does not
-      include "sub-"). If this parameter is not provided all subjects should be
-      analyzed. Multiple participants can be specified with a space separated
-      list.
-    nargs: '+'
-
-  --derivatives:
-    help: |
-      Path(s) to a derivatives dataset, for folder(s) that contains multiple
-      derivatives datasets.
-    default: False
-    type: Path
-    nargs: '+'
+  --fwhm:
+    help: >
+      Set the full-width-half-maximum values that should be used for smoothing.
+    type: int
+    nargs: +
+    default:
+      - 5
+      - 10
+      - 15
+      - 20
