@@ -7,4 +7,5 @@ Snakebids has rapidly evolved over the last few versions, resulting in a number 
 
 0.5_to_0.8
 0.7_to_0.8
+0.11_to_0.12
 ```
