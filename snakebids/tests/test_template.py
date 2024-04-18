@@ -283,7 +283,7 @@ def test_pyproject_correctly_formatted(
         assert author_obj == pyproject["project"]["authors"][0]
     else:
         assert "authors" not in pyproject["project"]
-    assert pyproject["project"]["dependencies"].index(
+    pyproject["project"]["dependencies"].index(
         f"snakebids {kwargs['snakebids_version']}"  # type: ignore
     )
 
