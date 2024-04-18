@@ -1,6 +1,7 @@
 # Snakebids
 
 [![Tests](https://github.com/khanlab/snakebids/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/khanlab/snakebids/actions/workflows/test.yml?query=branch%3Amain)
+[![codecov](https://codecov.io/gh/khanlab/snakebids/graph/badge.svg?token=Q15K5HX7W9)](https://codecov.io/gh/khanlab/snakebids)
 [![Documentation Status](https://readthedocs.org/projects/snakebids/badge/?version=stable)](https://snakebids.readthedocs.io/en/stable/?badge=stable)
 [![Version](https://img.shields.io/github/v/tag/khanlab/snakebids?label=version)](https://pypi.org/project/snakebids/)
 [![Python versions](https://img.shields.io/pypi/pyversions/snakebids)](https://pypi.org/project/snakebids/)
