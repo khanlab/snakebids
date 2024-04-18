@@ -40,7 +40,7 @@ The value of `filters` should be a dictionary where each key corresponds to a BI
   ```
   The above example selects all paths in the `func/` datatype folder that have a `_desc-` entity but do not have the `_acq-` entity.
 
-* [`list`](#list): Specify multiple string or boolean filters. Any path matching any one of the filters will be selected. Using `False` as one of the filters allows the entity to optionally be absent in addition to matching one of the string filters. Using `True` along with text is redundant, as `True` will cause any value to be selected. Using `True` with `False` is equivalent to not providing the filter at all.
+* [`list`](inv:*:py#list): Specify multiple string or boolean filters. Any path matching any one of the filters will be selected. Using `False` as one of the filters allows the entity to optionally be absent in addition to matching one of the string filters. Using `True` along with text is redundant, as `True` will cause any value to be selected. Using `True` with `False` is equivalent to not providing the filter at all.
 
   These filters:
 

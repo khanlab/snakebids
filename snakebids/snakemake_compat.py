@@ -1,12 +1,12 @@
 # type: ignore
 
 try:
-    from snakemake.cli import main
+    from snakemake.cli import get_argument_parser, main
     from snakemake.common import configfile
     from snakemake.common.configfile import load_configfile
 except ImportError:
     import snakemake.io as configfile
-    from snakemake import main
+    from snakemake import get_argument_parser, main
     from snakemake.io import load_configfile
 
 from snakemake.exceptions import WildcardError
@@ -20,4 +20,5 @@ __all__ = [
     "Snakemake",
     "WildcardError",
     "configfile",
+    "get_argument_parser",
 ]

@@ -1,3 +1,4 @@
+from argparse import ArgumentParser
 from pathlib import Path
 from typing import Any, Callable, Iterable, Sequence
 
@@ -45,3 +46,4 @@ class Snakemake:
     params: Params[str]
 
 def main(argv: list[str] = ...) -> None: ...
+def get_argument_parser(profiles: list[str] | None = ...) -> ArgumentParser: ...
