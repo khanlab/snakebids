@@ -5,6 +5,7 @@ import argparse
 from typing import Any
 
 import pytest
+from pytest_mock import MockerFixture
 
 from snakebids import bidsapp, plugins
 from snakebids.bidsapp.args import ArgumentGroups
@@ -37,18 +38,27 @@ class TestRunner:
         parser.add_argument("--arg-two")
 
     @bidsapp.hookimpl
+    def get_argv(self, argv: list[str], config: dict[str, Any]):
+        self.hooks_run += 1
+        assert config["added_args"]
+        config["provided_args"] = argv
+        assert argv == ["default"]
+        return ["known", "--arg-two", "known", "unknown"]
+
+    @bidsapp.hookimpl
     def handle_unknown_args(self, args: list[str], config: dict[str, Any]):
         self.hooks_run += 1
         assert args == ["unknown"]
-        assert len(config) == 2
+        assert len(config) == 3
         assert config["initialized"]
         assert config["added_args"]
+        assert config["provided_args"] == ["default"]
         config["unknown_args"] = args
 
     @bidsapp.hookimpl
     def update_cli_namespace(self, namespace: dict[str, Any], config: dict[str, Any]):
         self.hooks_run += 1
-        assert len(config) == 3
+        assert len(config) == 4
         assert config["initialized"]
         assert config["added_args"]
         assert config["unknown_args"] == ["unknown"]
@@ -60,7 +70,7 @@ class TestRunner:
     @bidsapp.hookimpl
     def finalize_config(self, config: dict[str, Any]):
         self.hooks_run += 1
-        assert len(config) == 5
+        assert len(config) == 6
         assert config["initialized"]
         assert config["added_args"]
         assert config["unknown_args"] == ["unknown"]
@@ -71,7 +81,7 @@ class TestRunner:
     @bidsapp.hookimpl
     def run(self, config: dict[str, Any]):
         self.hooks_run += 1
-        assert len(config) == 6
+        assert len(config) == 7
         assert config["initialized"]
         assert config["added_args"]
         assert config["unknown_args"] == ["unknown"]
@@ -89,17 +99,34 @@ class TestRunner:
 
     def test_parse_args(self):
         app = bidsapp.app(plugins=[self])
-        app.parse_args(args=["known", "--arg-two", "known", "unknown"])
-        assert self.hooks_run == 5
-        app.parse_args(args=["known", "--arg-two", "known", "unknown"])
-        assert self.hooks_run == 5
+        app.parse_args(args=["default"])
+        assert self.hooks_run == 6
+        app.parse_args(args=["default"])
+        assert self.hooks_run == 6
 
     def test_run(self):
         app = bidsapp.app(plugins=[self])
-        app.run(args=["known", "--arg-two", "known", "unknown"])
-        assert self.hooks_run == 6
-        app.run(args=["known", "--arg-two", "known", "unknown"])
-        assert self.hooks_run == 6
+        app.run(args=["default"])
+        assert self.hooks_run == 7
+        app.run(args=["default"])
+        assert self.hooks_run == 7
+
+
+class TestNoArgvHook:
+    @bidsapp.hookimpl
+    def handle_unknown_args(self, args: list[str]):
+        assert args == ["mocked", "args"]
+
+    def test_with_mocked_args(self, mocker: MockerFixture):
+        from snakebids.bidsapp.run import sys
+
+        mocker.patch.object(sys, "argv", ["program", "mocked", "args"])
+        app = bidsapp.app(plugins=[self])
+        app.parse_args()
+
+    def test_with_provided_args(self):
+        app = bidsapp.app(plugins=[self])
+        app.parse_args(args=["mocked", "args"])
 
 
 class TestDependencies:

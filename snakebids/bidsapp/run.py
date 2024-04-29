@@ -182,7 +182,13 @@ class _Runner:
         """Run all plugins and parse arguments."""
         if not self._processed:
             self.build_parser()
-            namespace, unknown = self.parser.parse_known_args(args=args)
+            args = sys.argv[1:] if args is None else args
+            argv: list[str] | None = self.pm.hook.get_argv(
+                argv=args, config=self.config
+            )
+            namespace, unknown = self.parser.parse_known_args(
+                args=args if argv is None else argv
+            )
             self.pm.hook.handle_unknown_args(args=unknown, config=self.config)
             self.pm.hook.update_cli_namespace(
                 namespace=namespace.__dict__, config=self.config
