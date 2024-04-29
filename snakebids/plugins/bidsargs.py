@@ -112,7 +112,7 @@ class BidsArgs(PluginBase):
             self.try_add_argument(
                 group,
                 dest="bids_dir",
-                help="The directory with the input dataset formatted according"
+                help="The directory with the input dataset formatted according "
                 "to the BIDS standard.",
                 type=Path,
             )
@@ -120,9 +120,9 @@ class BidsArgs(PluginBase):
             self.try_add_argument(
                 group,
                 dest="output_dir",
-                help="The directory where the output files"
-                "should be stored. If you are running group level analysis"
-                "this folder should be prepopulated with the results of the"
+                help="The directory where the output files "
+                "should be stored. If you are running group level analysis "
+                "this folder should be prepopulated with the results of the "
                 "participant level analysis.",
                 type=Path,
             )
@@ -154,9 +154,9 @@ class BidsArgs(PluginBase):
                 "--participant-label",
                 "--participant_label",
                 help="The label(s) of the participant(s) that should be analyzed. The "
-                "label corresponds to sub-<participant_label> from the BIDS sec"
-                '(so it does not include "sub-"). If this parameter is not'
-                "provided all subjects should be analyzed. Multiple"
+                "label corresponds to sub-<participant_label> from the BIDS sec "
+                '(so it does not include "sub-"). If this parameter is not '
+                "provided all subjects should be analyzed. Multiple "
                 "participants can be specified with a space separated list.",
                 dest="participant_label",
                 metavar="LABEL",
@@ -168,9 +168,9 @@ class BidsArgs(PluginBase):
                 "--exclude-participant-label",
                 "--exclude_participant_label",
                 help="The label(s) of the participant(s) that should be excluded. The "
-                "label corresponds to sub-<participant_label> from the BIDS spec"
-                '(so it does not include "sub-"). If this parameter is not'
-                "provided all subjects should be analyzed. Multiple"
+                "label corresponds to sub-<participant_label> from the BIDS spec "
+                '(so it does not include "sub-"). If this parameter is not '
+                "provided all subjects should be analyzed. Multiple "
                 "participants can be specified with a space separated list.",
                 metavar="LABEL",
                 dest="exclude_participant_label",
