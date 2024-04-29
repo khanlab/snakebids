@@ -46,6 +46,11 @@ def add_cli_arguments(
     """
 
 
+@hookspec(firstresult=True)
+def get_argv(argv: list[str], config: dict[str, Any]) -> list[str]:  # type: ignore
+    """Set or modify the CLI parameters that will be parsed by the parser."""
+
+
 @hookspec
 def handle_unknown_args(args: list[str], config: dict[str, Any]):
     """If ``parse_known_args`` enabled, handle unknown arguments.
