@@ -27,7 +27,7 @@ jobs:
         id: count
         run: |
           echo "NUM=$(
-            poetry run poe test --co -q --disable-warnings | head -n -2 | wc -l
+            poetry run poe -q test --co -q --disable-warnings | head -n -2 | wc -l
           )" >> "$GITHUB_OUTPUT"
       - name: Count number of timed tests
         id: timed-count
