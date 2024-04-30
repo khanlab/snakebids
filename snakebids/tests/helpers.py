@@ -25,9 +25,10 @@ import pytest
 from hypothesis import HealthCheck, example, settings
 from typing_extensions import ParamSpec
 
-from snakebids import bids
+from snakebids import bids_factory
 from snakebids.core.datasets import BidsDataset
 from snakebids.core.input_generation import generate_inputs
+from snakebids.paths import specs
 from snakebids.types import InputsConfig, ZipList, ZipListLike
 from snakebids.utils.containers import MultiSelectDict, UserDictPy38
 from snakebids.utils.utils import BidsEntity
@@ -103,6 +104,7 @@ def get_bids_path(entities: Iterable[str | BidsEntity], **extras: str) -> str:
     def get_tag(entity: BidsEntity) -> tuple[str, str]:
         return entity.wildcard, f"{{{entity.wildcard}}}"
 
+    bids = bids_factory(specs.latest())
     return bids(
         **dict(get_tag(BidsEntity(entity)) for entity in sorted(entities)),
         **{BidsEntity(entity).wildcard: value for entity, value in extras.items()},
