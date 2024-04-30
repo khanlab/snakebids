@@ -66,12 +66,10 @@ class PluginBase:
     PREFIX = ""
 
     @overload
-    def pop(self, mapping: dict[str, Any], key: str, default: Any, /) -> Any:
-        ...
+    def pop(self, mapping: dict[str, Any], key: str, default: Any, /) -> Any: ...
 
     @overload
-    def pop(self, mapping: dict[str, Any], key: str, /) -> Any:
-        ...
+    def pop(self, mapping: dict[str, Any], key: str, /) -> Any: ...
 
     def pop(self, mapping: dict[str, Any], *args: Any):
         """Remove specified key from mapping, prepending the plugin prefix."""

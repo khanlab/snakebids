@@ -84,16 +84,14 @@ class Expandable(Protocol):
         /,
         allow_missing: bool | str | Iterable[str] = False,
         **wildcards: str | Iterable[str],
-    ) -> list[str]:
-        ...
+    ) -> list[str]: ...
 
     def filter(  # noqa: D102
         self,
         *,
         regex_search: bool | str | Iterable[str] = False,
         **filters: str | Iterable[str],
-    ) -> Self:
-        ...
+    ) -> Self: ...
 
 
 _K_contra = TypeVar("_K_contra", bound="str", contravariant=True)
@@ -105,12 +103,10 @@ class MultiSelectable(Protocol, Generic[_K_contra, _V_co, _Valt_co]):
     """Mappings supporting selection with multiple keys."""
 
     @overload
-    def __getitem__(self, key: _K_contra, /) -> _V_co:
-        ...
+    def __getitem__(self, key: _K_contra, /) -> _V_co: ...
 
     @overload
-    def __getitem__(self, key: tuple[_K_contra, ...], /) -> _Valt_co:
-        ...
+    def __getitem__(self, key: tuple[_K_contra, ...], /) -> _Valt_co: ...
 
 
 InputsConfig: TypeAlias = Dict[str, InputConfig]

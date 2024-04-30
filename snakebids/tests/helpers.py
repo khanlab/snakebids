@@ -1,4 +1,5 @@
 """Helper functions and classes for tests"""
+
 from __future__ import annotations
 
 import functools as ft
@@ -339,16 +340,14 @@ def example_if(condition: bool, *args: Any, **kwargs: Any):
 class Benchmark(Protocol):
     def __call__(
         self, func: Callable[_P, _T], *args: _P.args, **kwargs: _P.kwargs
-    ) -> _T:
-        ...
+    ) -> _T: ...
 
 
 """Comparison Dunders copied from typeshed"""
 
 
 class SupportsDunderLT(Protocol[_T_contra]):
-    def __lt__(self, __other: _T_contra) -> bool:
-        ...
+    def __lt__(self, __other: _T_contra) -> bool: ...
 
 
 def is_strictly_increasing(items: Iterable[SupportsDunderLT[Any]]) -> bool:

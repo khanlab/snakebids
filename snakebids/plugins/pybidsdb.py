@@ -117,6 +117,6 @@ class Pybidsdb(PluginBase):
             if config["pybidsdb_dir"] is not None
             else None
         )
-        config[
-            "pybids_db_reset"
-        ] = f"{DEPRECATION_FLAG}{int(config['pybidsdb_reset'])}{DEPRECATION_FLAG}"
+        config["pybids_db_reset"] = (
+            f"{DEPRECATION_FLAG}{int(config['pybidsdb_reset'])}{DEPRECATION_FLAG}"
+        )

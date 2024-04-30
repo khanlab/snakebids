@@ -17,8 +17,7 @@ def filter_list(
     filters: Mapping[str, Iterable[str] | str],
     return_indices_only: Literal[False] = ...,
     regex_search: bool = ...,
-) -> ZipList:
-    ...
+) -> ZipList: ...
 
 
 @overload
@@ -27,8 +26,7 @@ def filter_list(
     filters: Mapping[str, Iterable[str] | str],
     return_indices_only: Literal[True],
     regex_search: bool = ...,
-) -> list[int]:
-    ...
+) -> list[int]: ...
 
 
 def filter_list(

@@ -28,7 +28,6 @@ def expand(
         with their values as lists. If allow_missing=True is included
         wildcards in filepattern without values will stay unformatted.
     """
-    ...
 
 class Namedlist[T](list[T | Iterable[T]]): ...
 
