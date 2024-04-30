@@ -130,15 +130,23 @@ class TestNormalizeDatabaseArgs:
         pybidsdb_reset: bool | None,
         pybids_database_reset: bool | None,
     ):
-        assert (
-            _normalize_database_args(
-                None,
-                pybidsdb_reset,
-                None,
-                pybids_database_reset,
-            )[1]
-            is not None
-        )
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message=r"The parameter `pybids_reset_database` in generate_inputs\(\) "
+                "is deprecated and will be removed in the next release. To reset the "
+                "pybids database, use the `pybidsdb_reset` parameter instead",
+                category=UserWarning,
+            )
+            assert (
+                _normalize_database_args(
+                    None,
+                    pybidsdb_reset,
+                    None,
+                    pybids_database_reset,
+                )[1]
+                is not None
+            )
 
     @given(pybidsdb_dir=st.text().filter(_not_deprecated))
     def test_deprecated_dir_raises_warning(self, pybidsdb_dir: str):
