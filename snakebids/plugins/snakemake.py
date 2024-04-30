@@ -87,13 +87,11 @@ _T = TypeVar("_T")
 
 
 @overload
-def _resolve_path(path_candidate: Sequence[Any]) -> list[Any]:
-    ...
+def _resolve_path(path_candidate: Sequence[Any]) -> list[Any]: ...
 
 
 @overload
-def _resolve_path(path_candidate: _T) -> _T:
-    ...
+def _resolve_path(path_candidate: _T) -> _T: ...
 
 
 def _resolve_path(path_candidate: Any) -> Any:

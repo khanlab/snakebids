@@ -10,7 +10,7 @@ def toml_string(item: str):
     Technically encodes as json, a (mostly) strict subset of toml, with some encoding
     fixes
     """
-    return json.dumps(item, ensure_ascii=False).replace("\x7F", "\\u007f")
+    return json.dumps(item, ensure_ascii=False).replace("\x7f", "\\u007f")
 
 
 def toml_encode(item: str):

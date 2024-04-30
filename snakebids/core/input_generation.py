@@ -1,4 +1,5 @@
 """Utilities for converting Snakemake apps to BIDS apps."""
+
 from __future__ import annotations
 
 import json
@@ -60,8 +61,7 @@ def generate_inputs(
     validate: bool = ...,
     pybids_database_dir: Path | str | None = ...,
     pybids_reset_database: bool = ...,
-) -> BidsDataset:
-    ...
+) -> BidsDataset: ...
 
 
 @overload
@@ -80,8 +80,7 @@ def generate_inputs(
     validate: bool = ...,
     pybids_database_dir: Path | str | None = ...,
     pybids_reset_database: bool = ...,
-) -> BidsDatasetDict:
-    ...
+) -> BidsDatasetDict: ...
 
 
 def generate_inputs(

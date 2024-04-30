@@ -223,12 +223,10 @@ class BidsPartialComponent:
         return self.pformat()
 
     @overload
-    def __getitem__(self, key: str, /) -> BidsComponentRow:
-        ...
+    def __getitem__(self, key: str, /) -> BidsComponentRow: ...
 
     @overload
-    def __getitem__(self, key: tuple[str, ...], /) -> BidsPartialComponent:
-        ...
+    def __getitem__(self, key: tuple[str, ...], /) -> BidsPartialComponent: ...
 
     def __getitem__(
         self, key: str | tuple[str, ...], /

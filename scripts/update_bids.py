@@ -1,4 +1,5 @@
 """Recompile the bids function stub file based on latest specs."""
+
 from __future__ import annotations
 
 import inspect

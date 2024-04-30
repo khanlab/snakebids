@@ -1,4 +1,5 @@
 """File globbing functions based on snakemake.io library."""
+
 from __future__ import annotations
 
 import collections

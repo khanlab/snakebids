@@ -1,4 +1,5 @@
 """Tests for snakemake_io"""
+
 from snakebids.utils import snakemake_io
 
 

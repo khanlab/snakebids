@@ -29,8 +29,7 @@ class BidsFunction(Protocol):
         suffix: str | None = None,
         extension: str | None = None,
         **entities: str | bool,
-    ) -> str:
-        ...
+    ) -> str: ...
 
 
 def _handle_subses_dir(

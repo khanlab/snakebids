@@ -12,6 +12,7 @@ can be more flexibly implemented with:
     bidsapp.app([plugins.SnakemakeBidsApp(...)])
 
 """
+
 from __future__ import annotations
 
 import logging

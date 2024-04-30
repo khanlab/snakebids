@@ -606,11 +606,9 @@ def multiselect_dicts(
 
 if TYPE_CHECKING:
 
-    def everything() -> st.SearchStrategy[Any]:
-        ...
+    def everything() -> st.SearchStrategy[Any]: ...
 
-    def everything_except(*excluded_types: type[Any]) -> st.SearchStrategy[Any]:
-        ...
+    def everything_except(*excluded_types: type[Any]) -> st.SearchStrategy[Any]: ...
 
 else:
 

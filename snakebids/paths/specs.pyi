@@ -33,7 +33,6 @@ def v0_0_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
         If False, downstream path generator will not include the session dir
         `*/ses-{session}/*`
     """
-    ...
 
 def v0_11_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
     """Spec corresponding to `BIDS v1.9.0`_.
@@ -67,7 +66,6 @@ def v0_11_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
         If False, downstream path generator will not include the session dir
         `*/ses-{session}/*`
     """
-    ...
 
 def latest(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
     """Spec corresponding to `BIDS v1.9.0`_.
@@ -101,4 +99,3 @@ def latest(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
         If False, downstream path generator will not include the session dir
         `*/ses-{session}/*`
     """
-    ...

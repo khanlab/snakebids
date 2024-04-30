@@ -85,12 +85,10 @@ class ImmutableList(Sequence[_T_co], Generic[_T_co]):
         return bool(self._data)
 
     @overload
-    def __getitem__(self, index: int) -> _T_co:
-        ...
+    def __getitem__(self, index: int) -> _T_co: ...
 
     @overload
-    def __getitem__(self, index: slice) -> Self:
-        ...
+    def __getitem__(self, index: slice) -> Self: ...
 
     @override
     def __getitem__(self, index: int | slice) -> _T_co | Self:
@@ -241,12 +239,10 @@ class MultiSelectDict(UserDictPy38[_K, _T]):
     """
 
     @overload
-    def __getitem__(self, key: _K, /) -> _T:
-        ...
+    def __getitem__(self, key: _K, /) -> _T: ...
 
     @overload
-    def __getitem__(self, key: tuple[_K, ...], /) -> Self:
-        ...
+    def __getitem__(self, key: tuple[_K, ...], /) -> Self: ...
 
     def __getitem__(self, key: _K | tuple[_K, ...], /) -> _T | Self:
         if isinstance(key, tuple):
