@@ -152,15 +152,11 @@ docs = "sphinx-autobuild docs build/docs --watch snakebids -W"
 script = "scripts.update_bids:main"
 [[tool.poe.tasks.update-bids.sequence]]
 ref = "mkinit"
-[[tool.poe.tasks.update-bids.sequence]]
-ref = "fmt"
 
 [[tool.poe.tasks.mkinit.sequence]]
 cmd = "mkinit --recursive --nomods --lazy_loader_typed --relative -i snakebids"
 [[tool.poe.tasks.mkinit.sequence]]
-ref = "sort snakebids/**/__init__.py*"
-[[tool.poe.tasks.mkinit.sequence]]
-ref = "fmt snakebids/**/__init__.py*"
+ref = "fix"
 
 [tool.poe.tasks._get_version]
 imports = ["platform"]
