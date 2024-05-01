@@ -70,12 +70,16 @@ class SnakeBidsApp:
         DEPRECATED: no-op, use version plugin instead
     """
 
-    snakemake_dir: Path
+    snakemake_dir: Path = attrs.field(converter=Path)
     plugins: list[Callable[[SnakeBidsApp], None | SnakeBidsApp]] = attrs.Factory(list)
     skip_parse_args: bool = False
     _parser: Any = attrs.field(default=None, alias="parser")
-    configfile_path: Path | None = None
-    snakefile_path: Path | None = None
+    configfile_path: Path | None = attrs.field(
+        default=None, converter=attrs.converters.optional(Path)
+    )
+    snakefile_path: Path | None = attrs.field(
+        default=None, converter=attrs.converters.optional(Path)
+    )
     _config: Any = attrs.field(default=None, alias="config")
     version: str | None = None
     args: Any = None
