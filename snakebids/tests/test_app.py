@@ -40,13 +40,30 @@ def test_arguments_carried_forward(mocker: MockerFixture):
     from snakebids.app import sb_plugins
     from snakebids.bidsapp import run
 
-    mocker.stopall()
     mocker.patch.object(run, "_Runner")
     snakemake = mocker.spy(sb_plugins, "SnakemakeBidsApp")
     SnakeBidsApp(
         Path(),
         configfile_path=Path("config"),
         snakefile_path=Path("Snakefile"),
+    ).run_snakemake()
+    snakemake.assert_called_once_with(
+        snakemake_dir=Path(),
+        configfile_path=Path("config"),
+        snakefile_path=Path("Snakefile"),
+    )
+
+
+def test_str_converted_to_path(mocker: MockerFixture):
+    from snakebids.app import sb_plugins
+    from snakebids.bidsapp import run
+
+    mocker.patch.object(run, "_Runner")
+    snakemake = mocker.spy(sb_plugins, "SnakemakeBidsApp")
+    SnakeBidsApp(
+        "",
+        configfile_path="config",
+        snakefile_path="Snakefile",
     ).run_snakemake()
     snakemake.assert_called_once_with(
         snakemake_dir=Path(),
