@@ -59,7 +59,9 @@ jobs:
           commit-message: Update test timings file
           branch: maint/update-test-timings
           title: Merge updated test timings
-          labels: maintenance
+          labels: |
+            maintenance
+            skip_changelog
           body: >
             The number of tests has changed since the last generated test-timings
             file. This PR contains an automatically regenerated file.
