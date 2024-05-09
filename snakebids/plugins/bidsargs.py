@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Sequence
 
 import attrs
 import more_itertools as itx
@@ -15,6 +15,27 @@ from snakebids.plugins.base import PluginBase
 
 def _list_or_none(arg: str | Iterable[str] | None) -> list[str] | None:
     return arg if arg is None else list(itx.always_iterable(arg))
+
+
+class _Derivative(argparse.Action):
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = None,
+    ):
+        # the below two conditions are to cover the typing. They are not actually
+        # encountered at this time in the code
+        if values is None:  # pragma: no cover
+            result = False
+        elif isinstance(values, str):  # pragma: no cover
+            result = [Path(values)]
+        elif not len(values):
+            result = True
+        else:
+            result = [Path(p) for p in values]
+        setattr(namespace, self.dest, result)
 
 
 @attrs.define
@@ -182,7 +203,9 @@ class BidsArgs(PluginBase):
                 "--derivatives",
                 help="Path(s) to a derivatives dataset, for folder(s) that contains "
                 "multiple derivatives datasets",
-                nargs="+",
+                nargs="*",
                 dest="derivatives",
                 metavar="PATH",
+                action=_Derivative,
+                default=False,
             )

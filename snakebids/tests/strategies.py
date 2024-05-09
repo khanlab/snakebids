@@ -36,6 +36,8 @@ _T = TypeVar("_T")
 alphanum = ascii_letters + digits
 valid_entities: tuple[str, ...] = tuple(BidsConfig.load("bids").entities.keys())
 
+path_characters = st.characters(blacklist_characters=["/", "\x00"], codec="UTF-8")
+
 
 def nothing() -> Any:
     return st.nothing()  # type: ignore
@@ -48,9 +50,10 @@ def paths(
     absolute: bool | None = None,
     resolve: bool = False,
 ) -> st.SearchStrategy[Path]:
-    valid_chars = st.characters(blacklist_characters=["/", "\x00"], codec="UTF-8")
     paths = st.lists(
-        st.text(valid_chars, min_size=1), min_size=min_segments, max_size=max_segments
+        st.text(path_characters, min_size=1),
+        min_size=min_segments,
+        max_size=max_segments,
     ).map(lambda x: Path(*x))
 
     relative_paths = paths.filter(lambda p: not p.is_absolute())

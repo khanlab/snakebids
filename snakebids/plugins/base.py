@@ -30,7 +30,7 @@ if sys.version_info >= (3, 11):
         nargs: int | _NArgsStr | _SUPPRESS_T | None
         const: Any
         default: Any
-        type: Callable[[str], _T] | argparse.FileType
+        type: Callable[[Any], _T] | argparse.FileType
         choices: Iterable[_T] | None
         required: bool
         help: str | None
@@ -49,7 +49,7 @@ else:
         nargs: int | _NArgsStr | _SUPPRESS_T | None
         const: Any
         default: Any
-        type: Callable[[str], Any] | argparse.FileType
+        type: Callable[[Any], Any] | argparse.FileType
         choices: Iterable[Any] | None
         required: bool
         help: str | None
