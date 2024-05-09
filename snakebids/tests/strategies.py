@@ -286,10 +286,20 @@ def zip_lists(
             )
         )
 
+    def filter_ints(type_: str | None):
+        def inner(s: str):
+            if type_ == "int":
+                return int(s) > 0 and not s.startswith("0")
+            return True
+
+        return inner
+
     values = {
         entity: draw(
             st.lists(
-                bids_value(entity.match if restrict_patterns else ".*"),
+                bids_value(entity.match if restrict_patterns else ".*").filter(
+                    filter_ints(entity.type if restrict_patterns else None)
+                ),
                 min_size=min_values,
                 max_size=max_values,
                 unique=(cull or unique),
