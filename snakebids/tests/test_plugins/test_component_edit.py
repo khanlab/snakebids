@@ -13,8 +13,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 import snakebids.tests.strategies as sb_st
-from snakebids.exceptions import MisspecifiedCliFilterError
-from snakebids.plugins.component_edit import ComponentEdit
+from snakebids.plugins.component_edit import ComponentEdit, FilterParseError
 from snakebids.tests.helpers import allow_function_scoped
 from snakebids.types import InputsConfig, OptionalFilter
 
@@ -117,6 +116,33 @@ class TestAddArguments:
 
     @given(
         pybids_inputs=sb_st.inputs_configs(),
+        flag=st.from_regex(
+            re.compile(r"(?:match)|(?:search)", re.IGNORECASE), fullmatch=True
+        ),
+        value=st.text(),
+    )
+    @allow_function_scoped
+    def test_regex_filter(self, pybids_inputs: InputsConfig, flag: str, value: str):
+        p = argparse.ArgumentParser()
+        comp_edit = ComponentEdit()
+        comp_edit.add_cli_arguments(p, {"pybids_inputs": pybids_inputs})
+        argv = list(
+            it.chain.from_iterable(
+                [[f"--filter-{key}", f"entity:{flag}={value}"] for key in pybids_inputs]
+            )
+        )
+
+        args = p.parse_args(argv)
+        for key in pybids_inputs:
+            assert (
+                args.__dict__[f"{comp_edit.PREFIX}.filter.{key}"]["entity"][
+                    flag.lower()
+                ]
+                == value
+            )
+
+    @given(
+        pybids_inputs=sb_st.inputs_configs(),
         flag=st.from_regex(re.compile(r"none", re.IGNORECASE), fullmatch=True),
     )
     @allow_function_scoped
@@ -137,10 +163,39 @@ class TestAddArguments:
     @given(
         pybids_inputs=sb_st.inputs_configs(min_size=1, max_size=1),
         flag=st.text().filter(
-            lambda s: s.lower() not in {"none", "any", "optional", "required"}
+            lambda s: s.lower()
+            not in {"none", "any", "optional", "required", "match", "search"}
+            and "=" not in s
         ),
+        value=st.just("") | st.text().map(lambda s: f"={s}"),
     )
-    def test_filter_with_bad_flag_errors(self, pybids_inputs: InputsConfig, flag: str):
+    def test_filter_with_invalid_spec(
+        self, pybids_inputs: InputsConfig, flag: str, value: str
+    ):
+        p = argparse.ArgumentParser()
+        comp_edit = ComponentEdit()
+        comp_edit.add_cli_arguments(p, {"pybids_inputs": pybids_inputs})
+        argv = list(
+            it.chain.from_iterable(
+                [[f"--filter-{key}", f"entity:{flag}{value}"] for key in pybids_inputs]
+            )
+        )
+
+        with pytest.raises(
+            FilterParseError,
+            match=re.compile(
+                rf"':{re.escape(flag.lower())}' is not a valid filter method"
+            ),
+        ):
+            p.parse_args(argv)
+
+    @given(
+        pybids_inputs=sb_st.inputs_configs(min_size=1, max_size=1),
+        flag=st.sampled_from(["match", "search"]),
+    )
+    def test_filter_with_missing_value_errors(
+        self, pybids_inputs: InputsConfig, flag: str
+    ):
         p = argparse.ArgumentParser()
         comp_edit = ComponentEdit()
         comp_edit.add_cli_arguments(p, {"pybids_inputs": pybids_inputs})
@@ -151,8 +206,33 @@ class TestAddArguments:
         )
 
         with pytest.raises(
-            MisspecifiedCliFilterError,
-            match=re.compile(rf"following filter provided.*entity:{re.escape(flag)}"),
+            FilterParseError,
+            match=re.compile(rf"':{re.escape(flag.lower())}' requires a value"),
+        ):
+            p.parse_args(argv)
+
+    @given(
+        pybids_inputs=sb_st.inputs_configs(min_size=1, max_size=1),
+        flag=st.sampled_from(["none", "any", "optional", "required"]),
+        value=st.text(),
+    )
+    def test_boolean_filter_with_value_errors(
+        self, pybids_inputs: InputsConfig, flag: str, value: str
+    ):
+        p = argparse.ArgumentParser()
+        comp_edit = ComponentEdit()
+        comp_edit.add_cli_arguments(p, {"pybids_inputs": pybids_inputs})
+        argv = list(
+            it.chain.from_iterable(
+                [[f"--filter-{key}", f"entity:{flag}={value}"] for key in pybids_inputs]
+            )
+        )
+
+        with pytest.raises(
+            FilterParseError,
+            match=re.compile(
+                rf"'entity:{re.escape(flag.lower())}' should not be given a value"
+            ),
         ):
             p.parse_args(argv)
 
@@ -162,9 +242,7 @@ class TestAddArguments:
             lambda s: "=" not in s and ":" not in s and not s.startswith("-")
         ),
     )
-    def test_filters_with_no_delimiter_errors(
-        self, pybids_inputs: InputsConfig, filt: str
-    ):
+    def test_filters_with_only_key_errors(self, pybids_inputs: InputsConfig, filt: str):
         p = argparse.ArgumentParser()
         comp_edit = ComponentEdit()
         comp_edit.add_cli_arguments(p, {"pybids_inputs": pybids_inputs})
@@ -173,8 +251,8 @@ class TestAddArguments:
         )
 
         with pytest.raises(
-            MisspecifiedCliFilterError,
-            match=re.compile(rf"following filter provided.*{re.escape(filt)}"),
+            FilterParseError,
+            match=re.compile(r"Filters must be specified as"),
         ):
             p.parse_args(argv)
 
