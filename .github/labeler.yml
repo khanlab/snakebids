@@ -1,0 +1,17 @@
+bug:
+  - head-branch: ['^fix/']
+
+enhancement:
+  - head-branch: ['^feat/']
+
+maintenance:
+  - head-branch: ['^maint/']
+
+documentation:
+  - head-branch: ['^doc/']
+
+deprecation:
+  - head-branch: ['^depr/']
+
+test:
+  - head-branch: ['^test/']
