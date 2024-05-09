@@ -1,0 +1,35 @@
+name: Pull requests
+
+on:
+  pull_request_target: # Default: ['opened', 'synchronize', 'reopened']
+    types: ["opened", "synchronize", "reopened", "ready_for_review"]
+
+jobs:
+  labeller:
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/labeler@v5
+
+  deployment_on_base:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for previous deployment on base
+        run: |
+          [[ $(
+            curl https://api.github.com/repos/${{ github.repository }}/releases |
+            jq '.[].target_commitish == "${{ github.event.pull_request.base.ref }}"' |
+            grep true | wc -l
+          ) != 0 ]]
+
+  assign:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.assignee == null
+
+    steps:
+      - name: Assign reviewer
+        uses: kentaro-m/auto-assign-action@v2.0.0
+        with:
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
