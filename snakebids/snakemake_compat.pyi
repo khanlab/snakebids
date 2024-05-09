@@ -1,8 +1,11 @@
 from argparse import ArgumentParser
 from pathlib import Path
+from types import ModuleType
 from typing import Any, Callable, Iterable, Sequence
 
 from snakemake.common import configfile as configfile  # type: ignore
+
+configfile: ModuleType
 
 class WildcardError(Exception): ...
 
