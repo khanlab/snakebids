@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools as it
 from argparse import ArgumentParser
+from pathlib import Path
 from typing import Iterable
 
 import pytest
@@ -10,6 +11,7 @@ from hypothesis import strategies as st
 
 from snakebids.exceptions import ConfigError
 from snakebids.plugins.bidsargs import BidsArgs
+from snakebids.tests import strategies as sb_st
 
 
 class _St:
@@ -65,3 +67,32 @@ class TestAddCliArguments:
         for arg in choices:
             nspc = parser.parse_args(["...", "...", arg])
             assert nspc.analysis_level == arg
+
+    @given(
+        derivatives=st.lists(
+            st.text(sb_st.path_characters).filter(lambda s: not s.startswith("-")),
+            min_size=1,
+        )
+    )
+    def test_derivatives_converted_to_paths(self, derivatives: list[str]):
+        parser = ArgumentParser()
+        bidsargs = BidsArgs()
+        bidsargs.add_cli_arguments(parser, {}, {})
+        nspc = parser.parse_args(
+            ["...", "...", "participant", "--derivatives", *derivatives]
+        )
+        assert nspc.derivatives == [Path(p) for p in derivatives]
+
+    def test_derivatives_true_if_no_paths_given(self):
+        parser = ArgumentParser()
+        bidsargs = BidsArgs()
+        bidsargs.add_cli_arguments(parser, {}, {})
+        nspc = parser.parse_args(["...", "...", "participant", "--derivatives"])
+        assert nspc.derivatives is True
+
+    def test_derivatives_false_by_default(self):
+        parser = ArgumentParser()
+        bidsargs = BidsArgs()
+        bidsargs.add_cli_arguments(parser, {}, {})
+        nspc = parser.parse_args(["...", "...", "participant"])
+        assert nspc.derivatives is False
