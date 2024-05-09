@@ -203,4 +203,3 @@ class _Runner:
             self.parse_args(args)
             self.pm.hook.run(config=self.config)
             self._run = True
-
