@@ -12,6 +12,9 @@ on:
     branches:
       - '*'
       - '!push-action/*'
+    paths:
+      - snakebids/**
+      - scripts/**
 
 jobs:
   quality:
