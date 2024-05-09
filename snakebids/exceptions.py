@@ -35,16 +35,5 @@ class DuplicateComponentError(Exception):
         )
 
 
-class MisspecifiedCliFilterError(Exception):
-    """Raised when a magic CLI filter cannot be parsed."""
-
-    def __init__(self, misspecified_filter: str):
-        super().__init__(
-            "The following filter provided by the CLI could not be parsed: "
-            f"{misspecified_filter}. Filters must be of the form "
-            "{entity}={filter} or {entity}:{REQUIRED|OPTIONAL|NONE} (case-insensitive)."
-        )
-
-
 class SnakebidsPluginError(Exception):
     """Exception raised when a Snakebids plugin encounters a problem."""

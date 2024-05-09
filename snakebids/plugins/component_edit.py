@@ -1,17 +1,53 @@
 from __future__ import annotations
 
 import argparse
-import math
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Sequence, cast
 
 import attrs
 from typing_extensions import override
 
 from snakebids import bidsapp
-from snakebids.exceptions import MisspecifiedCliFilterError
 from snakebids.plugins.base import PluginBase
 from snakebids.types import OptionalFilter
+
+
+class FilterParseError(Exception):
+    """Raised when a magic CLI filter cannot be parsed."""
+
+    def __init__(self, filter: str, msg: str):
+        super().__init__(
+            "The following filter provided by the CLI could not be parsed: "
+            f"'{filter}'.\n\t{msg}".expandtabs(4)
+        )
+
+    @classmethod
+    def invalid_spec(cls, filter: str, spec: str):
+        """Raise if spec not recognized."""
+        return cls(
+            filter,
+            f"':{spec}' is not a valid filter method. Must be one of 'required', "
+            "'optional', 'none', 'match', or 'search'.",
+        )
+
+    @classmethod
+    def missing_value(cls, filter: str, key: str, spec: str):
+        """Raise if no value provided."""
+        return cls(
+            filter, f"':{spec}' requires a value, specified as '{key}:{spec}=VALUE'."
+        )
+
+    @classmethod
+    def only_key(cls, filter: str, key: str):
+        """Raise if only a key provided."""
+        return cls(filter, "Filters must be specified as ENTITY[:METHOD]=VALUE.")
+
+    @classmethod
+    def unneeded_value(cls, filter: str, key: str, spec: str, value: str):
+        """Raise if value provided to a boolean filter method."""
+        return cls(
+            filter, f"'{key}:{spec}' should not be given a value (got '={value}')"
+        )
 
 
 class FilterParse(argparse.Action):
@@ -26,32 +62,43 @@ class FilterParse(argparse.Action):
         values: str | Sequence[Any] | None,
         option_string: str | None = None,
     ):
-        setattr(namespace, self.dest, {})
+        result = {}
         if not values:
             return
 
+        boolean_filters = {
+            "optional": OptionalFilter,
+            "required": True,
+            "any": True,
+            "none": False,
+        }
         for pair in values:
-            eq = pair.find("=")
-            col = pair.find(":")
-            delim = min(eq if eq >= 0 else math.inf, col if col >= 0 else math.inf)
-            if delim is math.inf:
-                raise MisspecifiedCliFilterError(pair)
-            key = pair[:delim]
-            value = pair[delim + 1 :]
-            if delim == col:
-                spec = value.lower()
-                if spec == "optional":
-                    value = OptionalFilter
-                elif spec in ["required", "any"]:
-                    value = True
-                elif spec == "none":
-                    value = False
+            if "=" in pair:
+                # split it into key and value
+                key, value = cast("tuple[str, str]", pair.split("=", 1))
+            else:
+                key = pair
+                value = None
+            if ":" in key:
+                key, spec = cast("tuple[str, str]", key.split(":", 1))
+                spec = spec.lower()
+                if spec in boolean_filters:
+                    if value is not None:
+                        raise FilterParseError.unneeded_value(pair, key, spec, value)
+                    value = boolean_filters[spec]
+                elif spec in {"match", "search"}:
+                    if value is None:
+                        raise FilterParseError.missing_value(pair, key, spec)
+                    value = {spec: value}
                 else:
-                    # The flag isn't recognized
-                    raise MisspecifiedCliFilterError(pair)
+                    raise FilterParseError.invalid_spec(pair, spec)
+            if value is None:
+                raise FilterParseError.only_key(pair, key)
 
             # assign into dictionary
-            getattr(namespace, self.dest)[key] = value
+            result[key] = value
+
+        setattr(namespace, self.dest, result)
 
 
 @attrs.define
