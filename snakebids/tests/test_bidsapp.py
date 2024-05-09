@@ -106,9 +106,9 @@ class TestRunner:
 
     def test_run(self):
         app = bidsapp.app(plugins=[self])
-        app.run(args=["default"])
+        assert app.run(args=["default"]) is None
         assert self.hooks_run == 7
-        app.run(args=["default"])
+        assert app.run(args=["default"]) is None
         assert self.hooks_run == 7
 
 
