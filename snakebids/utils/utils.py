@@ -156,6 +156,17 @@ class BidsEntity:
             return self.entity
         return self.tag
 
+    @property
+    def type(self) -> str | None:
+        """Get the type of the entity.
+
+        Returns None if type unspecified.
+        """
+        tags = read_bids_tags()
+        # See note in .before
+        _def: dict[Any, Any] = {}
+        return tags.get(self.entity, _def).get("type")
+
     @classmethod
     def from_tag(cls, tag: str) -> BidsEntity:
         """Return the entity associated with the given tag, if found.
