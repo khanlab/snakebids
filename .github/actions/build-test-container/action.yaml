@@ -23,7 +23,7 @@ runs:
         path: /tmp/.buildx-cache
         key: ${{ runner.os }}-test-template-cache-${{ hashFiles('containers/test-template/**') }}-${{ inputs.python-version }}
     - name: Build Docker container for cache
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         context: containers/test-template
         cache-from: type=local,src=/tmp/.buildx-cache
