@@ -625,14 +625,14 @@ class TestBidsComponentIndexing:
         self, dicts: BidsPartialComponent, data: st.DataObject
     ):
         selectors = self.get_selectors(data, dicts)
-        assert type(dicts[selectors]) == BidsPartialComponent
+        assert isinstance(dicts[selectors], BidsPartialComponent)
 
     @given(dicts=sb_st.bids_partial_components(), data=st.data())
     def test_single_selection_returns_bidscomponentrow(
         self, dicts: BidsPartialComponent, data: st.DataObject
     ):
         selectors = data.draw(st.sampled_from(list(dicts.zip_lists)))
-        assert type(dicts[selectors]) == BidsComponentRow
+        assert isinstance(dicts[selectors], BidsComponentRow)
 
     @given(dicts=sb_st.bids_partial_components(), data=st.data())
     def test_selected_items_in_original(
