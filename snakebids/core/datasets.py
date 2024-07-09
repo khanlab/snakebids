@@ -7,7 +7,7 @@ import warnings
 from math import inf
 from pathlib import Path
 from string import Formatter
-from typing import Any, Iterable, NoReturn, overload
+from typing import Any, Iterable, NoReturn, cast, overload
 
 import attr
 import more_itertools as itx
@@ -513,6 +513,7 @@ class BidsComponent(BidsPartialComponent):
         _, raw_fields, *_ = sb_it.unpack(
             zip(*Formatter().parse(self.path)), [[], [], []]
         )
+        raw_fields = cast("Iterable[str]", raw_fields)
         if (fields := set(filter(None, raw_fields))) != set(value):
             msg = (
                 "zip_lists entries must match the wildcards in input_path: "
