@@ -34,7 +34,7 @@ jobs:
         run: |
           echo "NUM=$(jq 'keys | length' .test_durations)" >> "$GITHUB_OUTPUT"
       - name: Test with pytest
-        if: ${{ steps.count.outputs.NUM }} != ${{ steps.timed-count.outputs.NUM }}
+        if: ${{ steps.count.outputs.NUM != steps.timed-count.outputs.NUM }}
         env:
           HYPOTHESIS_PROFILE: pr
         run: >-
