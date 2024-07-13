@@ -10,6 +10,7 @@ from typing_extensions import override
 from snakebids import bidsapp
 from snakebids.plugins.base import PluginBase
 from snakebids.types import OptionalFilter
+from snakebids.utils.utils import text_fold
 
 
 class FilterParseError(Exception):
@@ -111,6 +112,16 @@ class ComponentEdit(PluginBase):
     arguments are read and used to update the original component specification within
     config.
 
+    Filters are specified on the CLI using ``ENTITY[:METHOD][=VALUE]``, as follows:
+
+    1. ``ENTITY=VALUE`` selects paths based on an exact value match.
+    2. ``ENTITY:match=REGEX`` and ``ENTITY:search=REGEX`` selects paths using regex
+       with :func:`re.match` and :func:`re.search` respectively. This syntax can be used
+       to select multiple values (e.g. ``'session:match=01|02'``).
+    3. ``ENTITY:required`` selects all paths with the entity, regardless of value.
+    4. ``ENTITY:none`` selects all paths without the entity.
+    5. ``ENTITY:any`` removes filters for the entity.
+
     CLI arguments created by this plugin cannot be overriden.
 
     Parameters
@@ -139,9 +150,17 @@ class ComponentEdit(PluginBase):
         # create filter parsers, one for each input_type
         filter_opts = parser.add_argument_group(
             "BIDS FILTERS",
-            "Filters to customize PyBIDS get() as key=value pairs, or as "
-            "key:{REQUIRED|OPTIONAL|NONE} (case-insensitive), to enforce the presence "
-            "or absence of values for that key.",
+            text_fold(
+                """
+                Update filters for input components. Each filter can be specified as a
+                ENTITY=VALUE pair to select an value directly. To use regex filtering,
+                ENTITY:match=REGEX or ENTITY:search=REGEX can be used for re.match() or
+                re.search() respectively. Regex can also be used to select multiple
+                values, e.g. 'session:match=01|02'. ENTITY:required and ENTITY:none can
+                be used to require or prohibit presence of an entity in selected paths,
+                respectively. ENTITY:optional can be used to remove a filter.
+                """
+            ),
         )
 
         for input_type in pybids_inputs:
@@ -155,7 +174,7 @@ class ComponentEdit(PluginBase):
                 nargs="+",
                 action=FilterParse,
                 dest=f"{self.PREFIX}.filter.{input_type}",
-                metavar="ENTITY=VALUE",
+                metavar="ENTITY[:METHOD][=VALUE]",
                 help=f"(default: {' '.join(arglist_default)})",
             )
 
@@ -164,7 +183,7 @@ class ComponentEdit(PluginBase):
         # create wildcards parsers, one for each input_type
         wildcards_opts = parser.add_argument_group(
             "INPUT WILDCARDS",
-            "File path entities to use as wildcards in snakemake",
+            "Provide entities to be used as wildcards.",
         )
 
         for input_type in pybids_inputs:

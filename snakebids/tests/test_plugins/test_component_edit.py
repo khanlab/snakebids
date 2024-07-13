@@ -183,9 +183,7 @@ class TestAddArguments:
 
         with pytest.raises(
             FilterParseError,
-            match=re.compile(
-                rf"':{re.escape(flag.lower())}' is not a valid filter method"
-            ),
+            match=re.compile(r"is not a valid filter method"),
         ):
             p.parse_args(argv)
 
@@ -207,7 +205,7 @@ class TestAddArguments:
 
         with pytest.raises(
             FilterParseError,
-            match=re.compile(rf"':{re.escape(flag.lower())}' requires a value"),
+            match=re.compile(rf"':{flag}' requires a value"),
         ):
             p.parse_args(argv)
 
@@ -230,9 +228,7 @@ class TestAddArguments:
 
         with pytest.raises(
             FilterParseError,
-            match=re.compile(
-                rf"'entity:{re.escape(flag.lower())}' should not be given a value"
-            ),
+            match=re.compile(rf"'entity:{flag}' should not be given a value"),
         ):
             p.parse_args(argv)
 

@@ -20,6 +20,7 @@ __all__ = [
     "CliConfig",
     "ComponentEdit",
     "FilterParse",
+    "FilterParseError",
     "InvalidBidsError",
     "Pybidsdb",
     "SnakemakeBidsApp",
