@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import subprocess as sp
 from pathlib import Path
 
@@ -7,6 +8,14 @@ import pytest
 from pytest_mock.plugin import MockerFixture
 
 from snakebids.plugins.validator import BidsValidator, InvalidBidsError
+
+
+def test_skip_validation():
+    val = BidsValidator()
+    parser = argparse.ArgumentParser()
+    val.add_cli_arguments(parser)
+    parsed = parser.parse_args(["--skip-bids-validation"])
+    assert parsed.__dict__["plugins.validator.skip"] is True
 
 
 class TestFinalizeConfig:
