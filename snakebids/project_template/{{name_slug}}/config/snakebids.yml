@@ -31,16 +31,6 @@ pybids_inputs:
 # configuration for the command-line parameters to make available
 # passed on the argparse add_argument()
 parse_args:
-  --skip-bids-validation:
-    help: |
-      Skip validation of BIDS dataset. BIDS validation is performed by default
-      using the bids-validator plugin (if installed/enabled) or with the pybids
-      validator implementation (if bids-validator is not installed/enabled).
-    dest: "plugins.validator.skip"
-    action: "store_true"
-    default: False
-
-
 
 # Docker and singularity containers may be defined here
 containers:
