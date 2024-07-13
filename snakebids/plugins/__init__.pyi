@@ -7,6 +7,7 @@ from .cli_config import (
 from .component_edit import (
     ComponentEdit,
     FilterParse,
+    FilterParseError,
 )
 from .pybidsdb import (
     Pybidsdb,
@@ -29,6 +30,7 @@ __all__ = [
     "CliConfig",
     "ComponentEdit",
     "FilterParse",
+    "FilterParseError",
     "InvalidBidsError",
     "Pybidsdb",
     "SnakemakeBidsApp",
