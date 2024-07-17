@@ -22,7 +22,7 @@ def generate_stub(mod: ModuleType, imports: list[str], funcs: Iterable[str]):
     mod
         module for which stub file should be written
     imports
-        list of imports and other statemets to appear at the beginning of the file
+        list of imports and other statements to appear at the beginning of the file
     funcs
         list of function declarations
     """

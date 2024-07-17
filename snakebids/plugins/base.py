@@ -112,7 +112,7 @@ class PluginBase:
         *name_or_flags: str,
         **kwargs: Unpack[AnyArgumentArgs],
     ) -> argparse.Action | None:
-        """Add argument to parser, applying prefix to dest as necesary."""
+        """Add argument to parser, applying prefix to dest as necessary."""
         if self.PREFIX and not kwargs["dest"].startswith(self.PREFIX):
             kwargs["dest"] = f"{self.PREFIX}.{kwargs['dest']}"
         return parser.add_argument(*name_or_flags, **kwargs)

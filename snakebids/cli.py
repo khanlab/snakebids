@@ -14,7 +14,7 @@ def add_dynamic_args(
 ) -> None:
     """Do nothing.
 
-    Originally added --filter-<comp> and --wildcards-<comp> argumets to the CLI. Kept
+    Originally added --filter-<comp> and --wildcards-<comp> arguments to the CLI. Kept
     as a placeholder for apps that relied on it for generating documentation. This
     functionality is now native to `SnakeBidsApp`.
     """

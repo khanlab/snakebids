@@ -70,7 +70,7 @@ class BidsArgs(PluginBase):
     CLI Arguments
     ~~~~~~~~~~~~~
     All arguments are added by default, but can be disabled using their respective
-    parameters. Additinally, arguments can be directly overriden by adding arguments
+    parameters. Additionally, arguments can be directly overridden by adding arguments
     to the parser before the plugin runs, using the following ``dests``:
 
     - ``bids_dir``: The input bids directory
@@ -93,7 +93,7 @@ class BidsArgs(PluginBase):
 
         Overriding just one or two of the positional arguments may alter the order,
         preventing the app from being called correctly. Thus, if any of the positional
-        args are being overriden, they all should be.
+        args are being overridden, they all should be.
 
 
     Analysis levels

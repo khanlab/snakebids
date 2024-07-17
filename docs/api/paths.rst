@@ -16,7 +16,7 @@ Specs
 
 .. py:currentmodule:: snakebids.paths.specs
 
-BIDS specs control the formatting of paths produced by the :func:`~snakebids.bids` function. They specify the order of recognized entities, placing ``ses-X`` after ``sub-Y``, for instance, no matter what order they are specified in the function. Unrecognized entitites are placed in the order specified in the function call.
+BIDS specs control the formatting of paths produced by the :func:`~snakebids.bids` function. They specify the order of recognized entities, placing ``ses-X`` after ``sub-Y``, for instance, no matter what order they are specified in the function. Unrecognized entities are placed in the order specified in the function call.
 
 Because of this, each addition of entities to the spec presents a potentially breaking change. Suppose an entity called ``foo`` were added to the spec. Calls to :func:`~snakebids.bids` with ``foo`` as an argument would place the entity at the end of the path:
 

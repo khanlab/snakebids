@@ -9,7 +9,7 @@ targets_by_analysis_level:
     - 'all'  # if '', then the first rule is run
 
 # Configure components:
-# Each entry creates a new component that can be retreived within the workflow
+# Each entry creates a new component that can be retrieved within the workflow
 # via `generate_inputs`.
 # Filters are used to select paths: each filter has an `entity` key and a
 # single value or list of values to select.

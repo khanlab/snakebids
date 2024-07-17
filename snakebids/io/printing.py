@@ -118,7 +118,7 @@ def _find_elision(widths: list[int], excluded: slice, overflow: int) -> slice:
     mid = floor(num_vals / 2)
 
     # need different rules for handling exclusions of even length depending on whether
-    # theres an even or odd total number of values.
+    # there's an even or odd total number of values.
     left_bias = floor if num_vals % 2 else ceil
     right_bias = ceil if num_vals % 2 else floor
 

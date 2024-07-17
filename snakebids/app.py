@@ -119,7 +119,7 @@ class SnakeBidsApp:
         if self.version is not None:
             msg = (
                 "`SnakeBidsApp.version` is deprecated and no longer has any effect. To "
-                "explcitly set the app version, use the `snakebids.plugins.Version` "
+                "explicitly set the app version, use the `snakebids.plugins.Version` "
                 "plugin"
             )
             warnings.warn(msg, stacklevel=3)

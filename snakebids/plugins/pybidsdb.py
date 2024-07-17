@@ -27,7 +27,7 @@ class Pybidsdb(PluginBase):
 
     CLI Arguments
     ~~~~~~~~~~~~~
-    Two arguments are added to the CLI. These can be overriden by adding arguments
+    Two arguments are added to the CLI. These can be overridden by adding arguments
     with corresponding ``dests`` before this plugin is run:
 
     - ``plugins.pybidsdb.dir``: (:class:`~pathlib.Path`) Path of the database

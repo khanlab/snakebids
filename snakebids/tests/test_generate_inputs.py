@@ -994,7 +994,7 @@ def path_entities(draw: st.DrawFn):
     valid_chars = st.characters(
         min_codepoint=48, max_codepoint=122, whitelist_categories=["Ll", "Lu"]
     )
-    # We need to explicitely exclude keywords here because the current implementation
+    # We need to explicitly exclude keywords here because the current implementation
     # of glob_wildcards uses a named tuple, which doesn't allow keywords as attributes.
     path_text = st.text(valid_chars, min_size=1).filter(
         lambda s: not keyword.iskeyword(s)
@@ -1821,7 +1821,7 @@ class TestParticipantFiltering:
             for comp in dataset.values()
         )
 
-        # Create an extra set of paths by modifing one of the existing components to put
+        # Create an extra set of paths by modifying one of the existing components to put
         # foo after a set of entity values. If that filter gets changed to a regex, all
         # of the suffixed decoys will get picked up by pybids
         ziplist = dict(itx.first(rooted.values()).zip_lists)

@@ -29,7 +29,7 @@ class BidsValidator(PluginBase):
     InvalidBidsError is raised.
 
     An argument --skip-bids-validation is added to the CLI. This argument can be
-    overriden by adding an argument with dest ``plugins.validator.skip`` before this
+    overridden by adding an argument with dest ``plugins.validator.skip`` before this
     plugin runs.
 
     Two entries are added to config:

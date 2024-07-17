@@ -25,7 +25,7 @@ def regex(filepattern: str) -> str:
             if match.group("constraint"):
                 msg = (
                     "Constraint regex must be defined only in the first "
-                    "occurence of the wildcard in a string."
+                    "occurrence of the wildcard in a string."
                 )
                 raise ValueError(msg)
             regex_list.append(f"(?P={wildcard})")
