@@ -106,7 +106,7 @@ def _elide_zip_table(
 
 
 def _find_elision(widths: list[int], excluded: slice, overflow: int) -> slice:
-    # Add 4 to overflow to account for elipses
+    # Add 4 to overflow to account for ellipses
     if max(sum(widths[excluded]) - 4, 0) >= overflow:
         return excluded
     span = excluded.stop - excluded.start
