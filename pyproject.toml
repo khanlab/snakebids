@@ -311,7 +311,7 @@ fixture-parentheses = false
 
 [tool.codespell]
 # Ref: https://github.com/codespell-project/codespell#using-a-config-file
-skip = '.git*,*.lock,*.css'
+skip = '.git*,*.lock,*.css,./typings'
 check-hidden = true
 # ignore-regex = ''
 # ignore-words-list = ''
