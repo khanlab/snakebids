@@ -37,10 +37,22 @@ alphanum = ascii_letters + digits
 valid_entities: tuple[str, ...] = tuple(BidsConfig.load("bids").entities.keys())
 
 path_characters = st.characters(blacklist_characters=["/", "\x00"], codec="UTF-8")
+# StackOverflow answer by Gumbo
+# https://stackoverflow.com/questions/1547899/which-characters-make-a-url-invalid#1547940
+scheme_characters = st.sampled_from(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~?#[]@!$&'()*+,;="
+)
 
 
 def nothing() -> Any:
     return st.nothing()  # type: ignore
+
+
+def schemes() -> st.SearchStrategy[str]:
+    # Generate the prefix part of a url.
+    random_st = st.text(scheme_characters, min_size=1).map(lambda s: f"{s}://")
+    fixed_st = st.sampled_from(["C://", "c:\\", "gs://", "s3://"])
+    return random_st | fixed_st
 
 
 def paths(
@@ -71,6 +83,30 @@ def paths(
         return result.map(lambda p: p.resolve())
 
     return result
+
+
+def schemed_paths(
+    *,
+    min_segments: int = 0,
+    max_segments: int | None = None,
+) -> st.SearchStrategy[str]:
+    """schemed paths are those beginning with scheme://.
+
+    These paths are incompatible with paths() because pathlib.Path turns // into /
+    when parsing, and paths() returns Path objects by default. That's why we have a
+    separate function for schemed paths.
+
+    This function returns un-schemed paths as well, occasionally
+    """
+    scheme_st: st.SearchStrategy[str] = (st.none() | schemes()).map(
+        lambda s: "" if s is None else s
+    )
+    paths_st: st.SearchStrategy[str] = paths(
+        min_segments=min_segments,
+        max_segments=max_segments,
+        absolute=False,
+    ).map(lambda p: str(p))
+    return st.tuples(scheme_st, paths_st).map(lambda t: t[0] + t[1])
 
 
 def bids_entity(

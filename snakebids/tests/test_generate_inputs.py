@@ -12,7 +12,7 @@ import sys
 import tempfile
 import warnings
 from collections import defaultdict
-from pathlib import Path
+from pathlib import Path, PosixPath
 from typing import Any, Iterable, Literal, NamedTuple, TypedDict, TypeVar, cast
 
 import attrs
@@ -30,6 +30,7 @@ from snakebids.core.input_generation import (
     _all_custom_paths,
     _gen_bids_layout,
     _get_components,
+    _is_local_relative,
     _normalize_database_args,
     _parse_bids_path,
     _parse_custom_path,
@@ -1602,6 +1603,49 @@ def test_all_custom_paths(count: int):
         assert not _all_custom_paths(config)
 
 
+class TestRecogPathSchemes:
+    PATH_AND_TYPES = (
+        ("file", "RELATIVE"),
+        ("hello", "RELATIVE"),
+        ("gs", "RELATIVE"),
+        ("./hello/world", "RELATIVE"),
+        ("hello/world", "RELATIVE"),
+        ("/hello/world", "ABSOLUTE"),
+        ("gs://some/google/cloud/bucket", "NETWORK"),
+        ("s3://some/s3/bucket", "NETWORK"),
+    )
+
+    @pytest.mark.parametrize(("path", "path_type"), PATH_AND_TYPES)
+    def test_is_local_relative(self, path: str, path_type: str):
+        isnet = path_type == "NETWORK"
+        is_local_relative = path_type == "RELATIVE"
+
+        # test the path itself, and the corresponding Path(path)
+        assert (
+            _is_local_relative(path) == is_local_relative
+        ), f"Path {path} fails is local relative path test."
+        if not isnet:
+            assert _is_local_relative(Path(path)) == is_local_relative
+
+    @pytest.mark.skipif(
+        sys.version_info < (3, 12), reason="Path class has no with_segments()"
+    )
+    @pytest.mark.parametrize(
+        ("path", "path_type"), [tup for tup in PATH_AND_TYPES if tup[1] == "RELATIVE"]
+    )
+    def test_path_subclassing(self, path: str, path_type: str):
+        # Google cloud is not posix, for mocking purpose however we just
+        # need a class that is a subclass of Path
+        class MockGCSPath(PosixPath):
+            def __init__(self, *pathsegments: str):
+                super().__init__(*pathsegments)
+
+            def __str__(self):  # __fspath__ calls __str__ by default
+                return f"gs://{super().__str__()}"
+
+        assert not _is_local_relative(MockGCSPath(path))
+
+
 @example_if(
     sys.version_info >= (3, 8),
     dataset=BidsDataset(
@@ -1866,16 +1910,30 @@ def test_when_all_custom_paths_no_layout_indexed(
 
 
 class TestParseBidsPath:
-    @given(component=sb_st.bids_components(max_values=1, restrict_patterns=True))
-    def test_splits_wildcards_from_path(self, component: BidsComponent):
+    @given(
+        component=sb_st.bids_components(max_values=1, restrict_patterns=True),
+        scheme=sb_st.schemes() | st.none(),
+    )
+    def test_splits_wildcards_from_path(
+        self, component: BidsComponent, scheme: str | None
+    ):
         path = component.expand()[0]
+        if scheme is not None:
+            path = f"{scheme}{path}"
         entities = [BidsEntity.normalize(e).entity for e in component.zip_lists]
         tpl_path, matches = _parse_bids_path(path, entities)
         assert tpl_path.format(**matches) == path
 
-    @given(component=sb_st.bids_components(max_values=1, restrict_patterns=True))
-    def test_one_match_found_for_each_entity(self, component: BidsComponent):
+    @given(
+        component=sb_st.bids_components(max_values=1, restrict_patterns=True),
+        scheme=sb_st.schemes() | st.none(),
+    )
+    def test_one_match_found_for_each_entity(
+        self, component: BidsComponent, scheme: str | None
+    ):
         path = component.expand()[0]
+        if scheme is not None:
+            path = f"{scheme}{path}"
         entities = [BidsEntity.normalize(e).entity for e in component.zip_lists]
         _, matches = _parse_bids_path(path, entities)
         assert set(matches.items()) == {
@@ -1886,12 +1944,15 @@ class TestParseBidsPath:
         component=sb_st.bids_components(
             max_values=1, restrict_patterns=True, extra_entities=False
         ),
+        scheme=sb_st.schemes() | st.none(),
         entity=sb_st.bids_entity(),
     )
     def test_missing_match_leads_to_error(
-        self, component: BidsComponent, entity: BidsEntity
+        self, component: BidsComponent, scheme: str | None, entity: BidsEntity
     ):
         path = component.expand()[0]
+        if scheme is not None:
+            path = f"{scheme}{path}"
         entities = [BidsEntity.normalize(e).entity for e in component.zip_lists]
         assume(entity.entity not in entities)
         with pytest.raises(BidsParseError) as err:
