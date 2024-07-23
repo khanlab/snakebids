@@ -77,8 +77,8 @@ def write_output_mode(dotfile: Path, mode: Mode) -> None:
 def _get_snakebids_file(outputdir: Path) -> dict[str, str] | None:
     """Ensure populated dir contains .snakebids file, retrieving it if it does.
 
-    First checks if outputdir doesn't exist or is completely empty, returning None if so.
-    If it does have data, it checks for a .snakebids file, returning its contents if
+    First checks if outputdir doesn't exist or is completely empty, returning None if
+    so. If it does have data, it checks for a .snakebids file, returning its contents if
     found. If no .snakebids file is found, it raises an exception.
 
     Parameters

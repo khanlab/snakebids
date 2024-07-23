@@ -1821,9 +1821,9 @@ class TestParticipantFiltering:
             for comp in dataset.values()
         )
 
-        # Create an extra set of paths by modifying one of the existing components to put
-        # foo after a set of entity values. If that filter gets changed to a regex, all
-        # of the suffixed decoys will get picked up by pybids
+        # Create an extra set of paths by modifying one of the existing components to
+        # put foo after a set of entity values. If that filter gets changed to a regex,
+        # all of the suffixed decoys will get picked up by pybids
         ziplist = dict(itx.first(rooted.values()).zip_lists)
         mut_entity = itx.first(
             filter(lambda e: e not in {"subject", "extension"}, ziplist)

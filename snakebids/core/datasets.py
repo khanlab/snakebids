@@ -430,8 +430,8 @@ class BidsPartialComponent:
 
         This method allows you to expand over a subset of your wildcards. This could be
         useful for extracting subjects from a specific patient group, running different
-        rules on different acquisitions, and any other reason you may need to filter your
-        data after the workflow has already started.
+        rules on different acquisitions, and any other reason you may need to filter
+        your data after the workflow has already started.
 
         Takes entities as keyword arguments assigned to values or list of values to
         select from the component. Only columns containing the provided entity-values
