@@ -106,7 +106,7 @@ def _elide_zip_table(
 
 
 def _find_elision(widths: list[int], excluded: slice, overflow: int) -> slice:
-    # Add 4 to overflow to account for elipses
+    # Add 4 to overflow to account for ellipses
     if max(sum(widths[excluded]) - 4, 0) >= overflow:
         return excluded
     span = excluded.stop - excluded.start
@@ -118,7 +118,7 @@ def _find_elision(widths: list[int], excluded: slice, overflow: int) -> slice:
     mid = floor(num_vals / 2)
 
     # need different rules for handling exclusions of even length depending on whether
-    # theres an even or odd total number of values.
+    # there's an even or odd total number of values.
     left_bias = floor if num_vals % 2 else ceil
     right_bias = ceil if num_vals % 2 else floor
 

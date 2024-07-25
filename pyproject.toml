@@ -49,7 +49,7 @@ pvandyken-deprecated = "0.0.4"
 # Need this until py39
 importlib-resources = ">=5.12.0"
 
-#  Below are non-direct dependencies (i.e. dependencies of other depenencies)
+#  Below are non-direct dependencies (i.e. dependencies of other dependencies)
 #  specified to ensure a version with a pre-built wheel is installed depending
 #  on the python version being used.
 numpy = [
@@ -83,7 +83,7 @@ pytest = "^8"
 pytest-mock = "^3.7.0"
 poethepoet = "^0.27"
 pre-commit = "^3.0.0"
-# a mkinit dep has the 'platform_system == "Windows"' as a marker on an incompatible dependeny
+# a mkinit dep has the 'platform_system == "Windows"' as a marker on an incompatible dependency
 #   (pydantic<2.0 cf copier), so set the inverse as a marker here so mkinit can
 #   still be resolved
 mkinit = { version="^1.1.0", markers = "platform_system != 'Windows'" }
@@ -308,3 +308,10 @@ more_itertools = "itx"
 
 [tool.ruff.lint.flake8-pytest-style]
 fixture-parentheses = false
+
+[tool.codespell]
+# Ref: https://github.com/codespell-project/codespell#using-a-config-file
+skip = '.git*,*.lock,*.css,./typings'
+check-hidden = true
+# ignore-regex = ''
+# ignore-words-list = ''

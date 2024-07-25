@@ -50,7 +50,7 @@ class ImmutableList(Sequence[_T_co], Generic[_T_co]):
 
     Unlike tuples, only a single type parameter is supported. In other words,
     ``ImmutableList`` cannot be specified via type hints as a fixed length sequence
-    containing heterogenous items. A tuple specified as ``tuple[str, int, str]`` would
+    containing heterogeneous items. A tuple specified as ``tuple[str, int, str]`` would
     be specified as ``ImmutableList[str | int]``
     """
 

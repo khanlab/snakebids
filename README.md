@@ -14,7 +14,7 @@ Snakebids is a Python package that extends [Snakemake](https://snakemake.github.
 
 Snakebids includes all of the features of Snakemake, including flexible configuration, parallel execution, and Docker/Singularity support, plus:
 
-- **Built-in support for BIDS datasets**: Seamless workflow functionality with a wide range of BIDS datasets, accomodating various levels of complexity.
+- **Built-in support for BIDS datasets**: Seamless workflow functionality with a wide range of BIDS datasets, accommodating various levels of complexity.
 - **BIDS App Creation**: Provide command-line invocations of your workflow following BIDS App guidelines, ensuring reproducibility and enhancing accessibility of your workflow.
 - **BIDS Path Construction**: Easy, flexible construction of valid BIDS paths following BIDS guiding principles, promoting data organization and sharing.
 - **Plugin System**: Extend the functionality of Snakebids by creating and using plugins to meet your workflow's needs.

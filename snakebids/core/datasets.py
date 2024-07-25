@@ -363,7 +363,7 @@ class BidsPartialComponent:
         """Safely expand over given paths with component wildcards.
 
         Uses the entity-value combinations found in the dataset to expand over the given
-        paths. Extra wildcards can be specifed as keyword arguments.
+        paths. Extra wildcards can be specified as keyword arguments.
 
         By default, expansion over paths with extra wildcards not accounted for by the
         component causes an error. This prevents accidental partial expansion. To allow
@@ -430,8 +430,8 @@ class BidsPartialComponent:
 
         This method allows you to expand over a subset of your wildcards. This could be
         useful for extracting subjects from a specific patient group, running different
-        rules on different aquisitions, and any other reason you may need to filter your
-        data after the workflow has already started.
+        rules on different acquisitions, and any other reason you may need to filter
+        your data after the workflow has already started.
 
         Takes entities as keyword arguments assigned to values or list of values to
         select from the component. Only columns containing the provided entity-values
@@ -468,7 +468,7 @@ class BidsComponent(BidsPartialComponent):
 
     A component is a set of data entries all corresponding to the same type of object.
     Entries vary over a set of entities. For example, a component may represent all the
-    unprocessed, T1-weighted anatomical images aqcuired from a group of 100 subjects,
+    unprocessed, T1-weighted anatomical images acquired from a group of 100 subjects,
     across 2 sessions, with three runs per session. Here, the subject, session, and run
     are the entities over which the component varies. Each entry in the component has
     a single value assigned for each of the three entities (e.g subject 002, session
@@ -791,7 +791,7 @@ class BidsDataset(UserDictPy38[str, BidsComponent]):
     def as_dict(self) -> BidsDatasetDict:
         """Get the layout as a legacy dict.
 
-        Included primarily for backward compatability with older versions of snakebids,
+        Included primarily for backward compatibility with older versions of snakebids,
         where generate_inputs() returned a dict rather than the `BidsDataset` class
 
         Returns

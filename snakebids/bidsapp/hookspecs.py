@@ -72,7 +72,7 @@ def update_cli_namespace(namespace: dict[str, Any], config: dict[str, Any]):
     :meth:`~argparse.ArgumentParser.parse_args` (equivalent to
     :class:`vars(Namespace) <argparse.Namespace>`). Any modifications made to this
     :class:`dict` will be carried forward in app initialization. For instance, if
-    an entry is deleleted from ``namespace``, it will not be available to downstream
+    an entry is deleted from ``namespace``, it will not be available to downstream
     plugins or be copied into ``config``.
 
     Parameters

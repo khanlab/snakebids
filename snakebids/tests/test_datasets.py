@@ -355,7 +355,7 @@ class TestBidsComponentExpand:
     """
     `extension` is generally excluded from the generated components because its wildcard
     is immediately adjacent to the previous wildcard (e.g.
-    sub-{subject}_{suffix}{extenions}), making it impossible to correctly parse using
+    sub-{subject}_{suffix}{extension}), making it impossible to correctly parse using
     `glob_wildcards`. Its absence does not affect the spirit of the tests.
 
     We also exclude extra_entities from the generated Components for the same reason:

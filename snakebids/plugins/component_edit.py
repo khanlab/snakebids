@@ -122,7 +122,7 @@ class ComponentEdit(PluginBase):
     4. ``ENTITY:none`` selects all paths without the entity.
     5. ``ENTITY:any`` removes filters for the entity.
 
-    CLI arguments created by this plugin cannot be overriden.
+    CLI arguments created by this plugin cannot be overridden.
 
     Parameters
     ----------

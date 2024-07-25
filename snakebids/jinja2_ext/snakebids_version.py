@@ -9,7 +9,7 @@ from jinja2.ext import Extension
 
 
 class SnakebidsVersionExtension(Extension):
-    """Retrieve the latest snakebids vesion from pypi.
+    """Retrieve the latest snakebids version from pypi.
 
     Stores value in the ``snakebids_version`` global variable.
     """
