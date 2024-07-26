@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from snakebids.utils.utils import BidsEntity
+
 
 class ConfigError(Exception):
     """Exception raised for errors with the Snakebids config."""
@@ -37,3 +39,12 @@ class DuplicateComponentError(Exception):
 
 class SnakebidsPluginError(Exception):
     """Exception raised when a Snakebids plugin encounters a problem."""
+
+
+class BidsParseError(Exception):
+    """Exception raised for errors encountered in the parsing of Bids paths."""
+
+    def __init__(self, path: str, entity: BidsEntity) -> None:
+        self.path = path
+        self.entity = entity
+        super().__init__(path, entity)

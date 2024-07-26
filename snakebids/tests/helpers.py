@@ -26,11 +26,12 @@ from hypothesis import HealthCheck, example, settings
 from typing_extensions import ParamSpec
 
 from snakebids import bids_factory
+from snakebids.core._table import BidsTable
 from snakebids.core.datasets import BidsDataset
 from snakebids.core.input_generation import generate_inputs
 from snakebids.paths import specs
-from snakebids.types import InputsConfig, ZipList, ZipListLike
-from snakebids.utils.containers import MultiSelectDict, UserDictPy38
+from snakebids.types import InputsConfig, ZipListLike
+from snakebids.utils.containers import UserDictPy38
 from snakebids.utils.utils import BidsEntity
 
 _T = TypeVar("_T")
@@ -38,10 +39,10 @@ _T_contra = TypeVar("_T_contra", contravariant=True)
 _P = ParamSpec("_P")
 
 
-def get_zip_list(
+def get_bids_entries(
     entities: Iterable[BidsEntity | str], combinations: Iterable[tuple[str, ...]]
-) -> ZipList:
-    """Return a zip list from iterables of entities and value combinations
+) -> BidsTable:
+    """Return a BidsEntries from iterables of entities and value combinations
 
     Parameters
     ----------
@@ -56,16 +57,9 @@ def get_zip_list(
     dict[str, list[str]]
         zip_list representation of entity-value combinations
     """
-
-    def strlist() -> list[str]:
-        return []
-
-    lists: Iterable[Sequence[str]] = list(zip(*combinations)) or itx.repeatfunc(strlist)
-    return MultiSelectDict(
-        {
-            BidsEntity(str(entity)).wildcard: list(combs)
-            for entity, combs in zip(entities, lists)
-        }
+    return BidsTable(
+        wildcards=(BidsEntity(str(entity)).wildcard for entity in entities),
+        entries=combinations,
     )
 
 
