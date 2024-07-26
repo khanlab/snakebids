@@ -7,7 +7,7 @@ import warnings
 from math import inf
 from pathlib import Path
 from string import Formatter
-from typing import Any, Iterable, NoReturn, cast, overload
+from typing import Any, Iterable, Mapping, NoReturn, cast, overload
 
 import attr
 import more_itertools as itx
@@ -16,14 +16,14 @@ from pvandyken.deprecated import deprecated
 from typing_extensions import Self, TypedDict
 
 import snakebids.utils.sb_itertools as sb_it
-from snakebids.core.filtering import filter_list
+from snakebids.core._table import BidsTable
 from snakebids.exceptions import DuplicateComponentError
 from snakebids.io.console import get_console_size
-from snakebids.io.printing import format_zip_lists, quote_wrap
+from snakebids.io.printing import quote_wrap
 from snakebids.snakemake_compat import expand as sn_expand
-from snakebids.types import ZipList
+from snakebids.types import ZipList, ZipListLike
 from snakebids.utils.containers import ImmutableList, MultiSelectDict, UserDictPy38
-from snakebids.utils.utils import get_wildcard_dict, property_alias, zip_list_eq
+from snakebids.utils.utils import get_wildcard_dict, property_alias
 
 
 class BidsDatasetDict(TypedDict):
@@ -176,12 +176,21 @@ class BidsComponentRow(ImmutableList[str]):
                 msg = "Both __spec and filters cannot be used simultaneously"
                 raise ValueError(msg)
             filters = {self.entity: spec}
-        entity, data = itx.first(
-            filter_list(
-                {self.entity: self._data}, filters, regex_search=regex_search
-            ).items()
+        data = it.chain.from_iterable(
+            BidsTable(wildcards=[self.entity], entries=[(el,) for el in self._data])
+            .filter(filters, regex_search=regex_search)
+            .entries
         )
-        return self.__class__(data, entity=entity)
+        return self.__class__(data, entity=self.entity)
+
+
+def _to_bids_table(tbl: BidsTable | ZipListLike) -> BidsTable:
+    if isinstance(tbl, BidsTable):
+        return tbl
+    if isinstance(tbl, Mapping):  # type: ignore
+        return BidsTable.from_dict(tbl)
+    msg = f"Cannot convert '{tbl}' to BidsTable"
+    raise TypeError(msg)
 
 
 @attr.define(kw_only=True)
@@ -208,16 +217,11 @@ class BidsPartialComponent:
     ``BidsPartialComponents`` are immutable: their values cannot be altered.
     """
 
-    _zip_lists: ZipList = attr.field(
-        on_setattr=attr.setters.frozen, converter=MultiSelectDict, alias="zip_lists"
+    _table: BidsTable = attr.field(
+        converter=_to_bids_table,
+        on_setattr=attr.setters.frozen,
+        alias="table",
     )
-
-    @_zip_lists.validator  # type: ignore
-    def _validate_zip_lists(self, __attr: str, value: dict[str, list[str]]) -> None:
-        lengths = {len(val) for val in value.values()}
-        if len(lengths) > 1:
-            msg = "zip_lists must all be of equal length"
-            raise ValueError(msg)
 
     def __repr__(self) -> str:
         return self.pformat()
@@ -232,11 +236,8 @@ class BidsPartialComponent:
         self, key: str | tuple[str, ...], /
     ) -> BidsComponentRow | BidsPartialComponent:
         if isinstance(key, tuple):
-            # Use dict.fromkeys for de-duplication
-            return BidsPartialComponent(
-                zip_lists={key: self.zip_lists[key] for key in dict.fromkeys(key)}
-            )
-        return BidsComponentRow(self.zip_lists[key], entity=key)
+            return BidsPartialComponent(table=self._table.pick(key))
+        return BidsComponentRow(self._table.get(key), entity=key)
 
     def __bool__(self) -> bool:
         """Truth of a BidsComponent is based on whether it has values.
@@ -247,7 +248,7 @@ class BidsPartialComponent:
         consistent with :class:`BidsComponentRow`, which always has an entity name
         stored, but may or may not have values.
         """
-        return bool(itx.first(self.zip_lists))
+        return bool(self._table.entries)
 
     def _pformat_body(self) -> None | str | list[str]:
         """Extra properties to be printed within pformat.
@@ -271,8 +272,7 @@ class BidsPartialComponent:
         body = it.chain(
             itx.always_iterable(self._pformat_body() or []),
             [
-                "zip_lists="
-                f"{format_zip_lists(self.zip_lists, width - tabstop, tabstop)},",
+                "table=" f"{self._table.pformat(width - tabstop, tabstop)},",
             ],
         )
         output = [
@@ -292,6 +292,9 @@ class BidsPartialComponent:
     _entities: list[str] | None = attr.field(
         default=None, init=False, eq=False, repr=False
     )
+    _zip_lists: ZipList | None = attr.field(
+        default=None, init=False, eq=False, repr=False
+    )
 
     @property
     def zip_lists(self):
@@ -302,6 +305,9 @@ class BidsPartialComponent:
         of images matched for this modality, so they can be zipped together to get a
         list of the wildcard values for each file.
         """
+        if self._zip_lists is not None:
+            return self._zip_lists
+        self._zip_lists = self._table.to_dict()
         return self._zip_lists
 
     @property
@@ -328,15 +334,8 @@ class BidsPartialComponent:
             self._input_wildcards = MultiSelectDict(get_wildcard_dict(self.zip_lists))
         return self._input_wildcards
 
-    @property
+    @property_alias(zip_lists, "zip_lists", "snakebids.BidsPartialComponent.zip_lists")
     def input_zip_lists(self) -> ZipList:
-        """Alias of :attr:`zip_lists <snakebids.BidsComponent.zip_lists>`.
-
-        Dictionary where each key is a wildcard entity and each value is a list of the
-        values found for that entity. Each of these lists has length equal to the number
-        of images matched for this modality, so they can be zipped together to get a
-        list of the wildcard values for each file.
-        """
         return self.zip_lists
 
     @property_alias(entities, "entities", "snakebids.BidsComponent.entities")
@@ -351,7 +350,7 @@ class BidsPartialComponent:
         if not isinstance(other, self.__class__):
             return False
 
-        return zip_list_eq(self.zip_lists, other.zip_lists)
+        return self._table == other._table
 
     def expand(
         self,
@@ -458,7 +457,7 @@ class BidsPartialComponent:
             return self
         return attr.evolve(
             self,
-            zip_lists=filter_list(self.zip_lists, filters, regex_search=regex_search),
+            table=self._table.filter(filters, regex_search=regex_search),
         )
 
 
@@ -497,27 +496,28 @@ class BidsComponent(BidsPartialComponent):
     BidsComponents are immutable: their values cannot be altered.
     """
 
+    _table: BidsTable = attr.field(
+        converter=_to_bids_table,
+        on_setattr=attr.setters.frozen,
+        alias="table",
+    )
+
     name: str = attr.field(on_setattr=attr.setters.frozen)
     """Name of the component"""
 
     path: str = attr.field(on_setattr=attr.setters.frozen)
     """Wildcard-filled path that matches the files for this component."""
 
-    _zip_lists: ZipList = attr.field(
-        on_setattr=attr.setters.frozen, converter=MultiSelectDict, alias="zip_lists"
-    )
-
-    @_zip_lists.validator  # type: ignore
-    def _validate_zip_lists(self, __attr: str, value: dict[str, list[str]]) -> None:
-        super()._validate_zip_lists(__attr, value)
+    @_table.validator  # type: ignore
+    def _validate_zip_lists(self, __attr: str, value: BidsTable) -> None:
         _, raw_fields, *_ = sb_it.unpack(
             zip(*Formatter().parse(self.path)), [[], [], []]
         )
         raw_fields = cast("Iterable[str]", raw_fields)
-        if (fields := set(filter(None, raw_fields))) != set(value):
+        if (fields := set(filter(None, raw_fields))) != set(value.wildcards):
             msg = (
-                "zip_lists entries must match the wildcards in input_path: "
-                f"{self.path}: {fields} != zip_lists: {set(value)}"
+                "entries have the same wildcards as the input path: "
+                f"{self.path}: {fields} != entries: {set(value.wildcards)}"
             )
             raise ValueError(msg)
 
