@@ -839,6 +839,35 @@ class TestFilterMethods:
             generate_inputs(tmpdir, pybids_inputs)
 
 
+@settings(
+    deadline=800,
+    suppress_health_check=[
+        HealthCheck.function_scoped_fixture,
+        HealthCheck.too_slow,
+    ],
+    max_examples=1,
+)
+@given(dataset=sb_st.datasets_one_comp(unique=True))
+def test_duplicate_wildcards_does_not_create_error(
+    dataset: BidsDataset, bids_fs: Path, fakefs_tmpdir: Path
+):
+    root = tempfile.mkdtemp(dir=fakefs_tmpdir)
+    rooted = BidsDataset.from_iterable(
+        attrs.evolve(comp, path=os.path.join(root, comp.path))
+        for comp in dataset.values()
+    )
+    create_dataset(Path("/"), rooted)
+    config = create_snakebids_config(dataset)
+    wildcards = itx.first(config.values()).get("wildcards", [])
+    wildcards.append(wildcards[0])
+    reindexed = generate_inputs(
+        root,
+        config,
+    )
+    assert reindexed == rooted
+    assert reindexed.layout is not None
+
+
 class TestAbsentConfigEntries:
     def get_entities(self, root: Path):
         # Generate directory

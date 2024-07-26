@@ -581,7 +581,7 @@ def _get_component(
     for img in matching_files:
         wildcards: list[str] = [
             wildcard
-            for wildcard in component.get("wildcards", [])
+            for wildcard in set(component.get("wildcards", []))
             if wildcard in img.entities
         ]
         _logger.debug("Wildcards %s found entities for %s", wildcards, img.path)
