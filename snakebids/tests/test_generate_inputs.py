@@ -25,6 +25,7 @@ from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
 from snakebids.core._querying import PostFilter, UnifiedFilter, get_matching_files
+from snakebids.core._table import BidsTable
 from snakebids.core.datasets import BidsComponent, BidsDataset
 from snakebids.core.input_generation import (
     _all_custom_paths,
@@ -35,7 +36,7 @@ from snakebids.core.input_generation import (
     _parse_custom_path,
     generate_inputs,
 )
-from snakebids.exceptions import ConfigError, PybidsError, RunError
+from snakebids.exceptions import BidsParseError, ConfigError, PybidsError, RunError
 from snakebids.paths._presets import bids
 from snakebids.snakemake_compat import expand as sb_expand
 from snakebids.tests import strategies as sb_st
@@ -46,14 +47,14 @@ from snakebids.tests.helpers import (
     create_dataset,
     create_snakebids_config,
     example_if,
+    get_bids_entries,
     get_bids_path,
-    get_zip_list,
     mock_data,
     reindex_dataset,
 )
 from snakebids.types import InputsConfig
 from snakebids.utils.containers import MultiSelectDict
-from snakebids.utils.utils import DEPRECATION_FLAG, BidsEntity, BidsParseError
+from snakebids.utils.utils import DEPRECATION_FLAG, BidsEntity
 
 T = TypeVar("T")
 
@@ -314,9 +315,9 @@ class TestFilterBools:
                 "0": BidsComponent(
                     name="0",
                     path="ce-{ce}_space-{space}",
-                    zip_lists={"ce": ["0"], "space": ["0"]},
+                    table={"ce": "0", "space": "0"},
                 ),
-                "1": BidsComponent(name="1", path="ce-{ce}", zip_lists={"ce": ["0"]}),
+                "1": BidsComponent(name="1", path="ce-{ce}", table={"ce": ["0"]}),
             }
         )
     )
@@ -326,12 +327,12 @@ class TestFilterBools:
                 "1": BidsComponent(
                     name="1",
                     path="sub-{subject}/{datatype}/sub-{subject}",
-                    zip_lists={"subject": ["0"], "datatype": ["anat"]},
+                    table={"subject": ["0"], "datatype": ["anat"]},
                 ),
                 "0": BidsComponent(
                     name="0",
                     path="sub-{subject}/sub-{subject}",
-                    zip_lists={"subject": ["0"]},
+                    table={"subject": ["0"]},
                 ),
             }
         )
@@ -342,12 +343,12 @@ class TestFilterBools:
                 "1": BidsComponent(
                     name="1",
                     path="sub-{subject}/sub-{subject}_{suffix}.foo",
-                    zip_lists={"subject": ["0"], "suffix": ["bar"]},
+                    table={"subject": ["0"], "suffix": ["bar"]},
                 ),
                 "0": BidsComponent(
                     name="0",
                     path="{suffix}.foo",
-                    zip_lists={"suffix": ["bar"]},
+                    table=({"suffix": ["bar"]}),
                 ),
             }
         )
@@ -386,7 +387,12 @@ class TestFilterBools:
         data = generate_inputs(root, pybids_inputs)
         assert data == expected
 
-    @allow_function_scoped
+    @settings(
+        deadline=800,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+        ],
+    )
     @given(
         template=sb_st.bids_components(
             name="template", restrict_patterns=True, unique=True, extra_entities=False
@@ -449,7 +455,12 @@ class TestFilterBools:
         result = generate_inputs(root, pybids_inputs)
         assert result == BidsDataset({"target": dataset["target"]})
 
-    @allow_function_scoped
+    @settings(
+        deadline=800,
+        suppress_health_check=[
+            HealthCheck.function_scoped_fixture,
+        ],
+    )
     @given(
         template=sb_st.bids_components(
             name="template", restrict_patterns=True, unique=True, extra_entities=False
@@ -519,10 +530,12 @@ class TestFilterMethods:
         component=BidsComponent(
             name="template",
             path="sub-{subject}/ses-{session}/sub-{subject}_ses-{session}",
-            zip_lists={
-                "session": ["0A", "0a"],
-                "subject": ["0", "00"],
-            },
+            table=(
+                {
+                    "session": ["0A", "0a"],
+                    "subject": ["0", "00"],
+                }
+            ),
         ),
         data=mock_data(["0a"]),
     )
@@ -530,10 +543,12 @@ class TestFilterMethods:
         component=BidsComponent(
             name="template",
             path="sub-{subject}/sub-{subject}_mt-{mt}",
-            zip_lists={
-                "subject": ["0", "00"],
-                "mt": ["on", "on"],
-            },
+            table=(
+                {
+                    "subject": ["0", "00"],
+                    "mt": ["on", "on"],
+                }
+            ),
         ),
         data=mock_data(["0"]),
     )
@@ -635,22 +650,27 @@ class TestFilterMethods:
     )
     def test_regex_search_selects_paths(self, tmpdir: Path, component: BidsComponent):
         root = tempfile.mkdtemp(dir=tmpdir)
-        entity = itx.first(component.entities)
-        assume(f"prefix{component[entity][0]}suffix" not in component.entities[entity])
-        zip_lists = {
-            ent: (
-                [*value, f"prefix{value[0]}suffix"]
-                if ent is entity
-                else [*value, value[0]]
-            )
-            for ent, value in component.zip_lists.items()
-        }
+        entity = component._table.wildcards[0]
+        assume(
+            f"prefix{component._table.entries[0][0]}suffix"
+            not in component.entities[entity]
+        )
+        entries = [
+            *component._table.entries,
+            (
+                f"prefix{component._table.entries[0][0]}suffix",
+                *component._table.entries[0][1:],
+            ),
+        ]
         dataset = BidsDataset.from_iterable(
             [
                 attrs.evolve(
                     component,
                     path=os.path.join(root, component.path),
-                    zip_lists=zip_lists,
+                    table=attrs.evolve(
+                        component._table,
+                        entries=entries,
+                    ),
                 )
             ]
         )
@@ -677,7 +697,7 @@ class TestFilterMethods:
         component=BidsComponent(
             name="template",
             path="sub-{subject}/sub-{subject}_mt-{mt}",
-            zip_lists={
+            table={
                 "subject": ["0", "00"],
                 "mt": ["on", "on"],
             },
@@ -788,7 +808,7 @@ class TestFilterMethods:
         self, tmpdir: Path, methods: list[str]
     ):
         dataset = BidsDataset.from_iterable(
-            [BidsComponent(zip_lists={}, name="template", path=str(tmpdir))]
+            [BidsComponent(table={}, name="template", path=str(tmpdir))]
         )
         create_dataset("", dataset)
         pybids_inputs: InputsConfig = {
@@ -804,7 +824,7 @@ class TestFilterMethods:
     @pytest.mark.disable_fakefs(True)
     def test_filter_with_no_methods_raises_error(self, tmpdir: Path):
         dataset = BidsDataset.from_iterable(
-            [BidsComponent(zip_lists={}, name="template", path=str(tmpdir))]
+            [BidsComponent(table={}, name="template", path=str(tmpdir))]
         )
         create_dataset("", dataset)
         pybids_inputs: InputsConfig = {
@@ -827,7 +847,7 @@ class TestFilterMethods:
     )
     def test_filter_with_invalid_method_raises_error(self, tmpdir: Path, method: str):
         dataset = BidsDataset.from_iterable(
-            [BidsComponent(zip_lists={}, name="template", path=str(tmpdir))]
+            [BidsComponent(table={}, name="template", path=str(tmpdir))]
         )
         create_dataset("", dataset)
         pybids_inputs: InputsConfig = {
@@ -872,7 +892,7 @@ class TestAbsentConfigEntries:
             pybids_config=str(Path(__file__).parent / "data" / "custom_config.json"),
         )
         template = BidsDataset(
-            {"t1": BidsComponent(name="t1", path=config["t1"].path, zip_lists=zip_list)}
+            {"t1": BidsComponent(name="t1", path=config["t1"].path, table=zip_list)}
         )
         # Order of the subjects is not deterministic
         assert template == config
@@ -897,7 +917,13 @@ class TestAbsentConfigEntries:
             pybids_config=str(Path(__file__).parent / "data" / "custom_config.json"),
         )
         template = BidsDataset(
-            {"t1": BidsComponent(name="t1", path=config["t1"].path, zip_lists={})}
+            {
+                "t1": BidsComponent(
+                    name="t1",
+                    path=config["t1"].path,
+                    table=BidsTable(wildcards=[], entries=[()]),
+                )
+            }
         )
         assert template == config
         assert config.subj_wildcards == {"subject": "{subject}"}
@@ -1064,11 +1090,11 @@ class TestCustomPaths:
 
         # Test without any filters
         result = _parse_custom_path(test_path, UnifiedFilter.from_filter_dict({}))
-        zip_lists = get_zip_list(entities, it.product(*entities.values()))
+        zip_lists = get_bids_entries(entities, it.product(*entities.values()))
         assert BidsComponent(
-            name="foo", path=get_bids_path(zip_lists), zip_lists=zip_lists
+            name="foo", path=get_bids_path(zip_lists.wildcards), table=zip_lists
         ) == BidsComponent(
-            name="foo", path=get_bids_path(result), zip_lists=MultiSelectDict(result)
+            name="foo", path=get_bids_path(result.wildcards), table=result
         )
 
     @settings(deadline=400, suppress_health_check=[HealthCheck.function_scoped_fixture])
@@ -1082,21 +1108,19 @@ class TestCustomPaths:
         test_path = self.generate_test_directory(entities, template, temp_dir)
 
         # Test with filters
-        result_filtered = MultiSelectDict(
-            _parse_custom_path(test_path, UnifiedFilter.from_filter_dict(filters))
+        result_filtered = _parse_custom_path(
+            test_path, UnifiedFilter.from_filter_dict(filters)
         )
-        zip_lists = MultiSelectDict(
-            {
-                # Start with empty lists for each key, otherwise keys will be missing
-                **{key: [] for key in entities},
-                # Override entities with relevant filters before making zip lists
-                **get_zip_list(entities, it.product(*{**entities, **filters}.values())),
-            }
+        zip_lists = get_bids_entries(
+            entities, it.product(*{**entities, **filters}.values())
         )
+
         assert BidsComponent(
-            name="foo", path=get_bids_path(zip_lists), zip_lists=zip_lists
+            name="foo", path=get_bids_path(zip_lists.wildcards), table=zip_lists
         ) == BidsComponent(
-            name="foo", path=get_bids_path(result_filtered), zip_lists=result_filtered
+            name="foo",
+            path=get_bids_path(result_filtered.wildcards),
+            table=result_filtered,
         )
 
     @settings(
@@ -1114,29 +1138,22 @@ class TestCustomPaths:
         exclude_filters = PostFilter()
         for key, values in filters.items():
             exclude_filters.add_filter(key, None, values)
-        result_excluded = MultiSelectDict(
-            _parse_custom_path(
-                test_path, UnifiedFilter.from_filter_dict({}, exclude_filters)
-            )
+        result_excluded = _parse_custom_path(
+            test_path, UnifiedFilter.from_filter_dict({}, exclude_filters)
         )
 
         entities_excluded = {
             entity: [value for value in values if value not in filters.get(entity, [])]
             for entity, values in entities.items()
         }
-        zip_lists = MultiSelectDict(
-            {
-                # Start with empty lists for each key, otherwise keys will be missing
-                **{key: [] for key in entities},
-                # Override entities with relevant filters before making zip lists
-                **get_zip_list(entities, it.product(*entities_excluded.values())),
-            }
-        )
+        zip_lists = get_bids_entries(entities, it.product(*entities_excluded.values()))
 
         assert BidsComponent(
-            name="foo", path=get_bids_path(zip_lists), zip_lists=zip_lists
+            name="foo", path=get_bids_path(zip_lists.wildcards), table=zip_lists
         ) == BidsComponent(
-            name="foo", path=get_bids_path(result_excluded), zip_lists=result_excluded
+            name="foo",
+            path=get_bids_path(result_excluded.wildcards),
+            table=result_excluded,
         )
 
     @given(
@@ -1201,7 +1218,7 @@ def test_custom_pybids_config(tmpdir: Path):
                     foo="{foo}",
                     suffix="T1w.nii.gz",
                 ),
-                zip_lists={"foo": ["0", "1"], "subject": ["001", "001"]},
+                table={"foo": ["0", "1"], "subject": ["001", "001"]},
             )
         }
     )
@@ -1286,7 +1303,7 @@ def test_t1w():
             "t1": BidsComponent(
                 name="t1",
                 path=result["t1"].path,
-                zip_lists={"acq": ["mprage", "mprage"], "subject": ["001", "002"]},
+                table={"acq": ["mprage", "mprage"], "subject": ["001", "002"]},
             )
         }
     )
@@ -1325,16 +1342,10 @@ def test_t1w():
             "scan": BidsComponent(
                 name="scan",
                 path=result["scan"].path,
-                zip_lists={
-                    "acq": [
-                        "mprage",
-                    ],
-                    "subject": [
-                        "001",
-                    ],
-                    "suffix": [
-                        "T1w",
-                    ],
+                table={
+                    "acq": ["mprage"],
+                    "subject": ["001"],
+                    "suffix": ["T1w"],
                 },
             )
         }
@@ -1390,7 +1401,7 @@ def test_t1w():
                 "t1": BidsComponent(
                     name="t1",
                     path=result["t1"].path,
-                    zip_lists={
+                    table={
                         "acq": ["mprage", "mprage"],
                         "subject": ["001", "002"],
                     },
@@ -1398,7 +1409,7 @@ def test_t1w():
                 "t2": BidsComponent(
                     name="t2",
                     path=result["t2"].path,
-                    zip_lists={"subject": ["002"]},
+                    table={"subject": ["002"]},
                 ),
             }
         )
@@ -1535,7 +1546,7 @@ def test_get_lists_from_bids():
                 template = BidsComponent(
                     name="t1",
                     path=wildcard_path_t1,
-                    zip_lists={
+                    table={
                         "acq": ["mprage", "mprage"],
                         "subject": ["001", "002"],
                     },
@@ -1546,7 +1557,7 @@ def test_get_lists_from_bids():
                 template = BidsComponent(
                     name="t2",
                     path=wildcard_path_t2,
-                    zip_lists={
+                    table={
                         "subject": ["002"],
                     },
                 )
@@ -1609,7 +1620,7 @@ def test_all_custom_paths(count: int):
             "1": BidsComponent(
                 name="1",
                 path="sub-{subject}/sub-{subject}_{suffix}{extension}",
-                zip_lists={
+                table={
                     "subject": ["0"],
                     "suffix": ["0"],
                     "extension": [".0"],
@@ -1618,7 +1629,7 @@ def test_all_custom_paths(count: int):
             "0": BidsComponent(
                 name="0",
                 path="sub-{subject}/sub-{subject}{extension}",
-                zip_lists={
+                table={
                     "subject": ["0"],
                     "extension": [".0"],
                 },
@@ -1869,16 +1880,18 @@ class TestParseBidsPath:
     @given(component=sb_st.bids_components(max_values=1, restrict_patterns=True))
     def test_splits_wildcards_from_path(self, component: BidsComponent):
         path = component.expand()[0]
-        entities = [BidsEntity.normalize(e).entity for e in component.zip_lists]
+        entities = [BidsEntity.normalize(e) for e in component.zip_lists]
+        wildcards = [BidsEntity.normalize(e).wildcard for e in component.zip_lists]
         tpl_path, matches = _parse_bids_path(path, entities)
-        assert tpl_path.format(**matches) == path
+        assert tpl_path.format(**dict(zip(wildcards, matches))) == path
 
     @given(component=sb_st.bids_components(max_values=1, restrict_patterns=True))
     def test_one_match_found_for_each_entity(self, component: BidsComponent):
         path = component.expand()[0]
-        entities = [BidsEntity.normalize(e).entity for e in component.zip_lists]
+        entities = [BidsEntity.normalize(e) for e in component.zip_lists]
+        wildcards = [BidsEntity.normalize(e).wildcard for e in component.zip_lists]
         _, matches = _parse_bids_path(path, entities)
-        assert set(matches.items()) == {
+        assert set(zip(wildcards, matches)) == {
             (key, val[0]) for key, val in component.zip_lists.items()
         }
 
@@ -1892,10 +1905,10 @@ class TestParseBidsPath:
         self, component: BidsComponent, entity: BidsEntity
     ):
         path = component.expand()[0]
-        entities = [BidsEntity.normalize(e).entity for e in component.zip_lists]
-        assume(entity.entity not in entities)
+        entities = [BidsEntity.normalize(e) for e in component.zip_lists]
+        assume(entity not in entities)
         with pytest.raises(BidsParseError) as err:
-            _parse_bids_path(path, it.chain(entities, [entity.entity]))
+            _parse_bids_path(path, it.chain(entities, [entity]))
         assert err.value.entity == entity
 
 

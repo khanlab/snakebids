@@ -13,6 +13,7 @@ import pytest
 from hypothesis import assume, given
 from hypothesis import strategies as st
 
+from snakebids.core._table import BidsTable
 from snakebids.core.datasets import (
     BidsComponent,
     BidsComponentRow,
@@ -23,16 +24,20 @@ from snakebids.exceptions import DuplicateComponentError
 from snakebids.paths._presets import bids
 from snakebids.snakemake_compat import WildcardError
 from snakebids.tests import strategies as sb_st
-from snakebids.tests.helpers import expand_zip_list, get_bids_path, get_zip_list, setify
-from snakebids.types import Expandable, ZipList
+from snakebids.tests.helpers import (
+    expand_zip_list,
+    get_bids_path,
+    setify,
+)
+from snakebids.types import Expandable
 from snakebids.utils import sb_itertools as sb_it
 from snakebids.utils.snakemake_io import glob_wildcards
 from snakebids.utils.utils import BidsEntity, get_wildcard_dict, zip_list_eq
 
 
 def test_multiple_components_cannot_have_same_name():
-    comp1 = BidsComponent(name="foo", path=".", zip_lists={})
-    comp2 = BidsComponent(name="foo", path=".", zip_lists={})
+    comp1 = BidsComponent(name="foo", path=".", table={})
+    comp2 = BidsComponent(name="foo", path=".", table={})
     with pytest.raises(DuplicateComponentError):
         BidsDataset.from_iterable([comp1, comp2])
 
@@ -57,37 +62,29 @@ class TestBidsComponentAliases:
 
 
 class TestBidsComponentValidation:
-    @given(sb_st.zip_lists().filter(lambda v: len(v) > 1))
-    def test_zip_lists_must_be_same_length(self, zip_lists: ZipList):
-        itx.first(zip_lists.values()).append("foo")
-        with pytest.raises(ValueError, match="zip_lists must all be of equal length"):
-            BidsComponent(
-                name="foo", path=get_bids_path(zip_lists), zip_lists=zip_lists
-            )
-
-    @given(sb_st.zip_lists(), sb_st.bids_entity())
+    @given(sb_st.bids_tables(), sb_st.bids_entity())
     def test_path_cannot_have_extra_entities(
-        self, zip_lists: ZipList, entity: BidsEntity
+        self, table: BidsTable, entity: BidsEntity
     ):
-        assume(entity.wildcard not in zip_lists)
-        path = get_bids_path(it.chain(zip_lists, [entity.entity]))
+        assume(entity.wildcard not in table.wildcards)
+        path = get_bids_path(it.chain(table.wildcards, [entity.entity]))
         with pytest.raises(
-            ValueError, match="zip_lists entries must match the wildcards in input_path"
+            ValueError, match="entries have the same wildcards as the input path"
         ):
-            BidsComponent(name="foo", path=path, zip_lists=zip_lists)
+            BidsComponent(name="foo", path=path, table=table)
 
-    @given(sb_st.zip_lists().filter(lambda v: len(v) > 1))
-    def test_path_cannot_have_missing_entities(self, zip_lists: ZipList):
+    @given(sb_st.bids_tables(min_entities=2))
+    def test_path_cannot_have_missing_entities(self, table: BidsTable):
         # Snakebids strategies won't return a zip_list with just datatype, but now that
         # we've dropped an entity we need to check again
-        path_entities = sb_it.drop(1, zip_lists)
+        path_entities = sb_it.drop(1, table.wildcards)
         assume(set(path_entities) - {"datatype"})
 
         path = get_bids_path(path_entities)
         with pytest.raises(
-            ValueError, match="zip_lists entries must match the wildcards in input_path"
+            ValueError, match="entries have the same wildcards as the input path"
         ):
-            BidsComponent(name="foo", path=path, zip_lists=zip_lists)
+            BidsComponent(name="foo", path=path, table=table)
 
 
 class TestBidsComponentEq:
@@ -95,56 +92,26 @@ class TestBidsComponentEq:
     def test_other_types_are_unequal(self, comp: BidsComponent, other: Any):
         assert comp != other
 
-    def test_empty_bidsinput_are_equal(self):
-        assert BidsComponent(name="", path="", zip_lists={}) == BidsComponent(
-            name="", path="", zip_lists={}
-        )
-        assert BidsComponent(
-            name="",
-            path="{foo}{bar}",
-            zip_lists={"foo": [], "bar": []},
-        ) == BidsComponent(
-            name="",
-            path="{foo}{bar}",
-            zip_lists={"foo": [], "bar": []},
-        )
-
-    @given(sb_st.bids_components())
+    @given(sb_st.expandables())
     def test_copies_are_equal(self, comp: BidsComponent):
         cp = copy.deepcopy(comp)
         assert cp == comp
 
-    @given(sb_st.bids_components())
-    def test_mutation_makes_unequal(self, comp: BidsComponent):
-        cp = copy.deepcopy(comp)
-        itx.first(cp.zip_lists.values())[0] += "foo"
-        assert cp != comp
-
-    @given(sb_st.bids_components(), st.data())
-    def test_extra_entities_makes_unequal(
-        self, comp: BidsComponent, data: st.DataObject
+    @given(
+        first=sb_st.bids_partial_components(), second=sb_st.bids_partial_components()
+    )
+    def test_unequal_tables_yield_unequal_components(
+        self, first: BidsPartialComponent, second: BidsPartialComponent
     ):
-        cp = copy.deepcopy(comp)
-        new_entity = data.draw(
-            sb_st.bids_value().filter(lambda s: s not in comp.zip_lists)
-        )
-        cp.zip_lists[new_entity] = []
-        itx.first(cp.zip_lists.values())[0] += "foo"
-        assert cp != comp
-
-    @given(sb_st.bids_components())
-    def test_order_doesnt_affect_equality(self, comp: BidsComponent):
-        cp = copy.deepcopy(comp)
-        for list_ in cp.zip_lists:
-            cp.zip_lists[list_].reverse()
-        assert cp == comp
+        assume(first._table != second._table)
+        assert first != second
 
     @given(sb_st.bids_components())
     def test_paths_must_be_identical(self, comp: BidsComponent):
         cp = BidsComponent(
             name=comp.input_name,
             path=comp.input_path + "foo",
-            zip_lists=comp.zip_lists,
+            table=comp.zip_lists,
         )
         assert cp != comp
 
@@ -159,29 +126,24 @@ class TestBidsComponentProperties:
         # Due to the product, we can delete some of the combinations and still
         # regenerate our input_lists
         combs = list(it.product(*input_lists.values()))[min_size - 1 :]
-        zip_lists = get_zip_list(input_lists, combs)
-        path = get_bids_path(zip_lists)
+        table = BidsTable(
+            wildcards=input_lists,
+            entries=combs,
+        )
+        path = get_bids_path(table.wildcards)
 
         assert setify(
-            BidsComponent(name="foo", path=path, zip_lists=zip_lists).entities
+            BidsComponent(name="foo", path=path, table=table).entities
         ) == setify(input_lists)
 
-    @given(
-        st.dictionaries(
-            sb_st.bids_entity().map(lambda e: e.wildcard),
-            sb_st.bids_value("[^.]*"),
-            min_size=1,
-        ).filter(lambda v: list(v) != ["datatype"])
-    )
+    @given(sb_st.bids_entries(restrict_patterns=True, blacklist_entities=["extension"]))
     def test_input_wildcards_derives_from_zip_lists(
         self,
         bids_entities: dict[str, str],
     ):
-        zip_lists = {entity: [val] for entity, val in bids_entities.items()}
+        table = BidsTable.from_dict({k: [v] for k, v in bids_entities.items()})
         bids_input = BidsComponent(
-            name="foo",
-            path=get_bids_path(zip_lists),
-            zip_lists=zip_lists,
+            name="foo", path=get_bids_path(bids_entities.keys()), table=table
         )
 
         wildstr = ".".join(bids_input.input_wildcards.values())
@@ -342,7 +304,7 @@ class TestExpandables:
 
     @given(path=st.text())
     def test_expandable_with_no_wildcards_returns_path_unaltered(self, path: str):
-        component = BidsPartialComponent(zip_lists={})
+        component = BidsPartialComponent(table={})
         assert itx.one(component.expand(path)) == path
 
     @given(component=sb_st.expandables(min_values=0, max_values=0, path_safe=True))
@@ -422,17 +384,13 @@ class TestFiltering:
 
         for filt in filters:
             filter_dict[filt] = data.draw(
-                st.one_of(
-                    [
-                        st.lists(
-                            value_strat(filt),
-                            unique=True,
-                            min_size=1,
-                            max_size=5,
-                        ),
-                        value_strat(filt),
-                    ]
+                st.lists(
+                    value_strat(filt),
+                    unique=True,
+                    min_size=1,
+                    max_size=5,
                 )
+                | value_strat(filt),
             )
         return filter_dict
 

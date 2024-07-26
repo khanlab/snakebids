@@ -25,7 +25,7 @@ def zip_list_parser() -> pp.ParserElement:
     return pp.Suppress("{") + pp.Group(row)[1, ...] + pp.Suppress("}")
 
 
-@given(zip_list=sb_st.zip_lists(max_entities=1, restrict_patterns=True))
+@given(zip_list=sb_st.bids_tables(max_entities=1, restrict_patterns=True))
 def test_ellipses_appears_when_maxwidth_too_short(zip_list: ZipList):
     width = len(format_zip_lists(zip_list, tabstop=0).splitlines()[1])
     parsed = zip_list_parser().parse_string(
@@ -34,13 +34,13 @@ def test_ellipses_appears_when_maxwidth_too_short(zip_list: ZipList):
     assert "ellipse" in parsed[0]
 
 
-@given(zip_list=sb_st.zip_lists(max_entities=1, restrict_patterns=True))
+@given(zip_list=sb_st.bids_tables(max_entities=1, restrict_patterns=True))
 def test_no_ellipses_when_no_max_width(zip_list: ZipList):
     parsed = zip_list_parser().parse_string(format_zip_lists(zip_list, tabstop=0))
     assert "ellipse" not in parsed[0]
 
 
-@given(zip_list=sb_st.zip_lists(max_entities=1, restrict_patterns=True))
+@given(zip_list=sb_st.bids_tables(max_entities=1, restrict_patterns=True))
 def test_no_ellipses_when_max_width_long_enouth(zip_list: ZipList):
     width = len(format_zip_lists(zip_list, tabstop=0).splitlines()[1])
     parsed = zip_list_parser().parse_string(
@@ -50,7 +50,7 @@ def test_no_ellipses_when_max_width_long_enouth(zip_list: ZipList):
 
 
 @given(
-    zip_list=sb_st.zip_lists(
+    zip_list=sb_st.bids_tables(
         max_entities=1, min_values=0, max_values=0, restrict_patterns=True
     )
 )
@@ -63,7 +63,7 @@ def test_no_ellipses_appears_when_ziplist_empty(zip_list: ZipList):
 
 
 @given(
-    zip_list=sb_st.zip_lists(
+    zip_list=sb_st.bids_tables(
         min_values=1, max_values=4, max_entities=4, restrict_patterns=True
     ),
     width=st.integers(min_value=10, max_value=200),
@@ -91,7 +91,7 @@ def test_values_balanced_around_elision_correctly(zip_list: ZipList, width: int)
 
 class TestCorrectNumberOfLinesCreated:
     @given(
-        zip_list=sb_st.zip_lists(
+        zip_list=sb_st.bids_tables(
             min_values=0, max_values=1, max_entities=6, restrict_patterns=True
         ),
     )
@@ -122,7 +122,7 @@ class TestCorrectNumberOfLinesCreated:
 
 class TestIsValidPython:
     @given(
-        zip_list=sb_st.zip_lists(restrict_patterns=True, min_values=0, min_entities=0)
+        zip_list=sb_st.bids_tables(restrict_patterns=True, min_values=0, min_entities=0)
     )
     def test_in_zip_list(self, zip_list: ZipList):
         assert eval(format_zip_lists(zip_list, inf)) == zip_list
@@ -140,7 +140,7 @@ class TestIsValidPython:
 # path and name are allowed to be longer than the width, so finding the zip_list lines
 # would prove more challenging than it's worth
 @given(
-    zip_list=sb_st.zip_lists(max_entities=1, restrict_patterns=True),
+    zip_list=sb_st.bids_tables(max_entities=1, restrict_patterns=True),
     width=st.integers(10, 100),
     tab=st.integers(0, 10),
 )
@@ -158,7 +158,7 @@ def get_indent_length(line: str):
 
 class TestIndentLengthMultipleOfTabStop:
     @given(
-        zip_list=sb_st.zip_lists(restrict_patterns=True, min_values=0),
+        zip_list=sb_st.bids_tables(restrict_patterns=True, min_values=0),
         tabstop=st.integers(1, 10),
     )
     def test_in_zip_list(self, zip_list: ZipList, tabstop: int):

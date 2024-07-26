@@ -9,6 +9,7 @@ from itertools import chain
 from pathlib import Path
 from typing import Sequence
 
+from snakebids.core._table import BidsTable
 from snakebids.types import ZipList
 from snakebids.utils.containers import MultiSelectDict
 
@@ -116,6 +117,67 @@ def glob_wildcards(
             for name, value in match.groupdict().items():
                 wildcards[name].append(value)
     return MultiSelectDict(wildcards)
+
+
+def glob_wildcards_to_entries(
+    pattern: str | Path,
+    files: Sequence[str | Path] | None = None,
+    followlinks: bool = False,
+) -> BidsTable | None:
+    """Glob the values of wildcards by matching a pattern to the filesystem.
+
+    Returns a zip_list of field names with matched wildcard values.
+
+    Parameters
+    ----------
+    pattern
+        Path including wildcards to glob on the filesystem.
+    files
+        Files from which to glob wildcards. If None (default), the directory
+        corresponding to the first wildcard in the pattern is walked, and
+        wildcards are globbed from all files.
+    followlinks
+        Whether to follow links when globbing wildcards.
+    """
+    pattern = os.path.normpath(pattern)
+    first_wildcard = re.search("{[^{]", pattern)
+    dirname = (
+        os.path.dirname(pattern[: first_wildcard.start()])
+        if first_wildcard
+        else os.path.dirname(pattern)
+    )
+    if not dirname:
+        dirname = Path(".")
+
+    names = [match.group("name") for match in _wildcard_regex.finditer(pattern)]
+
+    # remove duplicates while preserving ordering
+    names = tuple(dict.fromkeys(names))
+    if not names:
+        return None
+
+    entries: list[tuple[str, ...]] = []
+
+    re_pattern = re.compile(regex(pattern))
+
+    file_iter = (
+        (
+            Path(dirpath, f)
+            for dirpath, dirnames, filenames in os.walk(
+                dirname, followlinks=followlinks
+            )
+            for f in chain(filenames, dirnames)
+        )
+        if files is None
+        else iter(files)
+    )
+
+    for f in file_iter:
+        if match := re.match(re_pattern, str(f)):
+            values = tuple(match.group(name) for name in names)
+            entries.append(values)
+
+    return BidsTable(wildcards=names, entries=entries)
 
 
 def update_wildcard_constraints(
