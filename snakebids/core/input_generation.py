@@ -392,6 +392,24 @@ def _all_custom_paths(config: InputsConfig):
     return all(comp.get("custom_path") for comp in config.values())
 
 
+def _is_local_relative(path: Path | str):
+    """Test if a path location is local path relative to the current working directory.
+
+    Parameter
+    ---------
+        path
+            A UPath, Path, or str object to be checked
+
+    Returns
+    -------
+    is_url : bool
+        True if the path is relative
+    """
+    path_str = str(path)
+    is_doubleslash_schemed = "://" in path_str
+    return not is_doubleslash_schemed and not os.path.isabs(path_str)
+
+
 def _gen_bids_layout(
     *,
     bids_dir: Path | str,
@@ -723,7 +741,7 @@ def _parse_bids_path(path: str, entities: Iterable[str]) -> tuple[str, dict[str,
     # If path is relative, we need to get a slash in front of it to ensure parsing works
     # correctly. So prepend "./" or ".\" and run function again, then strip before
     # returning
-    if not os.path.isabs(path) and get_first_dir(path) != ".":
+    if _is_local_relative(path) and get_first_dir(path) != ".":
         path_, wildcard_values = _parse_bids_path(os.path.join(".", path), entities)
         return str(Path(path_)), wildcard_values
 
