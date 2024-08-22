@@ -34,7 +34,7 @@ patterns = [
 python = ">=3.8,<4.0"
 # core dep with high breakage potential given plans for redesign, so
 # keep upper limit
-pybids = ">=0.16.0,<0.17"
+pybids = ">=0.17.0,<0.18"
 snakemake = [
     { version = ">=5.28.0,<8", python = "<3.11" },
     { version = ">=7.18.2", python = ">=3.11" },
