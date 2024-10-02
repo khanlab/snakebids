@@ -225,15 +225,6 @@ def matches_any(
     return any(match_func(match, item, *args) for match in match_list)
 
 
-class BidsParseError(Exception):
-    """Exception raised for errors encountered in the parsing of Bids paths."""
-
-    def __init__(self, path: str, entity: BidsEntity) -> None:
-        self.path = path
-        self.entity = entity
-        super().__init__(path, entity)
-
-
 class _Documented(Protocol):
     __doc__: str
 

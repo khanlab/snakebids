@@ -19,6 +19,7 @@ import hypothesis.strategies as st
 from bids.layout import Config as BidsConfig
 from hypothesis import assume
 
+from snakebids.core._table import BidsTable
 from snakebids.core.datasets import (
     BidsComponent,
     BidsComponentRow,
@@ -26,7 +27,7 @@ from snakebids.core.datasets import (
     BidsPartialComponent,
 )
 from snakebids.tests import helpers
-from snakebids.types import Expandable, InputConfig, InputsConfig, ZipList
+from snakebids.types import Expandable, InputConfig, InputsConfig
 from snakebids.utils.containers import ContainerBag, MultiSelectDict
 from snakebids.utils.utils import BidsEntity
 
@@ -188,10 +189,9 @@ def bids_path(
 
     extras = (
         {
-            k: v[0].replace("{", "{{").replace("}", "}}")
+            k: v.replace("{", "{{").replace("}", "}}")
             for k, v in draw(
-                zip_lists(
-                    max_values=1,
+                bids_entries(
                     max_entities=2,
                     blacklist_entities=ContainerBag(
                         blacklist_entities if blacklist_entities is not None else [],
@@ -296,7 +296,48 @@ def inputs_configs(
 
 
 @st.composite
-def zip_lists(
+def bids_entries(
+    draw: st.DrawFn,
+    *,
+    min_entities: int = 1,
+    max_entities: int = 5,
+    entities: list[BidsEntity] | None = None,
+    blacklist_entities: Container[BidsEntity | str] | None = None,
+    whitelist_entities: Container[BidsEntity | str] | None = None,
+    restrict_patterns: bool = False,
+) -> dict[str, str]:
+    # Generate entity value-pairs for different "file types"
+
+    if entities is None:
+        entities = draw(
+            bids_entity_lists(
+                min_size=min_entities,
+                max_size=max_entities,
+                blacklist_entities=blacklist_entities,
+                whitelist_entities=whitelist_entities,
+            )
+        )
+
+    def filter_ints(type_: str | None):
+        def inner(s: str):
+            if type_ == "int":
+                return int(s) > 0 and not s.startswith("0")
+            return True
+
+        return inner
+
+    return {
+        BidsEntity(entity).wildcard: draw(
+            bids_value(entity.match if restrict_patterns else ".*").filter(
+                filter_ints(entity.type if restrict_patterns else None)
+            )
+        )
+        for entity in entities
+    }
+
+
+@st.composite
+def bids_tables(
     draw: st.DrawFn,
     *,
     min_entities: int = 1,
@@ -309,7 +350,7 @@ def zip_lists(
     restrict_patterns: bool = False,
     unique: bool = False,
     cull: bool = True,
-) -> ZipList:
+) -> BidsTable:
     # Generate multiple entity sets for different "file types"
 
     if entities is None:
@@ -357,7 +398,10 @@ def zip_lists(
         if cull and len(combinations)
         else combinations
     )
-    return helpers.get_zip_list(values, used_combinations)
+    return BidsTable(
+        wildcards=(BidsEntity(entity).wildcard for entity in values),
+        entries=used_combinations,
+    )
 
 
 @st.composite
@@ -437,8 +481,8 @@ def bids_partial_components(
                 ),
             )
         )
-    zip_list = draw(
-        zip_lists(
+    table = draw(
+        bids_tables(
             min_entities=min_entities,
             max_entities=max_entities,
             min_values=min_values,
@@ -452,7 +496,7 @@ def bids_partial_components(
         )
     )
 
-    return BidsPartialComponent(zip_lists=zip_list)
+    return BidsPartialComponent(table=table)
 
 
 @st.composite
@@ -502,7 +546,7 @@ def bids_components(
     return BidsComponent(
         name=name or draw(bids_value()),
         path=str(path),
-        zip_lists=partial.zip_lists,
+        table=partial._table,
     )
 
 
