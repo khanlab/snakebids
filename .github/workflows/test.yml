@@ -15,6 +15,7 @@ on:
     paths:
       - snakebids/**
       - scripts/**
+      - poetry.lock
 
 jobs:
   quality:
