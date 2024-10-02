@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import attrs
 
@@ -38,7 +38,7 @@ def _make_underscore_dash_aliases(name: str) -> set[str]:
     return {name}
 
 
-def _find_type(name: str, *, yamlsafe: bool = True) -> type[Any]:
+def _find_type(name: str, *, yamlsafe: bool = True) -> Callable[[Any], Any]:
     import importlib
 
     if name == "Path":

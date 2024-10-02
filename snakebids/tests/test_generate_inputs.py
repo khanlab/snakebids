@@ -13,7 +13,16 @@ import tempfile
 import warnings
 from collections import defaultdict
 from pathlib import Path, PosixPath
-from typing import Any, Iterable, Literal, NamedTuple, TypedDict, TypeVar, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Iterable,
+    Literal,
+    NamedTuple,
+    TypedDict,
+    TypeVar,
+    cast,
+)
 
 import attrs
 import more_itertools as itx
@@ -55,6 +64,9 @@ from snakebids.tests.helpers import (
 from snakebids.types import InputsConfig
 from snakebids.utils.containers import MultiSelectDict
 from snakebids.utils.utils import DEPRECATION_FLAG, BidsEntity, BidsParseError
+
+if TYPE_CHECKING:
+    from _typeshed import StrPath, Unused
 
 T = TypeVar("T")
 
@@ -1666,7 +1678,7 @@ class TestRecogPathSchemes:
         # Google cloud is not posix, for mocking purpose however we just
         # need a class that is a subclass of Path
         class MockGCSPath(PosixPath):
-            def __init__(self, *pathsegments: str):
+            def __init__(self, *pathsegments: StrPath, **kwargs: Unused):
                 super().__init__(*pathsegments)
 
             def __str__(self):  # __fspath__ calls __str__ by default
