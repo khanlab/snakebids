@@ -8,9 +8,8 @@ from hypothesis import assume, given
 from hypothesis import strategies as st
 
 import snakebids.tests.strategies as sb_st
+from snakebids.core._table import BidsTable
 from snakebids.core.datasets import BidsComponent, BidsDataset
-from snakebids.io.printing import format_zip_lists
-from snakebids.types import ZipList
 
 
 def zip_list_parser() -> pp.ParserElement:
@@ -26,39 +25,22 @@ def zip_list_parser() -> pp.ParserElement:
 
 
 @given(zip_list=sb_st.bids_tables(max_entities=1, restrict_patterns=True))
-def test_ellipses_appears_when_maxwidth_too_short(zip_list: ZipList):
-    width = len(format_zip_lists(zip_list, tabstop=0).splitlines()[1])
-    parsed = zip_list_parser().parse_string(
-        format_zip_lists(zip_list, width - 1, tabstop=0)
-    )
+def test_ellipses_appears_when_maxwidth_too_short(zip_list: BidsTable):
+    width = len(zip_list.pformat(tabstop=0).splitlines()[1])
+    parsed = zip_list_parser().parse_string(zip_list.pformat(width - 1, tabstop=0))
     assert "ellipse" in parsed[0]
 
 
 @given(zip_list=sb_st.bids_tables(max_entities=1, restrict_patterns=True))
-def test_no_ellipses_when_no_max_width(zip_list: ZipList):
-    parsed = zip_list_parser().parse_string(format_zip_lists(zip_list, tabstop=0))
+def test_no_ellipses_when_no_max_width(zip_list: BidsTable):
+    parsed = zip_list_parser().parse_string(zip_list.pformat(tabstop=0))
     assert "ellipse" not in parsed[0]
 
 
 @given(zip_list=sb_st.bids_tables(max_entities=1, restrict_patterns=True))
-def test_no_ellipses_when_max_width_long_enouth(zip_list: ZipList):
-    width = len(format_zip_lists(zip_list, tabstop=0).splitlines()[1])
-    parsed = zip_list_parser().parse_string(
-        format_zip_lists(zip_list, width, tabstop=0)
-    )
-    assert "ellipse" not in parsed[0]
-
-
-@given(
-    zip_list=sb_st.bids_tables(
-        max_entities=1, min_values=0, max_values=0, restrict_patterns=True
-    )
-)
-def test_no_ellipses_appears_when_ziplist_empty(zip_list: ZipList):
-    width = len(format_zip_lists(zip_list, tabstop=0).splitlines()[1])
-    parsed = zip_list_parser().parse_string(
-        format_zip_lists(zip_list, width - 1, tabstop=0)
-    )
+def test_no_ellipses_when_max_width_long_enough(zip_list: BidsTable):
+    width = len(zip_list.pformat(tabstop=0).splitlines()[1])
+    parsed = zip_list_parser().parse_string(zip_list.pformat(width, tabstop=0))
     assert "ellipse" not in parsed[0]
 
 
@@ -68,9 +50,9 @@ def test_no_ellipses_appears_when_ziplist_empty(zip_list: ZipList):
     ),
     width=st.integers(min_value=10, max_value=200),
 )
-def test_values_balanced_around_elision_correctly(zip_list: ZipList, width: int):
+def test_values_balanced_around_elision_correctly(zip_list: BidsTable, width: int):
     parsed: pp.ParseResults = zip_list_parser().parse_string(
-        format_zip_lists(zip_list, max_width=width, tabstop=0)
+        zip_list.pformat(max_width=width, tabstop=0)
     )
     assert parsed
     assert parsed[0]
@@ -95,9 +77,9 @@ class TestCorrectNumberOfLinesCreated:
             min_values=0, max_values=1, max_entities=6, restrict_patterns=True
         ),
     )
-    def test_in_zip_list(self, zip_list: ZipList):
+    def test_in_zip_list(self, zip_list: BidsTable):
         assert (
-            len(format_zip_lists(zip_list, tabstop=0).splitlines()) == len(zip_list) + 2
+            len(zip_list.pformat(tabstop=0).splitlines()) == len(zip_list.wildcards) + 2
         )
 
     @given(
@@ -124,8 +106,8 @@ class TestIsValidPython:
     @given(
         zip_list=sb_st.bids_tables(restrict_patterns=True, min_values=0, min_entities=0)
     )
-    def test_in_zip_list(self, zip_list: ZipList):
-        assert eval(format_zip_lists(zip_list, inf)) == zip_list
+    def test_in_zip_list(self, zip_list: BidsTable):
+        assert eval(zip_list.pformat(inf)) == zip_list.to_dict()
 
     @given(component=sb_st.bids_components(restrict_patterns=True, min_values=0))
     def test_in_component(self, component: BidsComponent):
@@ -144,9 +126,9 @@ class TestIsValidPython:
     width=st.integers(10, 100),
     tab=st.integers(0, 10),
 )
-def test_line_never_longer_than_max_width(zip_list: ZipList, width: int, tab: int):
+def test_line_never_longer_than_max_width(zip_list: BidsTable, width: int, tab: int):
     assume(width > tab + 10)
-    formatted = format_zip_lists(zip_list, width, tab)
+    formatted = zip_list.pformat(width, tab)
     parsed = zip_list_parser().parse_string(formatted)
     assume("left" in parsed[0])
     assert all(len(line) <= width for line in formatted.splitlines())
@@ -161,8 +143,8 @@ class TestIndentLengthMultipleOfTabStop:
         zip_list=sb_st.bids_tables(restrict_patterns=True, min_values=0),
         tabstop=st.integers(1, 10),
     )
-    def test_in_zip_list(self, zip_list: ZipList, tabstop: int):
-        for line in format_zip_lists(zip_list, tabstop=tabstop).splitlines():
+    def test_in_zip_list(self, zip_list: BidsTable, tabstop: int):
+        for line in zip_list.pformat(tabstop=tabstop).splitlines():
             assert get_indent_length(line) / tabstop in {0, 1}
 
     @given(

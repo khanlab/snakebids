@@ -82,11 +82,12 @@ class BidsTable:
     def pick(self, wildcards: Iterable[str]):
         """Select wildcards without deduplication."""
         # Use dict.fromkeys for de-duplication to preserve order
-        indices = [self.wildcards.index(w) for w in dict.fromkeys(wildcards)]
+        unique_keys = list(dict.fromkeys(wildcards))
+        indices = [self.wildcards.index(w) for w in unique_keys]
 
         entries = [tuple(entry[i] for i in indices) for entry in self.entries]
 
-        return self.__class__(wildcards=wildcards, entries=entries)
+        return self.__class__(wildcards=unique_keys, entries=entries)
 
     def filter(
         self,
