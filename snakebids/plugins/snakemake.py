@@ -289,7 +289,7 @@ class SnakemakeBidsApp:
                 print(err.msg, file=sys.stderr)
                 sys.exit(1)
             self.cwd = config["output_dir"]
-            root = Path()
+            root = "" #uses "" instead of Path() so we end up with filepath instead of ./filepath
 
         configfile_path = self.configfile_path or self.snakemake_dir / "snakebids.yaml"
         if self.configfile_outpath is None:
