@@ -2,7 +2,10 @@ import collections
 from pathlib import Path, PosixPath, WindowsPath
 from typing import Any, OrderedDict
 
-from ruamel.yaml import YAML, Dumper
+try:
+    from ruamel.yaml import YAML, Dumper
+except ImportError:
+    from ruamel_yaml import YAML, Dumper
 
 
 def get_yaml_io():
