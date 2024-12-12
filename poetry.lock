@@ -1881,13 +1881,15 @@ files = [
 
 [[package]]
 name = "pybids"
-version = "0.18.0"
+version = "0.18.1"
 description = "bids: interface with datasets conforming to BIDS"
 category = "main"
 optional = false
 python-versions = ">=3.9"
-files = []
-develop = false
+files = [
+    {file = "pybids-0.18.1-py3-none-any.whl", hash = "sha256:02bf1613cc66a476fd1a000ddf4e92c3ea38bad75288154a549449421b62f3a2"},
+    {file = "pybids-0.18.1.tar.gz", hash = "sha256:9bacea58d191dc4d34fa6360b904714b4966116cc0425a79263755bf7253dac6"},
+]
 
 [package.dependencies]
 bids-validator = ">=1.14.7"
@@ -1911,12 +1913,6 @@ plotting = ["graphviz"]
 test = ["altair", "bsmschema", "coverage[toml]", "pytest (>=3.3)", "pytest-cov", "pytest-xdist", "s3fs"]
 tests = ["pybids[test]"]
 tutorial = ["ipykernel", "jinja2", "jupyter_client", "markupsafe", "nbconvert"]
-
-[package.source]
-type = "git"
-url = "https://github.com/bids-standard/pybids.git"
-reference = "0.18.0"
-resolved_reference = "0ea4bcacd50225a800f389bb691d3c3679ec0af7"
 
 [[package]]
 name = "pydantic"
@@ -3953,4 +3949,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<4.0"
-content-hash = "8683188012d7dffd96bc430cb90b4b97ae067fea5a4d1a70886204d63e3b2fd1"
+content-hash = "d3733565c557380df0e540ce369c8b8526ae05a461ba2d6db46ef46bd57a4b6a"
