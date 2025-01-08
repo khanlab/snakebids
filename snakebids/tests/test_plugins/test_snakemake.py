@@ -217,7 +217,7 @@ class TestFinalizeConfig:
 
         new_config = path.resolve() / "snakebids.yaml"
         self.check_write_config(
-            io_mocks["write_config"], config_file=new_config, config=config, root=Path()
+            io_mocks["write_config"], config_file=new_config, config=config, root=""
         )
 
     @pytest.mark.parametrize("path", [Path().resolve(), Path("results").resolve()])
@@ -384,7 +384,7 @@ class TestVersion:
                 "output_dir": Path("foo"),
                 "snakemake_version": "version",
                 "snakebids_version": "version",
-                "root": Path(),
+                "root": "",
                 "app_version": "unknown",
                 "snakemake_dir": Path().resolve(),
                 "snakefile": Path("Snakefile"),
@@ -486,7 +486,7 @@ def test_integration(
     # Second condition: outputdir is an arbitrary path
     else:
         cwd = Path(root).resolve()
-        expected_config["root"] = Path()
+        expected_config["root"] = ""
         new_config = cwd / "config/config.yaml"
         io_mocks["write_output_mode"].assert_not_called()
         io_mocks["prepare_output"].assert_called_once_with(cwd, False)
