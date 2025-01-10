@@ -175,7 +175,7 @@ class TestFinalizeConfig:
         mock: MockType,
         config_file: Path,
         config: dict[str, Any],
-        root: Path,
+        root: str | Path,
     ):
         mock.assert_called_once_with(
             config_file=config_file,
