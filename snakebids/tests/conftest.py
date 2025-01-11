@@ -8,6 +8,7 @@ import bids.layout
 import pytest
 from hypothesis import database, settings
 from pyfakefs.fake_filesystem import FakeFilesystem
+from upath import UPath
 
 import snakebids.paths.resources as specs
 from snakebids import resources, set_bids_spec
@@ -51,9 +52,7 @@ def fakefs(
 
 
 @pytest.fixture
-def fakefs_tmpdir(
-    request: pytest.FixtureRequest, fakefs: FakeFilesystem | None
-) -> Path:
+def tmpdir(request: pytest.FixtureRequest, fakefs: FakeFilesystem | None) -> Path:
     """Version of tmpdir compatible with fakefs
 
     If fakefs is disabled, a tmpdir is returned using the builtin tmpdir fixture.

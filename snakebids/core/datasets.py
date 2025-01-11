@@ -11,7 +11,7 @@ from typing import Any, Iterable, NoReturn, cast, overload
 
 import attr
 import more_itertools as itx
-from bids import BIDSLayout
+from bids.layout import BIDSLayout
 from pvandyken.deprecated import deprecated
 from typing_extensions import Self, TypedDict
 
