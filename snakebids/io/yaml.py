@@ -1,11 +1,14 @@
 import collections
 from pathlib import Path, PosixPath, WindowsPath
-from typing import Any, OrderedDict
+from typing import Any, OrderedDict, TYPE_CHECKING
 
-try:
+if TYPE_CHECKING:
     from ruamel.yaml import YAML, Dumper
-except ImportError:
-    from ruamel_yaml import YAML, Dumper
+else:
+    try:
+        from ruamel.yaml import YAML, Dumper
+    except ImportError:
+        from ruamel_yaml import YAML, Dumper
 
 
 def get_yaml_io():
