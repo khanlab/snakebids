@@ -7,8 +7,8 @@ if TYPE_CHECKING:
 else:
     try:
         from ruamel.yaml import YAML, Dumper
-    except ImportError:
-        from ruamel_yaml import YAML, Dumper
+    except ImportError: # pragma: no cover
+        from ruamel_yaml import YAML, Dumper 
 
 
 def get_yaml_io():
