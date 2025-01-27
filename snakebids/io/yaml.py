@@ -1,8 +1,14 @@
 import collections
 from pathlib import Path, PosixPath, WindowsPath
-from typing import Any, OrderedDict
+from typing import TYPE_CHECKING, Any, OrderedDict
 
-from ruamel.yaml import YAML, Dumper
+if TYPE_CHECKING:
+    from ruamel.yaml import YAML, Dumper
+else:
+    try:
+        from ruamel.yaml import YAML, Dumper
+    except ImportError: # pragma: no cover
+        from ruamel_yaml import YAML, Dumper 
 
 
 def get_yaml_io():
