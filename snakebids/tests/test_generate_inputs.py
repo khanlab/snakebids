@@ -13,12 +13,21 @@ import tempfile
 import warnings
 from collections import defaultdict
 from pathlib import Path, PosixPath
-from typing import Any, Iterable, Literal, NamedTuple, TypedDict, TypeVar, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Iterable,
+    Literal,
+    NamedTuple,
+    TypedDict,
+    TypeVar,
+    cast,
+)
 
 import attrs
 import more_itertools as itx
 import pytest
-from bids import BIDSLayout
+from bids.layout import BIDSLayout
 from hypothesis import HealthCheck, assume, example, given, settings
 from hypothesis import strategies as st
 from pyfakefs.fake_filesystem import FakeFilesystem
@@ -46,6 +55,7 @@ from snakebids.tests.helpers import (
     allow_function_scoped,
     create_dataset,
     create_snakebids_config,
+    debug,
     example_if,
     get_bids_path,
     get_zip_list,
@@ -55,6 +65,9 @@ from snakebids.tests.helpers import (
 from snakebids.types import InputsConfig
 from snakebids.utils.containers import MultiSelectDict
 from snakebids.utils.utils import DEPRECATION_FLAG, BidsEntity, BidsParseError
+
+if TYPE_CHECKING:
+    from _typeshed import StrPath, Unused
 
 T = TypeVar("T")
 
@@ -196,13 +209,13 @@ def test_attribute_errors_from_pybids_qualified_and_raised():
 
 
 class TestFilterBools:
-    @pytest.fixture(autouse=True)
-    def bids_fs(self, bids_fs: FakeFilesystem | None):
-        return bids_fs
+    # @pytest.fixture(autouse=True)
+    # def bids_fs(self, bids_fs: FakeFilesystem | None):
+    #     return bids_fs
 
-    @pytest.fixture
-    def tmpdir(self, fakefs_tmpdir: Path):
-        return fakefs_tmpdir
+    # @pytest.fixture
+    # def tmpdir(self, tmpdir: Path):
+    #     return tmpdir
 
     def disambiguate_components(self, dataset: BidsDataset):
         assert len(dataset) == 2
@@ -230,7 +243,7 @@ class TestFilterBools:
     )
     @given(dataset=sb_st.datasets())
     def test_ambiguous_paths_with_extra_entities_leads_to_error(
-        self, tmpdir: Path, dataset: BidsDataset
+        self, tmpdir: Path, dataset: BidsDataset, mocker: MockerFixture
     ):
         root = tempfile.mkdtemp(dir=tmpdir)
         create_dataset(root, dataset)
@@ -256,7 +269,7 @@ class TestFilterBools:
     )
     @given(dataset=sb_st.datasets())
     def test_ambiguous_paths_with_missing_entity_leads_to_error(
-        self, tmpdir: Path, dataset: BidsDataset
+        self, tmpdir: Path, dataset: BidsDataset, mocker: MockerFixture
     ):
         root = tempfile.mkdtemp(dir=tmpdir)
         create_dataset(root, dataset)
@@ -507,15 +520,27 @@ class TestFilterBools:
         assert result == BidsDataset({"template": dataset["template"]})
 
 
+@pytest.mark.disable_fakefs(True)
 class TestFilterMethods:
-    @pytest.fixture(autouse=True)
-    def bids_fs(self, bids_fs: FakeFilesystem | None):
-        return bids_fs
+    # @pytest.fixture(autouse=True)
+    # def bids_fs(self, bids_fs: FakeFilesystem | None):
+    #     return bids_fs
 
-    @pytest.fixture
-    def tmpdir(self, fakefs_tmpdir: Path):
-        return fakefs_tmpdir
+    # @pytest.fixture
+    # def tmpdir(self, fakefs_tmpdir: Path):
+    #     return fakefs_tmpdir
 
+    @debug(
+        component=BidsComponent(
+            name="template",
+            path="sub-{subject}/sub-{subject}_nuc-{nucleus}",
+            zip_lists={
+                "subject": ["0"],
+                "nucleus": ["0"],
+            },
+        ),
+        data=mock_data("0"),
+    )
     @example(
         component=BidsComponent(
             name="template",
@@ -849,10 +874,8 @@ class TestFilterMethods:
     max_examples=1,
 )
 @given(dataset=sb_st.datasets_one_comp(unique=True))
-def test_duplicate_wildcards_does_not_create_error(
-    dataset: BidsDataset, bids_fs: Path, fakefs_tmpdir: Path
-):
-    root = tempfile.mkdtemp(dir=fakefs_tmpdir)
+def test_duplicate_wildcards_does_not_create_error(dataset: BidsDataset, tmpdir: Path):
+    root = tempfile.mkdtemp(dir=tmpdir)
     rooted = BidsDataset.from_iterable(
         attrs.evolve(comp, path=os.path.join(root, comp.path))
         for comp in dataset.values()
@@ -1059,8 +1082,8 @@ def path_entities(draw: st.DrawFn):
 
 class TestCustomPaths:
     @pytest.fixture
-    def temp_dir(self, fakefs_tmpdir: Path, bids_fs: Path):
-        return fakefs_tmpdir
+    def temp_dir(self, tmpdir: Path, bids_fs: Path):
+        return tmpdir
 
     def generate_test_directory(
         self, entities: dict[str, list[str]], template: Path, tmpdir: Path
@@ -1584,13 +1607,13 @@ def test_get_lists_from_bids():
 
 
 class TestGenBidsLayout:
-    @pytest.fixture
-    def tmpdir(self, fakefs_tmpdir: Path):
-        return fakefs_tmpdir
+    # @pytest.fixture
+    # def tmpdir(self, tmpdir: Path):
+    #     return tmpdir
 
-    @pytest.fixture(autouse=True)
-    def bids_fs(self, bids_fs: FakeFilesystem | None):
-        return bids_fs
+    # @pytest.fixture(autouse=True)
+    # def bids_fs(self, bids_fs: FakeFilesystem | None):
+    #     return bids_fs
 
     @settings(
         max_examples=1, suppress_health_check=[HealthCheck.function_scoped_fixture]
@@ -1666,7 +1689,7 @@ class TestRecogPathSchemes:
         # Google cloud is not posix, for mocking purpose however we just
         # need a class that is a subclass of Path
         class MockGCSPath(PosixPath):
-            def __init__(self, *pathsegments: str):
+            def __init__(self, *pathsegments: StrPath, **kwargs: Unused):
                 super().__init__(*pathsegments)
 
             def __str__(self):  # __fspath__ calls __str__ by default
@@ -1707,8 +1730,8 @@ class TestRecogPathSchemes:
     ],
 )
 @given(dataset=sb_st.datasets(unique=True))
-def test_generate_inputs(dataset: BidsDataset, bids_fs: Path, fakefs_tmpdir: Path):
-    root = tempfile.mkdtemp(dir=fakefs_tmpdir)
+def test_generate_inputs(dataset: BidsDataset, tmpdir: Path):
+    root = tempfile.mkdtemp(dir=tmpdir)
     rooted = BidsDataset.from_iterable(
         attrs.evolve(comp, path=os.path.join(root, comp.path))
         for comp in dataset.values()
@@ -1741,8 +1764,8 @@ class TestParticipantFiltering:
     MODE = Literal["include", "exclude"]
 
     @pytest.fixture
-    def tmpdir(self, bids_fs: Path, fakefs_tmpdir: Path):
-        return fakefs_tmpdir
+    def tmpdir(self, bids_fs: Path, tmpdir: Path):
+        return tmpdir
 
     def get_filter_params(self, mode: MODE, filters: list[str] | str):
         class FiltParams(TypedDict, total=False):
@@ -1920,12 +1943,12 @@ class TestParticipantFiltering:
 @settings(max_examples=1, suppress_health_check=[HealthCheck.function_scoped_fixture])
 @given(dataset=sb_st.datasets_one_comp(blacklist_entities=["extension"], unique=True))
 def test_when_all_custom_paths_no_layout_indexed(
-    dataset: BidsDataset, bids_fs: Path, fakefs_tmpdir: Path, mocker: MockerFixture
+    dataset: BidsDataset, bids_fs: Path, tmpdir: Path, mocker: MockerFixture
 ):
     # Need to reset mocker at beginning because hypothesis may call this function
     # multiple times
     mocker.stopall()
-    root = tempfile.mkdtemp(dir=fakefs_tmpdir)
+    root = tempfile.mkdtemp(dir=tmpdir)
     rooted = BidsDataset.from_iterable(
         attrs.evolve(comp, path=os.path.join(root, comp.path))
         for comp in dataset.values()

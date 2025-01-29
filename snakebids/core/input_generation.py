@@ -17,7 +17,7 @@ from typing import (
 )
 
 import more_itertools as itx
-from bids import BIDSLayout, BIDSLayoutIndexer
+from bids.layout import BIDSLayout, BIDSLayoutIndexer
 
 from snakebids.core._querying import (
     FilterSpecError,

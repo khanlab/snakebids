@@ -29,31 +29,31 @@ from snakebids.utils.utils import DEPRECATION_FLAG
 class TestFindSnakefileConfig:
     @allow_function_scoped
     @given(snakefile=st.sampled_from(SNAKEFILE_CHOICES))
-    def test_finds_snakefile(self, fakefs_tmpdir: Path, snakefile: str):
-        tmp = Path(tempfile.mkdtemp(dir=fakefs_tmpdir))
+    def test_finds_snakefile(self, tmpdir: Path, snakefile: str):
+        tmp = Path(tempfile.mkdtemp(dir=tmpdir))
         snakefile_path = tmp / snakefile
         snakefile_path.parent.mkdir(parents=True, exist_ok=True)
         snakefile_path.touch()
         app = SnakemakeBidsApp(snakemake_dir=tmp, configfile_path=None)
         assert app.snakefile_path == snakefile_path
 
-    def test_errors_if_no_snakefile_found(self, fakefs_tmpdir: Path):
-        tmp = Path(tempfile.mkdtemp(dir=fakefs_tmpdir))
+    def test_errors_if_no_snakefile_found(self, tmpdir: Path):
+        tmp = Path(tempfile.mkdtemp(dir=tmpdir))
         with pytest.raises(ConfigError, match="Error: no Snakefile"):
             SnakemakeBidsApp(snakemake_dir=tmp, configfile_path=None)
 
     @allow_function_scoped
     @given(configfile=st.sampled_from(CONFIGFILE_CHOICES))
-    def test_finds_config_file(self, fakefs_tmpdir: Path, configfile: str):
-        tmp = Path(tempfile.mkdtemp(dir=fakefs_tmpdir))
+    def test_finds_config_file(self, tmpdir: Path, configfile: str):
+        tmp = Path(tempfile.mkdtemp(dir=tmpdir))
         configfile_path = tmp / configfile
         configfile_path.parent.mkdir(parents=True, exist_ok=True)
         configfile_path.touch()
         app = SnakemakeBidsApp(snakemake_dir=tmp, snakefile_path=Path())
         assert app.configfile_path == configfile_path
 
-    def test_errors_if_no_configfile_found(self, fakefs_tmpdir: Path):
-        tmp = Path(tempfile.mkdtemp(dir=fakefs_tmpdir))
+    def test_errors_if_no_configfile_found(self, tmpdir: Path):
+        tmp = Path(tempfile.mkdtemp(dir=tmpdir))
         with pytest.raises(ConfigError, match="Error: no config file"):
             SnakemakeBidsApp(snakemake_dir=tmp, snakefile_path=Path())
 

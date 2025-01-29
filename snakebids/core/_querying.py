@@ -7,8 +7,7 @@ from typing import TYPE_CHECKING, Any, Final, Iterable, Mapping, Sequence, cast
 
 import attrs
 import more_itertools as itx
-from bids.layout import BIDSLayout, Query
-from bids.layout.models import BIDSFile
+from bids.layout import BIDSFile, BIDSLayout, Query
 from typing_extensions import Self, TypeAlias, override
 
 from snakebids.exceptions import ConfigError, PybidsError

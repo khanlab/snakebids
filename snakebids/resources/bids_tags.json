@@ -183,6 +183,12 @@
         "before": "subset-",
         "match": "[a-zA-Z0-9]+"
     },
+    "nucleus": {
+        "tag": "nucleus",
+        "before": "nuc-",
+        "match": "[a-zA-Z0-9]+"
+
+    },
     "desc": {
         "tag": "desc",
         "before": "desc-",
