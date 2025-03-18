@@ -24,8 +24,8 @@ $ mkdir snakebids-tutorial
 $ cd snakebids-tutorial
 ```
 
-Check your python version to make sure you have at least version 3.7 or higher (extra steps
-may be required on older versions like 3.8, e.g. see [here](https://github.com/snakemake/snakemake/issues/2608#issuecomment-2051522989)):
+Check your python version to make sure you have at least version 3.9 or higher (extra steps
+may be required on older versions like 3.9, e.g. see [here](https://github.com/snakemake/snakemake/issues/2608#issuecomment-2051522989)):
 
 ```console
 $ python --version
