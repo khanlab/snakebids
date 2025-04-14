@@ -7,7 +7,6 @@ import logging
 import os
 import re
 import warnings
-from collections import defaultdict
 from pathlib import Path
 from typing import (
     Any,
@@ -25,20 +24,20 @@ from snakebids.core._querying import (
     UnifiedFilter,
     get_matching_files,
 )
+from snakebids.core._table import BidsTable
 from snakebids.core.datasets import BidsComponent, BidsDataset, BidsDatasetDict
-from snakebids.core.filtering import filter_list
 from snakebids.exceptions import (
+    BidsParseError,
     ConfigError,
     DuplicateComponentError,
     RunError,
 )
 from snakebids.snakemake_compat import Snakemake
-from snakebids.types import InputConfig, InputsConfig, ZipList
-from snakebids.utils.snakemake_io import glob_wildcards
+from snakebids.types import InputConfig, InputsConfig
+from snakebids.utils.snakemake_io import glob_wildcards_to_entries
 from snakebids.utils.utils import (
     DEPRECATION_FLAG,
     BidsEntity,
-    BidsParseError,
     get_first_dir,
 )
 
@@ -579,8 +578,11 @@ def _get_component(
 
     if "custom_path" in component:
         path = component["custom_path"]
-        zip_lists = _parse_custom_path(path, filters=filters)
-        return BidsComponent(name=input_name, path=path, zip_lists=zip_lists)
+        return BidsComponent(
+            name=input_name,
+            path=path,
+            table=_parse_custom_path(path, filters=filters),
+        )
 
     if bids_layout is None:
         msg = (
@@ -589,7 +591,8 @@ def _get_component(
         )
         raise RunError(msg)
 
-    zip_lists: dict[str, list[str]] = defaultdict(list)
+    entries: list[tuple[str, ...]] = []
+    wildcards: tuple[str, ...] = ()
     paths: set[str] = set()
     try:
         matching_files = get_matching_files(bids_layout, filters)
@@ -597,15 +600,15 @@ def _get_component(
         raise err.get_config_error(input_name) from err
 
     for img in matching_files:
-        wildcards: list[str] = [
-            wildcard
+        entities = [
+            BidsEntity.normalize(wildcard)
             for wildcard in set(component.get("wildcards", []))
             if wildcard in img.entities
         ]
-        _logger.debug("Wildcards %s found entities for %s", wildcards, img.path)
+        _logger.debug("Wildcards %s found entities for %s", entities, img.path)
 
         try:
-            path, parsed_wildcards = _parse_bids_path(img.path, wildcards)
+            path, parsed_wildcards = _parse_bids_path(img.path, entities)
         except BidsParseError as err:
             msg = (
                 "Parsing failed:\n"
@@ -626,13 +629,22 @@ def _get_component(
             )
             raise ConfigError(msg) from err
 
-        for wildcard_name, value in parsed_wildcards.items():
-            zip_lists[wildcard_name].append(value)
-
+        entries.append(parsed_wildcards)
         paths.add(path)
+        wildcards = tuple(entity.wildcard for entity in entities)
 
-    # now, check to see if unique
-    if len(paths) == 0:
+    try:
+        path = itx.one(paths, too_short=TypeError)
+    except ValueError:
+        msg = (
+            f"Multiple path templates for one component. Use --filter_{input_name} to "
+            f"narrow your search or --wildcards_{input_name} to make the template more "
+            "generic.\n"
+            f"\tcomponent = {input_name!r}\n"
+            f"\tpath_templates = [\n\t\t" + ",\n\t\t".join(map(repr, paths)) + "\n\t]\n"
+        ).expandtabs(4)
+        raise ConfigError(msg) from None
+    except TypeError:
         _logger.warning(
             "No input files found for snakebids component %s:\n"
             "    filters:\n%s\n"
@@ -649,32 +661,23 @@ def _get_component(
             ),
         )
         return None
-    try:
-        path = itx.one(paths)
-    except ValueError as err:
-        msg = (
-            f"Multiple path templates for one component. Use --filter_{input_name} to "
-            f"narrow your search or --wildcards_{input_name} to make the template more "
-            "generic.\n"
-            f"\tcomponent = {input_name!r}\n"
-            f"\tpath_templates = [\n\t\t" + ",\n\t\t".join(map(repr, paths)) + "\n\t]\n"
-        ).expandtabs(4)
-        raise ConfigError(msg) from err
 
     if filters.has_empty_postfilter:
         return BidsComponent(
-            name=input_name, path=path, zip_lists={key: [] for key in zip_lists}
+            name=input_name, path=path, table=BidsTable(wildcards=wildcards, entries=[])
         )
 
-    return BidsComponent(name=input_name, path=path, zip_lists=zip_lists).filter(
-        regex_search=True, **filters.post_exclusions
-    )
+    return BidsComponent(
+        name=input_name,
+        path=path,
+        table=BidsTable(wildcards=wildcards, entries=entries),
+    ).filter(regex_search=True, **filters.post_exclusions)
 
 
 def _parse_custom_path(
     input_path: Path | str,
     filters: UnifiedFilter,
-) -> ZipList:
+) -> BidsTable:
     """Glob wildcards from a custom path and apply filters.
 
     This replicates pybids path globbing for any custom path. Input path should have
@@ -699,27 +702,29 @@ def _parse_custom_path(
     -------
     input_zip_list, input_list, input_wildcards
     """
-    if not (wildcards := glob_wildcards(input_path)):
+    if (table := glob_wildcards_to_entries(input_path)) is None:
         _logger.warning("No wildcards defined in %s", input_path)
+        return BidsTable(wildcards=(), entries=[])
 
     # Log an error if no matches found
-    if len(itx.first(wildcards.values())) == 0:
+    if not table:
         _logger.error("No matching files for %s", input_path)
-        return wildcards
+        return table
 
     # Return the output values, running filtering on the zip_lists
-    result = filter_list(
-        wildcards,
+    result = table.filter(
         filters.without_bools,
         regex_search=False,
     )
     if not filters.post_exclusions:
         return result
 
-    return filter_list(result, filters.post_exclusions, regex_search=True)
+    return result.filter(filters.post_exclusions, regex_search=True)
 
 
-def _parse_bids_path(path: str, entities: Iterable[str]) -> tuple[str, dict[str, str]]:
+def _parse_bids_path(
+    path: str, entities: Iterable[BidsEntity]
+) -> tuple[str, tuple[str, ...]]:
     """Replace parameters in an bids path with the given wildcard {tags}.
 
     Parameters
@@ -732,40 +737,31 @@ def _parse_bids_path(path: str, entities: Iterable[str]) -> tuple[str, dict[str,
 
     Returns
     -------
-    path : str
+    path
         Original path with the original entities replaced with wildcards.
         (e.g. "root/sub-{subject}/ses-{session}/sub-{subject}_ses-{session}_{suffix}")
-    matches : iterable of (wildcard, value)
+    matches
         The values matched with each wildcard
     """
     # If path is relative, we need to get a slash in front of it to ensure parsing works
     # correctly. So prepend "./" or ".\" and run function again, then strip before
     # returning
     if _is_local_relative(path) and get_first_dir(path) != ".":
-        path_, wildcard_values = _parse_bids_path(os.path.join(".", path), entities)
-        return str(Path(path_)), wildcard_values
+        path_, vals = _parse_bids_path(os.path.join(".", path), entities)
+        return str(Path(path_)), vals
 
-    entities = list(entities)
+    matches: list[tuple[BidsEntity, re.Match[str]]] = []
+    wildcard_values: list[str] = []
+    for entity in entities:
+        values: list[str] = []
+        for match in re.finditer(entity.regex, path):
+            matches.append((entity, match))
+            values.append(match.group(2))
+        if len(values) == 0:
+            raise BidsParseError(path=path, entity=entity)
+        wildcard_values.append(values[0])
 
-    matches = sorted(
-        (
-            (entity, match)
-            for entity in map(BidsEntity, entities)
-            for match in re.finditer(entity.regex, path)
-        ),
-        key=lambda match: match[1].start(2),
-    )
-
-    wildcard_values: dict[str, str] = {
-        entity.wildcard: match.group(2) for entity, match in matches
-    }
-    if len(wildcard_values) != len(entities):
-        unmatched = (
-            set(map(BidsEntity, entities))
-            .difference(match[0] for match in matches)
-            .pop()
-        )
-        raise BidsParseError(path=path, entity=unmatched)
+    matches = sorted(matches, key=lambda match: match[1].start(2))
 
     num_matches = len(matches)
     new_path: list[str] = []
@@ -776,7 +772,7 @@ def _parse_bids_path(path: str, entities: Iterable[str]) -> tuple[str, dict[str,
         new_path.append(path[start:end].replace("{", "{{").replace("}", "}}"))
         if i < num_matches:
             new_path.append(f"{{{matches[i][0].wildcard}}}")
-    return "".join(new_path), wildcard_values
+    return "".join(new_path), tuple(wildcard_values)
 
 
 def get_wildcard_constraints(image_types: InputsConfig) -> dict[str, str]:
