@@ -45,7 +45,7 @@ dependencies = [
 {% if build_system == "flit" -%}
 requires = ["flit_core >=3.2,<4"]
 build-backend = "flit_core.buildapi"
-{%- elif build_system == "hatch" -%}
+{%- elif build_system == "hatch" or build_system == "uv" -%}
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 {%- else -%}
@@ -53,7 +53,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 {%- endif %}
 
-{%- if snakebids_is_direct_reference == "True" and build_system == "hatch" %}
+{%- if snakebids_is_direct_reference == "True" and build_system in ["hatch", "uv"] %}
 
 [tool.hatch.metadata]
 allow-direct-references = true
