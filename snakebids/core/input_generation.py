@@ -1,3 +1,4 @@
+# pyright: basic, reportPrivateUsage=false, reportUnknownMemberType=false, reportUnknownArgumentType=false, reportUnknownVariableType=false
 """Utilities for converting Snakemake apps to BIDS apps."""
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from typing import (
     Any,
     Callable,
     Iterable,
+    Iterator,
     Literal,
     Mapping,
     overload,
@@ -586,8 +588,8 @@ def _get_components(
     inputs_config: InputsConfig,
     postfilters: PostFilter,
     limit_to: Iterable[str] | None = None,
-    snakenull_global: dict | None = None,  # <-- NEW (optional)
-):
+    snakenull_global: Mapping[str, Any] | None = None,
+) -> Iterator[BidsComponent]:
     """Generate components based on components config and a bids layout.
 
     Parameters
@@ -628,14 +630,11 @@ def _get_components(
 
         # --- Inline snakenull normalization (mutates comp in place) ---
         if normalize_inputs_with_snakenull is not None:
-            # Build a tiny view of config for this single component
-            cfg_for_this = {
-                "pybids_inputs": {name: inputs_config[name]},
-            }
-            if snakenull_global:
-                cfg_for_this["snakenull"] = snakenull_global
-
-            # Normalizer is a no-op if not enabled globally or per-component
+            cfg_for_this: dict[str, Any] = {}
+            cfg_for_this["pybids_inputs"] = {name: inputs_config[name]}
+            if snakenull_global is not None:
+                # make it a real dict so downstream code that expects a dict is happy
+                cfg_for_this["snakenull"] = dict(snakenull_global)
             normalize_inputs_with_snakenull({name: comp}, config=cfg_for_this)
         # ----------------------------------------------------------------
 
