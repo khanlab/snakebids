@@ -42,6 +42,10 @@ from snakebids.utils.utils import (
     BidsParseError,
     get_first_dir,
 )
+try:
+    from snakebids.snakenull import normalize_inputs_with_snakenull
+except Exception:  # pragma: no cover
+    normalize_inputs_with_snakenull = None  # type: ignore[assignment]
 
 _logger = logging.getLogger(__name__)
 _TOKEN_EQ_PLACEHOLDER = re.compile(r"^([a-zA-Z0-9]+)-\{\1\}$")
@@ -500,15 +504,15 @@ def write_derivative_json(snakemake: Snakemake, **kwargs: dict[str, Any]) -> Non
         json.dump(sidecar, outfile, indent=4)
 
 
-def _split_template(path_template: str) -> tuple[str, str]:
-    """Return (dir, filename) for a template path."""
+def _split_template(path_template: str) -> Tuple[str, str]:
+    """Return (dir, filename) split for a template path."""
     if "/" in path_template:
         head, tail = path_template.rsplit("/", 1)
         return head, tail
     return "", path_template
 
 def _token_tags_in_filename(filename: str) -> Set[str]:
-    """Collect tags found in 'tag-{tag}' tokens within a filename."""
+    """Extract tags that appear as tokens 'tag-{tag}' in a filename."""
     tags: Set[str] = set()
     for tok in filename.split("_"):
         m = _TOKEN_EQ_PLACEHOLDER.match(tok)
@@ -517,54 +521,50 @@ def _token_tags_in_filename(filename: str) -> Set[str]:
     return tags
 
 def _drop_optional_tokens(filename: str, optional_tags: Iterable[str]) -> str:
-    """Remove 'tag-{tag}' tokens for provided tags from a filename."""
+    """Remove tokens 'tag-{tag}' for any tag in optional_tags from a filename."""
     opt = set(optional_tags)
-    kept = []
+    kept: List[str] = []
     for tok in filename.split("_"):
         m = _TOKEN_EQ_PLACEHOLDER.match(tok)
         if m and m.group(1) in opt:
             continue
-    # keep everything else
         kept.append(tok)
     return "_".join(kept)
 
-def _collapse_bids_templates(paths: Set[str], *, allowed_tags: Iterable[str]) -> str | None:
+def _collapse_bids_templates(paths: Set[str]) -> str | None:
     """Collapse multiple filename shapes by removing optional 'tag-{tag}' tokens.
 
-    We consider tokens optional if they:
-      - appear as 'tag-{tag}' in the filename (not directories!), and
-      - are present in some templates but not all, and
-      - the tag is in allowed_tags (typically the component's wildcards)
-
-    Returns a single unified template string if all templates become identical after
-    collapse; otherwise returns None (caller should keep raising).
+    Optional = tokens that appear in some but not all templates. Only filename
+    tokens are considered; directory segments like 'ses-{session}' are untouched.
+    Returns a single unified template if all filenames become identical after
+    removal; otherwise None.
     """
     if not paths or len(paths) == 1:
         return next(iter(paths), None)
 
     dir_files = [_split_template(p) for p in paths]
-    dirs = {d for d, _ in dir_files}
-    if len(dirs) != 1:
-        # We don't try to collapse when directory structures differ
+    dir_set = {d for d, _ in dir_files}
+    if len(dir_set) != 1:
+        # Different directory structures; don't attempt to collapse
         return None
-    shared_dir = next(iter(dirs))
+    shared_dir = next(iter(dir_set))
     filenames = [f for _, f in dir_files]
 
-    # Count how often each 'tag-{tag}' appears across templates
+    # Count presence of each 'tag-{tag}' token across filenames
     counts: dict[str, int] = {}
     for fn in filenames:
         for t in _token_tags_in_filename(fn):
             counts[t] = counts.get(t, 0) + 1
 
     n = len(filenames)
-    allowed = set(allowed_tags)
-    optional = {t for t, c in counts.items() if 0 < c < n and t in allowed}
-    if not optional:
+    optional_tags = {t for t, c in counts.items() if 0 < c < n}
+    if not optional_tags:
         return None
 
-    collapsed_files = [_drop_optional_tokens(fn, optional) for fn in filenames]
+    collapsed_files = [_drop_optional_tokens(fn, optional_tags) for fn in filenames]
     if len(set(collapsed_files)) == 1:
-        return f"{shared_dir}/{collapsed_files[0]}" if shared_dir else collapsed_files[0]
+        collapsed_file = collapsed_files[0]
+        return f"{shared_dir}/{collapsed_file}" if shared_dir else collapsed_file
     return None
 
 
@@ -574,6 +574,7 @@ def _get_components(
     inputs_config: InputsConfig,
     postfilters: PostFilter,
     limit_to: Iterable[str] | None = None,
+    snakenull_global: dict | None = None,   # <-- NEW (optional)
 ):
     """Generate components based on components config and a bids layout.
 
@@ -610,8 +611,23 @@ def _get_components(
             input_name=name,
             postfilters=postfilters,
         )
-        if comp is not None:
-            yield comp
+        if comp is None:
+            continue
+
+        # --- Inline snakenull normalization (mutates comp in place) ---
+        if normalize_inputs_with_snakenull is not None:
+            # Build a tiny view of config for this single component
+            cfg_for_this = {
+                "pybids_inputs": {name: inputs_config[name]},
+            }
+            if snakenull_global:
+                cfg_for_this["snakenull"] = snakenull_global
+
+            # Normalizer is a no-op if not enabled globally or per-component
+            normalize_inputs_with_snakenull({name: comp}, config=cfg_for_this)
+        # ----------------------------------------------------------------
+
+        yield comp
 
 
 def _get_component(
@@ -659,23 +675,25 @@ def _get_component(
         )
         raise RunError(msg)
 
-    zip_lists: dict[str, list[str]] = defaultdict(list)
+    # We will collect parsed values per file first, then build zip_lists
+    parsed_per_file: list[dict[str, str]] = []
     paths: set[str] = set()
+
     try:
         matching_files = get_matching_files(bids_layout, filters)
     except FilterSpecError as err:
         raise err.get_config_error(input_name) from err
 
+    # Preserve order (and de-dup) of user wildcards once
+    requested_wildcards: list[str] = list(dict.fromkeys(component.get("wildcards", [])))
+
     for img in matching_files:
-        wildcards: list[str] = [
-            wildcard
-            for wildcard in set(component.get("wildcards", []))
-            if wildcard in img.entities
-        ]
-        _logger.debug("Wildcards %s found entities for %s", wildcards, img.path)
+        # Only parse wildcards that actually exist on this file
+        parse_wildcards: list[str] = [w for w in requested_wildcards if w in img.entities]
+        _logger.debug("Wildcards %s found entities for %s", parse_wildcards, img.path)
 
         try:
-            path, parsed_wildcards = _parse_bids_path(img.path, wildcards)
+            path, parsed_wildcards = _parse_bids_path(img.path, parse_wildcards)
         except BidsParseError as err:
             msg = (
                 "Parsing failed:\n"
@@ -696,9 +714,7 @@ def _get_component(
             )
             raise ConfigError(msg) from err
 
-        for wildcard_name, value in parsed_wildcards.items():
-            zip_lists[wildcard_name].append(value)
-
+        parsed_per_file.append(parsed_wildcards)
         paths.add(path)
 
     # now, check to see if unique
@@ -714,18 +730,15 @@ def _get_component(
                     for key, val in component.get("filters", {}).items()
                 ]
             ),
-            "\n".join(
-                [f"       {wildcard}" for wildcard in component.get("wildcards", [])]
-            ),
+            "\n".join([f"       {wildcard}" for wildcard in requested_wildcards]),
         )
         return None
 
     if len(paths) == 1:
         path = next(iter(paths))
     else:
-        # Try to collapse optional tokens (e.g., acq/run/part) that cause shape divergence
-        allowed_tags = component.get("wildcards", []) or []
-        collapsed = _collapse_bids_templates(paths, allowed_tags=allowed_tags)
+        # Collapse optional filename tokens (e.g., acq-{acq}, run-{run}, part-{part})
+        collapsed = _collapse_bids_templates(paths)
         if collapsed is not None:
             path = collapsed
         else:
@@ -738,14 +751,49 @@ def _get_component(
             ).expandtabs(4)
             raise ConfigError(msg)
 
+    # Build zip_lists ONLY for wildcards that actually occur in the final path template
+    # (The component validator requires these sets to match.)
+    # Note: we only look at placeholders in the path; directory placeholders are fine.
+    placeholders_in_path = []
+    for m in re.finditer(r"{([^}]+)}", path):
+        placeholders_in_path.append(m.group(1))
+    placeholders_in_path = list(dict.fromkeys(placeholders_in_path))  # stable order
+
+    zip_lists: dict[str, list[str]] = defaultdict(list)
+    for parsed in parsed_per_file:
+        for wc in placeholders_in_path:
+            zip_lists[wc].append(parsed.get(wc, ""))  # pad "" if missing
+
     if filters.has_empty_postfilter:
-        return BidsComponent(
+        comp = BidsComponent(
             name=input_name, path=path, zip_lists={key: [] for key in zip_lists}
         )
+    else:
+        comp = BidsComponent(name=input_name, path=path, zip_lists=zip_lists).filter(
+            regex_search=True, **filters.post_exclusions
+        )
 
-    return BidsComponent(name=input_name, path=path, zip_lists=zip_lists).filter(
-        regex_search=True, **filters.post_exclusions
-    )
+    # --- Snakenull context for the normalizer ---
+    # How many files matched before postfiltering (used to detect "missing" entities)
+    try:
+        setattr(comp, "snakenull_total_files", len(matching_files))
+    except Exception:
+        pass
+
+    # Which wildcards were originally requested for this component
+    try:
+        setattr(comp, "requested_wildcards", requested_wildcards)
+    except Exception:
+        pass
+
+    # Optional: raw PyBIDS records (if you want the normalizer to use per-file entities)
+    try:
+        setattr(comp, "matched_files", list(matching_files))
+    except Exception:
+        pass
+    # --------------------------------------------
+
+    return comp
 
 
 def _parse_custom_path(

@@ -100,20 +100,60 @@ def _entities_from_record(rec) -> Mapping[str, Any]:
 def _collect_present_values(
     component,
 ) -> tuple[dict[str, set[str]], dict[str, bool], list[str]]:
-    """Collect present entity values and detect missing ones across matched files."""
+    """Collect present entity values and detect missing ones across matched files.
+
+    Primary: iterate raw records (matched_files) and read each record's .entities.
+    Fallback: if no records are available, use component.zip_lists plus
+    snakenull_total_files (or infer total from the longest list) to detect
+    cases where some files lack an entity.
+    """
     wc_list = _wildcards_list_from_component(component)
     present_values: dict[str, set[str]] = {w: set() for w in wc_list}
     has_missing: dict[str, bool] = {w: False for w in wc_list}
 
-    for rec in _files_from_component(component):
-        ents = _entities_from_record(rec)
-        for ent in wc_list:
-            val = ents.get(ent)
-            if val not in (None, ""):
-                present_values[ent].add(str(val))
-            else:
-                has_missing[ent] = True
+    # ----- Primary path: use matched_files (per-record entities) -----
+    files = _files_from_component(component)
+    if files:
+        for rec in files:
+            ents = _entities_from_record(rec)
+            for ent in wc_list:
+                val = ents.get(ent)
+                if val not in (None, ""):
+                    present_values[ent].add(str(val))
+                else:
+                    has_missing[ent] = True
+        return present_values, has_missing, wc_list
 
+    # ----- Fallback: use zip_lists + total file count -----
+    zip_lists = {}
+    if hasattr(component, "zip_lists") and isinstance(component.zip_lists, Mapping):
+        zip_lists = component.zip_lists
+    elif isinstance(component, Mapping) and "zip_lists" in component and isinstance(
+        component["zip_lists"], Mapping
+    ):
+        zip_lists = component["zip_lists"]
+
+    if zip_lists:
+        # Prefer explicit total from generate_inputs hook; otherwise infer from max length
+        total = 0
+        if hasattr(component, "snakenull_total_files"):
+            try:
+                total = int(getattr(component, "snakenull_total_files"))
+            except Exception:
+                total = 0
+        if not total:
+            total = max((len(zip_lists.get(ent, [])) for ent in wc_list), default=0)
+
+        for ent in wc_list:
+            lst = list(zip_lists.get(ent, []))  # list length ~= count of files with this entity
+            # present values as a set (unique values for the wildcard)
+            present_values[ent] = {str(v) for v in lst if v not in (None, "")}
+            # If fewer files contributed this entity than total files, some are missing it
+            has_missing[ent] = len(lst) < total
+
+        return present_values, has_missing, wc_list
+
+    # No records and no zip_lists: return empty/defaults
     return present_values, has_missing, wc_list
 
 
