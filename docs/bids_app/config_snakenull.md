@@ -13,7 +13,6 @@ This behavior is **off by default** and can be controlled globally or per compon
 snakenull:
   enabled: false       # default: legacy behavior
   label: snakenull     # placeholder value for missing entities
-  include_prefix: true # downstream path builders may include "_acq-snakenull_" if true
   scope: all           # "all" or a list, e.g., ["session", "acquisition"]
 ```
 ## Per-component override

@@ -24,16 +24,12 @@ class SnakenullConfig:
         Turn normalization on for this component or globally.
     label:
         Placeholder value assigned to missing entities.
-    include_prefix:
-        If True, include the key when rendering paths (e.g., ``_acq-snakenull_``);
-        if False, omit the entire segment.
     scope:
         Either ``"all"`` or an iterable of entity names to normalize.
     """
 
     enabled: bool = False
     label: str = "snakenull"
-    include_prefix: bool = True  # downstream path builders may use this
     scope: Iterable[str] | str = "all"  # "all" or iterable of entity names
 
 
@@ -49,7 +45,6 @@ def _merge_cfg(
     base = {
         "enabled": False,
         "label": "snakenull",
-        "include_prefix": True,
         "scope": "all",
     }
     if global_cfg:
@@ -74,86 +69,56 @@ def _wildcards_list_from_component(component) -> list[str]:
     return []
 
 
-def _files_from_component(component) -> list:
-    """Return the iterable of matched records/files from the component."""
-    for attr in ("matched_files", "files", "items", "records"):
-        if hasattr(component, attr):
-            return list(getattr(component, attr) or [])
-    if isinstance(component, Mapping):
-        for key in ("matched_files", "files", "items", "records"):
-            if key in component:
-                return list(component[key] or [])
-    return []
 
 
-def _entities_from_record(rec) -> Mapping[str, Any]:
-    """Return the entities mapping from a PyBIDS-like record."""
-    if hasattr(rec, "entities"):
-        ents = rec.entities
-        return ents if isinstance(ents, Mapping) else {}
-    if isinstance(rec, Mapping) and "entities" in rec:
-        ents = rec.get("entities")
-        return ents if isinstance(ents, Mapping) else {}
-    return {}
 
 
 def _collect_present_values(
-    component,
-) -> tuple[dict[str, set[str]], dict[str, bool], list[str]]:
-    """Collect present entity values and detect missing ones across matched files.
+    component: Any,
+) -> tuple[Dict[str, Set[str]], Dict[str, bool], List[str]]:
+    """Collect present entity values and detect missing ones across files.
 
-    Primary: iterate raw records (matched_files) and read each record's .entities.
-    Fallback: if no records are available, use component.zip_lists plus
-    snakenull_total_files (or infer total from the longest list) to detect
-    cases where some files lack an entity.
+    Primary: use per-file dicts attached as ``snakenull_entities_per_file``.
+    Fallback: reconstruct from ``zip_lists`` (e.g., custom_path).
     """
-    wc_list = _wildcards_list_from_component(component)
-    present_values: dict[str, set[str]] = {w: set() for w in wc_list}
-    has_missing: dict[str, bool] = {w: False for w in wc_list}
+    wc_list: List[str] = _wildcards_list_from_component(component)
+    present_values: Dict[str, Set[str]] = {w: set() for w in wc_list}
+    has_missing: Dict[str, bool] = {w: False for w in wc_list}
 
-    # ----- Primary path: use matched_files (per-record entities) -----
-    files = _files_from_component(component)
-    if files:
-        for rec in files:
-            ents = _entities_from_record(rec)
+    # Primary path
+    if hasattr(component, "snakenull_entities_per_file"):
+        records = list(getattr(component, "snakenull_entities_per_file") or [])
+        for rec in records:
             for ent in wc_list:
-                val = ents.get(ent)
+                val = rec.get(ent)
                 if val not in (None, ""):
                     present_values[ent].add(str(val))
                 else:
                     has_missing[ent] = True
         return present_values, has_missing, wc_list
 
-    # ----- Fallback: use zip_lists + total file count -----
-    zip_lists = {}
+    # Fallback path
+    zip_lists: Mapping[str, List[str]] = {}
     if hasattr(component, "zip_lists") and isinstance(component.zip_lists, Mapping):
-        zip_lists = component.zip_lists
+        zip_lists = component.zip_lists  # type: ignore[assignment]
     elif isinstance(component, Mapping) and "zip_lists" in component and isinstance(
         component["zip_lists"], Mapping
     ):
-        zip_lists = component["zip_lists"]
+        zip_lists = component["zip_lists"]  # type: ignore[assignment]
 
     if zip_lists:
-        # Prefer explicit total from generate_inputs hook; otherwise infer from max length
-        total = 0
-        if hasattr(component, "snakenull_total_files"):
-            try:
-                total = int(getattr(component, "snakenull_total_files"))
-            except Exception:
-                total = 0
-        if not total:
-            total = max((len(zip_lists.get(ent, [])) for ent in wc_list), default=0)
-
+        total = max((len(zip_lists.get(ent, [])) for ent in wc_list), default=0)
         for ent in wc_list:
-            lst = list(zip_lists.get(ent, []))  # list length ~= count of files with this entity
-            # present values as a set (unique values for the wildcard)
-            present_values[ent] = {str(v) for v in lst if v not in (None, "")}
-            # If fewer files contributed this entity than total files, some are missing it
-            has_missing[ent] = len(lst) < total
-
+            lst = list(zip_lists.get(ent, []))
+            if len(lst) < total:
+                lst.extend([""] * (total - len(lst)))
+            for val in lst:
+                if val not in (None, ""):
+                    present_values[ent].add(str(val))
+                else:
+                    has_missing[ent] = True
         return present_values, has_missing, wc_list
 
-    # No records and no zip_lists: return empty/defaults
     return present_values, has_missing, wc_list
 
 
@@ -173,10 +138,8 @@ def _set_component_entities(component, entities: Mapping[str, list[str]]) -> Non
     # optional flags for downstream path builders
     if hasattr(component, "__dict__"):
         cast(Any, component).snakenull_label = None
-        cast(Any, component).snakenull_include_prefix = True
     if isinstance(component, MutableMapping):
         component["snakenull_label"] = None
-        component["snakenull_include_prefix"] = True
 
 
 def normalize_inputs_with_snakenull(
@@ -240,9 +203,7 @@ def normalize_inputs_with_snakenull(
         # annotate component with snakenull rendering preferences if helpful later
         if hasattr(comp, "__dict__"):
             cast(Any, comp).snakenull_label = s_cfg.label
-            cast(Any, comp).snakenull_include_prefix = s_cfg.include_prefix
         if isinstance(comp, MutableMapping):
             comp["snakenull_label"] = s_cfg.label
-            comp["snakenull_include_prefix"] = s_cfg.include_prefix
 
     return inputs

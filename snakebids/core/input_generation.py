@@ -675,16 +675,16 @@ def _get_component(
         )
         raise RunError(msg)
 
-    # We will collect parsed values per file first, then build zip_lists
-    parsed_per_file: list[dict[str, str]] = []
+    zip_lists: dict[str, list[str]] = defaultdict(list)
     paths: set[str] = set()
+    parsed_per_file: list[dict[str, str]] = []
 
     try:
         matching_files = get_matching_files(bids_layout, filters)
     except FilterSpecError as err:
         raise err.get_config_error(input_name) from err
 
-    # Preserve order (and de-dup) of user wildcards once
+    # Preserve order and de-dup user wildcards once
     requested_wildcards: list[str] = list(dict.fromkeys(component.get("wildcards", [])))
 
     for img in matching_files:
@@ -714,7 +714,10 @@ def _get_component(
             )
             raise ConfigError(msg) from err
 
-        parsed_per_file.append(parsed_wildcards)
+        # Record one value per requested wildcard for this file; missing → ""
+        per_file = {wc: parsed_wildcards.get(wc, "") for wc in requested_wildcards}
+        parsed_per_file.append(per_file)
+
         paths.add(path)
 
     # now, check to see if unique
@@ -752,17 +755,15 @@ def _get_component(
             raise ConfigError(msg)
 
     # Build zip_lists ONLY for wildcards that actually occur in the final path template
-    # (The component validator requires these sets to match.)
-    # Note: we only look at placeholders in the path; directory placeholders are fine.
-    placeholders_in_path = []
+    placeholders_in_path: list[str] = []
     for m in re.finditer(r"{([^}]+)}", path):
         placeholders_in_path.append(m.group(1))
     placeholders_in_path = list(dict.fromkeys(placeholders_in_path))  # stable order
 
-    zip_lists: dict[str, list[str]] = defaultdict(list)
-    for parsed in parsed_per_file:
+    zip_lists = defaultdict(list)  # type: ignore[var-annotated]
+    for per_file in parsed_per_file:
         for wc in placeholders_in_path:
-            zip_lists[wc].append(parsed.get(wc, ""))  # pad "" if missing
+            zip_lists[wc].append(per_file.get(wc, ""))  # pad "" if missing
 
     if filters.has_empty_postfilter:
         comp = BidsComponent(
@@ -773,22 +774,17 @@ def _get_component(
             regex_search=True, **filters.post_exclusions
         )
 
-    # --- Snakenull context for the normalizer ---
-    # How many files matched before postfiltering (used to detect "missing" entities)
+    # --- Snakenull context for the normalizer (lightweight, PyBIDS-free) ---
     try:
-        setattr(comp, "snakenull_total_files", len(matching_files))
+        setattr(comp, "snakenull_total_files", len(parsed_per_file))
     except Exception:
         pass
-
-    # Which wildcards were originally requested for this component
     try:
         setattr(comp, "requested_wildcards", requested_wildcards)
     except Exception:
         pass
-
-    # Optional: raw PyBIDS records (if you want the normalizer to use per-file entities)
     try:
-        setattr(comp, "matched_files", list(matching_files))
+        setattr(comp, "snakenull_entities_per_file", parsed_per_file)
     except Exception:
         pass
     # --------------------------------------------
