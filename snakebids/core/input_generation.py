@@ -78,6 +78,7 @@ def generate_inputs(
     validate: bool = ...,
     pybids_database_dir: Path | str | None = ...,
     pybids_reset_database: bool = ...,
+    snakenull: Mapping[str, Any] | None = ...,  # NEW in overload
 ) -> BidsDataset: ...
 
 
@@ -97,6 +98,7 @@ def generate_inputs(
     validate: bool = ...,
     pybids_database_dir: Path | str | None = ...,
     pybids_reset_database: bool = ...,
+    snakenull: Mapping[str, Any] | None = ...,  # NEW in overload
 ) -> BidsDatasetDict: ...
 
 
@@ -115,6 +117,7 @@ def generate_inputs(
     validate: bool = False,
     pybids_database_dir: Path | str | None = None,
     pybids_reset_database: bool | None = None,
+    snakenull: Mapping[str, Any] | None = None,  # NEW in implementation
 ) -> BidsDataset | BidsDatasetDict:
     """Dynamically generate snakemake inputs using pybids_inputs.
 
@@ -312,6 +315,7 @@ ses-{session}_run-{run}_T1w.nii.gz",
         inputs_config=pybids_inputs,
         limit_to=limit_to,
         postfilters=postfilters,
+        snakenull_global=snakenull,
     )
 
     if use_bids_inputs is True:
@@ -582,6 +586,23 @@ def _collapse_bids_templates(paths: set[str]) -> str | None:
     return None
 
 
+def _snakenull_enabled_for_component(
+    component_cfg: InputConfig, snakenull_global: Mapping[str, Any] | None
+) -> bool:
+    """Return True if snakenull is enabled for this component (local overrides global)."""
+    enabled = False
+    if isinstance(snakenull_global, Mapping):
+        val = snakenull_global.get("enabled")
+        if isinstance(val, bool):
+            enabled = val
+    local = component_cfg.get("snakenull")
+    if isinstance(local, Mapping):
+        val = local.get("enabled")
+        if isinstance(val, bool):
+            enabled = val
+    return enabled
+
+
 def _get_components(
     *,
     bids_layout: BIDSLayout | None,
@@ -590,53 +611,35 @@ def _get_components(
     limit_to: Iterable[str] | None = None,
     snakenull_global: Mapping[str, Any] | None = None,
 ) -> Iterator[BidsComponent]:
-    """Generate components based on components config and a bids layout.
+    names: list[str] = (
+        list(limit_to) if limit_to is not None else list(inputs_config.keys())
+    )
 
-    Parameters
-    ----------
-    bids_layout : BIDSLayout
-        Layout from pybids for accessing the BIDS dataset to grab paths.
-
-    inputs_config
-        Dictionary indexed by modality name, specifying the filters and
-        wildcards for each pybids input.
-
-    limit_to
-        List of inputs to skip, this used by snakebids to exclude modalities based on
-        cmd-line args.
-
-    postfilters
-        Filters to all components after delineation.
-
-    Yields
-    ------
-    BidsComponent:
-        One BidsComponent is yielded for each modality described by ``pybids_inputs``.
-
-    Raises
-    ------
-    ConfigError
-        In response to invalid configuration, missing components, or parsing errors.
-    """
-    for name in limit_to or inputs_config:
+    for name in names:
         comp = _get_component(
             bids_layout=bids_layout,
             component=inputs_config[name],
             input_name=name,
             postfilters=postfilters,
+            # NEW: pass whether we should allow template collapse for this component
+            allow_template_collapse=_snakenull_enabled_for_component(
+                inputs_config[name], snakenull_global
+            ),
         )
         if comp is None:
             continue
 
-        # --- Inline snakenull normalization (mutates comp in place) ---
-        if normalize_inputs_with_snakenull is not None:
-            cfg_for_this: dict[str, Any] = {}
-            cfg_for_this["pybids_inputs"] = {name: inputs_config[name]}
+        # Only run normalizer if enabled (otherwise preserve legacy behavior)
+        if (
+            normalize_inputs_with_snakenull is not None
+            and _snakenull_enabled_for_component(inputs_config[name], snakenull_global)
+        ):
+            cfg_for_this: dict[str, Any] = {
+                "pybids_inputs": {name: inputs_config[name]}
+            }
             if snakenull_global is not None:
-                # make it a real dict so downstream code that expects a dict is happy
                 cfg_for_this["snakenull"] = dict(snakenull_global)
-            normalize_inputs_with_snakenull({name: comp}, config=cfg_for_this)
-        # ----------------------------------------------------------------
+            normalize_inputs_with_snakenull({name: comp}, config=cfg_for_this)  # type: ignore[misc]
 
         yield comp
 
@@ -679,32 +682,15 @@ def _safe_parse_per_file(
     return path, per_file
 
 
-def _choose_template_path(paths: set[str], input_name: str) -> str:
-    """Pick a single template, collapsing optional tokens if needed or raise."""
-    if len(paths) == 1:
-        return next(iter(paths))
-    collapsed = _collapse_bids_templates(paths)
-    if collapsed is not None:
-        return collapsed
-    msg = (
-        f"Multiple path templates for one component. Use --filter_{input_name} to "
-        f"narrow your search or --wildcards_{input_name} to make the template more "
-        "generic.\n"
-        f"\tcomponent = {input_name!r}\n"
-        f"\tpath_templates = [\n\t\t" + ",\n\t\t".join(map(repr, paths)) + "\n\t]\n"
-    ).expandtabs(4)
-    raise ConfigError(msg)
-
-
 def _build_zip_lists_from_parsed(
     parsed_per_file: list[dict[str, str]], placeholders: list[str]
 ) -> dict[str, list[str]]:
     """Rectangular zip_lists aligned with final template placeholders."""
-    z: dict[str, list[str]] = defaultdict(list)
+    z: defaultdict[str, list[str]] = defaultdict(list)
     for rec in parsed_per_file:
         for wc in placeholders:
             z[wc].append(rec.get(wc, ""))  # pad "" if missing
-    return z
+    return dict(z)
 
 
 def _annotate_snakenull_component(
@@ -725,6 +711,7 @@ def _get_component(
     *,
     input_name: str,
     postfilters: PostFilter,
+    allow_template_collapse: bool = False,
 ) -> BidsComponent | None:
     """Create component based on provided config."""
     _logger.debug("Grabbing inputs for %s...", input_name)
@@ -772,8 +759,48 @@ def _get_component(
         )
         return None
 
-    # Pick a single template (collapse optional tokens if needed)
-    path = _choose_template_path(paths, input_name)
+    # Decide on a single template (collapse optional tokens only if allowed)
+    if len(paths) == 0:
+        _logger.warning(
+            "No input files found for snakebids component %s:\n"
+            "    filters:\n%s\n"
+            "    wildcards:\n%s",
+            input_name,
+            "\n".join(
+                f"       {key}: {val}"
+                for key, val in component.get("filters", {}).items()
+            ),
+            "\n".join(f"       {wc}" for wc in requested_wildcards),
+        )
+        return None
+
+    if len(paths) == 1:
+        path = next(iter(paths))
+    elif allow_template_collapse:
+        collapsed = _collapse_bids_templates(paths)
+        if collapsed is not None:
+            path = collapsed
+        else:
+            msg = (
+                f"Multiple path templates for one component. Use --filter_{input_name} to "
+                f"narrow your search or --wildcards_{input_name} to make the template more "
+                "generic.\n"
+                f"\tcomponent = {input_name!r}\n"
+                f"\tpath_templates = [\n\t\t"
+                + ",\n\t\t".join(map(repr, paths))
+                + "\n\t]\n"
+            ).expandtabs(4)
+            raise ConfigError(msg)
+    else:
+        # Legacy behavior when snakenull is disabled globally/locally
+        msg = (
+            f"Multiple path templates for one component. Use --filter_{input_name} to "
+            f"narrow your search or --wildcards_{input_name} to make the template more "
+            "generic.\n"
+            f"\tcomponent = {input_name!r}\n"
+            f"\tpath_templates = [\n\t\t" + ",\n\t\t".join(map(repr, paths)) + "\n\t]\n"
+        ).expandtabs(4)
+        raise ConfigError(msg)
 
     # Build rectangular zip_lists only for placeholders appearing in the final path
     placeholders = _placeholders_in_template(path)

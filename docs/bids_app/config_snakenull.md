@@ -28,17 +28,20 @@ pybids_inputs:
       scope: [session, acquisition]
 ```
 ## Usage
-After calling snakebids.generate_inputs(...), apply:
+include these parameters in generate_inputs():
 ```python
-from snakebids.snakenull import normalize_inputs_with_snakenull
-inputs = snakebids.generate_inputs(bids_dir=..., pybids_inputs=...)
-normalize_inputs_with_snakenull(inputs, config=your_full_config_dict)
+inputs = generate_inputs(
+    bids_dir=config["bids_dir"],
+    pybids_inputs=config["pybids_inputs"],
+    ...
+    snakenull=config.get("snakenull"),
+)
 ```
 This mutates inputs in place so that:
 
-Entities listed in wildcards but entirely absent in your dataset are removed.
+- Entities listed in wildcards but entirely absent in your dataset are removed.
 
-Entities that are present for some files but missing for others are assigned the
+- Entities that are present for some files but missing for others are assigned the
 placeholder label (default snakenull) and included in entities for expansion.
 
 Downstream, your BidsComponent.entities will include e.g.:

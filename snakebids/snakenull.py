@@ -136,24 +136,38 @@ def _collect_present_values(
     return present_values, has_missing, wc_list
 
 
-def _set_component_entities(component, entities: Mapping[str, list[str]]) -> None:
-    """Write back normalized entities and rebuild wildcards if needed."""
-    # entities
-    if hasattr(component, "entities"):
-        component.entities = dict(entities)
-    elif isinstance(component, MutableMapping):
-        component["entities"] = dict(entities)
-    # wildcards
-    wildcards = {k: "{" + k + "}" for k in entities}
-    if hasattr(component, "wildcards"):
-        cast(Any, component).wildcards = wildcards
-    elif isinstance(component, MutableMapping):
-        component["wildcards"] = wildcards
-    # optional flags for downstream path builders
-    if hasattr(component, "__dict__"):
-        cast(Any, component).snakenull_label = None
+def _set_component_entities(component: Any, entities: Mapping[str, list[str]]) -> None:
+    """Expose normalized entity domains without breaking frozen components.
+
+    - If the component is a MutableMapping, write into its keys ('entities', 'wildcards').
+    - Otherwise, *best effort* set attributes, but swallow AttributeError from frozen attrs.
+    - Always try to stash under a side attribute 'snakenull_entities' for consumers that
+      choose to read it explicitly.
+    """
+    # Prefer writing into mapping-like components (safe, no __setattr__)
     if isinstance(component, MutableMapping):
-        component["snakenull_label"] = None
+        component["entities"] = dict(entities)
+        component["wildcards"] = {k: "{" + k + "}" for k in entities}
+        # Optional hints for downstream renderers
+        component["_snakenull_label"] = getattr(component, "_snakenull_label", None)
+        component["_snakenull_include_prefix"] = getattr(
+            component, "_snakenull_include_prefix", True
+        )
+        return
+
+    # Attribute-based components: be defensive (attrs-frozen will raise on __setattr__)
+    import contextlib
+
+    with contextlib.suppress(Exception):
+        if hasattr(component, "entities"):
+            component.entities = dict(entities)
+    with contextlib.suppress(Exception):
+        if hasattr(component, "wildcards"):
+            component.wildcards = {k: "{" + k + "}" for k in entities}
+
+    # Side channel (optional): stash normalized domains for readers that opt-in
+    with contextlib.suppress(Exception):
+        component.snakenull_entities = dict(entities)
 
 
 def normalize_inputs_with_snakenull(

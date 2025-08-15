@@ -398,14 +398,12 @@ pybids_inputs:
 ```
 Code:
 ```python
-import snakebids
-from snakebids.snakenull import normalize_inputs_with_snakenull
-
-inputs = snakebids.generate_inputs(bids_dir=..., pybids_inputs=...)
-normalize_inputs_with_snakenull(inputs, config={
-  "pybids_inputs": {... as above ...},
-  "snakenull": {"enabled": false}  # optional global defaults
-})
+inputs = generate_inputs(
+    bids_dir=config["bids_dir"],
+    pybids_inputs=config["pybids_inputs"],
+    ...
+    snakenull=config.get("snakenull"),
+)
 ```
 Now inputs["t1w"].entities will contain:
 ```vbnet
