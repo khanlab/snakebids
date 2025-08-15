@@ -245,7 +245,6 @@ After these changes, the workflow should still run just like the last step, but 
 
 ```
 
-
 (snakebids_tutorial)=
 ## Part II: Snakebids
 
@@ -380,6 +379,47 @@ Notice that `inputs['bold'].path`{l=python} is the same as the path we wrote und
 :lineno-match:
 :emphasize-lines: 3
 ```
+
+(snakenull)=
+#### Handling mixed/absent entities with Snakenull
+
+Consider a dataset where:
+- `sub-01` has `ses-01` and `acq-MPRAGE` for T1w
+- `sub-02` has neither `ses` nor `acq`
+
+Config:
+
+```yaml
+pybids_inputs:
+  t1w:
+    filters: {suffix: T1w, extension: .nii.gz, datatype: anat}
+    wildcards: [subject, session, acquisition]
+    snakenull: {enabled: true, scope: [session, acquisition]}
+```
+Code:
+```python
+import snakebids
+from snakebids.snakenull import normalize_inputs_with_snakenull
+
+inputs = snakebids.generate_inputs(bids_dir=..., pybids_inputs=...)
+normalize_inputs_with_snakenull(inputs, config={
+  "pybids_inputs": {... as above ...},
+  "snakenull": {"enabled": false}  # optional global defaults
+})
+```
+Now inputs["t1w"].entities will contain:
+```vbnet
+acquisition: ["MPRAGE", "snakenull"]
+session: ["01", "snakenull"]
+```
+and expansion across t1w.wildcards will include _acq-snakenull_ and _ses-snakenull_
+variants. If an entity in wildcards is entirely absent (e.g., run), it’s removed
+from the component’s entities and wildcards automatically.
+
+This feature is a post-processing step over generate_inputs() and requires no
+changes to your existing app logic. You may later integrate it more tightly into your
+inputs pipeline if desired.
+
 
 
 ### Step 7: using input wildcards
