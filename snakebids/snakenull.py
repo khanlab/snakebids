@@ -69,56 +69,70 @@ def _wildcards_list_from_component(component) -> list[str]:
     return []
 
 
+# Add above `_collect_present_values`
+def _collect_from_records(
+    records: list[Mapping[str, Any]], wc_list: list[str]
+) -> tuple[dict[str, set[str]], dict[str, bool]]:
+    """Accumulate present/missing from a list of per-file entity dicts."""
+    present_values: dict[str, set[str]] = {w: set() for w in wc_list}
+    has_missing: dict[str, bool] = {w: False for w in wc_list}
+    for rec in records:
+        get = rec.get
+        for ent in wc_list:
+            val = get(ent)
+            if val not in (None, ""):
+                present_values[ent].add(str(val))
+            else:
+                has_missing[ent] = True
+    return present_values, has_missing
 
 
+def _collect_from_zip_lists(
+    zip_lists: Mapping[str, list[str]], wc_list: list[str]
+) -> tuple[dict[str, set[str]], dict[str, bool]]:
+    """Accumulate present/missing from rectangular zip_lists."""
+    present_values: dict[str, set[str]] = {w: set() for w in wc_list}
+    has_missing: dict[str, bool] = {w: False for w in wc_list}
+    total = max((len(zip_lists.get(ent, [])) for ent in wc_list), default=0)
+    for ent in wc_list:
+        lst = list(zip_lists.get(ent, []))
+        if len(lst) < total:
+            lst.extend([""] * (total - len(lst)))
+        for val in lst:
+            if val not in (None, ""):
+                present_values[ent].add(str(val))
+            else:
+                has_missing[ent] = True
+    return present_values, has_missing
 
 
 def _collect_present_values(
     component: Any,
-) -> tuple[Dict[str, Set[str]], Dict[str, bool], List[str]]:
-    """Collect present entity values and detect missing ones across files.
+) -> tuple[dict[str, set[str]], dict[str, bool], list[str]]:
+    """Collect present values and detect missing ones."""
+    wc_list: list[str] = _wildcards_list_from_component(component)
 
-    Primary: use per-file dicts attached as ``snakenull_entities_per_file``.
-    Fallback: reconstruct from ``zip_lists`` (e.g., custom_path).
-    """
-    wc_list: List[str] = _wildcards_list_from_component(component)
-    present_values: Dict[str, Set[str]] = {w: set() for w in wc_list}
-    has_missing: Dict[str, bool] = {w: False for w in wc_list}
+    # 1) Primary: precomputed per-file dicts (added in _get_component)
+    records = getattr(component, "snakenull_entities_per_file", None)
+    if records:
+        present, missing = _collect_from_records(list(records), wc_list)
+        return present, missing, wc_list
 
-    # Primary path
-    if hasattr(component, "snakenull_entities_per_file"):
-        records = list(getattr(component, "snakenull_entities_per_file") or [])
-        for rec in records:
-            for ent in wc_list:
-                val = rec.get(ent)
-                if val not in (None, ""):
-                    present_values[ent].add(str(val))
-                else:
-                    has_missing[ent] = True
-        return present_values, has_missing, wc_list
-
-    # Fallback path
-    zip_lists: Mapping[str, List[str]] = {}
+    # 2) Fallback: zip_lists (e.g., custom_path components)
+    zip_lists: Mapping[str, list[str]] | None = None
     if hasattr(component, "zip_lists") and isinstance(component.zip_lists, Mapping):
         zip_lists = component.zip_lists  # type: ignore[assignment]
-    elif isinstance(component, Mapping) and "zip_lists" in component and isinstance(
-        component["zip_lists"], Mapping
-    ):
-        zip_lists = component["zip_lists"]  # type: ignore[assignment]
-
+    elif isinstance(component, Mapping):
+        zl = component.get("zip_lists")
+        if isinstance(zl, Mapping):
+            zip_lists = zl  # type: ignore[assignment]
     if zip_lists:
-        total = max((len(zip_lists.get(ent, [])) for ent in wc_list), default=0)
-        for ent in wc_list:
-            lst = list(zip_lists.get(ent, []))
-            if len(lst) < total:
-                lst.extend([""] * (total - len(lst)))
-            for val in lst:
-                if val not in (None, ""):
-                    present_values[ent].add(str(val))
-                else:
-                    has_missing[ent] = True
-        return present_values, has_missing, wc_list
+        present, missing = _collect_from_zip_lists(zip_lists, wc_list)
+        return present, missing, wc_list
 
+    # 3) No data available
+    present_values: dict[str, set[str]] = {w: set() for w in wc_list}
+    has_missing: dict[str, bool] = {w: False for w in wc_list}
     return present_values, has_missing, wc_list
 
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
@@ -11,10 +12,11 @@ from collections import defaultdict
 from pathlib import Path
 from typing import (
     Any,
+    Callable,
     Iterable,
     Literal,
+    Mapping,
     overload,
-    Set,
 )
 
 import more_itertools as itx
@@ -42,10 +44,17 @@ from snakebids.utils.utils import (
     BidsParseError,
     get_first_dir,
 )
+
+normalize_inputs_with_snakenull: Callable[..., Mapping[str, Any]] | None = None
 try:
-    from snakebids.snakenull import normalize_inputs_with_snakenull
-except Exception:  # pragma: no cover
-    normalize_inputs_with_snakenull = None  # type: ignore[assignment]
+    from snakebids.snakenull import (
+        normalize_inputs_with_snakenull as _normalize_inputs_with_snakenull,
+    )
+
+    normalize_inputs_with_snakenull = _normalize_inputs_with_snakenull
+except (ImportError, ModuleNotFoundError):  # pragma: no cover
+    # Leave normalize_inputs_with_snakenull as None
+    pass
 
 _logger = logging.getLogger(__name__)
 _TOKEN_EQ_PLACEHOLDER = re.compile(r"^([a-zA-Z0-9]+)-\{\1\}$")
@@ -504,26 +513,28 @@ def write_derivative_json(snakemake: Snakemake, **kwargs: dict[str, Any]) -> Non
         json.dump(sidecar, outfile, indent=4)
 
 
-def _split_template(path_template: str) -> Tuple[str, str]:
+def _split_template(path_template: str) -> tuple[str, str]:
     """Return (dir, filename) split for a template path."""
     if "/" in path_template:
         head, tail = path_template.rsplit("/", 1)
         return head, tail
     return "", path_template
 
-def _token_tags_in_filename(filename: str) -> Set[str]:
+
+def _token_tags_in_filename(filename: str) -> set[str]:
     """Extract tags that appear as tokens 'tag-{tag}' in a filename."""
-    tags: Set[str] = set()
+    tags: set[str] = set()
     for tok in filename.split("_"):
         m = _TOKEN_EQ_PLACEHOLDER.match(tok)
         if m:
             tags.add(m.group(1))
     return tags
 
+
 def _drop_optional_tokens(filename: str, optional_tags: Iterable[str]) -> str:
     """Remove tokens 'tag-{tag}' for any tag in optional_tags from a filename."""
     opt = set(optional_tags)
-    kept: List[str] = []
+    kept: list[str] = []
     for tok in filename.split("_"):
         m = _TOKEN_EQ_PLACEHOLDER.match(tok)
         if m and m.group(1) in opt:
@@ -531,7 +542,8 @@ def _drop_optional_tokens(filename: str, optional_tags: Iterable[str]) -> str:
         kept.append(tok)
     return "_".join(kept)
 
-def _collapse_bids_templates(paths: Set[str]) -> str | None:
+
+def _collapse_bids_templates(paths: set[str]) -> str | None:
     """Collapse multiple filename shapes by removing optional 'tag-{tag}' tokens.
 
     Optional = tokens that appear in some but not all templates. Only filename
@@ -574,7 +586,7 @@ def _get_components(
     inputs_config: InputsConfig,
     postfilters: PostFilter,
     limit_to: Iterable[str] | None = None,
-    snakenull_global: dict | None = None,   # <-- NEW (optional)
+    snakenull_global: dict | None = None,  # <-- NEW (optional)
 ):
     """Generate components based on components config and a bids layout.
 
@@ -630,6 +642,84 @@ def _get_components(
         yield comp
 
 
+def _placeholders_in_template(path: str) -> list[str]:
+    """Return placeholders that appear in the final path template (stable order)."""
+    return list(dict.fromkeys(m.group(1) for m in re.finditer(r"{([^}]+)}", path)))
+
+
+def _safe_parse_per_file(
+    img, requested_wildcards: list[str], bids_layout
+) -> tuple[str, dict[str, str]]:
+    """Parse one file's path and return (template_path, per-file wildcard dict)."""
+    parse_wildcards = [w for w in requested_wildcards if w in img.entities]
+    _logger.debug("Wildcards %s found entities for %s", parse_wildcards, img.path)
+    try:
+        path, parsed_wildcards = _parse_bids_path(img.path, parse_wildcards)
+    except BidsParseError as err:
+        msg = (
+            "Parsing failed:\n"
+            f"  Entity: {err.entity.entity}\n"
+            f"  Pattern: {err.entity.regex}\n"
+            f"  Path: {img.path}\n"
+            "\n"
+            "Pybids parsed this path using the pattern: "
+            f"{bids_layout.entities[err.entity.entity].regex}\n"
+            "\n"
+            "Snakebids is not currently able to handle this entity. If it is a "
+            "custom entity, its `tag-` must be configured to be the same as "
+            "its name. Its entry in your pybids config file should look like:\n"
+            f'{{\n\t"name": "{err.entity.entity}",\n'
+            f'\t"pattern":"{err.entity.entity}-(<value_pattern>)"\n}}\n'
+            f"If {err.entity.entity} is an official pybids entity, please "
+            "ensure you are using the latest version of snakebids"
+        )
+        raise ConfigError(msg) from err
+
+    # One value per requested wildcard; missing → ""
+    per_file = {wc: parsed_wildcards.get(wc, "") for wc in requested_wildcards}
+    return path, per_file
+
+
+def _choose_template_path(paths: set[str], input_name: str) -> str:
+    """Pick a single template, collapsing optional tokens if needed or raise."""
+    if len(paths) == 1:
+        return next(iter(paths))
+    collapsed = _collapse_bids_templates(paths)
+    if collapsed is not None:
+        return collapsed
+    msg = (
+        f"Multiple path templates for one component. Use --filter_{input_name} to "
+        f"narrow your search or --wildcards_{input_name} to make the template more "
+        "generic.\n"
+        f"\tcomponent = {input_name!r}\n"
+        f"\tpath_templates = [\n\t\t" + ",\n\t\t".join(map(repr, paths)) + "\n\t]\n"
+    ).expandtabs(4)
+    raise ConfigError(msg)
+
+
+def _build_zip_lists_from_parsed(
+    parsed_per_file: list[dict[str, str]], placeholders: list[str]
+) -> dict[str, list[str]]:
+    """Rectangular zip_lists aligned with final template placeholders."""
+    z: dict[str, list[str]] = defaultdict(list)
+    for rec in parsed_per_file:
+        for wc in placeholders:
+            z[wc].append(rec.get(wc, ""))  # pad "" if missing
+    return z
+
+
+def _annotate_snakenull_component(
+    comp, requested_wildcards: list[str], parsed_per_file: list[dict[str, str]]
+) -> None:
+    """Attach lightweight context for the inlined snakenull normalizer."""
+    with contextlib.suppress(Exception):
+        comp.snakenull_total_files = len(parsed_per_file)
+    with contextlib.suppress(Exception):
+        comp.requested_wildcards = requested_wildcards
+    with contextlib.suppress(Exception):
+        comp.snakenull_entities_per_file = parsed_per_file
+
+
 def _get_component(
     bids_layout: BIDSLayout | None,
     component: InputConfig,
@@ -637,28 +727,7 @@ def _get_component(
     input_name: str,
     postfilters: PostFilter,
 ) -> BidsComponent | None:
-    """Create component based on provided config.
-
-    Parameters
-    ----------
-    bids_layout
-        Layout from pybids for accessing the BIDS dataset to grab paths
-
-    component
-        Dictionary indexed by modality name, specifying the filters and
-        wildcards for each pybids input.
-
-    input_name
-        Name of the component.
-
-    postfilters
-        Filters to component after delineation
-
-    Raises
-    ------
-    ConfigError
-        In response to invalid configuration, missing components, or parsing errors.
-    """
+    """Create component based on provided config."""
     _logger.debug("Grabbing inputs for %s...", input_name)
 
     filters = UnifiedFilter(component, postfilters or {})
@@ -675,96 +744,43 @@ def _get_component(
         )
         raise RunError(msg)
 
-    zip_lists: dict[str, list[str]] = defaultdict(list)
-    paths: set[str] = set()
-    parsed_per_file: list[dict[str, str]] = []
-
     try:
         matching_files = get_matching_files(bids_layout, filters)
     except FilterSpecError as err:
         raise err.get_config_error(input_name) from err
 
-    # Preserve order and de-dup user wildcards once
     requested_wildcards: list[str] = list(dict.fromkeys(component.get("wildcards", [])))
 
+    # Parse each file; collect per-file dicts and candidate templates
+    parsed_per_file: list[dict[str, str]] = []
+    paths: set[str] = set()
     for img in matching_files:
-        # Only parse wildcards that actually exist on this file
-        parse_wildcards: list[str] = [w for w in requested_wildcards if w in img.entities]
-        _logger.debug("Wildcards %s found entities for %s", parse_wildcards, img.path)
-
-        try:
-            path, parsed_wildcards = _parse_bids_path(img.path, parse_wildcards)
-        except BidsParseError as err:
-            msg = (
-                "Parsing failed:\n"
-                f"  Entity: {err.entity.entity}\n"
-                f"  Pattern: {err.entity.regex}\n"
-                f"  Path: {img.path}\n"
-                "\n"
-                "Pybids parsed this path using the pattern: "
-                f"{bids_layout.entities[err.entity.entity].regex}\n"
-                "\n"
-                "Snakebids is not currently able to handle this entity. If it is a "
-                "custom entity, its `tag-` must be configured to be the same as "
-                "its name. Its entry in your pybids config file should look like:\n"
-                f'{{\n\t"name": "{err.entity.entity}",\n'
-                f'\t"pattern":"{err.entity.entity}-(<value_pattern>)"\n}}\n'
-                f"If {err.entity.entity} is an official pybids entity, please "
-                "ensure you are using the latest version of snakebids"
-            )
-            raise ConfigError(msg) from err
-
-        # Record one value per requested wildcard for this file; missing → ""
-        per_file = {wc: parsed_wildcards.get(wc, "") for wc in requested_wildcards}
+        path, per_file = _safe_parse_per_file(img, requested_wildcards, bids_layout)
         parsed_per_file.append(per_file)
-
         paths.add(path)
 
-    # now, check to see if unique
-    if len(paths) == 0:
+    if not paths:
         _logger.warning(
             "No input files found for snakebids component %s:\n"
             "    filters:\n%s\n"
             "    wildcards:\n%s",
             input_name,
             "\n".join(
-                [
-                    f"       {key}: {val}"
-                    for key, val in component.get("filters", {}).items()
-                ]
+                f"       {key}: {val}"
+                for key, val in component.get("filters", {}).items()
             ),
-            "\n".join([f"       {wildcard}" for wildcard in requested_wildcards]),
+            "\n".join(f"       {wc}" for wc in requested_wildcards),
         )
         return None
 
-    if len(paths) == 1:
-        path = next(iter(paths))
-    else:
-        # Collapse optional filename tokens (e.g., acq-{acq}, run-{run}, part-{part})
-        collapsed = _collapse_bids_templates(paths)
-        if collapsed is not None:
-            path = collapsed
-        else:
-            msg = (
-                f"Multiple path templates for one component. Use --filter_{input_name} to "
-                f"narrow your search or --wildcards_{input_name} to make the template more "
-                "generic.\n"
-                f"\tcomponent = {input_name!r}\n"
-                f"\tpath_templates = [\n\t\t" + ",\n\t\t".join(map(repr, paths)) + "\n\t]\n"
-            ).expandtabs(4)
-            raise ConfigError(msg)
+    # Pick a single template (collapse optional tokens if needed)
+    path = _choose_template_path(paths, input_name)
 
-    # Build zip_lists ONLY for wildcards that actually occur in the final path template
-    placeholders_in_path: list[str] = []
-    for m in re.finditer(r"{([^}]+)}", path):
-        placeholders_in_path.append(m.group(1))
-    placeholders_in_path = list(dict.fromkeys(placeholders_in_path))  # stable order
+    # Build rectangular zip_lists only for placeholders appearing in the final path
+    placeholders = _placeholders_in_template(path)
+    zip_lists = _build_zip_lists_from_parsed(parsed_per_file, placeholders)
 
-    zip_lists = defaultdict(list)  # type: ignore[var-annotated]
-    for per_file in parsed_per_file:
-        for wc in placeholders_in_path:
-            zip_lists[wc].append(per_file.get(wc, ""))  # pad "" if missing
-
+    # Construct component (respect empty postfilter)
     if filters.has_empty_postfilter:
         comp = BidsComponent(
             name=input_name, path=path, zip_lists={key: [] for key in zip_lists}
@@ -774,21 +790,8 @@ def _get_component(
             regex_search=True, **filters.post_exclusions
         )
 
-    # --- Snakenull context for the normalizer (lightweight, PyBIDS-free) ---
-    try:
-        setattr(comp, "snakenull_total_files", len(parsed_per_file))
-    except Exception:
-        pass
-    try:
-        setattr(comp, "requested_wildcards", requested_wildcards)
-    except Exception:
-        pass
-    try:
-        setattr(comp, "snakenull_entities_per_file", parsed_per_file)
-    except Exception:
-        pass
-    # --------------------------------------------
-
+    # Annotate minimal context for snakenull normalization
+    _annotate_snakenull_component(comp, requested_wildcards, parsed_per_file)
     return comp
 
 
