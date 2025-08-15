@@ -1,3 +1,4 @@
+# pyright: basic, reportPrivateUsage=false, reportUnknownMemberType=false, reportUnknownArgumentType=false, reportUnknownVariableType=false
 """
 Post-processing utilities to normalize mixed/absent entities in Snakebids inputs.
 
@@ -10,7 +11,7 @@ internal hooks.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Iterable, Mapping, MutableMapping
+from typing import Any, Iterable, Mapping, MutableMapping, cast
 
 
 @dataclass(frozen=True)
@@ -126,13 +127,13 @@ def _set_component_entities(component, entities: Mapping[str, list[str]]) -> Non
     # wildcards
     wildcards = {k: "{" + k + "}" for k in entities}
     if hasattr(component, "wildcards"):
-        component.wildcards = wildcards
+        cast(Any, component).wildcards = wildcards
     elif isinstance(component, MutableMapping):
         component["wildcards"] = wildcards
     # optional flags for downstream path builders
     if hasattr(component, "__dict__"):
-        component.snakenull_label = None
-        component.snakenull_include_prefix = True
+        cast(Any, component).snakenull_label = None
+        cast(Any, component).snakenull_include_prefix = True
     if isinstance(component, MutableMapping):
         component["snakenull_label"] = None
         component["snakenull_include_prefix"] = True
@@ -198,8 +199,8 @@ def normalize_inputs_with_snakenull(
 
         # annotate component with snakenull rendering preferences if helpful later
         if hasattr(comp, "__dict__"):
-            comp.snakenull_label = s_cfg.label
-            comp.snakenull_include_prefix = s_cfg.include_prefix
+            cast(Any, comp).snakenull_label = s_cfg.label
+            cast(Any, comp).snakenull_include_prefix = s_cfg.include_prefix
         if isinstance(comp, MutableMapping):
             comp["snakenull_label"] = s_cfg.label
             comp["snakenull_include_prefix"] = s_cfg.include_prefix

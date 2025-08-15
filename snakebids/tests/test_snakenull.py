@@ -1,25 +1,33 @@
+from __future__ import annotations
+
+from typing import Any, Mapping, Sequence
+
 from snakebids.snakenull import normalize_inputs_with_snakenull
 
 
 class DummyRec:
-    def __init__(self, entities):
-        self.entities = entities
+    def __init__(self, entities: Mapping[str, str]) -> None:
+        self.entities: Mapping[str, str] = entities
 
 
 class DummyComponent:
-    def __init__(self, requested_wildcards, records):
-        self.requested_wildcards = list(requested_wildcards)
-        self.matched_files = [DummyRec(e) for e in records]
-        self.entities = {}
-        self.wildcards = {}
+    def __init__(
+        self, requested_wildcards: Sequence[str], records: Sequence[Mapping[str, str]]
+    ) -> None:
+        self.requested_wildcards: list[str] = list(requested_wildcards)
+        self.matched_files: list[DummyRec] = [DummyRec(e) for e in records]
+        # Filled by normalize_inputs_with_snakenull; mapping entity -> list of values
+        self.entities: dict[str, list[str]] = {}
+        # Mapping entity -> "{entity}" placeholder
+        self.wildcards: dict[str, str] = {}
 
 
-def _entities(component):
+def _entities(component: DummyComponent) -> dict[str, list[str]]:
     return component.entities
 
 
-def test_snakenull_disabled_is_noop():
-    inputs = {
+def test_snakenull_disabled_is_noop() -> None:
+    inputs: dict[str, DummyComponent] = {
         "t1w": DummyComponent(
             ["subject", "session", "acquisition"],
             [
@@ -28,19 +36,19 @@ def test_snakenull_disabled_is_noop():
             ],
         )
     }
-    cfg = {
+    cfg: dict[str, Any] = {
         "pybids_inputs": {"t1w": {"wildcards": ["subject", "session", "acquisition"]}},
         "snakenull": {"enabled": False},
     }
     normalize_inputs_with_snakenull(inputs, config=cfg)
     ents = _entities(inputs["t1w"])
     # No processing happened; in particular, no 'snakenull' is injected
-    flat = {v for vals in ents.values() for v in vals} if ents else set()
+    flat: set[str] = {v for vals in ents.values() for v in vals} if ents else set()
     assert "snakenull" not in flat
 
 
-def test_snakenull_enables_mixed_entity_normalization():
-    inputs = {
+def test_snakenull_enables_mixed_entity_normalization() -> None:
+    inputs: dict[str, DummyComponent] = {
         "t1w": DummyComponent(
             ["subject", "session", "acquisition"],
             [
@@ -49,7 +57,7 @@ def test_snakenull_enables_mixed_entity_normalization():
             ],
         )
     }
-    cfg = {
+    cfg: dict[str, Any] = {
         "pybids_inputs": {
             "t1w": {
                 "wildcards": ["subject", "session", "acquisition"],
@@ -65,8 +73,8 @@ def test_snakenull_enables_mixed_entity_normalization():
     assert set(ents["session"]) == {"01", "snakenull"}
 
 
-def test_snakenull_skips_completely_absent_entities():
-    inputs = {
+def test_snakenull_skips_completely_absent_entities() -> None:
+    inputs: dict[str, DummyComponent] = {
         "t1w": DummyComponent(
             ["subject", "session", "acquisition", "run"],
             [
@@ -75,7 +83,7 @@ def test_snakenull_skips_completely_absent_entities():
             ],
         )
     }
-    cfg = {
+    cfg: dict[str, Any] = {
         "pybids_inputs": {
             "t1w": {
                 "wildcards": ["subject", "session", "acquisition", "run"],
