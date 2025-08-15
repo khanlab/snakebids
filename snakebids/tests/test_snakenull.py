@@ -1,10 +1,10 @@
-from types import SimpleNamespace
-import pytest
 from snakebids.snakenull import normalize_inputs_with_snakenull
+
 
 class DummyRec:
     def __init__(self, entities):
         self.entities = entities
+
 
 class DummyComponent:
     def __init__(self, requested_wildcards, records):
@@ -13,8 +13,10 @@ class DummyComponent:
         self.entities = {}
         self.wildcards = {}
 
+
 def _entities(component):
     return component.entities
+
 
 def test_snakenull_disabled_is_noop():
     inputs = {
@@ -35,6 +37,7 @@ def test_snakenull_disabled_is_noop():
     # No processing happened; in particular, no 'snakenull' is injected
     flat = {v for vals in ents.values() for v in vals} if ents else set()
     assert "snakenull" not in flat
+
 
 def test_snakenull_enables_mixed_entity_normalization():
     inputs = {
@@ -60,6 +63,7 @@ def test_snakenull_enables_mixed_entity_normalization():
     assert set(ents["acquisition"]) == {"MPRAGE", "snakenull"}
     assert "session" in ents
     assert set(ents["session"]) == {"01", "snakenull"}
+
 
 def test_snakenull_skips_completely_absent_entities():
     inputs = {

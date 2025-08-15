@@ -1,80 +1,120 @@
+"""
+Post-processing utilities to normalize mixed/absent entities in Snakebids inputs.
+
+This module assigns a configurable placeholder label (default: "snakenull") to missing
+entities and removes entities that are entirely absent in a component. It operates on
+the public objects returned by `snakebids.generate_inputs()` and does not require
+internal hooks.
+"""
+
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Dict, Iterable, Mapping, MutableMapping, Any
+from typing import Any, Iterable, Mapping, MutableMapping
 
-"""
-snakenull.py: Post-processing utilities for normalizing mixed/absent entities
-in Snakebids inputs using a configurable placeholder label (default: "snakenull").
-
-This module operates on public objects returned by snakebids.generate_inputs()
-and does not require internal hooks. You can later integrate it deeper if desired.
-"""
 
 @dataclass(frozen=True)
 class SnakenullConfig:
+    """Configuration for snakenull normalization.
+
+    Attributes
+    ----------
+    enabled:
+        Turn normalization on for this component or globally.
+    label:
+        Placeholder value assigned to missing entities.
+    include_prefix:
+        If True, include the key when rendering paths (e.g., ``_acq-snakenull_``);
+        if False, omit the entire segment.
+    scope:
+        Either ``"all"`` or an iterable of entity names to normalize.
+    """
+
     enabled: bool = False
     label: str = "snakenull"
-    include_prefix: bool = True   # downstream path builders may use this
+    include_prefix: bool = True  # downstream path builders may use this
     scope: Iterable[str] | str = "all"  # "all" or iterable of entity names
 
+
 def _in_scope(ent: str, scope: Iterable[str] | str) -> bool:
+    """Return True if an entity name is within the configured normalization scope."""
     return scope == "all" or ent in set(scope)
 
-def _merge_cfg(global_cfg: Mapping[str, Any] | None,
-               local_cfg: Mapping[str, Any] | None) -> SnakenullConfig:
-    base = {"enabled": False, "label": "snakenull", "include_prefix": True, "scope": "all"}
+
+def _merge_cfg(
+    global_cfg: Mapping[str, Any] | None, local_cfg: Mapping[str, Any] | None
+) -> SnakenullConfig:
+    """Merge global and per-component snakenull configuration into a dataclass."""
+    base = {
+        "enabled": False,
+        "label": "snakenull",
+        "include_prefix": True,
+        "scope": "all",
+    }
     if global_cfg:
         base.update(global_cfg)
     if local_cfg:
         base.update(local_cfg)
     return SnakenullConfig(**base)
 
-def _collect_present_values(component) -> tuple[Dict[str, set[str]], Dict[str, bool], list[str]]:
-    """
-    Work against both attribute- and mapping-style components.
-    We infer:
-      - wildcard list
-      - matched files
-      - each file's .entities mapping (PyBIDS-style)
-    """
-    # Wildcards list
-    wc_list: list[str] = []
+
+def _wildcards_list_from_component(component) -> list[str]:
+    """Return wildcard names from the component in a tolerant way."""
     if hasattr(component, "requested_wildcards"):
-        wc_list = list(getattr(component, "requested_wildcards"))
-    elif hasattr(component, "wildcards") and isinstance(component.wildcards, Mapping):
-        wc_list = list(component.wildcards.keys())
-    elif isinstance(component, Mapping) and "wildcards" in component:
-        wc_list = list(component["wildcards"].keys())
+        return list(component.requested_wildcards)
+    if hasattr(component, "wildcards") and isinstance(component.wildcards, Mapping):
+        return list(component.wildcards.keys())
+    if isinstance(component, Mapping) and "wildcards" in component:
+        w = component["wildcards"]
+        if isinstance(w, Mapping):
+            return list(w.keys())
+        if isinstance(w, (list, tuple, set)):
+            return list(w)
+    return []
 
-    present_values: Dict[str, set[str]] = {w: set() for w in wc_list}
-    has_missing: Dict[str, bool] = {w: False for w in wc_list}
 
-    # Matched files
-    files = None
+def _files_from_component(component) -> list:
+    """Return the iterable of matched records/files from the component."""
     for attr in ("matched_files", "files", "items", "records"):
         if hasattr(component, attr):
-            files = getattr(component, attr)
-            break
-    if files is None and isinstance(component, Mapping):
+            return list(getattr(component, attr) or [])
+    if isinstance(component, Mapping):
         for key in ("matched_files", "files", "items", "records"):
             if key in component:
-                files = component[key]
-                break
-    files = files or []
+                return list(component[key] or [])
+    return []
 
-    for rec in files:
-        ents = {}
-        if hasattr(rec, "entities"):
-            ents = getattr(rec, "entities") or {}
-        elif isinstance(rec, Mapping) and "entities" in rec:
-            ents = rec["entities"] or {}
+
+def _entities_from_record(rec) -> Mapping[str, Any]:
+    """Return the entities mapping from a PyBIDS-like record."""
+    if hasattr(rec, "entities"):
+        ents = rec.entities
+        return ents if isinstance(ents, Mapping) else {}
+    if isinstance(rec, Mapping) and "entities" in rec:
+        ents = rec.get("entities")
+        return ents if isinstance(ents, Mapping) else {}
+    return {}
+
+
+def _collect_present_values(
+    component,
+) -> tuple[dict[str, set[str]], dict[str, bool], list[str]]:
+    """Collect present entity values and detect missing ones across matched files."""
+    wc_list = _wildcards_list_from_component(component)
+    present_values: dict[str, set[str]] = {w: set() for w in wc_list}
+    has_missing: dict[str, bool] = {w: False for w in wc_list}
+
+    for rec in _files_from_component(component):
+        ents = _entities_from_record(rec)
         for ent in wc_list:
-            if ent in ents and ents[ent] not in (None, ""):
-                present_values[ent].add(str(ents[ent]))
+            val = ents.get(ent)
+            if val not in (None, ""):
+                present_values[ent].add(str(val))
             else:
                 has_missing[ent] = True
 
     return present_values, has_missing, wc_list
+
 
 def _set_component_entities(component, entities: Mapping[str, list[str]]) -> None:
     """Write back normalized entities and rebuild wildcards if needed."""
@@ -84,39 +124,41 @@ def _set_component_entities(component, entities: Mapping[str, list[str]]) -> Non
     elif isinstance(component, MutableMapping):
         component["entities"] = dict(entities)
     # wildcards
-    wildcards = {k: "{" + k + "}" for k in entities.keys()}
+    wildcards = {k: "{" + k + "}" for k in entities}
     if hasattr(component, "wildcards"):
         component.wildcards = wildcards
     elif isinstance(component, MutableMapping):
         component["wildcards"] = wildcards
     # optional flags for downstream path builders
     if hasattr(component, "__dict__"):
-        setattr(component, "_snakenull_label", None)
-        setattr(component, "_snakenull_include_prefix", True)
+        component.snakenull_label = None
+        component.snakenull_include_prefix = True
     if isinstance(component, MutableMapping):
-        component["_snakenull_label"] = None
-        component["_snakenull_include_prefix"] = True
+        component["snakenull_label"] = None
+        component["snakenull_include_prefix"] = True
+
 
 def normalize_inputs_with_snakenull(
     inputs: Mapping[str, Any],
     *,
     config: Mapping[str, Any] | None = None,
 ) -> Mapping[str, Any]:
-    """
-    Post-process the result of snakebids.generate_inputs() to:
-      1) Skip entities listed in wildcards that are entirely absent in the dataset
+    """Normalize mixed/absent entities on a Snakebids inputs mapping in-place.
+
+    Post-processes the result of `snakebids.generate_inputs()` to:
+      1) Remove entities listed in wildcards that are entirely absent in the dataset.
       2) For entities present in some files but missing in others, insert a placeholder
-         value (default: "snakenull")
+         value (default: ``"snakenull"``).
 
     Parameters
     ----------
-    inputs : Mapping[str, Any]
-        The object returned by snakebids.generate_inputs(), mapping
-        component name -> component.
-    config : Mapping[str, Any], optional
+    inputs
+        Object returned by `snakebids.generate_inputs()`, mapping component name to
+        component.
+    config
         Top-level Snakebids config dict. Read from:
-           config["snakenull"] (global defaults)
-           config["pybids_inputs"][<component>]["snakenull"] (per-component override)
+        - `config["snakenull"]` (global defaults)
+        - `config["pybids_inputs"][<component>]["snakenull"]` (per-component override)
 
     Returns
     -------
@@ -142,7 +184,7 @@ def normalize_inputs_with_snakenull(
 
         present_values, has_missing, wc_list = _collect_present_values(comp)
 
-        normalized: Dict[str, list[str]] = {}
+        normalized: dict[str, list[str]] = {}
         for ent in wc_list:
             vals = present_values.get(ent, set())
             if not vals:
@@ -156,10 +198,10 @@ def normalize_inputs_with_snakenull(
 
         # annotate component with snakenull rendering preferences if helpful later
         if hasattr(comp, "__dict__"):
-            setattr(comp, "_snakenull_label", s_cfg.label)
-            setattr(comp, "_snakenull_include_prefix", s_cfg.include_prefix)
+            comp.snakenull_label = s_cfg.label
+            comp.snakenull_include_prefix = s_cfg.include_prefix
         if isinstance(comp, MutableMapping):
-            comp["_snakenull_label"] = s_cfg.label
-            comp["_snakenull_include_prefix"] = s_cfg.include_prefix
+            comp["snakenull_label"] = s_cfg.label
+            comp["snakenull_include_prefix"] = s_cfg.include_prefix
 
     return inputs
