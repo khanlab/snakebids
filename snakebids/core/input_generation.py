@@ -14,6 +14,7 @@ from typing import (
     Iterable,
     Literal,
     overload,
+    Set,
 )
 
 import more_itertools as itx
@@ -43,6 +44,7 @@ from snakebids.utils.utils import (
 )
 
 _logger = logging.getLogger(__name__)
+_TOKEN_EQ_PLACEHOLDER = re.compile(r"^([a-zA-Z0-9]+)-\{\1\}$")
 
 
 @overload
@@ -498,6 +500,74 @@ def write_derivative_json(snakemake: Snakemake, **kwargs: dict[str, Any]) -> Non
         json.dump(sidecar, outfile, indent=4)
 
 
+def _split_template(path_template: str) -> tuple[str, str]:
+    """Return (dir, filename) for a template path."""
+    if "/" in path_template:
+        head, tail = path_template.rsplit("/", 1)
+        return head, tail
+    return "", path_template
+
+def _token_tags_in_filename(filename: str) -> Set[str]:
+    """Collect tags found in 'tag-{tag}' tokens within a filename."""
+    tags: Set[str] = set()
+    for tok in filename.split("_"):
+        m = _TOKEN_EQ_PLACEHOLDER.match(tok)
+        if m:
+            tags.add(m.group(1))
+    return tags
+
+def _drop_optional_tokens(filename: str, optional_tags: Iterable[str]) -> str:
+    """Remove 'tag-{tag}' tokens for provided tags from a filename."""
+    opt = set(optional_tags)
+    kept = []
+    for tok in filename.split("_"):
+        m = _TOKEN_EQ_PLACEHOLDER.match(tok)
+        if m and m.group(1) in opt:
+            continue
+    # keep everything else
+        kept.append(tok)
+    return "_".join(kept)
+
+def _collapse_bids_templates(paths: Set[str], *, allowed_tags: Iterable[str]) -> str | None:
+    """Collapse multiple filename shapes by removing optional 'tag-{tag}' tokens.
+
+    We consider tokens optional if they:
+      - appear as 'tag-{tag}' in the filename (not directories!), and
+      - are present in some templates but not all, and
+      - the tag is in allowed_tags (typically the component's wildcards)
+
+    Returns a single unified template string if all templates become identical after
+    collapse; otherwise returns None (caller should keep raising).
+    """
+    if not paths or len(paths) == 1:
+        return next(iter(paths), None)
+
+    dir_files = [_split_template(p) for p in paths]
+    dirs = {d for d, _ in dir_files}
+    if len(dirs) != 1:
+        # We don't try to collapse when directory structures differ
+        return None
+    shared_dir = next(iter(dirs))
+    filenames = [f for _, f in dir_files]
+
+    # Count how often each 'tag-{tag}' appears across templates
+    counts: dict[str, int] = {}
+    for fn in filenames:
+        for t in _token_tags_in_filename(fn):
+            counts[t] = counts.get(t, 0) + 1
+
+    n = len(filenames)
+    allowed = set(allowed_tags)
+    optional = {t for t, c in counts.items() if 0 < c < n and t in allowed}
+    if not optional:
+        return None
+
+    collapsed_files = [_drop_optional_tokens(fn, optional) for fn in filenames]
+    if len(set(collapsed_files)) == 1:
+        return f"{shared_dir}/{collapsed_files[0]}" if shared_dir else collapsed_files[0]
+    return None
+
+
 def _get_components(
     *,
     bids_layout: BIDSLayout | None,
@@ -649,17 +719,24 @@ def _get_component(
             ),
         )
         return None
-    try:
-        path = itx.one(paths)
-    except ValueError as err:
-        msg = (
-            f"Multiple path templates for one component. Use --filter_{input_name} to "
-            f"narrow your search or --wildcards_{input_name} to make the template more "
-            "generic.\n"
-            f"\tcomponent = {input_name!r}\n"
-            f"\tpath_templates = [\n\t\t" + ",\n\t\t".join(map(repr, paths)) + "\n\t]\n"
-        ).expandtabs(4)
-        raise ConfigError(msg) from err
+
+    if len(paths) == 1:
+        path = next(iter(paths))
+    else:
+        # Try to collapse optional tokens (e.g., acq/run/part) that cause shape divergence
+        allowed_tags = component.get("wildcards", []) or []
+        collapsed = _collapse_bids_templates(paths, allowed_tags=allowed_tags)
+        if collapsed is not None:
+            path = collapsed
+        else:
+            msg = (
+                f"Multiple path templates for one component. Use --filter_{input_name} to "
+                f"narrow your search or --wildcards_{input_name} to make the template more "
+                "generic.\n"
+                f"\tcomponent = {input_name!r}\n"
+                f"\tpath_templates = [\n\t\t" + ",\n\t\t".join(map(repr, paths)) + "\n\t]\n"
+            ).expandtabs(4)
+            raise ConfigError(msg)
 
     if filters.has_empty_postfilter:
         return BidsComponent(
