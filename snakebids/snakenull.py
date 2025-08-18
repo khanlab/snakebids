@@ -139,9 +139,12 @@ def _collect_present_values(
 def _set_component_entities(component: Any, entities: Mapping[str, list[str]]) -> None:
     """Expose normalized entity domains without breaking frozen components.
 
-    - If the component is a MutableMapping, write into its keys ('entities', 'wildcards').
-    - Otherwise, *best effort* set attributes, but swallow AttributeError from frozen attrs.
-    - Always try to stash under a side attribute 'snakenull_entities' for consumers that
+    - If the component is a MutableMapping, write into its keys
+    ('entities', 'wildcards').
+    - Otherwise, *best effort* set attributes, but swallow AttributeError
+    from frozen attrs.
+    - Always try to stash under a side attribute 'snakenull_entities' for
+    consumers that
       choose to read it explicitly.
     """
     # Prefer writing into mapping-like components (safe, no __setattr__)
