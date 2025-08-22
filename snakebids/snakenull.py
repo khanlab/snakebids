@@ -1,4 +1,3 @@
-# pyright: basic, reportPrivateUsage=false, reportUnknownMemberType=false, reportUnknownArgumentType=false, reportUnknownVariableType=false
 """
 Post-processing utilities to normalize mixed/absent entities in Snakebids inputs.
 
@@ -11,7 +10,7 @@ internal hooks.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Iterable, Mapping, MutableMapping, cast
+from typing import Any, Iterable, Mapping, MutableMapping
 
 
 @dataclass(frozen=True)
@@ -42,7 +41,7 @@ def _merge_cfg(
     global_cfg: Mapping[str, Any] | None, local_cfg: Mapping[str, Any] | None
 ) -> SnakenullConfig:
     """Merge global and per-component snakenull configuration into a dataclass."""
-    base = {
+    base: dict[str, Any] = {
         "enabled": False,
         "label": "snakenull",
         "scope": "all",
@@ -51,21 +50,43 @@ def _merge_cfg(
         base.update(global_cfg)
     if local_cfg:
         base.update(local_cfg)
-    return SnakenullConfig(**base)
+
+    # Type-safe extraction with defaults
+    enabled = bool(base.get("enabled", False))
+    label = str(base.get("label", "snakenull"))
+    scope = base.get("scope", "all")
+
+    return SnakenullConfig(enabled=enabled, label=label, scope=scope)
 
 
-def _wildcards_list_from_component(component) -> list[str]:
+def _wildcards_list_from_component(component: Any) -> list[str]:
     """Return wildcard names from the component in a tolerant way."""
     if hasattr(component, "requested_wildcards"):
-        return list(component.requested_wildcards)
-    if hasattr(component, "wildcards") and isinstance(component.wildcards, Mapping):
-        return list(component.wildcards.keys())
+        requested = getattr(component, "requested_wildcards", None)
+        if requested is not None:
+            try:
+                return [str(item) for item in requested]
+            except (TypeError, ValueError):
+                return []
+    if hasattr(component, "wildcards"):
+        wildcards = getattr(component, "wildcards", None)
+        if isinstance(wildcards, Mapping):
+            try:
+                return [str(key) for key in wildcards.keys()]  # type: ignore[misc]
+            except (TypeError, ValueError):
+                return []
     if isinstance(component, Mapping) and "wildcards" in component:
-        w = component["wildcards"]
+        w: Any = component["wildcards"]  # type: ignore[misc]
         if isinstance(w, Mapping):
-            return list(w.keys())
+            try:
+                return [str(key) for key in w.keys()]  # type: ignore[misc]
+            except (TypeError, ValueError):
+                return []
         if isinstance(w, (list, tuple, set)):
-            return list(w)
+            try:
+                return [str(item) for item in w]  # type: ignore[misc]
+            except (TypeError, ValueError):
+                return []
     return []
 
 
@@ -120,10 +141,12 @@ def _collect_present_values(
 
     # 2) Fallback: zip_lists (e.g., custom_path components)
     zip_lists: Mapping[str, list[str]] | None = None
-    if hasattr(component, "zip_lists") and isinstance(component.zip_lists, Mapping):
-        zip_lists = component.zip_lists  # type: ignore[assignment]
+    if hasattr(component, "zip_lists"):
+        zip_lists_attr = getattr(component, "zip_lists", None)
+        if isinstance(zip_lists_attr, Mapping):
+            zip_lists = zip_lists_attr  # type: ignore[assignment]
     elif isinstance(component, Mapping):
-        zl = component.get("zip_lists")
+        zl: Any = component.get("zip_lists")  # type: ignore[misc]
         if isinstance(zl, Mapping):
             zip_lists = zl  # type: ignore[assignment]
     if zip_lists:
@@ -136,7 +159,9 @@ def _collect_present_values(
     return present_values, has_missing, wc_list
 
 
-def _set_component_entities(component: Any, entities: Mapping[str, list[str]]) -> None:
+def _set_component_entities(
+    component: Any, entities: Mapping[str, list[str]]
+) -> None:
     """Expose normalized entity domains without breaking frozen components.
 
     - If the component is a MutableMapping, write into its keys
@@ -152,10 +177,19 @@ def _set_component_entities(component: Any, entities: Mapping[str, list[str]]) -
         component["entities"] = dict(entities)
         component["wildcards"] = {k: "{" + k + "}" for k in entities}
         # Optional hints for downstream renderers
-        component["_snakenull_label"] = getattr(component, "_snakenull_label", None)
-        component["_snakenull_include_prefix"] = getattr(
-            component, "_snakenull_include_prefix", True
-        )
+        existing_label = None
+        existing_prefix = True
+        try:
+            # Use Any cast to avoid type checker issues with dynamic getattr
+            comp_any: Any = component  # type: ignore[misc]
+            existing_label = getattr(comp_any, "_snakenull_label", None)
+            existing_prefix = getattr(
+                comp_any, "_snakenull_include_prefix", True
+            )
+        except (AttributeError, TypeError):
+            pass
+        component["_snakenull_label"] = existing_label
+        component["_snakenull_include_prefix"] = existing_prefix
         return
 
     # Attribute-based components: be defensive (attrs-frozen will raise on __setattr__)
@@ -200,17 +234,22 @@ def normalize_inputs_with_snakenull(
     Mapping[str, Any]
         The same mapping (mutated in place).
     """
-    pybids_inputs = {}
+    pybids_inputs: Mapping[str, Any] = {}
     if config and isinstance(config.get("pybids_inputs"), Mapping):
         pybids_inputs = config["pybids_inputs"]
-    global_cfg = {}
+    global_cfg: Mapping[str, Any] = {}
     if config and isinstance(config.get("snakenull"), Mapping):
         global_cfg = config["snakenull"]
 
     for cname, comp in inputs.items():
-        local_cfg = {}
-        if isinstance(pybids_inputs.get(cname), Mapping):
-            local_cfg = pybids_inputs[cname].get("snakenull", {}) or {}
+        local_cfg: Mapping[str, Any] = {}
+        comp_cfg = pybids_inputs.get(cname)
+        if isinstance(comp_cfg, Mapping):
+            # Use Any to handle unknown mapping types safely
+            comp_cfg_any: Any = comp_cfg  # type: ignore[misc]
+            snakenull_cfg: Any = comp_cfg_any.get("snakenull", {})
+            if snakenull_cfg and isinstance(snakenull_cfg, Mapping):
+                local_cfg = snakenull_cfg  # type: ignore[assignment]
         s_cfg = _merge_cfg(global_cfg, local_cfg)
 
         if not s_cfg.enabled:
@@ -233,7 +272,7 @@ def normalize_inputs_with_snakenull(
 
         # annotate component with snakenull rendering preferences if helpful later
         if hasattr(comp, "__dict__"):
-            cast(Any, comp).snakenull_label = s_cfg.label
+            comp.snakenull_label = s_cfg.label  # type: ignore[attr-defined]
         if isinstance(comp, MutableMapping):
             comp["snakenull_label"] = s_cfg.label
 
