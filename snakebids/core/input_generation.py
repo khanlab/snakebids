@@ -681,7 +681,9 @@ def _safe_parse_per_file(
         raise ConfigError(msg) from err
 
     # One value per requested wildcard; missing → ""
-    per_file = {wc: parsed_wildcards.get(wc, "") for wc in requested_wildcards}
+    per_file = {
+        wc: parsed_wildcards.get(BidsEntity(wc).tag, "") for wc in requested_wildcards
+    }
     return path, per_file
 
 
@@ -692,7 +694,13 @@ def _build_zip_lists_from_parsed(
     z: defaultdict[str, list[str]] = defaultdict(list)
     for rec in parsed_per_file:
         for wc in placeholders:
-            z[wc].append(rec.get(wc, ""))  # pad "" if missing
+            # Try to find value by tag first, then by entity name
+            value = rec.get(wc, "")
+            if not value:
+                # Try to find by entity name (if wc is a tag, find corresponding entity)
+                entity_name = BidsEntity.from_tag(wc).entity
+                value = rec.get(entity_name, "")
+            z[wc].append(value)
     return dict(z)
 
 

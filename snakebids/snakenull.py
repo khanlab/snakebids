@@ -61,32 +61,41 @@ def _merge_cfg(
 
 def _wildcards_list_from_component(component: Any) -> list[str]:
     """Return wildcard names from the component in a tolerant way."""
+
+    def safe_convert_to_strings(items: Any) -> list[str]:
+        try:
+            return [str(item) for item in items]
+        except (TypeError, ValueError):
+            return []
+
+    # Try requested_wildcards attribute first
     if hasattr(component, "requested_wildcards"):
         requested = getattr(component, "requested_wildcards", None)
         if requested is not None:
-            try:
-                return [str(item) for item in requested]
-            except (TypeError, ValueError):
-                return []
+            result = safe_convert_to_strings(requested)
+            if result:
+                return result
+
+    # Try wildcards attribute
     if hasattr(component, "wildcards"):
         wildcards = getattr(component, "wildcards", None)
         if isinstance(wildcards, Mapping):
-            try:
-                return [str(key) for key in wildcards.keys()]  # type: ignore[misc]
-            except (TypeError, ValueError):
-                return []
+            result = safe_convert_to_strings(wildcards.keys())
+            if result:
+                return result
+
+    # Try wildcards in mapping-like component
     if isinstance(component, Mapping) and "wildcards" in component:
         w: Any = component["wildcards"]  # type: ignore[misc]
         if isinstance(w, Mapping):
-            try:
-                return [str(key) for key in w.keys()]  # type: ignore[misc]
-            except (TypeError, ValueError):
-                return []
+            result = safe_convert_to_strings(w.keys())
+            if result:
+                return result
         if isinstance(w, (list, tuple, set)):
-            try:
-                return [str(item) for item in w]  # type: ignore[misc]
-            except (TypeError, ValueError):
-                return []
+            result = safe_convert_to_strings(w)
+            if result:
+                return result
+
     return []
 
 
@@ -139,7 +148,21 @@ def _collect_present_values(
         present, missing = _collect_from_records(list(records), wc_list)
         return present, missing, wc_list
 
-    # 2) Fallback: zip_lists (e.g., custom_path components)
+    # 2) Fallback: matched_files with entities attribute (test components)
+    if hasattr(component, "matched_files"):
+        matched_files = getattr(component, "matched_files", None)
+        if matched_files:
+            records_from_files: list[Mapping[str, Any]] = []
+            for file_obj in matched_files:
+                if hasattr(file_obj, "entities"):
+                    entities = getattr(file_obj, "entities", {})
+                    if isinstance(entities, Mapping):
+                        records_from_files.append(entities)  # type: ignore[arg-type]
+            if records_from_files:
+                present, missing = _collect_from_records(records_from_files, wc_list)
+                return present, missing, wc_list
+
+    # 3) Fallback: zip_lists (e.g., custom_path components)
     zip_lists: Mapping[str, list[str]] | None = None
     if hasattr(component, "zip_lists"):
         zip_lists_attr = getattr(component, "zip_lists", None)
@@ -153,15 +176,13 @@ def _collect_present_values(
         present, missing = _collect_from_zip_lists(zip_lists, wc_list)
         return present, missing, wc_list
 
-    # 3) No data available
+    # 4) No data available
     present_values: dict[str, set[str]] = {w: set() for w in wc_list}
     has_missing: dict[str, bool] = {w: False for w in wc_list}
     return present_values, has_missing, wc_list
 
 
-def _set_component_entities(
-    component: Any, entities: Mapping[str, list[str]]
-) -> None:
+def _set_component_entities(component: Any, entities: Mapping[str, list[str]]) -> None:
     """Expose normalized entity domains without breaking frozen components.
 
     - If the component is a MutableMapping, write into its keys
@@ -183,9 +204,7 @@ def _set_component_entities(
             # Use Any cast to avoid type checker issues with dynamic getattr
             comp_any: Any = component  # type: ignore[misc]
             existing_label = getattr(comp_any, "_snakenull_label", None)
-            existing_prefix = getattr(
-                comp_any, "_snakenull_include_prefix", True
-            )
+            existing_prefix = getattr(comp_any, "_snakenull_include_prefix", True)
         except (AttributeError, TypeError):
             pass
         component["_snakenull_label"] = existing_label
