@@ -366,9 +366,7 @@ def _normalize_database_args(
     pybidsdb_reset = (
         pybidsdb_reset
         if pybidsdb_reset is not None
-        else pybids_reset_database
-        if pybids_reset_database is not None
-        else False
+        else (pybids_reset_database if pybids_reset_database is not None else False)
     )
 
     depr_len = len(DEPRECATION_FLAG)
@@ -680,10 +678,11 @@ def _safe_parse_per_file(
         )
         raise ConfigError(msg) from err
 
-    # One value per requested wildcard; missing → ""
-    per_file = {
-        wc: parsed_wildcards.get(BidsEntity(wc).tag, "") for wc in requested_wildcards
-    }
+    # parsed_wildcards uses wildcard names as keys, map to entity names
+    per_file = {}
+    for wc in requested_wildcards:
+        wildcard_name = BidsEntity(wc).wildcard
+        per_file[wc] = parsed_wildcards.get(wildcard_name, "")
     return path, per_file
 
 
@@ -694,12 +693,13 @@ def _build_zip_lists_from_parsed(
     z: defaultdict[str, list[str]] = defaultdict(list)
     for rec in parsed_per_file:
         for wc in placeholders:
-            # Try to find value by tag first, then by entity name
-            value = rec.get(wc, "")
-            if not value:
-                # Try to find by entity name (if wc is a tag, find corresponding entity)
-                entity_name = BidsEntity.from_tag(wc).entity
-                value = rec.get(entity_name, "")
+            # Find the entity name that corresponds to this wildcard name
+            entity_name = None
+            for entity_key in rec:
+                if BidsEntity(entity_key).wildcard == wc:
+                    entity_name = entity_key
+                    break
+            value = rec.get(entity_name, "") if entity_name else ""
             z[wc].append(value)
     return dict(z)
 
@@ -737,7 +737,10 @@ def _select_template_path(
 
 
 def _make_component(
-    input_name: str, path: str, zip_lists: dict[str, list[str]], filters: UnifiedFilter
+    input_name: str,
+    path: str,
+    zip_lists: dict[str, list[str]],
+    filters: UnifiedFilter,
 ) -> BidsComponent:
     """Construct BidsComponent, respecting empty postfilters."""
     if filters.has_empty_postfilter:
