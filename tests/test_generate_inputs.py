@@ -1836,7 +1836,7 @@ class TestParticipantFiltering:
             comp["filters"]["subject"] = subject
         reindexed = generate_inputs(
             root,
-            create_snakebids_config(rooted),
+            config,
             **self.get_filter_params(mode, participant_filter),
         )
         assert reindexed == rooted
