@@ -1,6 +1,8 @@
 from snakebids import bids, generate_inputs, get_wildcard_constraints
 
-configfile: 'config/snakebids.yml'
+
+configfile: "config/snakebids.yml"
+
 
 # Get input wildcards
 inputs = generate_inputs(
@@ -11,17 +13,17 @@ inputs = generate_inputs(
     derivatives=config.get("derivatives", None),
     participant_label=config.get("participant_label", None),
     exclude_participant_label=config.get("exclude_participant_label", None),
-    validate=not config.get("plugins.validator.skip", False)
+    validate=not config.get("plugins.validator.skip", False),
 )
 
 
 rule all:
     input:
-        inputs['t1w'].expand(),
-        inputs['bold'].expand()
+        inputs["t1w"].expand(),
+        inputs["bold"].expand(),
     default_target: True
     params:
-        inputs=lambda wcards, input: "- " + "\n- ".join(input)
+        inputs=lambda wcards, input: "- " + "\n- ".join(input),
     shell:
         """
         cat <<EOF
