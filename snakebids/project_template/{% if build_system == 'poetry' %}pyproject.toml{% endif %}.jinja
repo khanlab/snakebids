@@ -22,36 +22,22 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "{{ python_version }}"
-snakemake = [
-    { version=">={{ snakemake_version }},<8", python = "<3.11" },
-    { version=">=8.1.2", python = ">=3.11" },
-]
+snakemake = ">=8.1.2"
 snakebids = {{ snakebids_version | format_poetry }}
-{#- newer pulps are incompatible with old snakemakes, and we need to support
-old snakemakes for python versions <3.11. So cap pulp to the last working
-version
-#}
-pulp = { version="<2.8.0", python = "<3.11" }
-pandas = [
-    { version = "<=2.0.3", python = "<3.9" },
-    { version = ">=2.1.1", python = ">=3.12" },
-]
+pandas = [{ version = ">=2.1.1", python = ">=3.12" }]
 
 [tool.poetry.dev-dependencies]
-flake8 = "^4.0.1"
-pytest-console-scripts = "^1.2.1"
-pytest = "^6.2.5"
 black = "^24.0.0"
-pylint = "^2.11.1"
 isort = "^5.10.1"
 poethepoet = "^0.10.0"
 snakefmt = "^0.10.0"
-pygraphviz = "1.7"
-Jinja2 = "^3.0.3"
 
 [tool.poetry.scripts]
 {{ name_slug }} = "{{ name_slug }}.run:app.run"
 
+[tool.poe.tasks]
+quality_check = { shell = "isort {{ app_full_name }}/*.py && black {{ app_full_name }} --check && snakefmt {{ app_full_name }} --check" }
+quality_fix = { shell = "isort {{ app_full_name }}/*.py && black {{ app_full_name }}  && snakefmt {{ app_full_name }}" }
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
