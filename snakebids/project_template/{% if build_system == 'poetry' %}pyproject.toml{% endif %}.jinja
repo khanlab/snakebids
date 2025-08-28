@@ -37,6 +37,18 @@ pandas = [
     { version = ">=2.1.1", python = ">=3.12" },
 ]
 
+[tool.poetry.dev-dependencies]
+flake8 = "^4.0.1"
+pytest-console-scripts = "^1.2.1"
+pytest = "^6.2.5"
+black = "^24.0.0"
+pylint = "^2.11.1"
+isort = "^5.10.1"
+poethepoet = "^0.10.0"
+snakefmt = "^0.10.0"
+pygraphviz = "1.7"
+Jinja2 = "^3.0.3"
+
 [tool.poetry.scripts]
 {{ name_slug }} = "{{ name_slug }}.run:app.run"
 
