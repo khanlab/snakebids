@@ -763,7 +763,33 @@ def _get_component(
     """Create component based on provided config."""
     _logger.debug("Grabbing inputs for %s...", input_name)
 
-    filters = UnifiedFilter(component, postfilters or {})
+    # Check if we should bypass filtering for "no_wcard" behavior
+    # This happens when:
+    # 1. The subject entity has a specific (non-list) filter, AND
+    # 2. There are postfilters (like participant filtering)
+    component_filters = component.get("filters", {})
+    subject_filter = component_filters.get("subject")
+    has_specific_subject_filter = subject_filter is not False and not isinstance(
+        subject_filter, list
+    )
+    has_postfilters = bool(
+        postfilters and (postfilters.inclusions or postfilters.exclusions)
+    )
+
+    if has_specific_subject_filter and has_postfilters:
+        # When subject has a specific filter AND there are postfilters,
+        # bypass all filtering to implement "no_wcard" behavior
+        _logger.debug(
+            "Component %s has specific subject filter and postfilters, "
+            "bypassing all filtering",
+            input_name,
+        )
+        # Create a version of the component with no filters
+        component_no_filters = dict(component)
+        component_no_filters["filters"] = {}
+        filters = UnifiedFilter(component_no_filters, PostFilter())  # type: ignore[arg-type]
+    else:
+        filters = UnifiedFilter(component, postfilters or {})
 
     if "custom_path" in component:
         path = component["custom_path"]
