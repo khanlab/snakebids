@@ -765,12 +765,18 @@ def _get_component(
 
     # Check if we should bypass filtering for "no_wcard" behavior
     # This happens when:
-    # 1. The subject entity has a specific (non-list) filter, AND
+    # 1. The subject entity has a specific (non-wildcard, non-list) filter, AND
     # 2. There are postfilters (like participant filtering)
     component_filters = component.get("filters", {})
     subject_filter = component_filters.get("subject")
-    has_specific_subject_filter = subject_filter is not False and not isinstance(
-        subject_filter, list
+
+    # A filter is "specific" if it's a single string value that doesn't contain
+    # wildcards (like {subject}) and is not False or a list
+    has_specific_subject_filter = (
+        subject_filter is not False
+        and not isinstance(subject_filter, list)
+        and isinstance(subject_filter, str)
+        and "{" not in subject_filter  # No wildcards
     )
     has_postfilters = bool(
         postfilters and (postfilters.inclusions or postfilters.exclusions)
@@ -780,9 +786,10 @@ def _get_component(
         # When subject has a specific filter AND there are postfilters,
         # bypass all filtering to implement "no_wcard" behavior
         _logger.debug(
-            "Component %s has specific subject filter and postfilters, "
+            "Component %s has specific subject filter '%s' and postfilters, "
             "bypassing all filtering",
             input_name,
+            subject_filter,
         )
         # Create a version of the component with no filters
         component_no_filters = dict(component)
