@@ -220,6 +220,11 @@ def _set_component_entities(component: Any, entities: Mapping[str, list[str]]) -
     with contextlib.suppress(Exception):
         if hasattr(component, "wildcards"):
             component.wildcards = {k: "{" + k + "}" for k in entities}
+    with contextlib.suppress(Exception):
+        if hasattr(component, "zip_lists"):
+            # Handle BidsComponent which uses zip_lists
+            component.zip_lists.clear()
+            component.zip_lists.update(entities)
 
     # Side channel (optional): stash normalized domains for readers that opt-in
     with contextlib.suppress(Exception):
