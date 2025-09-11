@@ -563,6 +563,58 @@ def _get_components(
             yield comp
 
 
+def _should_bypass_subject_filters(
+    component: InputConfig, postfilters: PostFilter
+) -> bool:
+    """Check if subject filters should be bypassed due to no_wcard behavior."""
+    component_filters = component.get("filters", {})
+    subject_filter = component_filters.get("subject")
+    has_specific_subject_filter = (
+        subject_filter is not False
+        and not isinstance(subject_filter, list)
+        and isinstance(subject_filter, str)
+        and "{" not in subject_filter  # No wildcards
+    )
+    has_subject_postfilters = bool(
+        postfilters
+        and ("subject" in postfilters.inclusions or "subject" in postfilters.exclusions)
+    )
+    return has_specific_subject_filter and has_subject_postfilters
+
+
+def _create_bypass_filters(
+    component: InputConfig, postfilters: PostFilter, input_name: str
+) -> UnifiedFilter:
+    """Create filters with subject filters bypassed to prevent conflicts."""
+    component_filters = component.get("filters", {})
+    subject_filter = component_filters.get("subject")
+
+    _logger.debug(
+        "Component %s has specific subject filter '%s' and subject postfilters, "
+        "bypassing both to prevent conflict",
+        input_name,
+        subject_filter,
+    )
+
+    # Create a version of the component without the subject filter
+    modified_component = dict(component)
+    modified_filters = dict(component_filters)
+    del modified_filters["subject"]
+    modified_component["filters"] = modified_filters
+
+    # Create a new postfilter without the subject filters
+    modified_postfilters = PostFilter()
+    # Copy all non-subject postfilters
+    for key, value in postfilters.inclusions.items():
+        if key != "subject":
+            modified_postfilters.inclusions[key] = value
+    for key, value in postfilters.exclusions.items():
+        if key != "subject":
+            modified_postfilters.exclusions[key] = value
+
+    return UnifiedFilter(modified_component, modified_postfilters)  # type: ignore[arg-type]
+
+
 def _get_component(
     bids_layout: BIDSLayout | None,
     component: InputConfig,
@@ -594,34 +646,9 @@ def _get_component(
     """
     _logger.debug("Grabbing inputs for %s...", input_name)
 
-    # Special case: if subject has a specific (non-wildcard) filter AND there
-    # are postfilters, bypass all filtering to implement "no_wcard" behavior
-    # for participant filtering
-    component_filters = component.get("filters", {})
-    subject_filter = component_filters.get("subject")
-    has_specific_subject_filter = (
-        subject_filter is not False
-        and not isinstance(subject_filter, list)
-        and isinstance(subject_filter, str)
-        and "{" not in subject_filter  # No wildcards
-    )
-    has_postfilters = bool(
-        postfilters and (postfilters.inclusions or postfilters.exclusions)
-    )
-
-    if has_specific_subject_filter and has_postfilters:
-        # When subject has a specific filter AND there are postfilters,
-        # bypass all filtering to implement "no_wcard" behavior
-        _logger.debug(
-            "Component %s has specific subject filter '%s' and postfilters, "
-            "bypassing all filtering",
-            input_name,
-            subject_filter,
-        )
-        # Create a version of the component with no filters
-        component_no_filters = dict(component)
-        component_no_filters["filters"] = {}
-        filters = UnifiedFilter(component_no_filters, PostFilter())  # type: ignore[arg-type]
+    # Check for "no_wcard" behavior and create appropriate filters
+    if _should_bypass_subject_filters(component, postfilters):
+        filters = _create_bypass_filters(component, postfilters, input_name)
     else:
         filters = UnifiedFilter(component, postfilters or {})
 
