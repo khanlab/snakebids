@@ -5,7 +5,10 @@ import tempfile
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+import pytest
+
 from snakebids import generate_inputs
+from snakebids.exceptions import ConfigError
 from snakebids.snakenull import (
     SnakenullConfig,
     _collect_present_values,
@@ -1162,3 +1165,94 @@ class TestSnakenullRobustness:
         # Should handle gracefully
         with contextlib.suppress(Exception):
             normalize_inputs_with_snakenull(inputs, config=cfg)
+
+
+class TestMultiTemplateHandling:
+    """Test multi-template scenarios with snakenull."""
+
+    def test_multi_template_with_missing_entities(self):
+        """Test that files without run entity work when some templates expect it."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a BIDS dataset with T1w files with different entity patterns
+            bids_root = Path(tmpdir) / "bids"
+            bids_root.mkdir()
+
+            # Some files have run entity, some don't
+            (bids_root / "sub-MPN00001" / "ses-v1" / "anat").mkdir(parents=True)
+            (
+                bids_root / "sub-MPN00001" / "ses-v1" / "anat" / "sub-MPN00001_ses-v1_T1w.nii.gz"
+            ).touch()
+
+            (bids_root / "sub-MPN00002" / "ses-v1" / "anat").mkdir(parents=True)
+            (
+                bids_root / "sub-MPN00002" / "ses-v1" / "anat" / "sub-MPN00002_ses-v1_T1w.nii.gz"
+            ).touch()
+
+            (bids_root / "sub-MPN00003" / "ses-v1" / "anat").mkdir(parents=True) 
+            (
+                bids_root / "sub-MPN00003" / "ses-v1" / "anat" / "sub-MPN00003_ses-v1_run-1_T1w.nii.gz"
+            ).touch()
+
+            # Configuration that should accept both patterns
+            pybids_inputs = {
+                "T1w": {
+                    "filters": {"suffix": "T1w", "extension": ".nii.gz"},
+                    "wildcards": ["subject", "session", "run"],
+                }
+            }
+
+            # Test with snakenull enabled
+            dataset = generate_inputs(
+                bids_dir=str(bids_root),
+                pybids_inputs=pybids_inputs,
+                snakenull={"enabled": True},
+            )
+
+            # Verify that all files are found
+            t1w = dataset["T1w"]
+            assert len(t1w.zip_lists["subject"]) == 3  # All 3 subjects found
+
+            # Check that run values include both real values and placeholders
+            run_values = set(t1w.zip_lists["run"])
+            assert "1" in run_values  # Real run value
+            assert "snakenull" in run_values  # Placeholder for missing runs (normalized by snakenull)
+
+            # Verify subjects and sessions
+            subject_values = set(t1w.zip_lists["subject"])
+            session_values = set(t1w.zip_lists["session"])
+            assert subject_values == {"MPN00001", "MPN00002", "MPN00003"}
+            assert session_values == {"v1"}
+
+    def test_multi_template_without_snakenull_should_error(self):
+        """Test that multi-template scenarios fail when snakenull is disabled."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create the same dataset structure as above
+            bids_root = Path(tmpdir) / "bids"
+            bids_root.mkdir()
+
+            # Some files have run entity, some don't
+            (bids_root / "sub-MPN00001" / "ses-v1" / "anat").mkdir(parents=True)
+            (
+                bids_root / "sub-MPN00001" / "ses-v1" / "anat" / "sub-MPN00001_ses-v1_T1w.nii.gz"
+            ).touch()
+
+            (bids_root / "sub-MPN00003" / "ses-v1" / "anat").mkdir(parents=True) 
+            (
+                bids_root / "sub-MPN00003" / "ses-v1" / "anat" / "sub-MPN00003_ses-v1_run-1_T1w.nii.gz"
+            ).touch()
+
+            # Configuration that includes run wildcard
+            pybids_inputs = {
+                "T1w": {
+                    "filters": {"suffix": "T1w", "extension": ".nii.gz"},
+                    "wildcards": ["subject", "session", "run"],
+                }
+            }
+
+            # Test with snakenull disabled - should fail with multiple templates
+            with pytest.raises(ConfigError, match="Multiple path templates for one component"):
+                generate_inputs(
+                    bids_dir=str(bids_root),
+                    pybids_inputs=pybids_inputs,
+                    # snakenull disabled by default
+                )

@@ -688,14 +688,51 @@ def _get_component(
     zip_lists: dict[str, list[str]] = defaultdict(list)
     paths: set[str] = set()
     try:
-        matching_files = get_matching_files(bids_layout, filters)
+        matching_files_list = list(get_matching_files(bids_layout, filters))
     except FilterSpecError as err:
         raise err.get_config_error(input_name) from err
 
-    for img in matching_files:
+    # Check if we have multiple templates (heterogeneous entity patterns)
+    if snakenull_enabled and len(matching_files_list) > 1:
+        all_entity_sets = [set(img.entities.keys()) for img in matching_files_list]
+        requested_wildcards = set(component.get("wildcards", []))
+        
+        # Check if any requested wildcards are missing from some files
+        has_multiple_templates = any(
+            requested_wildcards - entity_set for entity_set in all_entity_sets
+        )
+        
+        if has_multiple_templates:
+            # Build the paths set by parsing each unique template
+            paths_set = set()
+            for img in matching_files_list:
+                available_wildcards = [
+                    wc for wc in requested_wildcards if wc in img.entities
+                ]
+                if available_wildcards:
+                    try:
+                        path, _ = _parse_bids_path(img.path, available_wildcards)
+                        paths_set.add(path)
+                    except Exception:
+                        continue
+            
+            return _handle_multiple_templates_with_snakenull(
+                paths=paths_set,
+                input_name=input_name,
+                component=component,
+                matching_files=matching_files_list,
+                filters=filters,
+            )
+
+    for img in matching_files_list:
         if snakenull_enabled:
-            # When snakenull is enabled, include all wildcards even if missing
-            wildcards: list[str] = list(component.get("wildcards", []))
+            # When snakenull is enabled, still only parse wildcards that exist
+            # The snakenull logic will fill in missing ones later
+            wildcards: list[str] = [
+                wildcard
+                for wildcard in set(component.get("wildcards", []))
+                if wildcard in img.entities
+            ]
         else:
             # Original behavior: only include wildcards that exist in the file
             wildcards: list[str] = [
@@ -763,7 +800,7 @@ def _get_component(
                 paths=paths,
                 input_name=input_name,
                 component=component,
-                matching_files=matching_files,
+                matching_files=matching_files_list,
                 filters=filters,
             )
         else:
@@ -797,67 +834,68 @@ def _handle_multiple_templates_with_snakenull(
     filters,
 ) -> BidsComponent:
     """Handle multiple path templates when snakenull is enabled.
-    
+
     Creates separate sub-components for each template, then merges them
     into a unified component with all wildcards from all templates.
     Missing entities will be filled with a placeholder that snakenull can handle.
     """
     from collections import defaultdict
-    
+
     _logger.info(
         "Multiple path templates found for %r, creating unified component "
         "for snakenull normalization with %d templates",
         input_name,
         len(paths),
     )
-    
+
     # Use a temporary placeholder for missing entities
     # Snakenull will replace this with the proper snakenull label later
     MISSING_PLACEHOLDER = "__SNAKEBIDS_MISSING__"
-    
+
     # Get all wildcards that should be in the final component
     all_wildcards = set(component.get("wildcards", []))
     merged_zip_lists: dict[str, list[str]] = {wc: [] for wc in all_wildcards}
-    
+
     # Process each file and determine its entity values
     for img in matching_files:
         # Get wildcards that exist in this file
-        available_wildcards = [
-            wc for wc in all_wildcards
-            if wc in img.entities
-        ]
-        
+        available_wildcards = [wc for wc in all_wildcards if wc in img.entities]
+
         try:
-            _, parsed_wildcards = _parse_bids_path(img.path, available_wildcards)
-            
+            # Only parse with wildcards that actually exist in this file
+            if available_wildcards:
+                _, parsed_wildcards = _parse_bids_path(
+                    img.path, available_wildcards
+                )
+            else:
+                parsed_wildcards = {}
+
             # Add values for all wildcards (placeholder for missing ones)
             for wildcard in all_wildcards:
                 if wildcard in parsed_wildcards:
-                    merged_zip_lists[wildcard].append(parsed_wildcards[wildcard])
+                    merged_zip_lists[wildcard].append(
+                        parsed_wildcards[wildcard]
+                    )
                 else:
                     # Use placeholder for missing entities
                     merged_zip_lists[wildcard].append(MISSING_PLACEHOLDER)
-                    
+
         except Exception as e:
-            _logger.warning(
-                "Failed to parse file %s: %s", img.path, e
-            )
+            _logger.warning("Failed to parse file %s: %s", img.path, e)
             # Skip this file if parsing fails
             continue
-    
-    # Choose the most generic template as the main template  
+
+    # Choose the most generic template as the main template
     # (the one with the most wildcards)
     path_lengths = [(len(p.split("{")), p) for p in paths]
     path_lengths.sort(reverse=True)
     main_template = path_lengths[0][1]
-    
+
     # Create the component
     component_obj = BidsComponent(
-        name=input_name, 
-        path=main_template, 
-        zip_lists=merged_zip_lists
+        name=input_name, path=main_template, zip_lists=merged_zip_lists
     )
-    
+
     return component_obj.filter(regex_search=True, **filters.post_exclusions)
 
 
