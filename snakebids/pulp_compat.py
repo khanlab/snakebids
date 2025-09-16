@@ -31,9 +31,13 @@ def ensure_pulp_compatibility() -> None:
             pulp.list_solvers = pulp.listSolvers  # type: ignore[attr-defined]
 
         # If neither exists, provide a fallback
-        elif not hasattr(pulp, "listSolvers") and not hasattr(pulp, "list_solvers"):
+        elif not hasattr(pulp, "listSolvers") and not hasattr(
+            pulp, "list_solvers"
+        ):
 
-            def _fallback_list_solvers(only_available: bool = True) -> list[str]:
+            def _fallback_list_solvers(
+                only_available: bool = True,
+            ) -> list[str]:
                 """Fallback solver list if PuLP doesn't provide one."""
                 warnings.warn(
                     "PuLP solver listing not available. Using fallback list.",
