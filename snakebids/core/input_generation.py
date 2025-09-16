@@ -315,10 +315,11 @@ ses-{session}_run-{run}_T1w.nii.gz",
     try:
         dataset = BidsDataset.from_iterable(bids_inputs, layout)
     except DuplicateComponentError as err:
-        raise ConfigError(
+        msg = (
             "Multiple path templates for one component detected. "
             "To enable snakenull, use: --snakenull_config={enabled: True}"
-        ) from err
+        )
+        raise ConfigError(msg) from err
 
     # Apply snakenull post-processing if requested
     if snakenull is not None:
@@ -618,7 +619,7 @@ def _create_bypass_filters(
     return UnifiedFilter(modified_component, modified_postfilters)  # type: ignore[arg-type]
 
 
-def _get_component(
+def _get_component(  # noqa: PLR0912, PLR0915
     bids_layout: BIDSLayout | None,
     component: InputConfig,
     *,
@@ -783,17 +784,15 @@ def _get_component(
                 matching_files=matching_files_list,
                 filters=filters,
             )
-        else:
-            msg = (
-                f"Multiple path templates for one component. Use --filter_{input_name} to "
-                f"narrow your search or --wildcards_{input_name} to make the template more "
-                "generic.\n"
-                f"\tcomponent = {input_name!r}\n"
-                f"\tpath_templates = [\n\t\t"
-                + ",\n\t\t".join(map(repr, paths))
-                + "\n\t]\n"
-            ).expandtabs(4)
-            raise ConfigError(msg) from err
+
+        msg = (
+            f"Multiple path templates for one component. Use "
+            f"--filter_{input_name} to narrow your search or "
+            f"--wildcards_{input_name} to make the template more generic.\n"
+            f"\tcomponent = {input_name!r}\n"
+            f"\tpath_templates = [\n\t\t" + ",\n\t\t".join(map(repr, paths)) + "\n\t]\n"
+        ).expandtabs(4)
+        raise ConfigError(msg) from err
 
     if filters.has_empty_postfilter:
         return BidsComponent(
@@ -805,7 +804,7 @@ def _get_component(
     )
 
 
-def _handle_multiple_templates_with_snakenull(
+def _handle_multiple_templates_with_snakenull(  # noqa: PLR0912, PLR0915
     *,
     paths: set[str],
     input_name: str,
@@ -834,20 +833,73 @@ def _handle_multiple_templates_with_snakenull(
     # Include all requested wildcards - if some files don't have them,
     # we'll use placeholders
     requested_wildcards = component.get("wildcards", [])
-    actual_wildcards = set(requested_wildcards)
+
+    # Normalize entity names: convert to wildcard names for consistency
+    from snakebids.utils.utils import BidsEntity
+
+    # Create mapping from entity name to its wildcard name
+    entity_to_wildcard = {}
+    normalized_wildcards = []
+    for entity_name in requested_wildcards:
+        bids_entity = BidsEntity(entity_name)
+        wildcard_name = bids_entity.wildcard
+        entity_to_wildcard[entity_name] = wildcard_name
+        if wildcard_name not in normalized_wildcards:
+            normalized_wildcards.append(wildcard_name)
+
+    # Also add reverse mappings for common aliases
+    entity_aliases = {
+        "acq": "acquisition",
+        "acquisition": "acq",
+        "desc": "description",
+        "description": "desc",
+        "rec": "reconstruction",
+        "reconstruction": "rec",
+    }
+
+    for entity_name, alias in entity_aliases.items():
+        bids_entity = BidsEntity(entity_name)
+        wildcard_name = bids_entity.wildcard
+        entity_to_wildcard[entity_name] = wildcard_name
+        entity_to_wildcard[alias] = wildcard_name
+
+    # Use only wildcard names internally for consistency
+    actual_wildcards = set(normalized_wildcards)
 
     # Create zip_lists for all requested wildcards
     merged_zip_lists: dict[str, list[str]] = {wc: [] for wc in actual_wildcards}
 
     # Process each file and determine its entity values
     for img in matching_files:
-        # Get wildcards that exist in this file
-        available_wildcards = [wc for wc in actual_wildcards if wc in img.entities]
+        # Map file entities to wildcard names for consistency
+        file_wildcards = set()
+        for entity_name in img.entities:
+            bids_entity = BidsEntity(entity_name)
+            wildcard_name = bids_entity.wildcard
+            if wildcard_name in actual_wildcards:
+                file_wildcards.add(wildcard_name)
 
         try:
             # Only parse with wildcards that actually exist in this file
-            if available_wildcards:
-                _, parsed_wildcards = _parse_bids_path(img.path, available_wildcards)
+            if file_wildcards:
+                # Convert wildcard names back to entity names for parsing
+                entities_to_parse = []
+                for wildcard in file_wildcards:
+                    # Find the original entity name that produces this wildcard
+                    for orig_entity, mapped_wildcard in entity_to_wildcard.items():
+                        if mapped_wildcard == wildcard and orig_entity in img.entities:
+                            entities_to_parse.append(orig_entity)
+                            break
+
+                _, parsed_wildcards = _parse_bids_path(img.path, entities_to_parse)
+
+                # Convert parsed entity names back to wildcard names
+                wildcard_values = {}
+                for entity_name, value in parsed_wildcards.items():
+                    bids_entity = BidsEntity(entity_name)
+                    wildcard_name = bids_entity.wildcard
+                    wildcard_values[wildcard_name] = value
+                parsed_wildcards = wildcard_values
             else:
                 parsed_wildcards = {}
 
@@ -856,41 +908,39 @@ def _handle_multiple_templates_with_snakenull(
                 if wildcard in parsed_wildcards:
                     merged_zip_lists[wildcard].append(parsed_wildcards[wildcard])
                 else:
-                    # Check for entity name mapping (acq -> acquisition, etc.)
-                    entity_mappings = {
-                        "acq": "acquisition",
-                        "desc": "description",
-                        "rec": "reconstruction",
-                    }
+                    # Use placeholder for missing entities
+                    merged_zip_lists[wildcard].append(missing_placeholder)
 
-                    found_mapped = False
-                    for short_name, long_name in entity_mappings.items():
-                        if wildcard == long_name and short_name in parsed_wildcards:
-                            merged_zip_lists[wildcard].append(
-                                parsed_wildcards[short_name]
-                            )
-                            found_mapped = True
-                            break
-                        elif wildcard == short_name and long_name in parsed_wildcards:
-                            merged_zip_lists[wildcard].append(
-                                parsed_wildcards[long_name]
-                            )
-                            found_mapped = True
-                            break
-
-                    if not found_mapped:
-                        # Use placeholder for missing entities
-                        merged_zip_lists[wildcard].append(missing_placeholder)
-
-        except Exception as e:
+        except ValueError as e:
             _logger.warning("Failed to parse file %s: %s", img.path, e)
             # Skip this file if parsing fails
             continue
 
-    # Choose the most generic template as the main template and ensure it includes all wildcards
+    # Choose the most generic template as the main template and ensure it
+    # includes all wildcards
     path_lengths = [(len(p.split("{")), p) for p in paths]
     path_lengths.sort(reverse=True)
     main_template = path_lengths[0][1]
+
+    # Ensure the main template is fully generalized by replacing any
+    # remaining literal entity values with wildcards if we have data for
+    # those entities
+    for wildcard in actual_wildcards:
+        # Find the BIDS entity for this wildcard
+        bids_entity = BidsEntity(wildcard)
+        entity_pattern = bids_entity.regex
+
+        # If this template has a literal value for this entity but we have
+        # wildcard data for it, replace the literal with the wildcard
+        if wildcard in merged_zip_lists and f"{{{wildcard}}}" not in main_template:
+            # Look for literal entity values in the template
+            matches = list(entity_pattern.finditer(main_template))
+            for match in reversed(matches):  # Process in reverse to maintain positions
+                # Replace the literal value with the wildcard
+                start, end = match.span(2)  # group 2 is the value
+                before = main_template[: match.start(2)]
+                after = main_template[match.end(2) :]
+                main_template = before + f"{{{wildcard}}}" + after
 
     # Extract wildcards from the chosen template
     import re
@@ -898,8 +948,37 @@ def _handle_multiple_templates_with_snakenull(
     template_wildcards = set(re.findall(r"\{(\w+)\}", main_template))
     zip_lists_wildcards = set(merged_zip_lists.keys())
 
-    # If there are wildcards in zip_lists that aren't in the template, we need to add them
+    # If there are wildcards in zip_lists that aren't in the template,
+    # we need to add them
     missing_wildcards = zip_lists_wildcards - template_wildcards
+
+    # Handle entity name mismatches (acq vs acquisition, etc.) before
+    # adding missing wildcards
+    entity_mappings = {
+        "acq": "acquisition",
+        "acquisition": "acq",
+        "desc": "description",
+        "description": "desc",
+        "rec": "reconstruction",
+        "reconstruction": "rec",
+    }
+
+    # Normalize missing wildcards: if we have 'acquisition' missing but
+    # 'acq' in template, don't add it
+    filtered_missing_wildcards = set()
+    for wildcard in missing_wildcards:
+        has_alias_in_template = False
+        # Check if this wildcard's alias is already in the template
+        if wildcard in entity_mappings:
+            alias = entity_mappings[wildcard]
+            if alias in template_wildcards:
+                has_alias_in_template = True
+
+        if not has_alias_in_template:
+            filtered_missing_wildcards.add(wildcard)
+
+    missing_wildcards = filtered_missing_wildcards
+
     if missing_wildcards:
         # Add missing wildcards to the template
         # Insert them before the file extension in a reasonable way
@@ -952,17 +1031,7 @@ def _handle_multiple_templates_with_snakenull(
             for wildcard in ordered_wildcards:
                 main_template += f"_{wildcard}-{{{wildcard}}}"
 
-    # Also handle entity name mismatches (acq vs acquisition, etc.)
-    entity_mappings = {
-        "acq": "acquisition",
-        "acquisition": "acq",
-        "desc": "description",
-        "description": "desc",
-        "rec": "reconstruction",
-        "reconstruction": "rec",
-    }
-
-    # Replace entity names in template to match zip_lists
+    # Replace entity names in template to match zip_lists (for existing entities)
     for zip_wildcard in zip_lists_wildcards:
         for template_wildcard, mapped_wildcard in entity_mappings.items():
             if (
@@ -973,7 +1042,8 @@ def _handle_multiple_templates_with_snakenull(
                     f"{{{template_wildcard}}}", f"{{{zip_wildcard}}}"
                 )
 
-    # Final verification: ensure the template only contains wildcards that exist in zip_lists
+    # Final verification: ensure the template only contains wildcards
+    # that exist in zip_lists
     # Remove any wildcards from template that don't have corresponding zip_lists
     template_wildcards_final = set(re.findall(r"\{(\w+)\}", main_template))
     invalid_wildcards = template_wildcards_final - zip_lists_wildcards
