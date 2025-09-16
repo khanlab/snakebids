@@ -121,6 +121,9 @@ def _collect_from_zip_lists(
     zip_lists: Mapping[str, list[str]], wc_list: list[str]
 ) -> tuple[dict[str, set[str]], dict[str, bool]]:
     """Accumulate present/missing from rectangular zip_lists."""
+    # Placeholder used by input_generation when multiple templates are merged
+    missing_placeholder = "__SNAKEBIDS_MISSING__"
+
     present_values: dict[str, set[str]] = {w: set() for w in wc_list}
     has_missing: dict[str, bool] = {w: False for w in wc_list}
     total = max((len(zip_lists.get(ent, [])) for ent in wc_list), default=0)
@@ -129,7 +132,7 @@ def _collect_from_zip_lists(
         if len(lst) < total:
             lst.extend([""] * (total - len(lst)))
         for val in lst:
-            if val not in (None, ""):
+            if val not in (None, "", missing_placeholder):
                 present_values[ent].add(str(val))
             else:
                 has_missing[ent] = True
@@ -220,10 +223,46 @@ def _set_component_entities(component: Any, entities: Mapping[str, list[str]]) -
     with contextlib.suppress(Exception):
         if hasattr(component, "wildcards"):
             component.wildcards = {k: "{" + k + "}" for k in entities}
+    with contextlib.suppress(Exception):
+        if hasattr(component, "zip_lists"):
+            # Handle BidsComponent which uses zip_lists
+            component.zip_lists.clear()
+            component.zip_lists.update(entities)
 
     # Side channel (optional): stash normalized domains for readers that opt-in
     with contextlib.suppress(Exception):
         component.snakenull_entities = dict(entities)
+
+
+def _replace_missing_placeholders_in_component(
+    component: Any, has_missing: dict[str, bool], snakenull_label: str
+) -> None:
+    """Replace __SNAKEBIDS_MISSING__ placeholders with snakenull labels in zip_lists."""
+    missing_placeholder = "__SNAKEBIDS_MISSING__"
+
+    import contextlib
+
+    # Try to get and modify zip_lists, suppressing any errors
+    with contextlib.suppress(Exception):
+        zip_lists: Any = None
+        if hasattr(component, "zip_lists"):
+            zip_lists = getattr(component, "zip_lists", None)
+        elif isinstance(component, Mapping):
+            comp_any: Any = component  # type: ignore[misc]
+            zip_lists = comp_any.get("zip_lists")
+
+        if not zip_lists:
+            return
+
+        # Replace placeholders with snakenull labels for entities that have missing values
+        for entity, entity_has_missing in has_missing.items():
+            if entity_has_missing and entity in zip_lists:
+                entity_values: Any = zip_lists[entity]
+                if isinstance(entity_values, list):
+                    # Replace placeholders in place
+                    for i in range(len(entity_values)):
+                        if entity_values[i] == missing_placeholder:
+                            entity_values[i] = snakenull_label
 
 
 def normalize_inputs_with_snakenull(
@@ -276,6 +315,9 @@ def normalize_inputs_with_snakenull(
             continue
 
         present_values, has_missing, wc_list = _collect_present_values(comp)
+
+        # Replace any missing placeholders in the actual zip_lists before normalization
+        _replace_missing_placeholders_in_component(comp, has_missing, s_cfg.label)
 
         normalized: dict[str, list[str]] = {}
         for ent in wc_list:

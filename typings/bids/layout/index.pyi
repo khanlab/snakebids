@@ -51,7 +51,7 @@ class BIDSLayoutIndexer:
         force_index=...,
         index_metadata=...,
         config_filename=...,
-        **filters
+        **filters,
     ) -> None: ...
     def __call__(self, layout): ...
     @property

@@ -24,6 +24,7 @@ spec:
 - entity: "mod"
 - entity: "echo"
 - entity: "hemi"
+- entity: "part"
 - entity: "space"
 - entity: "res"
 - entity: "den"

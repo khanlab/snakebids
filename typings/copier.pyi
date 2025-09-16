@@ -27,5 +27,5 @@ def run_copy(
     src_path: str,
     dst_path: AnyPath[str] | AnyPath[bytes] = ...,
     data: Mapping[str, Any] | None = ...,
-    **kwargs: Unpack[CopierArgs]
+    **kwargs: Unpack[CopierArgs],
 ) -> None: ...
