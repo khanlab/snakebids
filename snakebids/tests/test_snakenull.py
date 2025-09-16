@@ -1155,7 +1155,6 @@ class TestSnakenullRobustness:
         class EmptyComponent:
             """Component with minimal structure."""
 
-
         inputs = {
             "minimal": MinimalComponent(),
             "empty": EmptyComponent(),
@@ -1180,17 +1179,29 @@ class TestMultiTemplateHandling:
             # Some files have run entity, some don't
             (bids_root / "sub-MPN00001" / "ses-v1" / "anat").mkdir(parents=True)
             (
-                bids_root / "sub-MPN00001" / "ses-v1" / "anat" / "sub-MPN00001_ses-v1_T1w.nii.gz"
+                bids_root
+                / "sub-MPN00001"
+                / "ses-v1"
+                / "anat"
+                / "sub-MPN00001_ses-v1_T1w.nii.gz"
             ).touch()
 
             (bids_root / "sub-MPN00002" / "ses-v1" / "anat").mkdir(parents=True)
             (
-                bids_root / "sub-MPN00002" / "ses-v1" / "anat" / "sub-MPN00002_ses-v1_T1w.nii.gz"
+                bids_root
+                / "sub-MPN00002"
+                / "ses-v1"
+                / "anat"
+                / "sub-MPN00002_ses-v1_T1w.nii.gz"
             ).touch()
 
-            (bids_root / "sub-MPN00003" / "ses-v1" / "anat").mkdir(parents=True) 
+            (bids_root / "sub-MPN00003" / "ses-v1" / "anat").mkdir(parents=True)
             (
-                bids_root / "sub-MPN00003" / "ses-v1" / "anat" / "sub-MPN00003_ses-v1_run-1_T1w.nii.gz"
+                bids_root
+                / "sub-MPN00003"
+                / "ses-v1"
+                / "anat"
+                / "sub-MPN00003_ses-v1_run-1_T1w.nii.gz"
             ).touch()
 
             # Configuration that should accept both patterns
@@ -1215,7 +1226,9 @@ class TestMultiTemplateHandling:
             # Check that run values include both real values and placeholders
             run_values = set(t1w.zip_lists["run"])
             assert "1" in run_values  # Real run value
-            assert "snakenull" in run_values  # Placeholder for missing runs (normalized by snakenull)
+            assert (
+                "snakenull" in run_values
+            )  # Placeholder for missing runs (normalized by snakenull)
 
             # Verify subjects and sessions
             subject_values = set(t1w.zip_lists["subject"])
@@ -1233,12 +1246,20 @@ class TestMultiTemplateHandling:
             # Some files have run entity, some don't
             (bids_root / "sub-MPN00001" / "ses-v1" / "anat").mkdir(parents=True)
             (
-                bids_root / "sub-MPN00001" / "ses-v1" / "anat" / "sub-MPN00001_ses-v1_T1w.nii.gz"
+                bids_root
+                / "sub-MPN00001"
+                / "ses-v1"
+                / "anat"
+                / "sub-MPN00001_ses-v1_T1w.nii.gz"
             ).touch()
 
-            (bids_root / "sub-MPN00003" / "ses-v1" / "anat").mkdir(parents=True) 
+            (bids_root / "sub-MPN00003" / "ses-v1" / "anat").mkdir(parents=True)
             (
-                bids_root / "sub-MPN00003" / "ses-v1" / "anat" / "sub-MPN00003_ses-v1_run-1_T1w.nii.gz"
+                bids_root
+                / "sub-MPN00003"
+                / "ses-v1"
+                / "anat"
+                / "sub-MPN00003_ses-v1_run-1_T1w.nii.gz"
             ).touch()
 
             # Configuration that includes run wildcard
@@ -1250,7 +1271,9 @@ class TestMultiTemplateHandling:
             }
 
             # Test with snakenull disabled - should fail with multiple templates
-            with pytest.raises(ConfigError, match="Multiple path templates for one component"):
+            with pytest.raises(
+                ConfigError, match="Multiple path templates for one component"
+            ):
                 generate_inputs(
                     bids_dir=str(bids_root),
                     pybids_inputs=pybids_inputs,
