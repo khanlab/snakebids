@@ -274,9 +274,7 @@ ses-{session}_run-{run}_T1w.nii.gz",
         })
     """
     postfilters = PostFilter()
-    postfilters.add_filter(
-        "subject", participant_label, exclude_participant_label
-    )
+    postfilters.add_filter("subject", participant_label, exclude_participant_label)
 
     pybidsdb_dir, pybidsdb_reset = _normalize_database_args(
         pybidsdb_dir, pybidsdb_reset, pybids_database_dir, pybids_reset_database
@@ -334,13 +332,9 @@ ses-{session}_run-{run}_T1w.nii.gz",
             if use_bids_inputs:
                 normalize_inputs_with_snakenull(dataset, config=config_dict)
             else:
-                normalize_inputs_with_snakenull(
-                    dataset.as_dict, config=config_dict
-                )
+                normalize_inputs_with_snakenull(dataset.as_dict, config=config_dict)
         except ImportError:
-            _logger.warning(
-                "Snakenull module not available, skipping normalization"
-            )
+            _logger.warning("Snakenull module not available, skipping normalization")
 
     if use_bids_inputs:
         return dataset
@@ -373,11 +367,7 @@ def _normalize_database_args(
     pybidsdb_reset = (
         pybidsdb_reset
         if pybidsdb_reset is not None
-        else (
-            pybids_reset_database
-            if pybids_reset_database is not None
-            else False
-        )
+        else (pybids_reset_database if pybids_reset_database is not None else False)
     )
 
     depr_len = len(DEPRECATION_FLAG)
@@ -488,9 +478,7 @@ def _gen_bids_layout(
     # Otherwise check for relative path and update
     elif not Path(pybidsdb_dir).is_absolute():
         pybidsdb_dir = None
-        _logger.warning(
-            "Absolute path must be provided, database will not be used"
-        )
+        _logger.warning("Absolute path must be provided, database will not be used")
 
     return BIDSLayout(
         str(bids_dir),
@@ -499,15 +487,11 @@ def _gen_bids_layout(
         config=pybids_config,
         database_path=pybidsdb_dir,
         reset_database=pybidsdb_reset,
-        indexer=BIDSLayoutIndexer(
-            validate=False, index_metadata=index_metadata
-        ),
+        indexer=BIDSLayoutIndexer(validate=False, index_metadata=index_metadata),
     )
 
 
-def write_derivative_json(
-    snakemake: Snakemake, **kwargs: dict[str, Any]
-) -> None:
+def write_derivative_json(snakemake: Snakemake, **kwargs: dict[str, Any]) -> None:
     """Update sidecar file with provided sources and parameters.
 
     Intended for usage in snakemake scripts.
@@ -596,10 +580,7 @@ def _should_bypass_subject_filters(
     )
     has_subject_postfilters = bool(
         postfilters
-        and (
-            "subject" in postfilters.inclusions
-            or "subject" in postfilters.exclusions
-        )
+        and ("subject" in postfilters.inclusions or "subject" in postfilters.exclusions)
     )
     return has_specific_subject_filter and has_subject_postfilters
 
@@ -713,9 +694,7 @@ def _get_component(
                 ]
                 if available_wildcards:
                     try:
-                        path, _ = _parse_bids_path(
-                            img.path, available_wildcards
-                        )
+                        path, _ = _parse_bids_path(img.path, available_wildcards)
                         paths_set.add(path)
                     except BidsParseError:
                         continue
@@ -787,10 +766,7 @@ def _get_component(
                 ]
             ),
             "\n".join(
-                [
-                    f"       {wildcard}"
-                    for wildcard in component.get("wildcards", [])
-                ]
+                [f"       {wildcard}" for wildcard in component.get("wildcards", [])]
             ),
         )
         return None
@@ -824,9 +800,9 @@ def _get_component(
             name=input_name, path=path, zip_lists={key: [] for key in zip_lists}
         )
 
-    return BidsComponent(
-        name=input_name, path=path, zip_lists=zip_lists
-    ).filter(regex_search=True, **filters.post_exclusions)
+    return BidsComponent(name=input_name, path=path, zip_lists=zip_lists).filter(
+        regex_search=True, **filters.post_exclusions
+    )
 
 
 def _handle_multiple_templates_with_snakenull(
@@ -866,25 +842,19 @@ def _handle_multiple_templates_with_snakenull(
     # Process each file and determine its entity values
     for img in matching_files:
         # Get wildcards that exist in this file
-        available_wildcards = [
-            wc for wc in actual_wildcards if wc in img.entities
-        ]
+        available_wildcards = [wc for wc in actual_wildcards if wc in img.entities]
 
         try:
             # Only parse with wildcards that actually exist in this file
             if available_wildcards:
-                _, parsed_wildcards = _parse_bids_path(
-                    img.path, available_wildcards
-                )
+                _, parsed_wildcards = _parse_bids_path(img.path, available_wildcards)
             else:
                 parsed_wildcards = {}
 
             # Add values for all wildcards (placeholder for missing ones)
             for wildcard in actual_wildcards:
                 if wildcard in parsed_wildcards:
-                    merged_zip_lists[wildcard].append(
-                        parsed_wildcards[wildcard]
-                    )
+                    merged_zip_lists[wildcard].append(parsed_wildcards[wildcard])
                 else:
                     # Check for entity name mapping (acq -> acquisition, etc.)
                     entity_mappings = {
@@ -895,19 +865,13 @@ def _handle_multiple_templates_with_snakenull(
 
                     found_mapped = False
                     for short_name, long_name in entity_mappings.items():
-                        if (
-                            wildcard == long_name
-                            and short_name in parsed_wildcards
-                        ):
+                        if wildcard == long_name and short_name in parsed_wildcards:
                             merged_zip_lists[wildcard].append(
                                 parsed_wildcards[short_name]
                             )
                             found_mapped = True
                             break
-                        elif (
-                            wildcard == short_name
-                            and long_name in parsed_wildcards
-                        ):
+                        elif wildcard == short_name and long_name in parsed_wildcards:
                             merged_zip_lists[wildcard].append(
                                 parsed_wildcards[long_name]
                             )
@@ -945,14 +909,47 @@ def _handle_multiple_templates_with_snakenull(
             base_path = parts[0]
             extension = "." + ".".join(parts[1:])
 
+            # Add each missing wildcard in BIDS entity order, not alphabetical
+            from snakebids.paths import specs
+
+            # Get BIDS entity ordering from the spec
+            spec = specs.latest()
+            bids_order = [entity["entity"] for entity in spec]
+
+            # Sort missing wildcards according to BIDS entity order
+            def get_bids_order(entity: str) -> int:
+                try:
+                    return bids_order.index(entity)
+                except ValueError:
+                    # If not in BIDS spec, put at end
+                    return len(bids_order)
+
+            ordered_wildcards = sorted(missing_wildcards, key=get_bids_order)
+
             # Add each missing wildcard as entity-{wildcard}
-            for wildcard in sorted(missing_wildcards):
+            for wildcard in ordered_wildcards:
                 base_path += f"_{wildcard}-{{{wildcard}}}"
 
             main_template = base_path + extension
         else:
             # No extension, just append
-            for wildcard in sorted(missing_wildcards):
+            from snakebids.paths import specs
+
+            # Get BIDS entity ordering from the spec
+            spec = specs.latest()
+            bids_order = [entity["entity"] for entity in spec]
+
+            # Sort missing wildcards according to BIDS entity order
+            def get_bids_order(entity: str) -> int:
+                try:
+                    return bids_order.index(entity)
+                except ValueError:
+                    # If not in BIDS spec, put at end
+                    return len(bids_order)
+
+            ordered_wildcards = sorted(missing_wildcards, key=get_bids_order)
+
+            for wildcard in ordered_wildcards:
                 main_template += f"_{wildcard}-{{{wildcard}}}"
 
     # Also handle entity name mismatches (acq vs acquisition, etc.)
@@ -1051,9 +1048,7 @@ def _parse_custom_path(
     return filter_list(result, filters.post_exclusions, regex_search=True)
 
 
-def _parse_bids_path(
-    path: str, entities: Iterable[str]
-) -> tuple[str, dict[str, str]]:
+def _parse_bids_path(path: str, entities: Iterable[str]) -> tuple[str, dict[str, str]]:
     """Replace parameters in an bids path with the given wildcard {tags}.
 
     Parameters
@@ -1076,9 +1071,7 @@ def _parse_bids_path(
     # correctly. So prepend "./" or ".\" and run function again, then strip before
     # returning
     if _is_local_relative(path) and get_first_dir(path) != ".":
-        path_, wildcard_values = _parse_bids_path(
-            os.path.join(".", path), entities
-        )
+        path_, wildcard_values = _parse_bids_path(os.path.join(".", path), entities)
         return str(Path(path_)), wildcard_values
 
     entities = list(entities)

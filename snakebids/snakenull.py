@@ -162,9 +162,7 @@ def _collect_present_values(
                     if isinstance(entities, Mapping):
                         records_from_files.append(entities)  # type: ignore[arg-type]
             if records_from_files:
-                present, missing = _collect_from_records(
-                    records_from_files, wc_list
-                )
+                present, missing = _collect_from_records(records_from_files, wc_list)
                 return present, missing, wc_list
 
     # 3) Fallback: zip_lists (e.g., custom_path components)
@@ -187,9 +185,7 @@ def _collect_present_values(
     return present_values, has_missing, wc_list
 
 
-def _set_component_entities(
-    component: Any, entities: Mapping[str, list[str]]
-) -> None:
+def _set_component_entities(component: Any, entities: Mapping[str, list[str]]) -> None:
     """Expose normalized entity domains without breaking frozen components.
 
     - If the component is a MutableMapping, write into its keys
@@ -211,9 +207,7 @@ def _set_component_entities(
             # Use Any cast to avoid type checker issues with dynamic getattr
             comp_any: Any = component  # type: ignore[misc]
             existing_label = getattr(comp_any, "_snakenull_label", None)
-            existing_prefix = getattr(
-                comp_any, "_snakenull_include_prefix", True
-            )
+            existing_prefix = getattr(comp_any, "_snakenull_include_prefix", True)
         except (AttributeError, TypeError):
             pass
         component["_snakenull_label"] = existing_label
@@ -323,9 +317,7 @@ def normalize_inputs_with_snakenull(
         present_values, has_missing, wc_list = _collect_present_values(comp)
 
         # Replace any missing placeholders in the actual zip_lists before normalization
-        _replace_missing_placeholders_in_component(
-            comp, has_missing, s_cfg.label
-        )
+        _replace_missing_placeholders_in_component(comp, has_missing, s_cfg.label)
 
         normalized: dict[str, list[str]] = {}
         for ent in wc_list:
