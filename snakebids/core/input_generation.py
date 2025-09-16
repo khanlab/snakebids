@@ -274,7 +274,9 @@ ses-{session}_run-{run}_T1w.nii.gz",
         })
     """
     postfilters = PostFilter()
-    postfilters.add_filter("subject", participant_label, exclude_participant_label)
+    postfilters.add_filter(
+        "subject", participant_label, exclude_participant_label
+    )
 
     pybidsdb_dir, pybidsdb_reset = _normalize_database_args(
         pybidsdb_dir, pybidsdb_reset, pybids_database_dir, pybids_reset_database
@@ -315,9 +317,7 @@ ses-{session}_run-{run}_T1w.nii.gz",
     try:
         dataset = BidsDataset.from_iterable(bids_inputs, layout)
     except DuplicateComponentError as err:
-        msg = (
-            f"Multiple components found with the same name: {err.duplicated_names_str}"
-        )
+        msg = f"Multiple components found with the same name: {err.duplicated_names_str}"
         raise ConfigError(msg) from err
 
     # Apply snakenull post-processing if requested
@@ -332,9 +332,13 @@ ses-{session}_run-{run}_T1w.nii.gz",
             if use_bids_inputs:
                 normalize_inputs_with_snakenull(dataset, config=config_dict)
             else:
-                normalize_inputs_with_snakenull(dataset.as_dict, config=config_dict)
+                normalize_inputs_with_snakenull(
+                    dataset.as_dict, config=config_dict
+                )
         except ImportError:
-            _logger.warning("Snakenull module not available, skipping normalization")
+            _logger.warning(
+                "Snakenull module not available, skipping normalization"
+            )
 
     if use_bids_inputs:
         return dataset
@@ -367,7 +371,11 @@ def _normalize_database_args(
     pybidsdb_reset = (
         pybidsdb_reset
         if pybidsdb_reset is not None
-        else (pybids_reset_database if pybids_reset_database is not None else False)
+        else (
+            pybids_reset_database
+            if pybids_reset_database is not None
+            else False
+        )
     )
 
     depr_len = len(DEPRECATION_FLAG)
@@ -478,7 +486,9 @@ def _gen_bids_layout(
     # Otherwise check for relative path and update
     elif not Path(pybidsdb_dir).is_absolute():
         pybidsdb_dir = None
-        _logger.warning("Absolute path must be provided, database will not be used")
+        _logger.warning(
+            "Absolute path must be provided, database will not be used"
+        )
 
     return BIDSLayout(
         str(bids_dir),
@@ -487,11 +497,15 @@ def _gen_bids_layout(
         config=pybids_config,
         database_path=pybidsdb_dir,
         reset_database=pybidsdb_reset,
-        indexer=BIDSLayoutIndexer(validate=False, index_metadata=index_metadata),
+        indexer=BIDSLayoutIndexer(
+            validate=False, index_metadata=index_metadata
+        ),
     )
 
 
-def write_derivative_json(snakemake: Snakemake, **kwargs: dict[str, Any]) -> None:
+def write_derivative_json(
+    snakemake: Snakemake, **kwargs: dict[str, Any]
+) -> None:
     """Update sidecar file with provided sources and parameters.
 
     Intended for usage in snakemake scripts.
@@ -580,7 +594,10 @@ def _should_bypass_subject_filters(
     )
     has_subject_postfilters = bool(
         postfilters
-        and ("subject" in postfilters.inclusions or "subject" in postfilters.exclusions)
+        and (
+            "subject" in postfilters.inclusions
+            or "subject" in postfilters.exclusions
+        )
     )
     return has_specific_subject_filter and has_subject_postfilters
 
@@ -676,11 +693,16 @@ def _get_component(
         raise err.get_config_error(input_name) from err
 
     for img in matching_files:
-        wildcards: list[str] = [
-            wildcard
-            for wildcard in set(component.get("wildcards", []))
-            if wildcard in img.entities
-        ]
+        if snakenull_enabled:
+            # When snakenull is enabled, include all wildcards even if missing
+            wildcards: list[str] = list(component.get("wildcards", []))
+        else:
+            # Original behavior: only include wildcards that exist in the file
+            wildcards: list[str] = [
+                wildcard
+                for wildcard in set(component.get("wildcards", []))
+                if wildcard in img.entities
+            ]
         _logger.debug("Wildcards %s found entities for %s", wildcards, img.path)
 
         try:
@@ -724,7 +746,10 @@ def _get_component(
                 ]
             ),
             "\n".join(
-                [f"       {wildcard}" for wildcard in component.get("wildcards", [])]
+                [
+                    f"       {wildcard}"
+                    for wildcard in component.get("wildcards", [])
+                ]
             ),
         )
         return None
@@ -732,17 +757,14 @@ def _get_component(
         path = itx.one(paths)
     except ValueError as err:
         if snakenull_enabled and len(paths) > 1:
-            # When snakenull is enabled, allow multiple path templates
-            # We'll use the most generic one (the one with the most wildcards)
-            # as the base template for snakenull normalization
-            path_lengths = [(len(p.split("{")), p) for p in paths]
-            path_lengths.sort(reverse=True)  # Sort by number of wildcards, descending
-            path = path_lengths[0][1]  # Use the path with the most wildcards
-            _logger.info(
-                "Multiple path templates found for %r, using most "
-                "generic template for snakenull normalization: %s",
-                input_name,
-                path,
+            # When snakenull is enabled, handle multiple path templates
+            # by creating separate components for each template and merging them
+            return _handle_multiple_templates_with_snakenull(
+                paths=paths,
+                input_name=input_name,
+                component=component,
+                matching_files=matching_files,
+                filters=filters,
             )
         else:
             msg = (
@@ -761,9 +783,82 @@ def _get_component(
             name=input_name, path=path, zip_lists={key: [] for key in zip_lists}
         )
 
-    return BidsComponent(name=input_name, path=path, zip_lists=zip_lists).filter(
-        regex_search=True, **filters.post_exclusions
+    return BidsComponent(
+        name=input_name, path=path, zip_lists=zip_lists
+    ).filter(regex_search=True, **filters.post_exclusions)
+
+
+def _handle_multiple_templates_with_snakenull(
+    *,
+    paths: set[str],
+    input_name: str,
+    component: InputConfig,
+    matching_files,
+    filters,
+) -> BidsComponent:
+    """Handle multiple path templates when snakenull is enabled.
+    
+    Creates separate sub-components for each template, then merges them
+    into a unified component with all wildcards from all templates.
+    Missing entities will be filled with a placeholder that snakenull can handle.
+    """
+    from collections import defaultdict
+    
+    _logger.info(
+        "Multiple path templates found for %r, creating unified component "
+        "for snakenull normalization with %d templates",
+        input_name,
+        len(paths),
     )
+    
+    # Use a temporary placeholder for missing entities
+    # Snakenull will replace this with the proper snakenull label later
+    MISSING_PLACEHOLDER = "__SNAKEBIDS_MISSING__"
+    
+    # Get all wildcards that should be in the final component
+    all_wildcards = set(component.get("wildcards", []))
+    merged_zip_lists: dict[str, list[str]] = {wc: [] for wc in all_wildcards}
+    
+    # Process each file and determine its entity values
+    for img in matching_files:
+        # Get wildcards that exist in this file
+        available_wildcards = [
+            wc for wc in all_wildcards
+            if wc in img.entities
+        ]
+        
+        try:
+            _, parsed_wildcards = _parse_bids_path(img.path, available_wildcards)
+            
+            # Add values for all wildcards (placeholder for missing ones)
+            for wildcard in all_wildcards:
+                if wildcard in parsed_wildcards:
+                    merged_zip_lists[wildcard].append(parsed_wildcards[wildcard])
+                else:
+                    # Use placeholder for missing entities
+                    merged_zip_lists[wildcard].append(MISSING_PLACEHOLDER)
+                    
+        except Exception as e:
+            _logger.warning(
+                "Failed to parse file %s: %s", img.path, e
+            )
+            # Skip this file if parsing fails
+            continue
+    
+    # Choose the most generic template as the main template  
+    # (the one with the most wildcards)
+    path_lengths = [(len(p.split("{")), p) for p in paths]
+    path_lengths.sort(reverse=True)
+    main_template = path_lengths[0][1]
+    
+    # Create the component
+    component_obj = BidsComponent(
+        name=input_name, 
+        path=main_template, 
+        zip_lists=merged_zip_lists
+    )
+    
+    return component_obj.filter(regex_search=True, **filters.post_exclusions)
 
 
 def _parse_custom_path(
@@ -814,7 +909,9 @@ def _parse_custom_path(
     return filter_list(result, filters.post_exclusions, regex_search=True)
 
 
-def _parse_bids_path(path: str, entities: Iterable[str]) -> tuple[str, dict[str, str]]:
+def _parse_bids_path(
+    path: str, entities: Iterable[str]
+) -> tuple[str, dict[str, str]]:
     """Replace parameters in an bids path with the given wildcard {tags}.
 
     Parameters
@@ -837,7 +934,9 @@ def _parse_bids_path(path: str, entities: Iterable[str]) -> tuple[str, dict[str,
     # correctly. So prepend "./" or ".\" and run function again, then strip before
     # returning
     if _is_local_relative(path) and get_first_dir(path) != ".":
-        path_, wildcard_values = _parse_bids_path(os.path.join(".", path), entities)
+        path_, wildcard_values = _parse_bids_path(
+            os.path.join(".", path), entities
+        )
         return str(Path(path_)), wildcard_values
 
     entities = list(entities)
