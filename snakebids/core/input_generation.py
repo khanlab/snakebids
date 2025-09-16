@@ -830,14 +830,18 @@ def _handle_multiple_templates_with_snakenull(
     # Snakenull will replace this with the proper snakenull label later
     missing_placeholder = "__SNAKEBIDS_MISSING__"
 
-    # Get all wildcards that should be in the final component
-    all_wildcards = set(component.get("wildcards", []))
-    merged_zip_lists: dict[str, list[str]] = {wc: [] for wc in all_wildcards}
+    # Get all wildcards that we need to handle
+    # Include all requested wildcards - if some files don't have them, we'll use placeholders
+    requested_wildcards = component.get("wildcards", [])
+    actual_wildcards = set(requested_wildcards)
+    
+    # Create zip_lists for all requested wildcards
+    merged_zip_lists: dict[str, list[str]] = {wc: [] for wc in actual_wildcards}
 
     # Process each file and determine its entity values
     for img in matching_files:
         # Get wildcards that exist in this file
-        available_wildcards = [wc for wc in all_wildcards if wc in img.entities]
+        available_wildcards = [wc for wc in actual_wildcards if wc in img.entities]
 
         try:
             # Only parse with wildcards that actually exist in this file
@@ -847,23 +851,102 @@ def _handle_multiple_templates_with_snakenull(
                 parsed_wildcards = {}
 
             # Add values for all wildcards (placeholder for missing ones)
-            for wildcard in all_wildcards:
+            for wildcard in actual_wildcards:
                 if wildcard in parsed_wildcards:
                     merged_zip_lists[wildcard].append(parsed_wildcards[wildcard])
                 else:
-                    # Use placeholder for missing entities
-                    merged_zip_lists[wildcard].append(missing_placeholder)
+                    # Check for entity name mapping (acq -> acquisition, etc.)
+                    entity_mappings = {
+                        "acq": "acquisition",
+                        "desc": "description", 
+                        "rec": "reconstruction"
+                    }
+                    
+                    found_mapped = False
+                    for short_name, long_name in entity_mappings.items():
+                        if wildcard == long_name and short_name in parsed_wildcards:
+                            merged_zip_lists[wildcard].append(parsed_wildcards[short_name])
+                            found_mapped = True
+                            break
+                        elif wildcard == short_name and long_name in parsed_wildcards:
+                            merged_zip_lists[wildcard].append(parsed_wildcards[long_name])
+                            found_mapped = True
+                            break
+                    
+                    if not found_mapped:
+                        # Use placeholder for missing entities
+                        merged_zip_lists[wildcard].append(missing_placeholder)
 
         except Exception as e:
             _logger.warning("Failed to parse file %s: %s", img.path, e)
             # Skip this file if parsing fails
             continue
 
-    # Choose the most generic template as the main template
-    # (the one with the most wildcards)
+    # Choose the most generic template as the main template and ensure it includes all wildcards
     path_lengths = [(len(p.split("{")), p) for p in paths]
     path_lengths.sort(reverse=True)
     main_template = path_lengths[0][1]
+
+    # Extract wildcards from the chosen template
+    import re
+    template_wildcards = set(re.findall(r"\{(\w+)\}", main_template))
+    zip_lists_wildcards = set(merged_zip_lists.keys())
+    
+    # If there are wildcards in zip_lists that aren't in the template, we need to add them
+    missing_wildcards = zip_lists_wildcards - template_wildcards
+    if missing_wildcards:
+        # Add missing wildcards to the template
+        # Insert them before the file extension in a reasonable way
+        parts = main_template.split('.')
+        if len(parts) > 1:
+            # Insert missing wildcards before the extension
+            base_path = parts[0]
+            extension = '.' + '.'.join(parts[1:])
+            
+            # Add each missing wildcard as entity-{wildcard}
+            for wildcard in sorted(missing_wildcards):
+                base_path += f"_{wildcard}-{{{wildcard}}}"
+            
+            main_template = base_path + extension
+        else:
+            # No extension, just append
+            for wildcard in sorted(missing_wildcards):
+                main_template += f"_{wildcard}-{{{wildcard}}}"
+
+    # Also handle entity name mismatches (acq vs acquisition, etc.)
+    entity_mappings = {
+        "acq": "acquisition",
+        "acquisition": "acq", 
+        "desc": "description",
+        "description": "desc",
+        "rec": "reconstruction", 
+        "reconstruction": "rec"
+    }
+    
+    # Replace entity names in template to match zip_lists
+    for zip_wildcard in zip_lists_wildcards:
+        for template_wildcard, mapped_wildcard in entity_mappings.items():
+            if mapped_wildcard == zip_wildcard and f"{{{template_wildcard}}}" in main_template:
+                main_template = main_template.replace(f"{{{template_wildcard}}}", f"{{{zip_wildcard}}}")
+
+    # Final verification: ensure the template only contains wildcards that exist in zip_lists
+    # Remove any wildcards from template that don't have corresponding zip_lists
+    template_wildcards_final = set(re.findall(r"\{(\w+)\}", main_template))
+    invalid_wildcards = template_wildcards_final - zip_lists_wildcards
+    
+    if invalid_wildcards:
+        # Remove invalid wildcards and their surrounding context
+        for invalid_wc in invalid_wildcards:
+            # Remove patterns like "_entity-{wildcard}" or "{wildcard}" 
+            patterns_to_remove = [
+                f"_{invalid_wc}-{{{invalid_wc}}}",
+                f"{{{invalid_wc}}}",
+                f"_{invalid_wc}{{{invalid_wc}}}",  # Handle cases without dash
+            ]
+            for pattern in patterns_to_remove:
+                if pattern in main_template:
+                    main_template = main_template.replace(pattern, "")
+                    break
 
     # Create the component
     component_obj = BidsComponent(

@@ -1169,6 +1169,79 @@ class TestSnakenullRobustness:
 class TestMultiTemplateHandling:
     """Test multi-template scenarios with snakenull."""
 
+    def test_multi_template_with_entity_name_mismatches(self):
+        """Test that multi-template handling works with entity name mismatches like acq vs acquisition."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a BIDS dataset with T1w files with different entity patterns
+            bids_root = Path(tmpdir) / "bids"
+            bids_root.mkdir()
+
+            # File with acquisition entity (mapped to acq in template)
+            (bids_root / "sub-MPN00001" / "ses-v1" / "anat").mkdir(parents=True)
+            (
+                bids_root
+                / "sub-MPN00001"
+                / "ses-v1"
+                / "anat"
+                / "sub-MPN00001_ses-v1_acq-MPRAGE_T1w.nii.gz"
+            ).touch()
+
+            # File with run entity  
+            (bids_root / "sub-MPN00002" / "ses-v1" / "anat").mkdir(parents=True)
+            (
+                bids_root
+                / "sub-MPN00002"
+                / "ses-v1"
+                / "anat"
+                / "sub-MPN00002_ses-v1_run-1_T1w.nii.gz"
+            ).touch()
+
+            # File with both acq and run
+            (bids_root / "sub-MPN00003" / "ses-v1" / "anat").mkdir(parents=True)
+            (
+                bids_root
+                / "sub-MPN00003"
+                / "ses-v1"
+                / "anat"
+                / "sub-MPN00003_ses-v1_acq-MPRAGE_run-1_T1w.nii.gz"
+            ).touch()
+
+            # Configuration that uses 'acquisition' wildcard name but files use 'acq'
+            pybids_inputs = {
+                "T1w": {
+                    "filters": {"suffix": "T1w", "extension": ".nii.gz"},
+                    "wildcards": ["subject", "session", "acquisition", "run"],
+                }
+            }
+
+            # Test with snakenull enabled  
+            dataset = generate_inputs(
+                bids_dir=str(bids_root),
+                pybids_inputs=pybids_inputs,
+                snakenull={"enabled": True},
+            )
+
+            # Verify that all files are found
+            t1w = dataset["T1w"]
+            assert len(t1w.zip_lists["subject"]) == 3  # All 3 subjects found
+
+            # Check that acquisition and run values are handled correctly
+            if "acquisition" in t1w.zip_lists:
+                acq_values = set(t1w.zip_lists["acquisition"])
+                assert "MPRAGE" in acq_values
+                assert "snakenull" in acq_values  # For files without acquisition
+            
+            if "run" in t1w.zip_lists:
+                run_values = set(t1w.zip_lists["run"])
+                assert "1" in run_values
+                assert "snakenull" in run_values  # For files without run
+
+            # Verify subjects and sessions
+            subject_values = set(t1w.zip_lists["subject"])
+            session_values = set(t1w.zip_lists["session"])
+            assert subject_values == {"MPN00001", "MPN00002", "MPN00003"}
+            assert session_values == {"v1"}
+
     def test_multi_template_with_missing_entities(self):
         """Test that files without run entity work when some templates expect it."""
         with tempfile.TemporaryDirectory() as tmpdir:
