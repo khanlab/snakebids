@@ -53,13 +53,17 @@ def test_snakenull_disabled_is_noop() -> None:
         )
     }
     cfg: dict[str, Any] = {
-        "pybids_inputs": {"t1w": {"wildcards": ["subject", "session", "acquisition"]}},
+        "pybids_inputs": {
+            "t1w": {"wildcards": ["subject", "session", "acquisition"]}
+        },
         "snakenull": {"enabled": False},
     }
     normalize_inputs_with_snakenull(inputs, config=cfg)
     ents = _entities(inputs["t1w"])
     # No processing happened; in particular, no 'snakenull' is injected
-    flat: set[str] = {v for vals in ents.values() for v in vals} if ents else set()
+    flat: set[str] = (
+        {v for vals in ents.values() for v in vals} if ents else set()
+    )
     assert "snakenull" not in flat
 
 
@@ -213,7 +217,9 @@ class TestCollectPresentValues:
             ],
         )
 
-        present_values, has_missing, wc_list = _collect_present_values(component)
+        present_values, has_missing, wc_list = _collect_present_values(
+            component
+        )
 
         assert set(wc_list) == {"subject", "session", "acquisition"}
         assert present_values["subject"] == {"01", "02", "03"}
@@ -222,7 +228,9 @@ class TestCollectPresentValues:
 
         assert has_missing["subject"] is False  # all records have subject
         assert has_missing["session"] is True  # record 2 missing session
-        assert has_missing["acquisition"] is True  # records 2&3 missing acquisition
+        assert (
+            has_missing["acquisition"] is True
+        )  # records 2&3 missing acquisition
 
     def test_collect_no_missing_values(self):
         """Test collecting values when no entities are missing."""
@@ -234,7 +242,9 @@ class TestCollectPresentValues:
             ],
         )
 
-        present_values, has_missing, wc_list = _collect_present_values(component)
+        present_values, has_missing, wc_list = _collect_present_values(
+            component
+        )
 
         assert set(wc_list) == {"subject", "session"}
         assert present_values["subject"] == {"01", "02"}
@@ -257,7 +267,9 @@ class TestCollectPresentValues:
             ],
         )
 
-        present_values, has_missing, wc_list = _collect_present_values(component)
+        present_values, has_missing, wc_list = _collect_present_values(
+            component
+        )
 
         assert set(wc_list) == {"subject", "session", "run"}
         assert present_values["subject"] == {"01", "02"}
@@ -353,17 +365,29 @@ class TestSnakenullIntegration:
             # sub-01 has session 01
             (bids_root / "sub-01" / "ses-01" / "anat").mkdir(parents=True)
             (
-                bids_root / "sub-01" / "ses-01" / "anat" / "sub-01_ses-01_T1w.nii.gz"
+                bids_root
+                / "sub-01"
+                / "ses-01"
+                / "anat"
+                / "sub-01_ses-01_T1w.nii.gz"
             ).touch()
 
             # sub-02 has sessions 01 and 02
             (bids_root / "sub-02" / "ses-01" / "anat").mkdir(parents=True)
             (
-                bids_root / "sub-02" / "ses-01" / "anat" / "sub-02_ses-01_T1w.nii.gz"
+                bids_root
+                / "sub-02"
+                / "ses-01"
+                / "anat"
+                / "sub-02_ses-01_T1w.nii.gz"
             ).touch()
             (bids_root / "sub-02" / "ses-02" / "anat").mkdir(parents=True)
             (
-                bids_root / "sub-02" / "ses-02" / "anat" / "sub-02_ses-02_T1w.nii.gz"
+                bids_root
+                / "sub-02"
+                / "ses-02"
+                / "anat"
+                / "sub-02_ses-02_T1w.nii.gz"
             ).touch()
 
             # Configuration - all files have sessions to avoid ambiguous patterns
@@ -383,7 +407,9 @@ class TestSnakenullIntegration:
 
             # Verify snakenull behavior
             t1w_snakenull = dataset_snakenull["T1w"]
-            assert len(t1w_snakenull.zip_lists["subject"]) == 2  # 2 subjects found
+            assert (
+                len(t1w_snakenull.zip_lists["subject"]) == 2
+            )  # 2 subjects found
 
             # Check that both present sessions and snakenull are there
             # Since all files have sessions, no snakenull should be added to session
@@ -424,7 +450,9 @@ class TestSnakenullIntegration:
         assert "01" in ents["session"]
         assert "02" in ents["session"]
         assert "MISSING" in ents["session"]  # Custom label for missing sessions
-        assert "snakenull" not in ents["session"]  # Default label should not appear
+        assert (
+            "snakenull" not in ents["session"]
+        )  # Default label should not appear
 
     def test_scoped_normalization(self):
         """Test that snakenull only affects entities in scope."""
@@ -558,7 +586,9 @@ class TestSnakenullEndToEnd:
             "pybids_inputs": {
                 "bold": {
                     "wildcards": ["subject", "session", "task", "run"],
-                    "snakenull": {"scope": ["session", "run"]},  # Only normalize these
+                    "snakenull": {
+                        "scope": ["session", "run"]
+                    },  # Only normalize these
                 }
             },
         }
@@ -579,7 +609,11 @@ class TestSnakenullEndToEnd:
             and "MISSING" in ents["session"]
         )
         assert "rest" in ents["task"] and "task" in ents["task"]
-        assert "01" in ents["run"] and "02" in ents["run"] and "MISSING" in ents["run"]
+        assert (
+            "01" in ents["run"]
+            and "02" in ents["run"]
+            and "MISSING" in ents["run"]
+        )
 
         # Verify scoping worked - task should not have MISSING (not in scope)
         assert "MISSING" not in ents["task"]
@@ -836,7 +870,9 @@ class TestSnakenullNormalizationLogic:
             "pybids_inputs": {
                 "bold": {
                     "wildcards": ["subject", "task"],
-                    "snakenull": {"label": "LOCAL_NULL"},  # Override label locally
+                    "snakenull": {
+                        "label": "LOCAL_NULL"
+                    },  # Override label locally
                 }
             },
         }
@@ -959,7 +995,9 @@ class TestSnakenullEdgeCases:
 
         # Empty string is treated as missing, so snakenull should be added to session
         assert "01" in ents["session"]
-        assert "snakenull" in ents["session"]  # because one record has missing session
+        assert (
+            "snakenull" in ents["session"]
+        )  # because one record has missing session
         # Empty string itself is not preserved as it's treated as None/missing
         assert "" not in ents["session"]
 
@@ -1186,7 +1224,7 @@ class TestMultiTemplateHandling:
                 / "sub-MPN00001_ses-v1_acq-MPRAGE_T1w.nii.gz"
             ).touch()
 
-            # File with run entity  
+            # File with run entity
             (bids_root / "sub-MPN00002" / "ses-v1" / "anat").mkdir(parents=True)
             (
                 bids_root
@@ -1214,7 +1252,7 @@ class TestMultiTemplateHandling:
                 }
             }
 
-            # Test with snakenull enabled  
+            # Test with snakenull enabled
             dataset = generate_inputs(
                 bids_dir=str(bids_root),
                 pybids_inputs=pybids_inputs,
@@ -1229,8 +1267,10 @@ class TestMultiTemplateHandling:
             if "acquisition" in t1w.zip_lists:
                 acq_values = set(t1w.zip_lists["acquisition"])
                 assert "MPRAGE" in acq_values
-                assert "snakenull" in acq_values  # For files without acquisition
-            
+                assert (
+                    "snakenull" in acq_values
+                )  # For files without acquisition
+
             if "run" in t1w.zip_lists:
                 run_values = set(t1w.zip_lists["run"])
                 assert "1" in run_values
