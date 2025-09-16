@@ -300,6 +300,7 @@ ses-{session}_run-{run}_T1w.nii.gz",
         inputs_config=pybids_inputs,
         limit_to=limit_to,
         postfilters=postfilters,
+        snakenull_enabled=snakenull is not None,
     )
 
     if use_bids_inputs is True:
@@ -523,6 +524,7 @@ def _get_components(
     inputs_config: InputsConfig,
     postfilters: PostFilter,
     limit_to: Iterable[str] | None = None,
+    snakenull_enabled: bool = False,
 ):
     """Generate components based on components config and a bids layout.
 
@@ -558,6 +560,7 @@ def _get_components(
             component=inputs_config[name],
             input_name=name,
             postfilters=postfilters,
+            snakenull_enabled=snakenull_enabled,
         )
         if comp is not None:
             yield comp
@@ -621,6 +624,7 @@ def _get_component(
     *,
     input_name: str,
     postfilters: PostFilter,
+    snakenull_enabled: bool = False,
 ) -> BidsComponent | None:
     """Create component based on provided config.
 
@@ -727,14 +731,30 @@ def _get_component(
     try:
         path = itx.one(paths)
     except ValueError as err:
-        msg = (
-            f"Multiple path templates for one component. Use --filter_{input_name} to "
-            f"narrow your search or --wildcards_{input_name} to make the template more "
-            "generic.\n"
-            f"\tcomponent = {input_name!r}\n"
-            f"\tpath_templates = [\n\t\t" + ",\n\t\t".join(map(repr, paths)) + "\n\t]\n"
-        ).expandtabs(4)
-        raise ConfigError(msg) from err
+        if snakenull_enabled and len(paths) > 1:
+            # When snakenull is enabled, allow multiple path templates
+            # We'll use the most generic one (the one with the most wildcards)
+            # as the base template for snakenull normalization
+            path_lengths = [(len(p.split("{")), p) for p in paths]
+            path_lengths.sort(reverse=True)  # Sort by number of wildcards, descending
+            path = path_lengths[0][1]  # Use the path with the most wildcards
+            _logger.info(
+                "Multiple path templates found for %r, using most "
+                "generic template for snakenull normalization: %s",
+                input_name,
+                path,
+            )
+        else:
+            msg = (
+                f"Multiple path templates for one component. Use --filter_{input_name} to "
+                f"narrow your search or --wildcards_{input_name} to make the template more "
+                "generic.\n"
+                f"\tcomponent = {input_name!r}\n"
+                f"\tpath_templates = [\n\t\t"
+                + ",\n\t\t".join(map(repr, paths))
+                + "\n\t]\n"
+            ).expandtabs(4)
+            raise ConfigError(msg) from err
 
     if filters.has_empty_postfilter:
         return BidsComponent(
