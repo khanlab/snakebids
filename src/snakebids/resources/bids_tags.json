@@ -117,7 +117,7 @@
     },
     "extension": {
         "before": "[^./\\\\]",
-        "match": "\\.[^/\\\\]+",
+        "match": "\\.[^/\\0\\\\]+",
         "after": "$"
     },
     "split": {
@@ -192,5 +192,20 @@
         "tag": "tracksys",
         "before": "[_/\\\\]+tracksys-",
         "match": "[a-zA-Z0-9]+"
+    },
+    "nucleus": {
+        "tag": "nuc",
+        "before": "[_/\\\\]+nuc-",
+        "match": "[a-zA-Z0-9+]+"
+    },
+    "volume": {
+        "tag": "voi",
+        "before": "[_/\\\\]+voi-",
+        "match": "[a-zA-Z0-9+]+"
+    },
+    "segmentation": {
+        "tag": "seg",
+        "before": "seg-",
+        "match": "[a-zA-Z0-9+]+"
     }
 }

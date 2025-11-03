@@ -2,18 +2,18 @@ from __future__ import annotations
 
 import functools as ft
 import json
-import operator as op
 import os
 import re
 import textwrap
+from collections.abc import Callable, Iterable, Sequence
 from os import PathLike
 from pathlib import Path
-from typing import Any, Callable, Iterable, Mapping, Protocol, Sequence, TypeVar, cast
+from typing import Any, Protocol, TypeAlias, TypeVar
 
 import attrs
 import importlib_resources as impr
 import more_itertools as itx
-from typing_extensions import NotRequired, TypeAlias, TypedDict
+from typing_extensions import NotRequired, TypedDict
 
 from snakebids import resources, types
 from snakebids.utils.user_property import UserProperty
@@ -63,7 +63,7 @@ def read_bids_tags(bids_json: Path | None = None) -> BidsTags:
     return json.loads(impr.files(resources).joinpath("bids_tags.json").read_text())
 
 
-@attrs.frozen(hash=True)
+@attrs.frozen(hash=False)
 class BidsEntity:
     """Bids entities with tag and wildcard representations."""
 
@@ -78,6 +78,9 @@ class BidsEntity:
         if isinstance(other, BidsEntity):
             return self.entity == other.entity
         return False
+
+    def __hash__(self) -> int:
+        return hash(self.entity)
 
     def __lt__(self, other: BidsEntity | str):
         if isinstance(other, str):
@@ -286,25 +289,19 @@ def surround(s: Iterable[str] | str, object_: str, /) -> Iterable[str]:
         yield object_ + item + object_
 
 
+def _hash_cols(tbl: Iterable[Sequence[str]]):
+    return {hash(col) for col in zip(*tbl, strict=True)}
+
+
 def zip_list_eq(first: types.ZipListLike, second: types.ZipListLike, /):
     """Compare two zip lists, allowing the order of columns to be irrelevant."""
-
-    def sorted_items(dictionary: Mapping[str, Sequence[str]]):
-        return sorted(dictionary.items(), key=op.itemgetter(0))
-
-    def get_values(zlist: types.ZipListLike):
-        return cast("tuple[list[str]]", list(zip(*sorted_items(zlist)))[1])
-
     if not first and not second:
         return True
 
     if set(first) != set(second):
         return False
 
-    first_items = get_values(first)
-    second_items = get_values(second)
-
-    return sorted(zip(*first_items)) == sorted(zip(*second_items))
+    return _hash_cols(first.values()) == _hash_cols(second[key] for key in first)
 
 
 def get_first_dir(path: str) -> str:

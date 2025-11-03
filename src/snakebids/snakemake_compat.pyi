@@ -1,7 +1,8 @@
 from argparse import ArgumentParser
+from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Callable, Iterable, Sequence
+from typing import Any
 
 from snakemake.common import configfile as configfile  # type: ignore
 

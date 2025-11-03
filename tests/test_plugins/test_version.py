@@ -7,8 +7,8 @@ from hypothesis import given
 from hypothesis import strategies as st
 from pytest_mock import MockerFixture
 
-from snakebids.plugins.version import Version
-from snakebids.tests.helpers import allow_function_scoped
+from snakebids.plugins.version import Version, impm
+from tests.helpers import allow_function_scoped
 
 
 @given(version=st.text())
@@ -24,8 +24,6 @@ def test_explicit_version_used_directly(version: str):
 def test_distribution_is_retrieved(
     version: str, distribution: str, mocker: MockerFixture
 ):
-    from snakebids.plugins.version import impm
-
     mocker.stopall()
     mock = mocker.patch.object(impm, "version", return_value=version)
     plug = Version(distribution=distribution)
@@ -40,8 +38,6 @@ def test_distribution_is_retrieved(
 def test_uninstalled_distribution_results_in_unknown(
     distribution: str, mocker: MockerFixture
 ):
-    from snakebids.plugins.version import impm
-
     mocker.stopall()
     mock = mocker.patch.object(impm, "version", side_effect=impm.PackageNotFoundError)
     plug = Version(distribution=distribution)

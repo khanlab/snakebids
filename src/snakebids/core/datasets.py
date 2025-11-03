@@ -4,10 +4,11 @@ import functools as ft
 import itertools as it
 import textwrap
 import warnings
+from collections.abc import Iterable
 from math import inf
 from pathlib import Path
 from string import Formatter
-from typing import Any, Iterable, NoReturn, cast, overload
+from typing import Any, NoReturn, cast, overload
 
 import attr
 import more_itertools as itx
@@ -22,7 +23,7 @@ from snakebids.io.console import get_console_size
 from snakebids.io.printing import format_zip_lists, quote_wrap
 from snakebids.snakemake_compat import expand as sn_expand
 from snakebids.types import ZipList
-from snakebids.utils.containers import ImmutableList, MultiSelectDict, UserDictPy38
+from snakebids.utils.containers import ImmutableList, MultiSelectDict
 from snakebids.utils.utils import get_wildcard_dict, property_alias, zip_list_eq
 
 
@@ -511,7 +512,7 @@ class BidsComponent(BidsPartialComponent):
     def _validate_zip_lists(self, __attr: str, value: dict[str, list[str]]) -> None:
         super()._validate_zip_lists(__attr, value)
         _, raw_fields, *_ = sb_it.unpack(
-            zip(*Formatter().parse(self.path)), [[], [], []]
+            zip(*Formatter().parse(self.path), strict=True), [[], [], []]
         )
         raw_fields = cast("Iterable[str]", raw_fields)
         if (fields := set(filter(None, raw_fields))) != set(value):
@@ -597,7 +598,7 @@ class BidsComponent(BidsPartialComponent):
         return self.path
 
 
-class BidsDataset(UserDictPy38[str, BidsComponent]):
+class BidsDataset(dict[str, BidsComponent]):
     """A bids dataset parsed by pybids, organized into BidsComponents.
 
     BidsDatasets are typically generated using :func:`generate_inputs()

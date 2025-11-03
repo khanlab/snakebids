@@ -39,14 +39,14 @@ def _wrap_template(template: str, length: int):
         if len(line) <= length:
             return lines
         i = line[length - 1 :: -1].index("_")
-        return recurse(lines[:-1] + [line[: length - i], "    " + line[length - i :]])
+        return recurse([*lines[:-1], line[: length - i], 4 * " " + line[length - i :]])
 
     return "\n".join(recurse([template]))
 
 
 def compile_example(spec: BidsPathSpec):
     # import within function to avoid circular import
-    from snakebids.paths._factory import bids_factory
+    from snakebids.paths._factory import bids_factory  # noqa: PLC0415
 
     entities = [listing["entity"] for listing in spec]
     standard_entities = ("prefix", "datatype", "suffix", "extension")
@@ -58,7 +58,9 @@ def compile_example(spec: BidsPathSpec):
         **entity_to_wildcard(standard_entities),
         **entity_to_wildcard(e for e in entities if e != "*"),
     )
-    search = f"{spec[wild+1].get('tag', entities[wild+1])}-{{{entities[wild+1]}}}_"
+    search = (
+        f"{spec[wild + 1].get('tag', entities[wild + 1])}-{{{entities[wild + 1]}}}_"
+    )
     i = template.index(search)
     if wild < 0:
         i = len(search) + i
@@ -67,7 +69,7 @@ def compile_example(spec: BidsPathSpec):
 
 def _import_docstring_parser():
     """Isolated import function that can be mocked in tests."""
-    import docstring_parser as docstr
+    import docstring_parser as docstr  # noqa: PLC0415
 
     return docstr
 

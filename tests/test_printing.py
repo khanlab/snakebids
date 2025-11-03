@@ -7,7 +7,7 @@ import pyparsing as pp
 from hypothesis import assume, given
 from hypothesis import strategies as st
 
-import snakebids.tests.strategies as sb_st
+import tests.strategies as sb_st
 from snakebids.core.datasets import BidsComponent, BidsDataset
 from snakebids.io.printing import format_zip_lists
 from snakebids.types import ZipList
@@ -153,7 +153,7 @@ def test_line_never_longer_than_max_width(zip_list: ZipList, width: int, tab: in
 
 
 def get_indent_length(line: str):
-    return len(line) - len(line.lstrip(" "))
+    return len(line) - len(line.lstrip())
 
 
 class TestIndentLengthMultipleOfTabStop:

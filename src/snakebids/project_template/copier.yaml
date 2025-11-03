@@ -65,7 +65,7 @@ bids_version:
   when: false
 
 python_version:
-  default: ">=3.8,<4.0"
+  default: ">=3.10,<4.0"
   when: false
 
 snakebids_version:

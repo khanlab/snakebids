@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Generic, Iterable, List, Mapping, Protocol, Sequence, overload
+from typing import Generic, Protocol, TypeAlias, overload
 
-from typing_extensions import Self, TypeAlias, TypedDict, TypeVar
+from typing_extensions import Self, TypedDict, TypeVar
 
 from snakebids.utils.containers import MultiSelectDict
 
@@ -109,13 +110,13 @@ class MultiSelectable(Protocol, Generic[_K_contra, _V_co, _Valt_co]):
     def __getitem__(self, key: tuple[_K_contra, ...], /) -> _Valt_co: ...
 
 
-InputsConfig: TypeAlias = Dict[str, InputConfig]
+InputsConfig: TypeAlias = dict[str, InputConfig]
 """Configuration for all bids components to be parsed in the app
 
 Should be defined in the config.yaml file, by convention in a key called 'pybids_inputs'
 """
 
-ZipList: TypeAlias = MultiSelectDict[str, List[str]]
+ZipList: TypeAlias = MultiSelectDict[str, list[str]]
 """Multiselectable dict mapping entity names to possible values.
 
 All lists must be the same length. Entries in each list with the same index correspond

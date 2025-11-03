@@ -24,7 +24,7 @@ $ mkdir snakebids-tutorial
 $ cd snakebids-tutorial
 ```
 
-Check your python version to make sure you have at least version 3.7 or higher:
+Check your python version to make sure you have at least version 3.10 or higher:
 
 ```console
 $ python --version

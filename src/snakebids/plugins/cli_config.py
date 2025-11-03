@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import attrs
 
@@ -39,8 +40,6 @@ def _make_underscore_dash_aliases(name: str) -> set[str]:
 
 
 def _find_type(name: str, *, yamlsafe: bool = True) -> type[Any]:
-    import importlib
-
     if name == "Path":
         return Path
     *module_name, obj_name = name.split(".") if "." in name else ("builtins", name)
@@ -55,7 +54,7 @@ def _find_type(name: str, *, yamlsafe: bool = True) -> type[Any]:
     if yamlsafe and type_ not in get_yaml_io().representer.yaml_representers:
         msg = f"{name} cannot be serialized into yaml"
         raise ConfigError(msg)
-    return type_
+    return cast("type[Any]", type_)
 
 
 @attrs.define
@@ -115,9 +114,6 @@ class CliConfig:
 
         # update the parser with config options
         for name, arg in parse_args.items():
-            import pathlib as pathlib  # noqa: PLC0414
-            from pathlib import Path as Path  # noqa: PLC0414
-
             # Convert type annotations from strings to class types
             # We first check that the type annotation is, in fact,
             # a str to allow the edge case where it's already

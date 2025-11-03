@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import jinja2.parser
+import jinja2
 from colorama import Fore
 from jinja2.ext import Extension
 

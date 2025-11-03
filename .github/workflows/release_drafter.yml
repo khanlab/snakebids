@@ -10,11 +10,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Extract branch name
-        shell: bash
-        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
-        id: extract_branch
-
       - name: Print workflow information
         run: |
           echo "Author: ${{ github.triggering_actor }}"
@@ -22,7 +17,7 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          ref: ${{ steps.extract_branch.outputs.branch }}
+          ref: ${{ github.head_ref || github.ref_name }}
 
       - name: Update changelog
         uses: release-drafter/release-drafter@v6
@@ -30,4 +25,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          commitish: ${{ steps.extract_branch.outputs.branch }}
+          commitish: ${{ github.head_ref || github.ref_name }}

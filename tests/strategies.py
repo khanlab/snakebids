@@ -2,16 +2,13 @@ from __future__ import annotations
 
 import copy
 import itertools as it
+from collections.abc import Container, Hashable, Iterable, Sequence
 from os import PathLike
 from pathlib import Path
 from string import ascii_letters, digits
 from typing import (
     TYPE_CHECKING,
     Any,
-    Container,
-    Hashable,
-    Iterable,
-    Sequence,
     TypeVar,
 )
 
@@ -25,10 +22,10 @@ from snakebids.core.datasets import (
     BidsDataset,
     BidsPartialComponent,
 )
-from snakebids.tests import helpers
 from snakebids.types import Expandable, InputConfig, InputsConfig, ZipList
 from snakebids.utils.containers import ContainerBag, MultiSelectDict
 from snakebids.utils.utils import BidsEntity
+from tests import helpers
 
 _Ex_co = TypeVar("_Ex_co", bound=str, covariant=True)
 _T = TypeVar("_T")
@@ -130,7 +127,7 @@ def bids_entity(
     )
 
 
-def bids_value(pattern: str = r"[^\n\r]*") -> st.SearchStrategy[str]:
+def bids_value(pattern: str = r"[^\n\r\0]*") -> st.SearchStrategy[str]:
     # Need the isdigit == isdecimal check to work around a pybids bug
     return (
         st.from_regex(pattern, fullmatch=True)
@@ -354,7 +351,7 @@ def zip_lists(
                 unique=unique,
             )
         )
-        if cull and len(combinations)
+        if cull and combinations
         else combinations
     )
     return helpers.get_zip_list(values, used_combinations)

@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib.metadata as impm
 import re
 
-import jinja2.parser
+import jinja2
 import requests
 from jinja2.ext import Extension
 

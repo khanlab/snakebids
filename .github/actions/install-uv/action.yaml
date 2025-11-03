@@ -1,0 +1,43 @@
+name: UV install
+description: Clone repository and install with uv.
+inputs:
+  python-version:
+    description: Python version to setup
+    required: false
+    default: ""
+  install-dev:
+    description: "Include dev dependencies when installing (uv sync)"
+    required: false
+    default: "true"
+outputs:
+  python-version:
+    description: "Resolved python version as reported by setup-python"
+    value: ${{ steps.version.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install uv
+      id: install
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install project (dev)
+      if: inputs.install-dev == 'true'
+      shell: bash
+      run: uv sync --locked --all-extras --dev
+
+    - name: Install project (no dev)
+      if: inputs.install-dev != 'true'
+      shell: bash
+      run: uv sync --locked --all-extras --no-dev
+
+    - name: Get version
+      id: version
+      shell: bash
+      run: |
+        echo version="$(
+          uv run python -c "import platform; print(platform.python_version())"
+        )" >> "$GITHUB_OUTPUT"

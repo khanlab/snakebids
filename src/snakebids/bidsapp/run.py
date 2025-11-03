@@ -3,12 +3,13 @@ from __future__ import annotations
 import argparse
 import sys
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Iterable, Protocol, Sequence, TypedDict
+from collections.abc import Iterable, Sequence
+from typing import TYPE_CHECKING, Any, Protocol, TypeAlias, TypedDict
 
 import attrs
 import pluggy
 from attrs.converters import default_if_none
-from typing_extensions import TypeAlias, Unpack
+from typing_extensions import Unpack
 
 from snakebids.bidsapp import hookspecs
 from snakebids.bidsapp.args import ArgumentGroups
@@ -18,41 +19,23 @@ if TYPE_CHECKING:
 
     from pluggy._hooks import _Plugin
 
-if sys.version_info >= (3, 9):
 
-    class ArgumentParserArgs(TypedDict, total=False):
-        """Arguments passed on to :class:`argparse.ArgumentParser`."""
+class ArgumentParserArgs(TypedDict, total=False):
+    """Arguments passed on to :class:`argparse.ArgumentParser`."""
 
-        prog: str | None
-        usage: str | None
-        description: str | None
-        epilog: str | None
-        parents: Sequence[argparse.ArgumentParser]
-        formatter_class: _FormatterClass
-        prefix_chars: str
-        fromfile_prefix_chars: str | None
-        argument_default: Any
-        conflict_handler: str
-        add_help: bool
-        allow_abbrev: bool
-        exit_on_error: bool
-else:
-
-    class ArgumentParserArgs(TypedDict, total=False):
-        """Arguments passed on to :class:`argparse.ArgumentParser`."""
-
-        prog: str | None
-        usage: str | None
-        description: str | None
-        epilog: str | None
-        parents: Sequence[argparse.ArgumentParser]
-        formatter_class: _FormatterClass
-        prefix_chars: str
-        fromfile_prefix_chars: str | None
-        argument_default: Any
-        conflict_handler: str
-        add_help: bool
-        allow_abbrev: bool
+    prog: str | None
+    usage: str | None
+    description: str | None
+    epilog: str | None
+    parents: Sequence[argparse.ArgumentParser]
+    formatter_class: _FormatterClass
+    prefix_chars: str
+    fromfile_prefix_chars: str | None
+    argument_default: Any
+    conflict_handler: str
+    add_help: bool
+    allow_abbrev: bool
+    exit_on_error: bool
 
 
 def app(

@@ -2,17 +2,11 @@ from __future__ import annotations
 
 import re
 import sys
+from collections.abc import Container, Iterable, Iterator, Sequence
 from typing import (
-    TYPE_CHECKING,
     Any,
     AnyStr,
-    Container,
-    Dict,
     Generic,
-    Hashable,
-    Iterable,
-    Iterator,
-    Sequence,
     SupportsIndex,
     TypeVar,
     overload,
@@ -23,20 +17,6 @@ from typing_extensions import Self, override
 _T = TypeVar("_T")
 _K = TypeVar("_K", bound="str")
 _T_co = TypeVar("_T_co", covariant=True)
-
-# Hack to make dicts subscriptable in python 3.8. Can remove when we drop support
-# for that version
-_H = TypeVar("_H", bound=Hashable)
-_V = TypeVar("_V")
-if TYPE_CHECKING:
-
-    class UserDictPy38(Dict[_H, _V]):
-        """Wrapper around dict, used for subclassing with static typing."""
-
-else:
-
-    class UserDictPy38(dict, Generic[_K, _V]):
-        """Wrapper around dict, used for subclassing with static typing."""
 
 
 class ImmutableList(Sequence[_T_co], Generic[_T_co]):
@@ -176,7 +156,7 @@ class ContainerBag(Container[_T]):
         return any(x in entry for entry in self.entries)
 
 
-class MultiSelectDict(UserDictPy38[_K, _T]):
+class MultiSelectDict(dict[_K, _T]):
     """Dict supporting selection of multiple keys using tuples.
 
     If a single key is given, the item associated with that key is returned just as in a

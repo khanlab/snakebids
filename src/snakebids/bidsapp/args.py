@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, TypedDict
-
-from typing_extensions import TypeAlias
+from typing import TYPE_CHECKING, TypeAlias, TypedDict
 
 if TYPE_CHECKING:
     from argparse import _ArgumentGroup

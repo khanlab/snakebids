@@ -118,7 +118,7 @@ class TestNoArgvHook:
         assert args == ["mocked", "args"]
 
     def test_with_mocked_args(self, mocker: MockerFixture):
-        from snakebids.bidsapp.run import sys
+        from snakebids.bidsapp.run import sys  # noqa: PLC0415
 
         mocker.patch.object(sys, "argv", ["program", "mocked", "args"])
         app = bidsapp.app(plugins=[self])

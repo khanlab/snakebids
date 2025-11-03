@@ -17,9 +17,10 @@ from __future__ import annotations
 
 import logging
 import warnings
+from collections.abc import Callable
 from os import PathLike
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import attrs
 import boutiques.creator as bc  # type: ignore
@@ -29,6 +30,8 @@ from snakebids import plugins as sb_plugins
 from snakebids.bidsapp.run import _Runner
 
 logger = logging.Logger(__name__)
+
+PluginList = list[Callable[["SnakeBidsApp"], "None | SnakeBidsApp"]]
 
 
 @attrs.define
@@ -71,7 +74,7 @@ class SnakeBidsApp:
     """
 
     snakemake_dir: Path = attrs.field(converter=Path)
-    plugins: list[Callable[[SnakeBidsApp], None | SnakeBidsApp]] = attrs.Factory(list)
+    plugins: PluginList = attrs.Factory(PluginList)
     skip_parse_args: bool = False
     _parser: Any = attrs.field(default=None, alias="parser")
     configfile_path: Path | None = attrs.field(

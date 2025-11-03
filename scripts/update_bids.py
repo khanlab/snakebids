@@ -5,9 +5,9 @@ from __future__ import annotations
 import inspect
 import itertools as it
 import re
+from collections.abc import Iterable
 from pathlib import Path
 from types import ModuleType
-from typing import Iterable
 
 from snakebids.paths import _config, specs
 from snakebids.paths._templates import spec_func
@@ -86,7 +86,7 @@ def update_source(
         r"#\s?<AUTOUPDATE>(?:.*\n)+#\s?<\/AUTOUPDATE>", flags=re.MULTILINE
     )
     if not compiled.search(source):
-        err = f"Could not find an existing <AUTOUPDATE> block in " f"{mod.__name__}"
+        err = f"Could not find an existing <AUTOUPDATE> block in {mod.__name__}"
         raise ValueError(err)
     all_block = (
         ALL_TEMPLATE.strip().format(all=",".join(f'"{item}"' for item in all_items))
