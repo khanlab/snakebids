@@ -12,10 +12,10 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-import snakebids.tests.strategies as sb_st
+import tests.strategies as sb_st
 from snakebids.plugins.component_edit import ComponentEdit, FilterParseError
-from snakebids.tests.helpers import allow_function_scoped
 from snakebids.types import InputsConfig, OptionalFilter
+from tests.helpers import allow_function_scoped
 
 
 class TestAddArguments:
@@ -319,11 +319,7 @@ class TestUpdateNamespace:
     def test_optional_filter_removes_filters(self, config: InputsConfig):
         comp_edit = ComponentEdit()
         namespace_orig = {
-            comp: {
-                "filters": {
-                    entity: OptionalFilter for entity in conf.get("filters", {})
-                }
-            }
+            comp: {"filters": dict.fromkeys(conf.get("filters", {}), OptionalFilter)}
             for comp, conf in config.items()
         }
         namespace = self.make_namespace(namespace_orig)  # type: ignore

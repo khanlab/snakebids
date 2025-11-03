@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import itertools as it
 import os
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import more_itertools as itx
 import pytest
@@ -11,12 +11,12 @@ from hypothesis import assume, example, given
 from hypothesis import strategies as st
 from pathvalidate import Platform, is_valid_filename, is_valid_filepath
 
-from snakebids.paths import specs
+from snakebids.paths import bids, specs
 from snakebids.paths._factory import bids_factory
 from snakebids.paths._utils import BidsPathSpec
-from snakebids.tests import strategies as sb_st
-from snakebids.tests.helpers import Benchmark, is_strictly_increasing
 from snakebids.utils.utils import BidsEntity
+from tests import strategies as sb_st
+from tests.helpers import Benchmark, is_strictly_increasing
 
 
 def _get_entity_tags(entities: Iterable[str]):
@@ -314,8 +314,6 @@ TestV0_10_1 = make_bids_testsuite(specs.v0_11_0())
 
 
 def test_benchmark_bids(benchmark: Benchmark):
-    from snakebids.paths import bids
-
     """If refactoring bids, be sure this benchmark doesn't needlessly increase"""
     benchmark(
         bids,

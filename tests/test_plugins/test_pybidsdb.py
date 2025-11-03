@@ -10,8 +10,8 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from snakebids.plugins.pybidsdb import Pybidsdb
-from snakebids.tests import strategies as sb_st
 from snakebids.utils.utils import DEPRECATION_FLAG
+from tests import strategies as sb_st
 
 
 class TestAddArguments:

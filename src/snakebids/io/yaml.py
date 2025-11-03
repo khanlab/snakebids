@@ -1,6 +1,7 @@
 import collections
+from collections import OrderedDict
 from pathlib import Path, PosixPath, WindowsPath
-from typing import TYPE_CHECKING, Any, OrderedDict
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from ruamel.yaml import YAML, Dumper

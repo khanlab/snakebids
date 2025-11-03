@@ -12,8 +12,9 @@ import sys
 import tempfile
 import warnings
 from collections import defaultdict
+from collections.abc import Iterable
 from pathlib import Path, PosixPath
-from typing import Any, Iterable, Literal, NamedTuple, TypedDict, TypeVar, cast
+from typing import Any, Literal, NamedTuple, TypedDict, TypeVar
 
 import attrs
 import more_itertools as itx
@@ -21,9 +22,9 @@ import pytest
 from bids import BIDSLayout
 from hypothesis import HealthCheck, assume, example, given, settings
 from hypothesis import strategies as st
-from pyfakefs.fake_filesystem import FakeFilesystem
 from pytest_mock import MockerFixture
 
+from snakebids.core import input_generation
 from snakebids.core._querying import PostFilter, UnifiedFilter, get_matching_files
 from snakebids.core.datasets import BidsComponent, BidsDataset
 from snakebids.core.input_generation import (
@@ -39,22 +40,21 @@ from snakebids.core.input_generation import (
 from snakebids.exceptions import ConfigError, PybidsError, RunError
 from snakebids.paths._presets import bids
 from snakebids.snakemake_compat import expand as sb_expand
-from snakebids.tests import strategies as sb_st
-from snakebids.tests.helpers import (
+from snakebids.types import InputsConfig
+from snakebids.utils.containers import MultiSelectDict
+from snakebids.utils.utils import DEPRECATION_FLAG, BidsEntity, BidsParseError
+from tests import strategies as sb_st
+from tests.helpers import (
     Benchmark,
     BidsListCompare,
     allow_function_scoped,
     create_dataset,
     create_snakebids_config,
-    example_if,
     get_bids_path,
     get_zip_list,
     mock_data,
     reindex_dataset,
 )
-from snakebids.types import InputsConfig
-from snakebids.utils.containers import MultiSelectDict
-from snakebids.utils.utils import DEPRECATION_FLAG, BidsEntity, BidsParseError
 
 T = TypeVar("T")
 
@@ -196,14 +196,6 @@ def test_attribute_errors_from_pybids_qualified_and_raised():
 
 
 class TestFilterBools:
-    @pytest.fixture(autouse=True)
-    def bids_fs(self, bids_fs: FakeFilesystem | None):
-        return bids_fs
-
-    @pytest.fixture
-    def tmpdir(self, fakefs_tmpdir: Path):
-        return fakefs_tmpdir
-
     def disambiguate_components(self, dataset: BidsDataset):
         assert len(dataset) == 2
         comp1, comp2 = dataset.values()
@@ -217,7 +209,7 @@ class TestFilterBools:
             ft.reduce(
                 set_difference,
                 dataset.values(),
-                cast("set[str]", set()),
+                set[str](),
             )
         )
 
@@ -508,14 +500,6 @@ class TestFilterBools:
 
 
 class TestFilterMethods:
-    @pytest.fixture(autouse=True)
-    def bids_fs(self, bids_fs: FakeFilesystem | None):
-        return bids_fs
-
-    @pytest.fixture
-    def tmpdir(self, fakefs_tmpdir: Path):
-        return fakefs_tmpdir
-
     @example(
         component=BidsComponent(
             name="template",
@@ -795,7 +779,7 @@ class TestFilterMethods:
         pybids_inputs: InputsConfig = {
             "template": {
                 "filters": {
-                    "foo": {method: "foo" for method in methods}  # type: ignore
+                    "foo": dict.fromkeys(methods, "foo")  # type: ignore
                 },
             }
         }
@@ -849,10 +833,8 @@ class TestFilterMethods:
     max_examples=1,
 )
 @given(dataset=sb_st.datasets_one_comp(unique=True))
-def test_duplicate_wildcards_does_not_create_error(
-    dataset: BidsDataset, bids_fs: Path, fakefs_tmpdir: Path
-):
-    root = tempfile.mkdtemp(dir=fakefs_tmpdir)
+def test_duplicate_wildcards_does_not_create_error(dataset: BidsDataset, tmpdir: Path):
+    root = tempfile.mkdtemp(dir=tmpdir)
     rooted = BidsDataset.from_iterable(
         attrs.evolve(comp, path=os.path.join(root, comp.path))
         for comp in dataset.values()
@@ -875,7 +857,7 @@ class TestAbsentConfigEntries:
         entities = {"subject": ["001", "002"], "acq": sorted(["foo", "bar"])}
         zip_list: dict[str, list[str]] = defaultdict(list)
         for e in it.product(*entities.values()):
-            d = dict(zip(entities.keys(), e))
+            d = dict(zip(entities.keys(), e, strict=True))
             for key, val in d.items():
                 zip_list[key].append(val)
             path = Path(bids(root, datatype="anat", suffix="T1w.nii.gz", **d))
@@ -1047,7 +1029,7 @@ def path_entities(draw: st.DrawFn):
     dir_entities = get_subset(entities.keys())
     filtered_entities = get_subset(entities.keys())
     filter_selections = [get_subset(entities[entity]) for entity in filtered_entities]
-    filters = dict(zip(filtered_entities, filter_selections))
+    filters = dict(zip(filtered_entities, filter_selections, strict=True))
 
     # Compose the path template
     dir_template = Path(*(f"{{{entity}}}" for entity in dir_entities))
@@ -1068,7 +1050,7 @@ class TestCustomPaths:
         root = Path(tempfile.mkdtemp(prefix="hypothesis-", dir=tmpdir))
         # Generate fake directory structure
         for values in it.product(*entities.values()):
-            name_value = dict(zip(entities.keys(), values))
+            name_value = dict(zip(entities.keys(), values, strict=True))
             path = str(template).format(**name_value)
             (root / path).parent.mkdir(parents=True, exist_ok=True)
             (root / path).touch()
@@ -1116,12 +1098,11 @@ class TestCustomPaths:
             _parse_custom_path(test_path, UnifiedFilter.from_filter_dict(filters))
         )
         zip_lists = MultiSelectDict(
-            {
-                # Start with empty lists for each key, otherwise keys will be missing
-                **{key: [] for key in entities},
-                # Override entities with relevant filters before making zip lists
-                **get_zip_list(entities, it.product(*{**entities, **filters}.values())),
-            }
+            # Start with empty lists for each key, otherwise keys will be missing
+            {key: list[str]() for key in entities}
+            |
+            # Override entities with relevant filters before making zip lists
+            get_zip_list(entities, it.product(*(entities | filters).values()))
         )
         assert BidsComponent(
             name="foo", path=get_bids_path(zip_lists), zip_lists=zip_lists
@@ -1155,12 +1136,11 @@ class TestCustomPaths:
             for entity, values in entities.items()
         }
         zip_lists = MultiSelectDict(
-            {
-                # Start with empty lists for each key, otherwise keys will be missing
-                **{key: [] for key in entities},
-                # Override entities with relevant filters before making zip lists
-                **get_zip_list(entities, it.product(*entities_excluded.values())),
-            }
+            # Start with empty lists for each key, otherwise keys will be missing
+            {key: list[str]() for key in entities}
+            |
+            # Override entities with relevant filters before making zip lists
+            get_zip_list(entities, it.product(*entities_excluded.values())),
         )
 
         assert BidsComponent(
@@ -1274,8 +1254,6 @@ def test_nonstandard_custom_pybids_config(tmpdir: Path):
 
 
 def test_index_metadata(mocker: MockerFixture):
-    from snakebids.core import input_generation
-
     spy = mocker.spy(input_generation, "BIDSLayoutIndexer")
     mocker.patch.object(input_generation, "BIDSLayout", side_effect=ValueError)
 
@@ -1296,7 +1274,7 @@ def test_index_metadata(mocker: MockerFixture):
 
 def test_t1w():
     # create config
-    real_bids_dir = "snakebids/tests/data/bids_t1w"
+    real_bids_dir = "tests/data/bids_t1w"
     derivatives = False
     pybids_inputs: InputsConfig = {
         "t1": {
@@ -1441,7 +1419,7 @@ def test_t1w():
 
 def test_t1w_with_dict():
     # create config
-    real_bids_dir = "snakebids/tests/data/bids_t1w"
+    real_bids_dir = "tests/data/bids_t1w"
     derivatives = False
     pybids_inputs: InputsConfig = {
         "t1": {
@@ -1522,7 +1500,7 @@ def test_get_lists_from_bids_raises_run_error():
 
 
 def test_get_lists_from_bids():
-    bids_dir = "snakebids/tests/data/bids_t1w"
+    bids_dir = "tests/data/bids_t1w"
     wildcard_path_t1 = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
         "data/bids_t1w",
@@ -1584,14 +1562,6 @@ def test_get_lists_from_bids():
 
 
 class TestGenBidsLayout:
-    @pytest.fixture
-    def tmpdir(self, fakefs_tmpdir: Path):
-        return fakefs_tmpdir
-
-    @pytest.fixture(autouse=True)
-    def bids_fs(self, bids_fs: FakeFilesystem | None):
-        return bids_fs
-
     @settings(
         max_examples=1, suppress_health_check=[HealthCheck.function_scoped_fixture]
     )
@@ -1650,9 +1620,9 @@ class TestRecogPathSchemes:
         is_local_relative = path_type == "RELATIVE"
 
         # test the path itself, and the corresponding Path(path)
-        assert (
-            _is_local_relative(path) == is_local_relative
-        ), f"Path {path} fails is local relative path test."
+        assert _is_local_relative(path) == is_local_relative, (
+            f"Path {path} fails is local relative path test."
+        )
         if not isnet:
             assert _is_local_relative(Path(path)) == is_local_relative
 
@@ -1666,7 +1636,7 @@ class TestRecogPathSchemes:
         # Google cloud is not posix, for mocking purpose however we just
         # need a class that is a subclass of Path
         class MockGCSPath(PosixPath):
-            def __init__(self, *pathsegments: str):
+            def __init__(self, *pathsegments: str):  # pyright: ignore[reportInconsistentConstructor]
                 super().__init__(*pathsegments)
 
             def __str__(self):  # __fspath__ calls __str__ by default
@@ -1675,8 +1645,7 @@ class TestRecogPathSchemes:
         assert not _is_local_relative(MockGCSPath(path))
 
 
-@example_if(
-    sys.version_info >= (3, 8),
+@example(
     dataset=BidsDataset(
         {
             "1": BidsComponent(
@@ -1707,8 +1676,8 @@ class TestRecogPathSchemes:
     ],
 )
 @given(dataset=sb_st.datasets(unique=True))
-def test_generate_inputs(dataset: BidsDataset, bids_fs: Path, fakefs_tmpdir: Path):
-    root = tempfile.mkdtemp(dir=fakefs_tmpdir)
+def test_generate_inputs(dataset: BidsDataset, tmpdir: Path):
+    root = tempfile.mkdtemp(dir=tmpdir)
     rooted = BidsDataset.from_iterable(
         attrs.evolve(comp, path=os.path.join(root, comp.path))
         for comp in dataset.values()
@@ -1739,10 +1708,6 @@ def dataset_with_subject(draw: st.DrawFn):
 
 class TestParticipantFiltering:
     MODE = Literal["include", "exclude"]
-
-    @pytest.fixture
-    def tmpdir(self, bids_fs: Path, fakefs_tmpdir: Path):
-        return fakefs_tmpdir
 
     def get_filter_params(self, mode: MODE, filters: list[str] | str):
         class FiltParams(TypedDict, total=False):
@@ -1920,12 +1885,12 @@ class TestParticipantFiltering:
 @settings(max_examples=1, suppress_health_check=[HealthCheck.function_scoped_fixture])
 @given(dataset=sb_st.datasets_one_comp(blacklist_entities=["extension"], unique=True))
 def test_when_all_custom_paths_no_layout_indexed(
-    dataset: BidsDataset, bids_fs: Path, fakefs_tmpdir: Path, mocker: MockerFixture
+    dataset: BidsDataset, tmpdir: Path, mocker: MockerFixture
 ):
     # Need to reset mocker at beginning because hypothesis may call this function
     # multiple times
     mocker.stopall()
-    root = tempfile.mkdtemp(dir=fakefs_tmpdir)
+    root = tempfile.mkdtemp(dir=tmpdir)
     rooted = BidsDataset.from_iterable(
         attrs.evolve(comp, path=os.path.join(root, comp.path))
         for comp in dataset.values()
@@ -1995,8 +1960,8 @@ class TestDB:
         self.tmpdir = str(tmp_path)
 
         # Copy over test data
-        shutil.copytree("snakebids/tests/data/bids_t1w", f"{self.tmpdir}/data")
-        assert filecmp.dircmp("snakebids/tests/data/bids_t1w", f"{self.tmpdir}/data")
+        shutil.copytree("tests/data/bids_t1w", f"{self.tmpdir}/data")
+        assert filecmp.dircmp("tests/data/bids_t1w", f"{self.tmpdir}/data")
 
         # Create config
         self.bids_dir: str = f"{self.tmpdir}/data"

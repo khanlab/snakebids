@@ -67,25 +67,56 @@ def v0_11_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
         `*/ses-{session}/*`
     """
 
-def latest(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
-    """Spec corresponding to `BIDS v1.9.0`_.
+def v0_15_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
+    """Spec corresponding to `BIDS v1.10.1`_.
 
-    Significantly expanded from the v0.0.0 spec, now including long names for every
-    relevant entity. In addition to the official spec, it includes `from` and `to`
-    entities intended for transformations. Unknown entities are placed just before desc,
-    so that the description entity is always last.
+    In addition to the official spec, it includes `from` and `to` entities intended for
+    transformations. Unknown entities are placed just before desc, so that the
+    description entity is always last.
 
-    .. _BIDS v1.9.0: https://bids-specification.readthedocs.io/en/v1.9.0/
+    .. _BIDS v1.10.1: https://bids-specification.readthedocs.io/en/v1.10.1/
 
     Formatted as::
 
         sub-{subject}/ses-{session}/{datatype}/{prefix}_sub-{subject}_ses-{session}_
         sample-{sample}_task-{task}_tracksys-{tracksys}_acq-{acquisition}_
-        ce-{ceagent}_stain-{staining}_trc-{tracer}_rec-{reconstruction}_
-        dir-{direction}_run-{run}_mod-{modality}_echo-{echo}_flip-{flip}_
-        inv-{inversion}_mt-{mt}_proc-{processed}_part-{part}_space-{space}_
-        atlas-{atlas}_seg-{segmentation}_hemi-{hemisphere}_res-{resolution}_
-        den-{density}_roi-{roi}_from-{from}_to-{to}_split-{split}_
+        nuc-{nucleus}_voi-{volume}_ce-{ceagent}_stain-{staining}_trc-{tracer}_
+        rec-{reconstruction}_dir-{direction}_run-{run}_mod-{modality}_echo-{echo}_
+        flip-{flip}_inv-{inversion}_mt-{mt}_proc-{processed}_part-{part}_
+        space-{space}_atlas-{atlas}_seg-{segmentation}_hemi-{hemisphere}_
+        res-{resolution}_den-{density}_roi-{roi}_from-{from}_to-{to}_split-{split}_
+        recording-{recording}_chunk-{chunk}_model-{model}_subset-{subset}_
+        label-{label}_..._desc-{description}_{suffix}{extension}
+
+
+    Parameters
+    ----------
+    subject_dir
+        If False, downstream path generator will not include the subject dir
+        `sub-{subject}/*`
+    session_dir : bool, optional
+        If False, downstream path generator will not include the session dir
+        `*/ses-{session}/*`
+    """
+
+def latest(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
+    """Spec corresponding to `BIDS v1.10.1`_.
+
+    In addition to the official spec, it includes `from` and `to` entities intended for
+    transformations. Unknown entities are placed just before desc, so that the
+    description entity is always last.
+
+    .. _BIDS v1.10.1: https://bids-specification.readthedocs.io/en/v1.10.1/
+
+    Formatted as::
+
+        sub-{subject}/ses-{session}/{datatype}/{prefix}_sub-{subject}_ses-{session}_
+        sample-{sample}_task-{task}_tracksys-{tracksys}_acq-{acquisition}_
+        nuc-{nucleus}_voi-{volume}_ce-{ceagent}_stain-{staining}_trc-{tracer}_
+        rec-{reconstruction}_dir-{direction}_run-{run}_mod-{modality}_echo-{echo}_
+        flip-{flip}_inv-{inversion}_mt-{mt}_proc-{processed}_part-{part}_
+        space-{space}_atlas-{atlas}_seg-{segmentation}_hemi-{hemisphere}_
+        res-{resolution}_den-{density}_roi-{roi}_from-{from}_to-{to}_split-{split}_
         recording-{recording}_chunk-{chunk}_model-{model}_subset-{subset}_
         label-{label}_..._desc-{description}_{suffix}{extension}
 

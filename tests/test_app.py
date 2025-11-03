@@ -9,9 +9,10 @@ import pytest
 from hypothesis import given
 from pytest_mock import MockerFixture
 
-from snakebids.app import SnakeBidsApp
+from snakebids import bidsapp
+from snakebids.app import SnakeBidsApp, sb_plugins
 from snakebids.cli import add_dynamic_args
-from snakebids.tests import strategies as sb_st
+from tests import strategies as sb_st
 
 
 class TestDeprecations:
@@ -37,10 +38,7 @@ class TestDeprecations:
 
 
 def test_arguments_carried_forward(mocker: MockerFixture):
-    from snakebids.app import sb_plugins
-    from snakebids.bidsapp import run
-
-    mocker.patch.object(run, "_Runner")
+    mocker.patch.object(bidsapp.run, "_Runner")
     snakemake = mocker.spy(sb_plugins, "SnakemakeBidsApp")
     SnakeBidsApp(
         Path(),
@@ -55,10 +53,7 @@ def test_arguments_carried_forward(mocker: MockerFixture):
 
 
 def test_str_converted_to_path(mocker: MockerFixture):
-    from snakebids.app import sb_plugins
-    from snakebids.bidsapp import run
-
-    mocker.patch.object(run, "_Runner")
+    mocker.patch.object(bidsapp.run, "_Runner")
     snakemake = mocker.spy(sb_plugins, "SnakemakeBidsApp")
     SnakeBidsApp(
         "",
@@ -73,11 +68,8 @@ def test_str_converted_to_path(mocker: MockerFixture):
 
 
 def test_plugins_carried_forward(mocker: MockerFixture):
-    from snakebids.app import bidsapp
-    from snakebids.bidsapp import run
-
     mocker.stopall()
-    mocker.patch.object(run, "_Runner")
+    mocker.patch.object(bidsapp.run, "_Runner")
     app_spy = mocker.spy(bidsapp, "app")
     SnakeBidsApp(
         Path(),

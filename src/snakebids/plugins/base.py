@@ -2,21 +2,21 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Callable, Iterable
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Generic,
-    Iterable,
+    TypeAlias,
     TypedDict,
     TypeVar,
     overload,
 )
 
-from typing_extensions import Required, TypeAlias, Unpack
+from typing_extensions import Required, Unpack
 
 if TYPE_CHECKING:
-    from argparse import _SUPPRESS_T, _ActionStr, _ArgumentGroup, _NArgsStr
+    from argparse import _ArgumentGroup
 
 _T = TypeVar("_T")
 
@@ -26,8 +26,8 @@ if sys.version_info >= (3, 11):
     class AddArgumentArgs(TypedDict, Generic[_T], total=False):
         """Arguments for add_argument, with ``dest`` required."""
 
-        action: _ActionStr | type[argparse.Action]
-        nargs: int | _NArgsStr | _SUPPRESS_T | None
+        action: str | type[argparse.Action]
+        nargs: int | str | None
         const: Any
         default: Any
         type: Callable[[Any], _T] | argparse.FileType
@@ -45,8 +45,8 @@ else:
     class AddArgumentArgs(TypedDict, total=False):
         """Arguments for add_argument, with ``dest`` required."""
 
-        action: _ActionStr | type[argparse.Action]
-        nargs: int | _NArgsStr | _SUPPRESS_T | None
+        action: str | type[argparse.Action]
+        nargs: int | str | None
         const: Any
         default: Any
         type: Callable[[Any], Any] | argparse.FileType

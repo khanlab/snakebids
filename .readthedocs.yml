@@ -21,13 +21,18 @@ build:
   os: 'ubuntu-22.04'
   tools:
     python: '3.11'
+  apt_packages:
+  - python3-dev
   jobs:
     post_checkout:
       - (git fetch --tags) || exit 183
     pre_install:
       - git update-index --assume-unchanged docs/conf.py
-    post_create_environment:
-      - pip install poetry
-      - poetry self add "poetry-dynamic-versioning[plugin]"
-    post_install:
-      - VIRTUAL_ENV=$READTHEDOCS_VIRTUALENV_PATH python -m poetry install --with docs
+    pre_create_environment:
+      - asdf plugin add uv
+      - asdf install uv latest
+      - asdf global uv latest
+    create_environment:
+      - uv venv "${READTHEDOCS_VIRTUALENV_PATH}"
+    install:
+      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --frozen --group docs

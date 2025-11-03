@@ -13,8 +13,9 @@ from hypothesis import strategies as st
 from pathvalidate import Platform, is_valid_filename
 from pytest_mock.plugin import MockerFixture
 
-from snakebids.admin import create_descriptor, gen_parser
-from snakebids.tests.helpers import allow_function_scoped
+import snakebids
+from snakebids.admin import copier, create_descriptor, gen_parser
+from tests.helpers import allow_function_scoped
 
 
 @pytest.fixture
@@ -149,9 +150,6 @@ class TestCreateCommand:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ):
-        import snakebids
-        from snakebids.admin import copier
-
         run_copy = mocker.patch.object(copier, "run_copy")
         path = tmp_path / name
         args = ["snakebids", "create", str(path)]

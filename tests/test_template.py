@@ -19,6 +19,7 @@ from pytest_mock.plugin import MockerFixture
 from typing_extensions import NotRequired, Unpack
 
 from snakebids.jinja2_ext.format_dep_spec import format_poetry
+from snakebids.jinja2_ext.snakebids_version import impm
 
 if sys.version_info < (3, 11):
     import tomli as tomllib
@@ -26,7 +27,7 @@ else:
     import tomllib
 
 import snakebids
-from snakebids.tests.helpers import allow_function_scoped, needs_docker
+from tests.helpers import allow_function_scoped, needs_docker
 
 BuildBackend = Literal["poetry", "hatch", "flit", "setuptools"]
 BUILD_BACKENDS: Final[list[BuildBackend]] = ["poetry", "hatch", "flit", "setuptools"]
@@ -155,7 +156,6 @@ def test_gets_correct_snakebids_version(
             json={"info": {"version": server}},
             status_code=server_status,
         )
-        from snakebids.jinja2_ext.snakebids_version import impm
 
         mocker.patch.object(impm, "version", return_value=metadata)
         data = get_empty_data("testapp", build)
@@ -255,7 +255,7 @@ def test_pyproject_correctly_formatted(
             assert len(pyproject["tool"]["poetry"]["authors"]) == 1
             email_tag = f" <{kwargs['email']}>" if kwargs["email"] else ""
             assert (
-                f'{kwargs["full_name"]}{email_tag}'
+                f"{kwargs['full_name']}{email_tag}"
                 == pyproject["tool"]["poetry"]["authors"][0]
             )
         else:

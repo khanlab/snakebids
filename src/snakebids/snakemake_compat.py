@@ -14,11 +14,11 @@ from snakemake.io import expand
 from snakemake.script import Snakemake
 
 __all__ = [
-    "load_configfile",
-    "main",
-    "expand",
     "Snakemake",
     "WildcardError",
     "configfile",
+    "expand",
     "get_argument_parser",
+    "load_configfile",
+    "main",
 ]

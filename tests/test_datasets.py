@@ -22,12 +22,18 @@ from snakebids.core.datasets import (
 from snakebids.exceptions import DuplicateComponentError
 from snakebids.paths._presets import bids
 from snakebids.snakemake_compat import WildcardError
-from snakebids.tests import strategies as sb_st
-from snakebids.tests.helpers import expand_zip_list, get_bids_path, get_zip_list, setify
 from snakebids.types import Expandable, ZipList
 from snakebids.utils import sb_itertools as sb_it
 from snakebids.utils.snakemake_io import glob_wildcards
 from snakebids.utils.utils import BidsEntity, get_wildcard_dict, zip_list_eq
+from tests import strategies as sb_st
+from tests.helpers import (
+    Benchmark,
+    expand_zip_list,
+    get_bids_path,
+    get_zip_list,
+    setify,
+)
 
 
 def test_multiple_components_cannot_have_same_name():
@@ -245,6 +251,52 @@ def _get_novel_path(prefix: str, component: Expandable):
     )
 
 
+def test_benchmark_zip_list_comparison(benchmark: Benchmark):
+    iters = 1000
+    first = {
+        "nucleus": ["yit", "yit"] * iters,
+        "subject": ["100", "200"] * iters,
+        "mod": ["mUH", "Muh"] * iters,
+        "flip": ["20755", "20755"] * iters,
+    }
+    second = {
+        "subject": ["200", "100"] * iters,
+        "nucleus": ["yit", "yit"] * iters,
+        "flip": ["20755", "20755"] * iters,
+        "mod": ["Muh", "mUH"] * iters,
+    }
+    assert benchmark(zip_list_eq, first, second)
+
+
+class TestZipListEq:
+    @given(first=sb_st.zip_lists(max_entities=5), data=st.data())
+    def test_zip_list_equality_with_different_key_order(
+        self, first: ZipList, data: st.DataObject
+    ):
+        order = data.draw(st.permutations(list(first)))
+        second = {key: first[key] for key in order}
+        assert zip_list_eq(first, second)
+
+    @given(first=sb_st.zip_lists(), data=st.data())
+    def test_zip_list_equality_with_different_value_order(
+        self, first: ZipList, data: st.DataObject
+    ):
+        order = data.draw(st.permutations(range(len(itx.first(first.values())))))
+        second = {key: [first[key][i] for i in order] for key in first}
+        assert zip_list_eq(first, second)
+
+    def test_zip_list_inequality(self):
+        # Developing a generic strategy for inequal ziplists is actually nontrivial
+        # Here at least we test with a specific example to prove the principle
+        first = {
+            "subject": [str(val) for val in range(5)],
+            "session": [str(val) for val in range(5)],
+        }
+        second = copy.deepcopy(first)
+        second["subject"] = list(reversed(second["subject"]))
+        assert not zip_list_eq(first, second)
+
+
 class TestExpandables:
     @given(
         component=sb_st.expandables(
@@ -278,7 +330,7 @@ class TestExpandables:
             **get_wildcard_dict(component.zip_lists),
             **get_wildcard_dict(wildcards),
         )
-        wcard_dict = dict(zip(wildcards, values))
+        wcard_dict = dict(zip(wildcards, values, strict=True))
         zlist = expand_zip_list(component.zip_lists, wcard_dict)
         paths = component.expand(path_tpl, **wcard_dict)
         assert zip_list_eq(glob_wildcards(path_tpl, paths), zlist)
@@ -337,8 +389,13 @@ class TestExpandables:
     def test_expand_preserves_entry_order(self, component: Expandable):
         path_tpl = bids(**get_wildcard_dict(component.zip_lists))
         paths = component.expand(path_tpl)
-        for path, entity_vals in zip(paths, zip(*component.zip_lists.values())):
-            assert bids(**dict(zip(component.zip_lists.keys(), entity_vals))) == path
+        for path, entity_vals in zip(
+            paths, zip(*component.zip_lists.values(), strict=True), strict=True
+        ):
+            assert (
+                bids(**dict(zip(component.zip_lists.keys(), entity_vals, strict=True)))
+                == path
+            )
 
     @given(path=st.text())
     def test_expandable_with_no_wildcards_returns_path_unaltered(self, path: str):
@@ -478,8 +535,8 @@ class TestFiltering:
     ):
         filter_dict = self.get_filter_dict(data, component, allow_extra_filters=True)
         filtered = component.filter(**self.filter_iter(filter_dict))
-        cols = set(zip(*component.zip_lists.values()))
-        for col in zip(*filtered.zip_lists.values()):
+        cols = set(zip(*component.zip_lists.values(), strict=True))
+        for col in zip(*filtered.zip_lists.values(), strict=True):
             assert col in cols
 
     @given(
@@ -505,8 +562,8 @@ class TestFiltering:
         filter_dict = self.get_filter_dict(data, component)
         filtered = component.filter(**self.filter_iter(filter_dict))
         keys = list(component.zip_lists)
-        cols = set(zip(*component.zip_lists.values()))
-        result = set(zip(*filtered.zip_lists.values()))
+        cols = set(zip(*component.zip_lists.values(), strict=True))
+        result = set(zip(*filtered.zip_lists.values(), strict=True))
         for col in cols:
             should_be_present = True
             for filt in filter_dict:
@@ -562,8 +619,8 @@ class TestFilteringBidsComponentRowWithSpec:
     ):
         spec = self.get_filter_spec(data, component)
         filtered = component.filter(spec)
-        cols = set(zip(*component.zip_lists.values()))
-        for col in zip(*filtered.zip_lists.values()):
+        cols = set(zip(*component.zip_lists.values(), strict=True))
+        for col in zip(*filtered.zip_lists.values(), strict=True):
             assert col in cols
 
     @given(

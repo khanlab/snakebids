@@ -4,8 +4,9 @@ import argparse
 import importlib.metadata as impm
 import logging
 import sys
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any, Callable, Sequence, TypeVar
+from typing import Any, TypeVar
 
 import attrs
 import more_itertools as itx
@@ -233,8 +234,8 @@ class SnakemakeBidsApp:
             namespace["output_dir"] = Path(namespace["output_dir"])
         if "bids_dir" in namespace:
             namespace["bids_dir"] = Path(namespace["bids_dir"])
-        for key in namespace:
-            namespace[key] = _resolve_path(namespace[key])
+        for key, path in namespace.items():
+            namespace[key] = _resolve_path(path)
         namespace.pop("help_snakemake", None)
         self.force_output = namespace.pop("force_output", False)
         if "targets_by_analysis_level" in config and "analysis_level" in namespace:
@@ -258,29 +259,20 @@ class SnakemakeBidsApp:
 
         """
         # First, handle outputs in snakebids_root or results folder
-        try:
-            # py3.9 has the Path.is_relative() function. But as long as we support py38
-            # and lower, this is the easiest way
-            relative = config["output_dir"].relative_to(self.snakemake_dir / "results")
-        except ValueError:
-            relative = None
+        if config["output_dir"] == self.snakemake_dir.resolve():
+            config["output_dir"] /= "results"
+            # Print a friendly warning that the output directory will change
+            logger.info(
+                "You specified your output to be in the snakebids directory, so "
+                "we're automatically putting your outputs in the results "
+                "subdirectory.\nYou'll find your results in `%s`",
+                (self.snakemake_dir / "results").resolve(),
+            )
 
-        if self.snakemake_dir == config["output_dir"] or relative is not None:
+        if config["output_dir"].is_relative_to(self.snakemake_dir / "results"):
             write_output_mode(self.snakemake_dir / ".snakebids", "workflow")
-
             self.cwd = self.snakemake_dir
-            root = Path("results", relative or "")
-
-            if config["output_dir"] == self.snakemake_dir.resolve():
-                config["output_dir"] /= "results"
-                # Print a friendly warning that the output directory will change
-                logger.info(
-                    "You specified your output to be in the snakebids directory, so "
-                    "we're automatically putting your outputs in the results "
-                    "subdirectory.\nYou'll find your results in `%s`",
-                    (self.snakemake_dir / "results").resolve(),
-                )
-
+            root = config["output_dir"].relative_to(self.snakemake_dir)
         # else, we run in bidsapp mode
         else:
             try:

@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping
-from typing import Iterable, List, Literal, TypeVar, Union, overload
+from collections.abc import Iterable, Iterator, Mapping
+from typing import Literal, TypeVar, overload
 
 import more_itertools as itx
 
 from snakebids.types import ZipList, ZipListLike
 from snakebids.utils.containers import ContainerBag, MultiSelectDict, RegexContainer
 
-T_co = TypeVar("T_co", bound=Union[List[str], str], covariant=True)
+T_co = TypeVar("T_co", bound=list[str] | str, covariant=True)
 
 
 @overload

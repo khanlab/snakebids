@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, TypedDict, cast
-
-from typing_extensions import TypeAlias
+from typing import TYPE_CHECKING, Literal, TypeAlias, TypedDict, cast
 
 from snakebids.paths import specs
 from snakebids.paths._factory import BidsFunction, bids_factory
@@ -18,7 +16,7 @@ if TYPE_CHECKING:
 #       poetry run poe update-bids
 #
 
-VALID_SPECS: TypeAlias = Literal["v0_0_0", "v0_11_0", "latest"]
+VALID_SPECS: TypeAlias = Literal["v0_0_0", "v0_11_0", "v0_15_0", "latest"]
 # </AUTOUPDATE>
 
 __all__ = ["set_bids_spec"]

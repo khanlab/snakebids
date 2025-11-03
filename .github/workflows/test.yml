@@ -21,39 +21,33 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v5
       - name: Install
-        uses: khanlab/actions/.github/actions/action-setup_task-installPyProject@v0.3.6
-        with:
-          python-version: '3.11'
-          install-library: true
+        uses: ./.github/actions/install-uv
 
-      # run python style checks - disabling this for now, seems to be failing after poetry v2.0.0 release??
-      #- name: Poetry Lock Check
-      #  run: poetry check --lock
+      - name: Quality
+        run: uv run poe quality
+
       # Check that running update-bids doesn't change any files
       - name: update-bids check
         run: |
-          poetry run poe update-bids
+          uv run poe update-bids
           git diff --quiet || (
             git diff
-            echo 'bids specs out of date, run `poetry run poe update-bids`'
+            echo 'bids specs out of date, run `uv run poe update-bids`'
             exit 1
           )
-      - name: Formatting
-        run: poetry run ruff format snakebids --check
-      - name: Linting
-        run: poetry run ruff check snakebids
-      - name: pyright
-        run: poetry run pyright snakebids
 
   build-cache-env:
     runs-on: ubuntu-latest
     needs: [ 'quality'  ]
     strategy:
       matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
     steps:
-    - uses: khanlab/actions/.github/actions/action-setup_task-installPyProject@v0.3.6
+    - uses: actions/checkout@v5
+    - name: Install
+      uses: ./.github/actions/install-uv
       id: setup
       with:
         python-version: ${{ matrix.python-version }}
@@ -67,16 +61,16 @@ jobs:
     needs: [ 'build-cache-env'  ]
     strategy:
       matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
         split: ['1', '2', '3', '4', '5']
       fail-fast: false
     steps:
-      - name: install
-        uses: khanlab/actions/.github/actions/action-setup_task-installPyProject@v0.3.6
+      - uses: actions/checkout@v5
+      - name: Install
+        uses: ./.github/actions/install-uv
         id: setup
         with:
           python-version: ${{ matrix.python-version }}
-          install-library: true
       - name: build docker test container
         uses: ./.github/actions/build-test-container
         with:
@@ -87,10 +81,10 @@ jobs:
         env:
           HYPOTHESIS_PROFILE: pr
         run: >-
-          poetry run pytest -n auto --splits 5 --group ${{ matrix.split }}
-          --cov=snakebids --cov-report=xml
+          uv run pytest -n auto --splits 5 --group ${{ matrix.split }}
+          --cov=src --cov-report=xml
           --doctest-modules --ignore=docs
-          --ignore=snakebids/project_template --benchmark-disable
+          --ignore=src/snakebids/project_template --benchmark-disable
 
       - name: save coverage report
         uses: actions/upload-artifact@v4
