@@ -32,10 +32,6 @@ old snakemakes for python versions <3.11. So cap pulp to the last working
 version
 #}
 pulp = { version="<2.8.0", python = "<3.11" }
-pandas = [
-    { version = "<=2.0.3", python = "<3.9" },
-    { version = ">=2.1.1", python = ">=3.12" },
-]
 
 [tool.poetry.scripts]
 {{ name_slug }} = "{{ name_slug }}.run:app.run"

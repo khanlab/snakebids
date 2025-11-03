@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import itertools as it
 from argparse import ArgumentParser
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import pytest
 from hypothesis import given
@@ -11,7 +11,7 @@ from hypothesis import strategies as st
 
 from snakebids.exceptions import ConfigError
 from snakebids.plugins.bidsargs import BidsArgs
-from snakebids.tests import strategies as sb_st
+from tests import strategies as sb_st
 
 
 class _St:

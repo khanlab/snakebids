@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import io
+from collections import OrderedDict
 from io import StringIO
 from pathlib import Path
-from typing import Any, OrderedDict
+from typing import Any
 
 import pytest
 from hypothesis import given
@@ -14,7 +15,7 @@ from pytest_mock.plugin import MockType
 
 import snakebids.io.config as configio
 import snakebids.io.yaml as yamlio
-from snakebids.tests.helpers import allow_function_scoped
+from tests.helpers import allow_function_scoped
 
 YAML_SAFE_CHARS = st.characters(blacklist_characters=["\\"], blacklist_categories=["C"])
 
@@ -31,7 +32,7 @@ def test_paths_formatted_as_str(path: Path):
 class TestWriteConfig:
     def io_mocks(self, mocker: MockerFixture) -> dict[str, MockType]:
         return {
-            "mopen": mocker.patch.object(configio, "open", mocker.mock_open()),
+            "mopen": mocker.patch.object(configio, "open", mocker.mock_open()),  # pyright: ignore[reportUnknownMemberType]
             "jsondump": mocker.patch.object(configio.json, "dump"),
             "mkdir": mocker.patch.object(configio.Path, "mkdir"),
             "yamldump": mocker.patch.object(yamlio.YAML, "dump"),

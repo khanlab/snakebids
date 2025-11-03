@@ -3,8 +3,9 @@ from __future__ import annotations
 import argparse
 import copy
 import tempfile
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 import pytest
 from hypothesis import given
@@ -12,58 +13,52 @@ from hypothesis import strategies as st
 from pytest_mock import MockerFixture
 from pytest_mock.plugin import MockType
 
+import snakebids.plugins.snakemake as sn_app
+import snakebids.snakemake_compat
 from snakebids import bidsapp
 from snakebids.exceptions import ConfigError, RunError
 from snakebids.plugins import Version
-from snakebids.plugins.snakemake import (
-    CONFIGFILE_CHOICES,
-    SNAKEFILE_CHOICES,
-    SnakemakeBidsApp,
-    _resolve_path,
-)
-from snakebids.tests import strategies as sb_st
-from snakebids.tests.helpers import allow_function_scoped
 from snakebids.utils.utils import DEPRECATION_FLAG
+from tests import strategies as sb_st
+from tests.helpers import allow_function_scoped
 
 
 class TestFindSnakefileConfig:
     @allow_function_scoped
-    @given(snakefile=st.sampled_from(SNAKEFILE_CHOICES))
-    def test_finds_snakefile(self, fakefs_tmpdir: Path, snakefile: str):
-        tmp = Path(tempfile.mkdtemp(dir=fakefs_tmpdir))
+    @given(snakefile=st.sampled_from(sn_app.SNAKEFILE_CHOICES))
+    def test_finds_snakefile(self, tmpdir: Path, snakefile: str):
+        tmp = Path(tempfile.mkdtemp(dir=tmpdir))
         snakefile_path = tmp / snakefile
         snakefile_path.parent.mkdir(parents=True, exist_ok=True)
         snakefile_path.touch()
-        app = SnakemakeBidsApp(snakemake_dir=tmp, configfile_path=None)
+        app = sn_app.SnakemakeBidsApp(snakemake_dir=tmp, configfile_path=None)
         assert app.snakefile_path == snakefile_path
 
-    def test_errors_if_no_snakefile_found(self, fakefs_tmpdir: Path):
-        tmp = Path(tempfile.mkdtemp(dir=fakefs_tmpdir))
+    def test_errors_if_no_snakefile_found(self, tmpdir: Path):
+        tmp = Path(tempfile.mkdtemp(dir=tmpdir))
         with pytest.raises(ConfigError, match="Error: no Snakefile"):
-            SnakemakeBidsApp(snakemake_dir=tmp, configfile_path=None)
+            sn_app.SnakemakeBidsApp(snakemake_dir=tmp, configfile_path=None)
 
     @allow_function_scoped
-    @given(configfile=st.sampled_from(CONFIGFILE_CHOICES))
-    def test_finds_config_file(self, fakefs_tmpdir: Path, configfile: str):
-        tmp = Path(tempfile.mkdtemp(dir=fakefs_tmpdir))
+    @given(configfile=st.sampled_from(sn_app.CONFIGFILE_CHOICES))
+    def test_finds_config_file(self, tmpdir: Path, configfile: str):
+        tmp = Path(tempfile.mkdtemp(dir=tmpdir))
         configfile_path = tmp / configfile
         configfile_path.parent.mkdir(parents=True, exist_ok=True)
         configfile_path.touch()
-        app = SnakemakeBidsApp(snakemake_dir=tmp, snakefile_path=Path())
+        app = sn_app.SnakemakeBidsApp(snakemake_dir=tmp, snakefile_path=Path())
         assert app.configfile_path == configfile_path
 
-    def test_errors_if_no_configfile_found(self, fakefs_tmpdir: Path):
-        tmp = Path(tempfile.mkdtemp(dir=fakefs_tmpdir))
+    def test_errors_if_no_configfile_found(self, tmpdir: Path):
+        tmp = Path(tempfile.mkdtemp(dir=tmpdir))
         with pytest.raises(ConfigError, match="Error: no config file"):
-            SnakemakeBidsApp(snakemake_dir=tmp, snakefile_path=Path())
+            sn_app.SnakemakeBidsApp(snakemake_dir=tmp, snakefile_path=Path())
 
 
 class TestAddCliArguments:
     def test_snakemake_help_arg_added(self, mocker: MockerFixture):
-        import snakebids.plugins.snakemake
-
-        mock = mocker.patch.object(snakebids.plugins.snakemake, "snakemake_main")
-        smk = SnakemakeBidsApp.create_empty()
+        mock = mocker.patch.object(sn_app, "snakemake_main")
+        smk = sn_app.SnakemakeBidsApp.create_empty()
         parser = argparse.ArgumentParser()
         smk.add_cli_arguments(parser)
         parser.parse_args(["--help-snakemake"])
@@ -84,7 +79,7 @@ class TestResolvePath:
         self, arg_dict: Mapping[str, str | Sequence[str]]
     ):
         arg_dict_copy = copy.deepcopy(arg_dict)
-        resolved = {key: _resolve_path(value) for key, value in arg_dict.items()}
+        resolved = {key: sn_app._resolve_path(value) for key, value in arg_dict.items()}
         assert resolved == arg_dict_copy
 
     def test_resolves_all_paths(
@@ -94,14 +89,14 @@ class TestResolvePath:
         arg_dict["--derivatives"] = derivative_paths
         arg_dict_copy = copy.deepcopy(arg_dict)
         arg_dict_copy["--derivatives"] = [p.resolve() for p in derivative_paths]
-        resolved = {key: _resolve_path(value) for key, value in arg_dict.items()}
+        resolved = {key: sn_app._resolve_path(value) for key, value in arg_dict.items()}
         assert resolved == arg_dict_copy
 
     def test_filter_dict(self, arg_dict: dict[str, dict[str, str]]):
         filter_dict = {"test_key": "test_value"}
         arg_dict["filter_test"] = filter_dict
         arg_dict_copy = copy.deepcopy(arg_dict)
-        resolved = {key: _resolve_path(value) for key, value in arg_dict.items()}
+        resolved = {key: sn_app._resolve_path(value) for key, value in arg_dict.items()}
         assert resolved == arg_dict_copy
 
 
@@ -117,7 +112,7 @@ class TestUpdateNamespace:
         )
     )
     def test_resolves_paths(self, config: dict[str, Path]):
-        smk = SnakemakeBidsApp.create_empty()
+        smk = sn_app.SnakemakeBidsApp.create_empty()
         namespace = {
             **config,
             "output_dir": "foo",
@@ -134,7 +129,7 @@ class TestUpdateNamespace:
 
     @given(targets=st.dictionaries(st.text(), st.text(), min_size=1), data=st.data())
     def test_target_gets_set(self, targets: dict[str, str], data: st.DataObject):
-        smk = SnakemakeBidsApp.create_empty()
+        smk = sn_app.SnakemakeBidsApp.create_empty()
         level = data.draw(st.sampled_from(list(targets)))
         namespace = {"analysis_level": level}
         config = {"targets_by_analysis_level": targets}
@@ -143,7 +138,7 @@ class TestUpdateNamespace:
 
     @given(value=st.sampled_from([True, False]))
     def test_force_output_is_set(self, value: bool):
-        smk = SnakemakeBidsApp.create_empty()
+        smk = sn_app.SnakemakeBidsApp.create_empty()
         namespace = {"force_output": value}
         smk.update_cli_namespace(namespace, {})
         assert smk.force_output == value
@@ -151,15 +146,12 @@ class TestUpdateNamespace:
 
 
 def get_io_mocks(mocker: MockerFixture):
-    import snakebids.snakemake_compat  # noqa: I001
-    import snakebids.plugins.snakemake as sn_app
-
     mocker.stopall()
     mocker.patch.object(sn_app.impm, "version", return_value="version")
     mocker.patch.object(
         snakebids.snakemake_compat.configfile,
         "open",
-        mocker.mock_open(read_data='{"a_key": "a value"}'),
+        mocker.mock_open(read_data='{"a_key": "a value"}'),  # pyright: ignore[reportUnknownMemberType]
     )
     return {
         "write_output_mode": mocker.patch.object(sn_app, "write_output_mode"),
@@ -203,7 +195,7 @@ class TestFinalizeConfig:
         mocker: MockerFixture,
         path: Path,
     ):
-        smk = SnakemakeBidsApp.create_empty()
+        smk = sn_app.SnakemakeBidsApp.create_empty()
         io_mocks = get_io_mocks(mocker)
 
         config = {"output_dir": path}
@@ -226,7 +218,7 @@ class TestFinalizeConfig:
         mocker: MockerFixture,
         path: Path,
     ):
-        smk = SnakemakeBidsApp.create_empty()
+        smk = sn_app.SnakemakeBidsApp.create_empty()
         io_mocks = get_io_mocks(mocker)
 
         config = {"output_dir": path}
@@ -255,7 +247,7 @@ class TestFinalizeConfig:
         mocker: MockerFixture,
         tail: Path,
     ):
-        smk = SnakemakeBidsApp.create_empty()
+        smk = sn_app.SnakemakeBidsApp.create_empty()
         io_mocks = get_io_mocks(mocker)
         path = Path("results", tail).resolve()
 
@@ -286,7 +278,7 @@ class TestFinalizeConfig:
     def test_relative_configfile_gets_transferred(
         self, mocker: MockerFixture, output: Path, configfile: Path
     ):
-        smk = SnakemakeBidsApp.create_empty()
+        smk = sn_app.SnakemakeBidsApp.create_empty()
         smk.configfile_path = configfile
         get_io_mocks(mocker)
         config = {"output_dir": output}
@@ -303,7 +295,7 @@ class TestFinalizeConfig:
     def test_non_relative_configfile_is_preserved(
         self, mocker: MockerFixture, output: Path, configfile: Path
     ):
-        smk = SnakemakeBidsApp.create_empty()
+        smk = sn_app.SnakemakeBidsApp.create_empty()
         smk.configfile_path = configfile
         get_io_mocks(mocker)
         config = {"output_dir": output}
@@ -321,7 +313,7 @@ class TestFinalizeConfig:
     def test_specified_configfile_output_always_preserved(
         self, mocker: MockerFixture, output: Path, configfile: Path, config_output: Path
     ):
-        smk = SnakemakeBidsApp.create_empty()
+        smk = sn_app.SnakemakeBidsApp.create_empty()
         smk.configfile_path = configfile
         smk.configfile_outpath = config_output
         get_io_mocks(mocker)
@@ -342,7 +334,7 @@ class TestFinalizeConfig:
         err: str,
         output: Path,
     ):
-        smk = SnakemakeBidsApp.create_empty()
+        smk = sn_app.SnakemakeBidsApp.create_empty()
         mocks = get_io_mocks(mocker)
         mocks["prepare_output"].side_effect = RunError(err)
         config = {"output_dir": output.resolve()}
@@ -357,7 +349,7 @@ class TestVersion:
     def test_get_app_version_no_package(
         self, mocker: MockerFixture, caplog: pytest.LogCaptureFixture
     ):
-        plugin = SnakemakeBidsApp(
+        plugin = sn_app.SnakemakeBidsApp(
             snakemake_dir=Path(),
             configfile_path=None,
             snakefile_path=Path("Snakefile"),
@@ -370,7 +362,7 @@ class TestVersion:
         assert "App version could not be identified" in caplog.text
 
     def test_missing_version_changed_to_unknown(self, mocker: MockerFixture):
-        plugin = SnakemakeBidsApp(
+        plugin = sn_app.SnakemakeBidsApp(
             snakemake_dir=Path(),
             configfile_path=None,
             snakefile_path=Path("Snakefile"),
@@ -402,7 +394,7 @@ def test_integration(
     io_mocks = get_io_mocks(mocker)
 
     # Prepare app and initial config values
-    plugin = SnakemakeBidsApp(
+    plugin = sn_app.SnakemakeBidsApp(
         Path("app"),
         snakefile_path=Path("app/Snakefile"),
         configfile_path=Path("app/config/config.yaml"),

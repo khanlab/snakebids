@@ -11,7 +11,7 @@ import pytest
 from hypothesis import assume, given
 from hypothesis import strategies as st
 
-import snakebids.tests.strategies as sb_st
+import tests.strategies as sb_st
 from snakebids.utils.containers import ImmutableList, MultiSelectDict, RegexContainer
 from snakebids.utils.utils import get_wildcard_dict, matches_any
 

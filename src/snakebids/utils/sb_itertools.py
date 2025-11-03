@@ -1,5 +1,6 @@
 import itertools as it
-from typing import Iterable, Sequence, TypeVar
+from collections.abc import Iterable, Sequence
+from typing import TypeVar
 
 import more_itertools as itx
 

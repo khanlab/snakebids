@@ -23,7 +23,7 @@ def formatwarning(
     """Format warning messages."""
     if line is None:
         try:
-            import linecache
+            import linecache  # noqa: PLC0415
 
             line = linecache.getline(filename, lineno).rstrip()
         except Exception:  # pragma: no cover # noqa: BLE001

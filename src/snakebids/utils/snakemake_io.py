@@ -5,9 +5,9 @@ from __future__ import annotations
 import collections
 import os
 import re
+from collections.abc import Sequence
 from itertools import chain
 from pathlib import Path
-from typing import Sequence
 
 from snakebids.types import ZipList
 from snakebids.utils.containers import MultiSelectDict

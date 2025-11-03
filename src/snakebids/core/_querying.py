@@ -3,13 +3,14 @@ from __future__ import annotations
 import abc
 import functools as ft
 import re
-from typing import TYPE_CHECKING, Any, Final, Iterable, Mapping, Sequence, cast
+from collections.abc import Iterable, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Final, TypeAlias, cast
 
 import attrs
 import more_itertools as itx
 from bids.layout import BIDSLayout, Query
 from bids.layout.models import BIDSFile
-from typing_extensions import Self, TypeAlias, override
+from typing_extensions import Self, override
 
 from snakebids.exceptions import ConfigError, PybidsError
 from snakebids.types import FilterMap, FilterValue, InputConfig
@@ -111,8 +112,7 @@ class UnifiedFilter:
     def _has_empty_list(self, items: Iterable[Any]):
         """Check if any of the lists within iterable are empty."""
         return any(
-            itx.ilen(itx.always_iterable(item, base_type=(str, dict)))  # type: ignore
-            == 0
+            itx.ilen(itx.always_iterable(item, base_type=(str, dict))) == 0
             for item in items
         )
 
@@ -131,8 +131,7 @@ class UnifiedFilter:
         # Silently remove "regex_search". This value has been blocked by a bug for the
         # since version 0.6, and even before, never fully worked properly (e.g. would
         # break if combined with --exclude-participant-label)
-        if "regex_search" in filters:
-            del filters["regex_search"]
+        filters.pop("regex_search", None)
         return filters
 
     @ft.cached_property

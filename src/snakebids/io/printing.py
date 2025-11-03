@@ -4,8 +4,8 @@ import itertools as it
 import json
 import operator as op
 import textwrap
+from collections.abc import Sequence
 from math import ceil, floor, inf
-from typing import Sequence
 
 import more_itertools as itx
 
@@ -40,9 +40,9 @@ def format_zip_lists(
     if not zip_list:
         return "{}"
     table = [_format_zip_row(key, row) for key, row in zip_list.items()]
-    widths = [max(len(val) for val in col) for col in zip(*table)]
+    widths = [max(len(val) for val in col) for col in zip(*table, strict=True)]
     aligned = _align_zip_table(table, widths)
-    cols: list[Sequence[str]] = list(zip(*aligned))
+    cols: list[Sequence[str]] = list(zip(*aligned, strict=True))
     keys = cols[:2]
     vals = cols[2:]
     elided_cols = it.chain(
@@ -60,7 +60,9 @@ def format_zip_lists(
     return "".join(
         [
             "{\n",
-            textwrap.indent("".join(itx.flatten(zip(*elided_cols))), " " * tabstop),
+            textwrap.indent(
+                "".join(itx.flatten(zip(*elided_cols, strict=True))), " " * tabstop
+            ),
             "}",
         ]
     )
@@ -80,8 +82,10 @@ def _format_zip_row(key: str, row: list[str]) -> list[str]:
 def _align_zip_table(table: list[list[str]], widths: list[int]) -> list[list[str]]:
     output: list[list[str]] = []
     for row in table:
-        spaces = [" " * (width - len(val)) for val, width in zip(row, widths)]
-        output.append(list(it.starmap(op.add, zip(row, spaces))))
+        spaces = [
+            " " * (width - len(val)) for val, width in zip(row, widths, strict=True)
+        ]
+        output.append(list(map(op.add, row, spaces)))
     return output
 
 

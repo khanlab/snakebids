@@ -6,17 +6,12 @@ import functools as ft
 import itertools as it
 import re
 import subprocess as sp
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from datetime import timedelta
 from pathlib import Path
 from typing import (
     Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Mapping,
     Protocol,
-    Sequence,
     TypeVar,
 )
 
@@ -30,7 +25,7 @@ from snakebids.core.datasets import BidsDataset
 from snakebids.core.input_generation import generate_inputs
 from snakebids.paths import specs
 from snakebids.types import InputsConfig, ZipList, ZipListLike
-from snakebids.utils.containers import MultiSelectDict, UserDictPy38
+from snakebids.utils.containers import MultiSelectDict
 from snakebids.utils.utils import BidsEntity
 
 _T = TypeVar("_T")
@@ -57,14 +52,15 @@ def get_zip_list(
         zip_list representation of entity-value combinations
     """
 
-    def strlist() -> list[str]:
-        return []
-
-    lists: Iterable[Sequence[str]] = list(zip(*combinations)) or itx.repeatfunc(strlist)
+    strict = True
+    lists: Iterable[Sequence[str]] = list(zip(*combinations, strict=True))
+    if not lists:
+        strict = False
+        lists = itx.repeatfunc(list[str])
     return MultiSelectDict(
         {
             BidsEntity(str(entity)).wildcard: list(combs)
-            for entity, combs in zip(entities, lists)
+            for entity, combs in zip(entities, lists, strict=strict)
         }
     )
 
@@ -111,7 +107,7 @@ def get_bids_path(entities: Iterable[str | BidsEntity], **extras: str) -> str:
     )
 
 
-class BidsListCompare(UserDictPy38[str, Dict[str, List[str]]]):
+class BidsListCompare(dict[str, dict[str, list[str]]]):
     """Dict override specifically for comparing input_lists
 
     When comparing, all lists are converted into sets so that order doesn't matter for
@@ -150,10 +146,9 @@ def debug(**overrides: Any):
 
         test = func.hypothesis.inner_test  # type: ignore
 
-        @pytest.mark.disable_fakefs(True)
         @ft.wraps(func)
         def inner_test(*args: _P.args, **kwargs: _P.kwargs):
-            return test(*args, **{**kwargs, **overrides})
+            return test(*args, **(kwargs | overrides))
 
         return inner_test
 
@@ -275,20 +270,20 @@ def expand_zip_list(
     :meth:`BidsComponent.expand() <snakebids.BidsComponent.expand>` with ``new_values``
     as extra args.
     """
-    zip_cols = list(zip(*zip_list.values()))
+    zip_cols = list(zip(*zip_list.values(), strict=True))
     new_cols = list(
         map(
             it.chain.from_iterable,
             it.product(zip_cols, it.product(*new_values.values())),
         )
     )
-    z = zip(*new_cols)
-    return dict(zip(it.chain(zip_list.keys(), new_values.keys()), z))
+    z = zip(*new_cols, strict=True)
+    return dict(zip(it.chain(zip_list.keys(), new_values.keys()), z, strict=True))
 
 
 def needs_docker(container: str):
     def decorator(func: Callable[_P, _T]) -> Callable[_P, _T]:
-        @pytest.mark.docker()
+        @pytest.mark.docker
         @ft.wraps(func)
         def wrapper(*args: _P.args, **kwargs: _P.kwargs):
             try:

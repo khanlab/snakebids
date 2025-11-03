@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from typing import Iterator, List
+from collections.abc import Iterator
+from typing import TypeAlias
 
 import importlib_resources as impr
 import more_itertools as itx
-from typing_extensions import NotRequired, TypeAlias, TypedDict
+from typing_extensions import NotRequired, TypedDict
 
 from snakebids.io.yaml import get_yaml_io
 from snakebids.paths import resources
@@ -25,7 +26,7 @@ class BidsPathEntitySpec(TypedDict):
     """If true, a directory with the entity-value pair is created"""
 
 
-BidsPathSpec: TypeAlias = List[BidsPathEntitySpec]
+BidsPathSpec: TypeAlias = list[BidsPathEntitySpec]
 """List of :class:`BidsPathEntitySpec`, defining the order of entities in a bids path"""
 
 

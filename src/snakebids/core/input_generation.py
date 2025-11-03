@@ -8,10 +8,10 @@ import os
 import re
 import warnings
 from collections import defaultdict
+from collections.abc import Iterable
 from pathlib import Path
 from typing import (
     Any,
-    Iterable,
     Literal,
     overload,
 )
@@ -49,6 +49,7 @@ _logger = logging.getLogger(__name__)
 def generate_inputs(
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
+    *,
     pybidsdb_dir: Path | str | None = ...,
     pybidsdb_reset: bool = ...,
     derivatives: bool | Path | str = ...,
@@ -68,6 +69,7 @@ def generate_inputs(
 def generate_inputs(
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
+    *,
     pybidsdb_dir: Path | str | None = ...,
     pybidsdb_reset: bool = ...,
     derivatives: bool | Path | str = ...,
@@ -75,7 +77,7 @@ def generate_inputs(
     limit_to: Iterable[str] | None = ...,
     participant_label: Iterable[str] | str | None = ...,
     exclude_participant_label: Iterable[str] | str | None = ...,
-    use_bids_inputs: Literal[False] = ...,
+    use_bids_inputs: Literal[False],
     index_metadata: bool = ...,
     validate: bool = ...,
     pybids_database_dir: Path | str | None = ...,
@@ -86,6 +88,7 @@ def generate_inputs(
 def generate_inputs(
     bids_dir: Path | str,
     pybids_inputs: InputsConfig,
+    *,
     pybidsdb_dir: Path | str | None = None,
     pybidsdb_reset: bool | None = None,
     derivatives: bool | Path | str = False,
