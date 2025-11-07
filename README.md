@@ -42,30 +42,48 @@ For detailed instructions and examples, please refer to the [**documentation**](
 
 Snakebids is an open-source project, and contributions are welcome! If you have any bug reports, feature requests, or improvements, please submit them to the [**issues page**](https://github.com/khanlab/snakebids).
 
-To contribute, first clone the Github repository. Snakebids dependencies are managed with Poetry (version 1.2 or higher). Please refer to the [poetry website](https://python-poetry.org/docs/master/#installation) for installation instructions.
-
-_Note: Snakebids makes use of Poetry's dynamic versioning. To see a version number on locally installed Snakebids versions, you will have to also install `poetry-dynamic-versioning` plugin to your poetry installation (`poetry self add "poetry-dynamic-versioning\[plugin\]"). This is **not required** for contribution._
-
-Following installation of Poetry, the development can be set up by running the following commands:
+To contribute, first clone the Github repository.
 
 ```bash
-poetry install
-poetry run poe setup
+git clone https://github.com/khanlab/snakebids
+cd snakebids
 ```
 
-Snakebids uses [poethepoet](https://github.com/nat-n/poethepoet) as a task runner. You can see what commands are available by running:
+Snakebids dependencies are managed with uv. This can be installed with their standalone installer:
 
 ```bash
-poetry run poe
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+> [!TIP]
+> Please refer to the [uv website](https://docs.astral.sh/uv/getting-started/installation/) for detailed installation instructions and usage information.
+
+Before coding, run the following command to setup our pre-commit hooks:
+
+```bash
+uv run poe setup
+```
+
+These check the code against [ruff](https://docs.astral.sh/ruff/) and [pyright](https://github.com/microsoft/pyright). Be sure they both pass before making a PR.
+
+
+> [!TIP]
+> Snakebids uses [poethepoet](https://github.com/nat-n/poethepoet) as a task runner. If this tool is installed globally, it will automatically detect the snakebids environment when directly called. So, instead of `uv run poe [COMMAND]`, you can call `poe [COMMAND]`. It can be installed with:
+> ```bash
+> uv tool poethepoet
+> ```
+
+To check code quality, use:
+
+```bash
+uv run poe quality
 ```
 
 Tests are done with `pytest` and can be run via:
 
 ```bash
-poetry run poe test
+uv run poe test
 ```
-
-Additionally, Snakebids uses pre-commit hooks (installed via the `poe setup` command above) to lint and format code (we use [black](https://github.com/psf/black), [isort](https://github.com/PyCQA/isort) and [ruff](https://beta.ruff.rs/docs/). By default, these hooks are run on every commit. Please be sure they all pass before making a PR.
 
 ## License
 
