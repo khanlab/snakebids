@@ -681,9 +681,8 @@ def _parse_custom_path(
     """Glob wildcards from a custom path and apply filters.
 
     This replicates pybids path globbing for any custom path. Input path should have
-    wildcards in braces as in "path/of/{wildcard_1}/{wildcard_2}_{wildcard_3}" Output
-    will be arranged into a zip list of matches, list of matches, and Snakemake wildcard
-    for each wildcard.
+    wildcards in braces as in "path/of/{wildcard_1}/{wildcard_2}_{wildcard_3}". Returns
+    a ZipList of matches.
 
     Note that, currently, this will get confused if wildcard content matches
     non-wildcard content. For example, considering the path template above, the example
@@ -693,14 +692,12 @@ def _parse_custom_path(
     ----------
     input_path : str
         Path to be globbed
-    regex_search : bool
-        If True, use regex matching for filtering rather than simple equality
-    **filters : str or list of str
-        Values to keep. Each argument is the name of the entity to search
+    filters : UnifiedFilter
+        Filters to be applied when selecting path templates.
 
     Returns
     -------
-    input_zip_list, input_list, input_wildcards
+    ZipList
     """
     if not (wildcards := glob_wildcards(input_path)):
         _logger.warning("No wildcards defined in %s", input_path)
