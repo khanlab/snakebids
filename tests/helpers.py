@@ -21,7 +21,7 @@ from hypothesis import HealthCheck, example, settings
 from typing_extensions import ParamSpec
 
 from snakebids import bids_factory
-from snakebids.core.datasets import BidsDataset
+from snakebids.core.datasets import BidsComponent, BidsDataset
 from snakebids.core.input_generation import generate_inputs
 from snakebids.paths import specs
 from snakebids.types import InputsConfig, ZipList, ZipListLike
@@ -31,6 +31,13 @@ from snakebids.utils.utils import BidsEntity
 _T = TypeVar("_T")
 _T_contra = TypeVar("_T_contra", contravariant=True)
 _P = ParamSpec("_P")
+
+
+def component_via_product(**entities: list[str] | str):
+    zip_list = get_zip_list(
+        entities, it.product(*map(itx.always_iterable, entities.values()))
+    )
+    return BidsComponent(zip_lists=zip_list, path=get_bids_path(entities), name="")
 
 
 def get_zip_list(

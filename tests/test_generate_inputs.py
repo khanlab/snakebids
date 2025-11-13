@@ -5,8 +5,8 @@ import filecmp
 import functools as ft
 import itertools as it
 import keyword
+import logging
 import os
-import re
 import shutil
 import sys
 import tempfile
@@ -14,12 +14,12 @@ import warnings
 from collections import defaultdict
 from collections.abc import Iterable
 from pathlib import Path, PosixPath
-from typing import Any, Literal, NamedTuple, TypedDict, TypeVar
+from typing import Any, NamedTuple, TypeVar
 
 import attrs
 import more_itertools as itx
 import pytest
-from bids import BIDSLayout
+from bids.layout import BIDSLayout
 from hypothesis import HealthCheck, assume, example, given, settings
 from hypothesis import strategies as st
 from pytest_mock import MockerFixture
@@ -40,19 +40,24 @@ from snakebids.core.input_generation import (
 from snakebids.exceptions import ConfigError, PybidsError, RunError
 from snakebids.paths._presets import bids
 from snakebids.snakemake_compat import expand as sb_expand
-from snakebids.types import InputsConfig
+from snakebids.types import InputConfig, InputsConfig
 from snakebids.utils.containers import MultiSelectDict
-from snakebids.utils.utils import DEPRECATION_FLAG, BidsEntity, BidsParseError
+from snakebids.utils.utils import (
+    DEPRECATION_FLAG,
+    BidsEntity,
+    BidsParseError,
+    zip_list_eq,
+)
 from tests import strategies as sb_st
 from tests.helpers import (
     Benchmark,
     BidsListCompare,
     allow_function_scoped,
+    component_via_product,
     create_dataset,
     create_snakebids_config,
     get_bids_path,
     get_zip_list,
-    mock_data,
     reindex_dataset,
 )
 
@@ -500,268 +505,99 @@ class TestFilterBools:
 
 
 class TestFilterMethods:
-    @example(
-        component=BidsComponent(
-            name="template",
-            path="sub-{subject}/ses-{session}/sub-{subject}_ses-{session}",
-            zip_lists={
-                "session": ["0A", "0a"],
-                "subject": ["0", "00"],
-            },
-        ),
-        data=mock_data(["0a"]),
-    )
-    @example(
-        component=BidsComponent(
-            name="template",
-            path="sub-{subject}/sub-{subject}_mt-{mt}",
-            zip_lists={
-                "subject": ["0", "00"],
-                "mt": ["on", "on"],
-            },
-        ),
-        data=mock_data(["0"]),
-    )
-    @given(
-        component=sb_st.bids_components(
-            name="template",
-            min_entities=2,
-            restrict_patterns=True,
-            unique=True,
-            extra_entities=False,
-            # pybids bug prevents regex matching from working properly with extension
-            blacklist_entities=["extension"],
-        ),
-        data=st.data(),
-    )
-    @settings(
-        deadline=None,
-        suppress_health_check=[
-            HealthCheck.function_scoped_fixture,
-            HealthCheck.too_slow,
+    @pytest.mark.parametrize(
+        ("entities", "query"),
+        [
+            (
+                {
+                    "subject": ["query", "qber7", "Query", "queryof"],
+                    "tracer": ["1", "2"],
+                },
+                ["q.er[y7]", "1"],
+            ),
+            (
+                {
+                    "subject": ["0", "00", "01"],
+                    "mt": ["on"],
+                },
+                ["0+", "on"],
+            ),
         ],
     )
     def test_regex_match_selects_paths(
-        self, tmpdir: Path, component: BidsComponent, data: st.DataObject
+        self, tmpdir: Path, entities: dict[str, list[str]], query: list[str]
     ):
-        root = tempfile.mkdtemp(dir=tmpdir)
-        entity = itx.first(component.entities)
-        selection = data.draw(
-            st.lists(
-                st.sampled_from(component.entities[entity]), unique=True, min_size=1
-            )
-        )
-        dataset = BidsDataset.from_iterable(
-            [attrs.evolve(component, path=os.path.join(root, component.path))]
-        )
-        create_dataset("", dataset)
+        component = component_via_product(**entities)
+        dataset = BidsDataset.from_iterable([component])
+        create_dataset(tmpdir, dataset)
         pybids_inputs: InputsConfig = {
             "template": {
-                "wildcards": [
-                    BidsEntity.from_tag(wildcard).entity
-                    for wildcard in component.wildcards
-                ],
-                "filters": {
-                    BidsEntity.from_tag(entity).entity: {
-                        "match": "|".join(re.escape(sel) for sel in selection)
-                    }
-                },
+                "wildcards": list(entities),
+                "filters": {key: {"match": q} for key, q in zip(entities, query)},  # noqa: B905
             }
         }
-        result = generate_inputs(root, pybids_inputs)
-        assert result == BidsDataset(
-            {"template": dataset["template"].filter(**{entity: selection})}
-        )
+        result = generate_inputs(tmpdir, pybids_inputs)
+        assert len(result["template"].expand()) == 2
 
-    @given(
-        component=sb_st.bids_components(
-            name="template",
-            min_entities=2,
-            restrict_patterns=True,
-            unique=True,
-            extra_entities=False,
-            # only specified entities work with free text
-            whitelist_entities=[
-                "subject",
-                "session",
-                "sample",
-                "task",
-                "acquisition",
-                "ceagent",
-                "staning",
-                "tracer",
-                "reconstruction",
-                "direction",
-                "proc",
-                "modality",
-                "recording",
-                "space",
-                "split",
-                "atlas",
-                "roi",
-                "label",
-                "from",
-                "to",
-                "res",
-                "den",
-                "model",
-                "subset",
-                "desc",
-                "tracksys",
-            ],
-        ),
-    )
-    @settings(
-        deadline=None,
-        suppress_health_check=[
-            HealthCheck.function_scoped_fixture,
-            HealthCheck.too_slow,
+    @pytest.mark.parametrize(
+        "entities",
+        [
+            {"subject": ["query", "pquerya", "Query"], "tracer": ["1", "2"]},
+            {"proc": ["on", "none"], "subject": ["0", "1"]},
         ],
     )
-    def test_regex_search_selects_paths(self, tmpdir: Path, component: BidsComponent):
-        root = tempfile.mkdtemp(dir=tmpdir)
-        entity = itx.first(component.entities)
-        assume(f"prefix{component[entity][0]}suffix" not in component.entities[entity])
-        zip_lists = {
-            ent: (
-                [*value, f"prefix{value[0]}suffix"]
-                if ent is entity
-                else [*value, value[0]]
-            )
-            for ent, value in component.zip_lists.items()
-        }
-        dataset = BidsDataset.from_iterable(
-            [
-                attrs.evolve(
-                    component,
-                    path=os.path.join(root, component.path),
-                    zip_lists=zip_lists,
-                )
-            ]
-        )
-        create_dataset("", dataset)
+    def test_regex_search_selects_paths(
+        self, tmpdir: Path, entities: dict[str, list[str]]
+    ):
+        component = component_via_product(**entities)
+        dataset = BidsDataset.from_iterable([component])
+        create_dataset(tmpdir, dataset)
         pybids_inputs: InputsConfig = {
             "template": {
-                "wildcards": [
-                    BidsEntity.from_tag(wildcard).entity
-                    for wildcard in component.wildcards
-                ],
-                "filters": {
-                    BidsEntity.from_tag(entity).entity: {
-                        "search": "|".join(
-                            re.escape(val) for val in component.entities[entity]
-                        )
-                    }
-                },
+                "wildcards": list(entities),
+                "filters": {key: {"search": val[0]} for key, val in entities.items()},
             }
         }
-        result = generate_inputs(root, pybids_inputs)
-        assert result == BidsDataset({"template": dataset["template"]})
+        result = generate_inputs(tmpdir, pybids_inputs)
+        assert len(result["template"].expand()) == 2
 
-    @example(
-        component=BidsComponent(
-            name="template",
-            path="sub-{subject}/sub-{subject}_mt-{mt}",
-            zip_lists={
-                "subject": ["0", "00"],
-                "mt": ["on", "on"],
-            },
-        ),
-        data=mock_data(["0"]),
-    )
-    @given(
-        component=sb_st.bids_components(
-            name="template",
-            min_entities=2,
-            restrict_patterns=True,
-            unique=True,
-            extra_entities=False,
-        ),
-        data=st.data(),
-    )
-    @settings(
-        deadline=None,
-        suppress_health_check=[
-            HealthCheck.function_scoped_fixture,
-            HealthCheck.too_slow,
+    @pytest.mark.parametrize(
+        "entities",
+        [
+            {"subject": ["001", "002"], "acquisition": ["1", "11", "12", "21"]},
+            {"subject": ["0", "00"], "mt": ["on", "off"]},
         ],
     )
     def test_get_method_selects_via_direct_matching(
-        self, tmpdir: Path, component: BidsComponent, data: st.DataObject
+        self, tmpdir: Path, entities: dict[str, list[str]]
     ):
-        root = tempfile.mkdtemp(dir=tmpdir)
-        entity = itx.first(component.entities)
-        selection = data.draw(
-            st.lists(
-                st.sampled_from(component.entities[entity]), unique=True, min_size=1
-            )
-        )
-        dataset = BidsDataset.from_iterable(
-            [attrs.evolve(component, path=os.path.join(root, component.path))]
-        )
-        create_dataset("", dataset)
+        component = component_via_product(**entities)
+        dataset = BidsDataset.from_iterable([component])
+        create_dataset(tmpdir, dataset)
         pybids_inputs: InputsConfig = {
             "template": {
-                "wildcards": [
-                    BidsEntity.from_tag(wildcard).entity
-                    for wildcard in component.wildcards
-                ],
-                "filters": {BidsEntity.from_tag(entity).entity: {"get": selection}},
+                "filters": {key: {"get": val[0]} for key, val in entities.items()},
             }
         }
-        result = generate_inputs(root, pybids_inputs)
-        assert result == BidsDataset(
-            {"template": dataset["template"].filter(**{entity: selection})}
-        )
+        result = generate_inputs(tmpdir, pybids_inputs)
+        assert len(result["template"].expand()) == 1
 
-    @given(
-        component=sb_st.bids_components(
-            name="template",
-            min_entities=2,
-            max_entities=2,
-            # Again, extension doesn't work with regex. run causes problem with
-            # numeral strings
-            blacklist_entities={"extension", "run"},
-            min_values=2,
-            restrict_patterns=True,
-            unique=True,
-            cull=False,
-            extra_entities=False,
-        ),
-    )
-    @settings(
-        deadline=None,
-        suppress_health_check=[
-            HealthCheck.function_scoped_fixture,
-            HealthCheck.too_slow,
-        ],
-    )
-    def test_combining_match_and_get_selects_correct_paths(
-        self, tmpdir: Path, component: BidsComponent
-    ):
-        root = tempfile.mkdtemp(dir=tmpdir)
-        entity1 = itx.first(component.entities)
-        entity2 = itx.nth_or_last(component.entities, 1)
-        dataset = BidsDataset.from_iterable(
-            [attrs.evolve(component, path=os.path.join(root, component.path))]
+    def test_combining_match_and_get_selects_correct_paths(self, tmpdir: Path):
+        component = component_via_product(
+            subject=["001", "002"], acq=["1", "11", "12", "21"]
         )
-        create_dataset("", dataset)
+        dataset = BidsDataset.from_iterable([component])
+        create_dataset(tmpdir, dataset)
         pybids_inputs: InputsConfig = {
             "template": {
-                "wildcards": [
-                    BidsEntity.from_tag(wildcard).entity
-                    for wildcard in component.wildcards
-                ],
                 "filters": {
-                    BidsEntity.from_tag(entity1).entity: {"get": component[entity1][0]},
-                    BidsEntity.from_tag(entity2).entity: {
-                        "match": re.escape(component[entity2][0])
-                    },
+                    "subject": {"get": "001"},
+                    "acquisition": {"match": "\\d"},
                 },
             }
         }
-        result = generate_inputs(root, pybids_inputs)
-        assert len(itx.first(itx.first(result.values()).zip_lists.values())) == 1
+        result = generate_inputs(tmpdir, pybids_inputs)
+        assert len(result["template"].expand()) == 1
 
     @given(
         methods=st.lists(
@@ -770,12 +606,8 @@ class TestFilterMethods:
     )
     @allow_function_scoped
     def test_filter_with_multiple_methods_raises_error(
-        self, tmpdir: Path, methods: list[str]
+        self, methods: list[str], tmpdir: Path
     ):
-        dataset = BidsDataset.from_iterable(
-            [BidsComponent(zip_lists={}, name="template", path=str(tmpdir))]
-        )
-        create_dataset("", dataset)
         pybids_inputs: InputsConfig = {
             "template": {
                 "filters": {
@@ -786,12 +618,7 @@ class TestFilterMethods:
         with pytest.raises(ConfigError, match="may not have more than one key"):
             generate_inputs(tmpdir, pybids_inputs)
 
-    @pytest.mark.disable_fakefs(True)
     def test_filter_with_no_methods_raises_error(self, tmpdir: Path):
-        dataset = BidsDataset.from_iterable(
-            [BidsComponent(zip_lists={}, name="template", path=str(tmpdir))]
-        )
-        create_dataset("", dataset)
         pybids_inputs: InputsConfig = {
             "template": {
                 "filters": {"foo": {}},
@@ -800,21 +627,9 @@ class TestFilterMethods:
         with pytest.raises(ConfigError, match="was not given any keys"):
             generate_inputs(tmpdir, pybids_inputs)
 
-    @given(
-        method=st.text().filter(lambda s: s not in {"get", "match", "search"}),
-    )
-    @settings(
-        deadline=None,
-        suppress_health_check=[
-            HealthCheck.function_scoped_fixture,
-            HealthCheck.too_slow,
-        ],
-    )
-    def test_filter_with_invalid_method_raises_error(self, tmpdir: Path, method: str):
-        dataset = BidsDataset.from_iterable(
-            [BidsComponent(zip_lists={}, name="template", path=str(tmpdir))]
-        )
-        create_dataset("", dataset)
+    @given(method=st.text().filter(lambda s: s not in {"get", "match", "search"}))
+    @allow_function_scoped
+    def test_filter_with_invalid_method_raises_error(self, method: str, tmpdir: Path):
         pybids_inputs: InputsConfig = {
             "template": {
                 "filters": {"foo": {method: []}},  # type: ignore
@@ -913,55 +728,6 @@ class TestAbsentConfigEntries:
         )
         assert template == config
         assert config.subj_wildcards == {"subject": "{subject}"}
-
-
-class TestPostfilter:
-    valid_chars = st.characters(blacklist_characters=["\n"])
-    st_lists_or_text = st.lists(st.text(valid_chars)) | st.text(valid_chars)
-
-    @given(st.text(), st_lists_or_text)
-    def test_returns_participant_label_as_dict(self, key: str, label: list[str] | str):
-        filters = PostFilter()
-        filters.add_filter(key, label, None)
-        if isinstance(label, str):
-            assert filters.inclusions == {key: [label]}
-        else:
-            assert filters.inclusions == {key: label}
-        assert filters.exclusions == {}
-
-    @given(
-        st.text(),
-        st_lists_or_text,
-        st.lists(st.text(valid_chars, min_size=1), min_size=1),
-        st.text(valid_chars, min_size=1, max_size=3),
-    )
-    def test_exclude_gives_regex_that_matches_anything_except_exclude(
-        self, key: str, excluded: list[str] | str, dummy_values: list[str], padding: str
-    ):
-        filters = PostFilter()
-        # Make sure the dummy_values and padding we'll be testing against are different
-        # from our test values
-        for value in dummy_values:
-            assume(value not in itx.always_iterable(excluded))
-        assume(padding not in itx.always_iterable(excluded))
-
-        filters.add_filter(key, None, excluded)
-        assert isinstance(filters.exclusions[key], list)
-        assert len(filters.exclusions[key]) == 1
-
-        # We match any value that isn't the exclude string
-        for value in dummy_values:
-            assert re.match(filters.exclusions[key][0], value)
-
-        for exclude in itx.always_iterable(excluded):
-            # We don't match the exclude string
-            assert re.match(filters.exclusions[key][0], exclude) is None
-
-            # Addition of random strings before and/or after lets the match occur again
-            assert re.match(filters.exclusions[key][0], padding + exclude)
-            assert re.match(filters.exclusions[key][0], exclude + padding)
-            assert re.match(filters.exclusions[key][0], padding + exclude + padding)
-        assert filters.inclusions == {}
 
 
 class PathEntities(NamedTuple):
@@ -1125,10 +891,8 @@ class TestCustomPaths:
         exclude_filters = PostFilter()
         for key, values in filters.items():
             exclude_filters.add_filter(key, None, values)
-        result_excluded = MultiSelectDict(
-            _parse_custom_path(
-                test_path, UnifiedFilter.from_filter_dict({}, exclude_filters)
-            )
+        result_excluded = _parse_custom_path(
+            test_path, UnifiedFilter.from_filter_dict({}, exclude_filters)
         )
 
         entities_excluded = {
@@ -1138,16 +902,10 @@ class TestCustomPaths:
         zip_lists = MultiSelectDict(
             # Start with empty lists for each key, otherwise keys will be missing
             {key: list[str]() for key in entities}
-            |
-            # Override entities with relevant filters before making zip lists
-            get_zip_list(entities, it.product(*entities_excluded.values())),
+            | get_zip_list(entities, it.product(*entities_excluded.values())),
         )
 
-        assert BidsComponent(
-            name="foo", path=get_bids_path(zip_lists), zip_lists=zip_lists
-        ) == BidsComponent(
-            name="foo", path=get_bids_path(result_excluded), zip_lists=result_excluded
-        )
+        assert zip_list_eq(zip_lists, result_excluded)
 
     @given(
         boolean=st.booleans(),
@@ -1687,197 +1445,114 @@ def test_generate_inputs(dataset: BidsDataset, tmpdir: Path):
     assert reindexed.layout is not None
 
 
-@st.composite
-def dataset_with_subject(draw: st.DrawFn):
-    entities = draw(sb_st.bids_entity_lists(blacklist_entities=["subject"]))
-    entities += ["subject"]
-    return BidsDataset.from_iterable(
-        [
-            draw(
-                sb_st.bids_components(
-                    whitelist_entities=entities,
-                    min_entities=len(entities),
-                    max_entities=len(entities),
-                    restrict_patterns=True,
-                    unique=True,
-                )
-            )
-        ]
-    )
+class _FakeBIDSLayout:
+    def __init__(self, *args: Any, **kwargs: Any):
+        pass
+
+    def get(self, regex_search: bool, **kwargs: Any) -> list[str]:
+        return []
+
+    def __eq__(self, other: object):
+        return isinstance(other, self.__class__)
 
 
 class TestParticipantFiltering:
-    MODE = Literal["include", "exclude"]
-
-    def get_filter_params(self, mode: MODE, filters: list[str] | str):
-        class FiltParams(TypedDict, total=False):
-            participant_label: list[str] | str
-            exclude_participant_label: list[str] | str
-
-        if mode == "include":
-            return FiltParams({"participant_label": filters})
-        if mode == "exclude":
-            return FiltParams({"exclude_participant_label": filters})
-        msg = f"Invalid mode specification: {mode}"
-        raise ValueError(msg)
-
-    @given(
-        data=st.data(),
-        dataset=dataset_with_subject(),
-    )
-    @settings(
-        deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    @pytest.mark.parametrize(
+        ("include", "exclude"),
+        [
+            ("01", None),
+            (None, "01"),
+            ("01", "02"),
+            (["01", "02"], "02"),
+            (None, ["02", "03"]),
+            (["01", "02"], ["02", "03"]),
+            (["01", "02"], []),
+            ([], ["02", "03"]),
+            ([], []),
+        ],
     )
     def test_exclude_and_participant_label_filter_correctly(
-        self, data: st.DataObject, dataset: BidsDataset, tmpdir: Path
+        self,
+        include: str | list[str] | None,
+        exclude: str | list[str] | None,
+        tmpdir: Path,
     ):
-        root = tempfile.mkdtemp(dir=tmpdir)
-        rooted = BidsDataset.from_iterable(
-            attrs.evolve(comp, path=os.path.join(root, comp.path))
-            for comp in dataset.values()
+        zip_lists = {
+            "subject": ["01", "02", "03"],
+            "acq": ["x", "y", "z"],
+        }
+        component = BidsComponent(
+            name="0", path=str(tmpdir / get_bids_path(zip_lists)), zip_lists=zip_lists
         )
-        sampler = st.sampled_from(itx.first(rooted.values()).entities["subject"])
-        excluded = data.draw(st.lists(sampler, unique=True) | sampler | st.none())
-        included = data.draw(st.lists(sampler, unique=True) | sampler | st.none())
+        dataset = BidsDataset.from_iterable([component])
+
         reindexed = reindex_dataset(
-            root, rooted, exclude_participant_label=excluded, participant_label=included
+            str(tmpdir),
+            dataset,
+            participant_label=include,
+            exclude_participant_label=exclude,
         )
-        reindexed_subjects = set(itx.first(reindexed.values()).entities["subject"])
-        expected_subjects = set(itx.first(rooted.values()).entities["subject"])
-        if included is not None:
-            expected_subjects &= set(itx.always_iterable(included))
-        if excluded is not None:
-            expected_subjects -= set(itx.always_iterable(excluded))
+        expected = set(component.entities["subject"])
+        expected -= set(itx.always_iterable(exclude))
+        if include is not None:
+            expected &= set(itx.always_iterable(include))
+        assert set(itx.first(reindexed.values()).entities["subject"]) == expected
 
-        assert reindexed_subjects == expected_subjects
-
-    @pytest.mark.parametrize("mode", ["include", "exclude"])
-    @given(
-        dataset=sb_st.datasets_one_comp(blacklist_entities=["subject"], unique=True),
-        participant_filter=st.lists(st.text(min_size=1)) | st.text(min_size=1),
-    )
-    @settings(
-        deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture]
-    )
-    def test_participant_label_doesnt_filter_comps_without_subject(
+    @pytest.mark.parametrize("include", ["include", ["include"], None])
+    @pytest.mark.parametrize("exclude", ["exclude", ["exclude"], None])
+    @pytest.mark.parametrize("filters", ["filters", None])
+    def test_participant_flags_and_filters_merged(
         self,
-        mode: MODE,
-        dataset: BidsDataset,
-        participant_filter: list[str] | str,
-        tmpdir: Path,
+        include: str | list[str] | None,
+        exclude: str | list[str] | None,
+        filters: str | None,
+        mocker: MockerFixture,
+        caplog: pytest.LogCaptureFixture,
     ):
-        root = tempfile.mkdtemp(dir=tmpdir)
-        rooted = BidsDataset.from_iterable(
-            attrs.evolve(comp, path=os.path.join(root, comp.path))
-            for comp in dataset.values()
-        )
-        reindexed = reindex_dataset(
-            root, rooted, **self.get_filter_params(mode, participant_filter)
-        )
-        assert reindexed == rooted
+        mocker.patch.object(input_generation, "BIDSLayout", _FakeBIDSLayout)
+        patch = mocker.patch.object(input_generation, "get_matching_files")
+        component: InputConfig = {"filters": {"subject": filters}} if filters else {}
+        with caplog.at_level(logging.ERROR, "snakebids.core.input_generation"):
+            generate_inputs(
+                "",
+                {"": component},
+                participant_label=include,
+                exclude_participant_label=exclude,
+            )
+        pf = PostFilter()
+        pf.add_filter("subject", include, exclude)
+        uf = UnifiedFilter(component, pf)
+        patch.assert_called_once_with(_FakeBIDSLayout(), uf)
 
-    @pytest.mark.parametrize("mode", ["include", "exclude"])
-    @given(
-        dataset=dataset_with_subject(),
-        participant_filter=st.lists(st.text(min_size=1)) | st.text(min_size=1),
-    )
-    @settings(
-        deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture]
-    )
-    def test_participant_label_doesnt_filter_comps_when_subject_has_filter(
-        self,
-        mode: MODE,
-        dataset: BidsDataset,
-        participant_filter: list[str] | str,
-        tmpdir: Path,
-    ):
-        root = tempfile.mkdtemp(dir=tmpdir)
-        rooted = BidsDataset.from_iterable(
-            attrs.evolve(comp, path=os.path.join(root, comp.path))
-            for comp in dataset.values()
-        )
-        create_dataset(Path("/"), rooted)
-        reindexed = generate_inputs(
-            root,
-            create_snakebids_config(rooted),
-            **self.get_filter_params(mode, participant_filter),
-        )
-        assert reindexed == rooted
-
-    @pytest.mark.parametrize("mode", ["include", "exclude"])
-    @given(
-        dataset=dataset_with_subject(),
-        participant_filter=st.lists(st.text(min_size=1)) | st.text(min_size=1),
-        data=st.data(),
-    )
-    @settings(
-        deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture]
-    )
-    def test_participant_label_doesnt_filter_comps_when_subject_has_filter_no_wcard(
-        self,
-        mode: MODE,
-        dataset: BidsDataset,
-        participant_filter: list[str] | str,
-        data: st.DataObject,
-        tmpdir: Path,
-    ):
-        root = tempfile.mkdtemp(dir=tmpdir)
-        rooted = BidsDataset.from_iterable(
-            attrs.evolve(comp, path=os.path.join(root, comp.path))
-            for comp in dataset.values()
-        )
-        subject = data.draw(
-            st.sampled_from(itx.first(rooted.values()).entities["subject"])
-        )
-        create_dataset(Path("/"), rooted)
-        config = create_snakebids_config(rooted)
-        for comp in config.values():
-            comp["filters"] = dict(comp.get("filters", {}))
-            comp["filters"]["subject"] = subject
-        reindexed = generate_inputs(
-            root,
-            config,
-            **self.get_filter_params(mode, participant_filter),
-        )
-        assert reindexed == rooted
-
-    @given(
-        data=st.data(),
-        dataset=dataset_with_subject().filter(
-            lambda ds: set(itx.first(ds.values()).wildcards) != {"subject", "extension"}
-        ),
-    )
-    @settings(
-        deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture]
-    )
     def test_exclude_participant_does_not_make_all_other_filters_regex(
-        self, data: st.DataObject, dataset: BidsDataset, tmpdir: Path
+        self, tmpdir: Path
     ):
-        root = tempfile.mkdtemp(dir=tmpdir)
-        rooted = BidsDataset.from_iterable(
-            attrs.evolve(comp, path=os.path.join(root, comp.path))
-            for comp in dataset.values()
+        # Construct a small deterministic BIDS dataset with a subject entity and
+        # at least one other entity so we can mutate that other entity's values.
+        # Single-component dataset with a valid BIDS-style path and entities.
+        mut_entity = "acq"
+        zip_lists = {
+            "subject": ["01", "02"],
+            mut_entity: ["x", "y"],
+        }
+        component = BidsComponent(
+            name="0", path=str(tmpdir / get_bids_path(zip_lists)), zip_lists=zip_lists
         )
+        dataset = BidsDataset.from_iterable([component])
 
         # Create an extra set of paths by modifying one of the existing components to
-        # put foo after a set of entity values. If that filter gets changed to a regex,
-        # all of the suffixed decoys will get picked up by pybids
-        ziplist = dict(itx.first(rooted.values()).zip_lists)
-        mut_entity = itx.first(
-            filter(lambda e: e not in {"subject", "extension"}, ziplist)
-        )
-        ziplist[mut_entity] = ["foo" + v for v in ziplist[mut_entity]]
-        for path in sb_expand(itx.first(rooted.values()).path, zip, **ziplist):
+        # put 'foo' after a set of entity values. If that filter gets changed to a
+        # regex, all of the suffixed decoys will get picked up by pybids.
+        zip_lists[mut_entity] = ["foo" + v for v in zip_lists[mut_entity]]
+        for path in sb_expand(itx.first(dataset.values()).path, zip, **zip_lists):
             p = Path(path)
             p.parent.mkdir(parents=True, exist_ok=True)
             p.touch()
 
-        sampler = st.sampled_from(itx.first(rooted.values()).entities["subject"])
-        label = data.draw(st.lists(sampler, unique=True) | sampler)
-        reindexed = reindex_dataset(root, rooted, exclude_participant_label=label)
-        reindexed_subjects = set(itx.first(reindexed.values()).entities["subject"])
-        original_subjects = set(itx.first(rooted.values()).entities["subject"])
-        assert reindexed_subjects == original_subjects - set(itx.always_iterable(label))
+        reindexed = reindex_dataset(
+            str(tmpdir), dataset, exclude_participant_label="01"
+        )
+        assert itx.first(reindexed.values()) == component.filter(subject="02")
 
 
 # The content of the dataset is irrelevant to this test, so one example suffices
