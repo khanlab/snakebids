@@ -17,6 +17,8 @@ from snakebids.types import FilterMap, FilterValue, InputConfig
 
 CompiledFilter: TypeAlias = "Mapping[str, Sequence[str | Query]]"
 
+_VALID_FILTER_METHODS = frozenset(("get", "match", "search"))
+
 
 class PostFilter:
     """Filters to apply after indexing, typically derived from the CLI.
@@ -27,6 +29,13 @@ class PostFilter:
     def __init__(self):
         self.inclusions: dict[str, Sequence[str] | str] = {}
         self.exclusions: dict[str, Sequence[str] | str] = {}
+
+    def __eq__(self, other: object):
+        if not isinstance(other, self.__class__):
+            return False
+        return (
+            self.inclusions == other.inclusions and self.exclusions == other.exclusions
+        )
 
     def add_filter(
         self,
@@ -97,7 +106,7 @@ class UnifiedFilter:
     @classmethod
     def from_filter_dict(
         cls,
-        filters: Mapping[str, str | bool | Sequence[str | bool]],
+        filters: FilterMap,
         postfilter: PostFilter | None = None,
     ) -> Self:
         """Patch together a UnifiedFilter based on a basic filter dict.
@@ -249,6 +258,7 @@ def get_matching_files(
         raise PybidsError(msg) from err
 
     if search is not None:
+        # intersection preserving order
         return [p for p in get if p in search]
     return get
 
@@ -341,11 +351,11 @@ def _compile_filters(filters: FilterMap, *, with_regex: bool) -> CompiledFilter:
             filt = raw_filter
             filt_type = "get"
         else:
-            if filt_type not in {"match", "search", "get"}:
+            if filt_type not in _VALID_FILTER_METHODS:
                 raise _InvalidKeyError(key, raw_filter)
             if TYPE_CHECKING:
                 assert isinstance(raw_filter, dict)
-            filt = cast("str | bool | Sequence[str | bool]", raw_filter[filt_type])
+            filt = raw_filter[filt_type]  # pyright: ignore[reportTypedDictNotRequiredAccess]
 
         # these two must not be simultaneously true or false
         if with_regex == (filt_type == "get"):
