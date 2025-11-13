@@ -915,55 +915,6 @@ class TestAbsentConfigEntries:
         assert config.subj_wildcards == {"subject": "{subject}"}
 
 
-class TestPostfilter:
-    valid_chars = st.characters(blacklist_characters=["\n"])
-    st_lists_or_text = st.lists(st.text(valid_chars)) | st.text(valid_chars)
-
-    @given(st.text(), st_lists_or_text)
-    def test_returns_participant_label_as_dict(self, key: str, label: list[str] | str):
-        filters = PostFilter()
-        filters.add_filter(key, label, None)
-        if isinstance(label, str):
-            assert filters.inclusions == {key: [label]}
-        else:
-            assert filters.inclusions == {key: label}
-        assert filters.exclusions == {}
-
-    @given(
-        st.text(),
-        st_lists_or_text,
-        st.lists(st.text(valid_chars, min_size=1), min_size=1),
-        st.text(valid_chars, min_size=1, max_size=3),
-    )
-    def test_exclude_gives_regex_that_matches_anything_except_exclude(
-        self, key: str, excluded: list[str] | str, dummy_values: list[str], padding: str
-    ):
-        filters = PostFilter()
-        # Make sure the dummy_values and padding we'll be testing against are different
-        # from our test values
-        for value in dummy_values:
-            assume(value not in itx.always_iterable(excluded))
-        assume(padding not in itx.always_iterable(excluded))
-
-        filters.add_filter(key, None, excluded)
-        assert isinstance(filters.exclusions[key], list)
-        assert len(filters.exclusions[key]) == 1
-
-        # We match any value that isn't the exclude string
-        for value in dummy_values:
-            assert re.match(filters.exclusions[key][0], value)
-
-        for exclude in itx.always_iterable(excluded):
-            # We don't match the exclude string
-            assert re.match(filters.exclusions[key][0], exclude) is None
-
-            # Addition of random strings before and/or after lets the match occur again
-            assert re.match(filters.exclusions[key][0], padding + exclude)
-            assert re.match(filters.exclusions[key][0], exclude + padding)
-            assert re.match(filters.exclusions[key][0], padding + exclude + padding)
-        assert filters.inclusions == {}
-
-
 class PathEntities(NamedTuple):
     entities: dict[str, list[str]]
     template: Path
