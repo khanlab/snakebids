@@ -56,6 +56,10 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 {%- endif %}
 
+[tool.uv.build-backend]
+module-name = "{{ name_slug }}"
+module-root = ""
+
 {%- if snakebids_is_direct_reference == "True" and build_system == "hatch" %}
 
 [tool.hatch.metadata]

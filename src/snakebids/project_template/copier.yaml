@@ -109,6 +109,7 @@ _message_after_copy: >
     $ hatch env create
   {%- elif build_system == "uv" %}
     $ uv sync
+    $ source .venv/bin/activate
     $ uv pip install .
   {%- else %}
     $ python -m venv .venv
