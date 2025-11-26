@@ -5,10 +5,10 @@ FROM python:${PYTHON_VERSION}-slim
 RUN apt-get update && apt-get install -y gcc git && \
     rm -rf /var/lib/apt/lists/* && \
     git config --global --add safe.directory /src && \
-    python -m pip install pipx && \
-    pipx install poetry && \
-    pipx install hatch && \
-    pipx install pdm && \
+    python -m pip install uv && \
+    uv pip install poetry && \
+    uv pip install hatch && \
+    uv pip install pdm && \
     mkdir prebuild && \
     cd prebuild && \
     pip wheel snakebids && \

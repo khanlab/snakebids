@@ -48,9 +48,18 @@ build-backend = "flit_core.buildapi"
 {%- elif build_system == "hatch" -%}
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+{%- elif build_system == "uv" -%}
+requires = ["uv_build>=0.9.9,<0.10.0"]
+build-backend = "uv_build"
 {%- else -%}
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+{%- endif %}
+
+{% if build_system == "uv" -%}
+[tool.uv.build-backend]
+module-name = "{{ name_slug }}"
+module-root = ""
 {%- endif %}
 
 {%- if snakebids_is_direct_reference == "True" and build_system == "hatch" %}

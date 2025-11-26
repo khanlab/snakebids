@@ -47,6 +47,7 @@ build_system:
     - poetry
     - hatch
     - flit
+    - uv
 
 # Flit and setuptools requires specifying license via Trove classifiers; too
 # complicated to get via interactive prompt
@@ -106,6 +107,10 @@ _message_after_copy: >
     $ poetry install
   {%- elif build_system == "hatch" %}
     $ hatch env create
+  {%- elif build_system == "uv" %}
+    $ uv sync
+    $ source .venv/bin/activate
+    $ uv pip install .
   {%- else %}
     $ python -m venv .venv
     $ source .venv/bin/activate
@@ -120,6 +125,9 @@ _message_after_copy: >
 
   {%- elif build_system == "hatch" %}
     $ hatch env run -- {{ test_run_cmd }}
+
+  {%- elif build_system == "uv" %}
+    $ uv run {{ test_run_cmd }}
 
   {%- else %}
     $ {{ test_run_cmd }}
