@@ -8,9 +8,6 @@ addAssignees: author
 reviewers:
   - akhanf
   - pvandyken
-  - Bradley-Karat
-  - myousif9
-  - mcespedes99
 
 # A number of reviewers added to the pull request
 # Set 0 to add all the reviewers (default: 0)
