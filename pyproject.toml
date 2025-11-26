@@ -52,8 +52,8 @@ repository = "https://github.com/khanlab/snakebids"
 documentation = "https://snakebids.readthedocs.io/"
 
 [build-system]
-requires = ["hatchling", "hatch-vcs"]
-build-backend = "hatchling.build"
+requires = ["uv_build>=0.9.12,<0.10.0"]
+build-backend = "uv_build"
 
 [tool.hatch.version]
 source = "vcs"
