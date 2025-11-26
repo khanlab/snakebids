@@ -30,7 +30,13 @@ import snakebids
 from tests.helpers import allow_function_scoped, needs_docker
 
 BuildBackend = Literal["poetry", "hatch", "flit", "setuptools", "uv"]
-BUILD_BACKENDS: Final[list[BuildBackend]] = ["poetry", "hatch", "flit", "setuptools", "uv"]
+BUILD_BACKENDS: Final[list[BuildBackend]] = [
+    "poetry",
+    "hatch",
+    "flit",
+    "setuptools",
+    "uv",
+]
 
 
 class DataFields(TypedDict):
@@ -199,7 +205,7 @@ def test_invalid_app_name_raises_error(name: str, tmp_path: Path):
         ("hatch", "hatchling.build"),
         ("flit", "flit_core.buildapi"),
         ("setuptools", "setuptools.build_meta"),
-        ("uv", "uv_build")
+        ("uv", "uv_build"),
     ],
 )
 def test_correct_build_system_used(
@@ -297,7 +303,7 @@ def test_pyproject_correctly_formatted(
         ("poetry", "poetry"),
         ("hatch", "hatch"),
         ("flit", "setuptools"),
-        ("uv", "uv")
+        ("uv", "uv"),
     ],
 )
 def test_template_dry_runs_successfully(
