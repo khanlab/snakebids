@@ -52,17 +52,13 @@ repository = "https://github.com/khanlab/snakebids"
 documentation = "https://snakebids.readthedocs.io/"
 
 [build-system]
-requires = ["uv_build>=0.9.12,<0.10.0"]
-build-backend = "uv_build"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
-[build-backend]
-module-name = "snakebids"
-module-root = ""
-
-[tool.uv.version]
+[tool.hatch.version]
 source = "vcs"
 
-[tool.uv.build.hooks.vcs]
+[tool.hatch.build.hooks.vcs]
 version-file = "_version.py"
 
 [dependency-groups]
