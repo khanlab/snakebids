@@ -55,10 +55,14 @@ documentation = "https://snakebids.readthedocs.io/"
 requires = ["uv_build>=0.9.12,<0.10.0"]
 build-backend = "uv_build"
 
-[tool.hatch.version]
+[build-backend]
+module-name = "snakebids"
+module-root = ""
+
+[tool.uv.version]
 source = "vcs"
 
-[tool.hatch.build.hooks.vcs]
+[tool.uv.build.hooks.vcs]
 version-file = "_version.py"
 
 [dependency-groups]
