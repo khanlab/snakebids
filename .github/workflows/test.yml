@@ -7,14 +7,14 @@ on:
   push:
     branches:
       - '*'
-      - '!push-action/*'
+      # - '!push-action/*'
   pull_request:
     branches:
       - '*'
       # - '!push-action/*'
-    paths:
-      - snakebids/**
-      - scripts/**
+    # paths:
+    #   - snakebids/**
+    #   - scripts/**
 
 jobs:
   quality:
