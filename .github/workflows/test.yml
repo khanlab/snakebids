@@ -13,7 +13,8 @@ on:
       - '*'
       - '!push-action/*'
     paths:
-      - snakebids/**
+      - src/**
+      - tests/**
       - scripts/**
 
 jobs:
