@@ -19,7 +19,7 @@ case "$method" in
         eval "poetry run $script"
         ;;
     "uv" )
-        uv pip install .
+        uv pip install --system .
         eval "uv run $script"
         ;;
     "hatch" )
