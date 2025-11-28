@@ -7,14 +7,14 @@ on:
   push:
     branches:
       - '*'
-      - '!push-action/*'
+      # - '!push-action/*'
   pull_request:
     branches:
       - '*'
-      - '!push-action/*'
-    paths:
-      - snakebids/**
-      - scripts/**
+      # - '!push-action/*'
+    # paths:
+    #   - snakebids/**
+    #   - scripts/**
 
 jobs:
   quality:
@@ -86,26 +86,26 @@ jobs:
           --doctest-modules --ignore=docs
           --ignore=src/snakebids/project_template --benchmark-disable
 
-      - name: save coverage report
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-${{ matrix.python-version }}-${{ matrix.split }}
-          path: ./coverage.xml
+  #     - name: save coverage report
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: coverage-${{ matrix.python-version }}-${{ matrix.split }}
+  #         path: ./coverage.xml
 
-  upload_coverage:
-    runs-on: ubuntu-latest
-    needs: [ test ]
-    steps:
-      - name: checkout repository
-        uses: actions/checkout@v4
-      - name: download coverage reports
-        uses: actions/download-artifact@v4
-        with:
-          pattern: coverage-*
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          verbose: true
-          fail_ci_if_error: true
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+  # upload_coverage:
+  #   runs-on: ubuntu-latest
+  #   needs: [ test ]
+  #   steps:
+  #     - name: checkout repository
+  #       uses: actions/checkout@v4
+  #     - name: download coverage reports
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         pattern: coverage-*
+  #     - name: Upload coverage reports to Codecov
+  #       uses: codecov/codecov-action@v4
+  #       with:
+  #         verbose: true
+  #         fail_ci_if_error: true
+  #       env:
+  #         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
