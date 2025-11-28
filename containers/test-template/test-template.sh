@@ -18,6 +18,10 @@ case "$method" in
         poetry install --no-ansi
         eval "poetry run $script"
         ;;
+    "uv" )
+        uv pip install --system .
+        eval "uv run $script"
+        ;;
     "hatch" )
         hatch env create
         eval "hatch env run -- $script"
