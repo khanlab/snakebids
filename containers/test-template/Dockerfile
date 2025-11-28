@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y gcc git && \
     rm -rf /var/lib/apt/lists/* && \
     git config --global --add safe.directory /src && \
     python -m pip install uv && \
+    uv venv && source .venv/bin/activate && \
     uv pip install poetry && \
     uv pip install hatch && \
     uv pip install pdm && \
