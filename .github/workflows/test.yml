@@ -11,6 +11,7 @@ on:
   pull_request:
     branches:
       - '*'
+      - djay/patch-docker-build
       - '!push-action/*'
     paths:
       - snakebids/**
