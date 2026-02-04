@@ -82,18 +82,16 @@ class TestPostFilter:
         assert len(excl) == 1
         assert isinstance(excl[0], str)
 
-    @given(key=st.text())
-    def test_empty_list_of_exclusions_gives_empty_list(self, key: str):
+    def test_empty_list_of_exclusions_gives_inclusive_regex(self):
         pf = PostFilter()
-        pf.add_filter(key, None, iter([]))
-        assert key in pf.exclusions
-        excl = pf.exclusions[key]
-        assert isinstance(excl, list)
-        assert len(excl) == 0
+        pf.add_filter("", None, iter([]))
+        assert "" in pf.exclusions
+        excl = pf.exclusions[""]
+        assert excl == ["^.*"]
 
     @given(
         key=st.text(),
-        exclusion=st.text() | st.lists(st.text(), min_size=1),
+        exclusion=st.text() | st.lists(st.text()),
         test=st.text(),
     )
     def test_exclusion_regex_excludes_correct_values(

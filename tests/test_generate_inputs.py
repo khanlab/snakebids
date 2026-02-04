@@ -43,7 +43,12 @@ from snakebids.paths._presets import bids
 from snakebids.snakemake_compat import expand as sb_expand
 from snakebids.types import InputConfig, InputsConfig
 from snakebids.utils.containers import MultiSelectDict
-from snakebids.utils.utils import DEPRECATION_FLAG, BidsEntity, BidsParseError
+from snakebids.utils.utils import (
+    DEPRECATION_FLAG,
+    BidsEntity,
+    BidsParseError,
+    zip_list_eq,
+)
 from tests import strategies as sb_st
 from tests.helpers import (
     Benchmark,
@@ -51,6 +56,7 @@ from tests.helpers import (
     allow_function_scoped,
     create_dataset,
     create_snakebids_config,
+    debug,
     get_bids_path,
     get_zip_list,
     mock_data,
@@ -1077,10 +1083,8 @@ class TestCustomPaths:
         exclude_filters = PostFilter()
         for key, values in filters.items():
             exclude_filters.add_filter(key, None, values)
-        result_excluded = MultiSelectDict(
-            _parse_custom_path(
-                test_path, UnifiedFilter.from_filter_dict({}, exclude_filters)
-            )
+        result_excluded = _parse_custom_path(
+            test_path, UnifiedFilter.from_filter_dict({}, exclude_filters)
         )
 
         entities_excluded = {
@@ -1090,16 +1094,10 @@ class TestCustomPaths:
         zip_lists = MultiSelectDict(
             # Start with empty lists for each key, otherwise keys will be missing
             {key: list[str]() for key in entities}
-            |
-            # Override entities with relevant filters before making zip lists
-            get_zip_list(entities, it.product(*entities_excluded.values())),
+            | get_zip_list(entities, it.product(*entities_excluded.values())),
         )
 
-        assert BidsComponent(
-            name="foo", path=get_bids_path(zip_lists), zip_lists=zip_lists
-        ) == BidsComponent(
-            name="foo", path=get_bids_path(result_excluded), zip_lists=result_excluded
-        )
+        assert zip_list_eq(zip_lists, result_excluded)
 
     @given(
         boolean=st.booleans(),
@@ -1660,6 +1658,9 @@ class TestParticipantFiltering:
             (["01", "02"], "02"),
             (None, ["02", "03"]),
             (["01", "02"], ["02", "03"]),
+            (["01", "02"], []),
+            ([], ["02", "03"]),
+            ([], []),
         ],
     )
     def test_exclude_and_participant_label_filter_correctly(

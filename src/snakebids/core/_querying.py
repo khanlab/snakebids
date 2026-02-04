@@ -73,12 +73,15 @@ class PostFilter:
             self.exclusions[key] = self._format_exclusions(exclusions)
 
     def _format_exclusions(self, exclusions: Iterable[str] | str):
+        hit = None
         # if multiple items to exclude, combine with with item1|item2|...
         exclude_string = "|".join(
-            re.escape(label) for label in itx.always_iterable(exclusions)
+            hit := re.escape(label) for label in itx.always_iterable(exclusions)
         )
+        if hit is not None:
+            exclude_string = f"(?!(?:{exclude_string})$)"
         # regex to exclude subjects
-        return [f"^((?!({exclude_string})$).*)$"]
+        return [f"^{exclude_string}.*"]
 
 
 @attrs.define(slots=False)
