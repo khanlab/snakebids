@@ -597,6 +597,174 @@ class BidsComponent(BidsPartialComponent):
         """
         return self.path
 
+    def get(
+        self, query: dict[str, str | None] | None = None, /, **entities: str | None
+    ) -> str:
+        """
+        Retrieve a file path matching the provided entities.
+
+        Parameters
+        ----------
+        query : dict[str, str | None], optional
+            A dictionary specifying the values to match for each entity. Entities
+            set to blank strings or `None` are treated as absent.
+
+        **entities : Keyword-argument query (str | None)
+            Define entity values as keyword arguments. Providing both `query` and
+            `**entities` will raise an error.
+
+        Returns
+        -------
+        str
+            The path corresponding to the matched entities.
+
+        Raises
+        ------
+        TypeError
+            If both `query` and `**entities` are provided.
+        KeyError
+            If a queried entity is not present in the component.
+        ValueError
+            If any queried entity value is not present in the component, or if not
+            every entity in the component is queried, or if a dummy wildcard is used
+            without its corresponding entity set to `None` or blank string.
+
+        Notes
+        -----
+        - Wildcards surrounded by single underscores (e.g., `_entity_`) are interpreted
+          as dummy wildcards. These represent the tag portion of optional entities in
+          Snakemake templates.
+        - Dummy wildcards are ignored when their corresponding entity is set as `None`
+          or a blank string. Otherwise, an error will be triggered.
+
+        Examples
+        --------
+        >>> component = BidsComponent(...)
+        >>> component.get(subject="001", session="01", acq="MPRAGE")
+        "sub-001/ses-01/sub-001_ses-01_acq-MPRAGE_suffix.nii.gz"
+        >>> component.get(subject="001", session="01", acq=None)
+        "sub-001/ses-01/sub-001_ses-01_suffix.nii.gz"
+        >>> component.get(subject="001", session="01", _acq_="", acq=None)
+        "sub-001/ses-01/sub-001_ses-01_suffix.nii.gz"
+
+        """
+        # Handle input validation
+        if query is not None and entities:
+            msg = "Cannot provide both 'query' and keyword arguments"
+            raise TypeError(msg)
+
+        # Merge query and entities into a single query dict
+        query_dict: dict[str, str | None] = query if query is not None else entities
+
+        # Separate dummy wildcards from regular entities
+        dummy_wildcards: dict[str, str | None] = {}
+        regular_entities: dict[str, str | None] = {}
+
+        for key, value in query_dict.items():
+            if key.startswith("_") and key.endswith("_") and len(key) > 2:
+                # This is a dummy wildcard
+                dummy_wildcards[key] = value
+            else:
+                regular_entities[key] = value
+
+        # Check that all component entities are queried (exclude dummy wildcards from zip_lists)
+        component_entities = {
+            entity for entity in self.zip_lists.keys()
+            if not (entity.startswith("_") and entity.endswith("_") and len(entity) > 2)
+        }
+        queried_entities = set(regular_entities.keys())
+        
+        if queried_entities != component_entities:
+            missing = component_entities - queried_entities
+            extra = queried_entities - component_entities
+            if extra:
+                msg = f"Queried entity not present in component: {extra}"
+                raise KeyError(msg)
+            if missing:
+                msg = f"Not all component entities were queried: {missing}"
+                raise ValueError(msg)
+
+        # Validate dummy wildcards
+        for dummy_key in dummy_wildcards:
+            # Extract entity name from dummy wildcard (e.g., "_acq_" -> "acq")
+            entity_name = dummy_key[1:-1]
+            
+            # Check if the corresponding entity is in the query
+            if entity_name not in regular_entities:
+                msg = f"Dummy wildcard '{dummy_key}' used without querying entity '{entity_name}'"
+                raise ValueError(msg)
+            
+            # Check if the corresponding entity is absent (None or blank)
+            entity_value = regular_entities[entity_name]
+            if entity_value is not None and entity_value != "":
+                msg = (
+                    f"Dummy wildcard '{dummy_key}' can only be used when "
+                    f"entity '{entity_name}' is set to None or blank string"
+                )
+                raise ValueError(msg)
+
+        # Find the matching entry in zip_lists
+        # Build a query for matching
+        match_values: dict[str, str] = {}
+        absent_entities: set[str] = set()
+        
+        for entity, value in regular_entities.items():
+            if value is None or value == "":
+                absent_entities.add(entity)
+            else:
+                match_values[entity] = value
+
+        # Check that all match values exist in the component
+        for entity, value in match_values.items():
+            if value not in self.zip_lists[entity]:
+                msg = f"Entity value '{value}' not found for entity '{entity}' in component"
+                raise ValueError(msg)
+
+        # Find the matching row in zip_lists
+        # We need to find an index where all match_values are present
+        num_entries = len(next(iter(self.zip_lists.values())))
+        matching_index = None
+
+        for i in range(num_entries):
+            match = True
+            for entity, value in match_values.items():
+                if self.zip_lists[entity][i] != value:
+                    match = False
+                    break
+            if match:
+                matching_index = i
+                break
+
+        if matching_index is None:
+            msg = f"No entry found matching the provided entity values: {match_values}"
+            raise ValueError(msg)
+
+        # Build the path by substituting wildcards
+        result_path = self.path
+        
+        # Handle regular entities
+        for entity in component_entities:
+            wildcard = f"{{{entity}}}"
+            if entity in absent_entities:
+                # For absent entities, substitute with empty string
+                result_path = result_path.replace(wildcard, "")
+            else:
+                # For present entities, substitute with the value
+                if entity in self.zip_lists:
+                    result_path = result_path.replace(wildcard, self.zip_lists[entity][matching_index])
+
+        # Handle dummy wildcards in the path - remove them if corresponding entity is absent
+        for entity in absent_entities:
+            dummy_wildcard = f"{{_{entity}_}}"
+            result_path = result_path.replace(dummy_wildcard, "")
+
+        # Also handle any dummy wildcards that were explicitly provided in the query
+        for dummy_key in dummy_wildcards:
+            dummy_wildcard = f"{{{dummy_key}}}"
+            result_path = result_path.replace(dummy_wildcard, "")
+
+        return result_path
+
 
 class BidsDataset(dict[str, BidsComponent]):
     """A bids dataset parsed by pybids, organized into BidsComponents.
