@@ -660,9 +660,7 @@ class BidsComponent(BidsPartialComponent):
         def is_dummy_wildcard(key: str) -> bool:
             min_dummy_len = 3  # Minimum length for _x_
             return (
-                key.startswith("_")
-                and key.endswith("_")
-                and len(key) > min_dummy_len - 1
+                key.startswith("_") and key.endswith("_") and len(key) >= min_dummy_len
             )
 
         # Separate dummy wildcards from regular entities
@@ -737,10 +735,10 @@ class BidsComponent(BidsPartialComponent):
 
         # Find the matching row in zip_lists
         # We need to find an index where all match_values are present
-        num_entries = len(next(iter(self.zip_lists.values())))
+        num_combinations = len(next(iter(self.zip_lists.values())))
         matching_index = None
 
-        for i in range(num_entries):
+        for i in range(num_combinations):
             match = True
             for entity, value in match_values.items():
                 if self.zip_lists[entity][i] != value:
@@ -763,8 +761,8 @@ class BidsComponent(BidsPartialComponent):
             if entity in absent_entities:
                 # For absent entities, substitute with empty string
                 result_path = result_path.replace(wildcard, "")
-            # For present entities, substitute with the value
-            elif entity in self.zip_lists:
+            else:
+                # For present entities, substitute with the value
                 entity_value = self.zip_lists[entity][matching_index]
                 result_path = result_path.replace(wildcard, entity_value)
 
