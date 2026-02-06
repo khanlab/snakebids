@@ -597,7 +597,7 @@ class BidsComponent(BidsPartialComponent):
         """
         return self.path
 
-    def get(
+    def get(  # noqa: PLR0912, PLR0915
         self, query: dict[str, str | None] | None = None, /, **entities: str | None
     ) -> str:
         """
@@ -656,24 +656,33 @@ class BidsComponent(BidsPartialComponent):
         # Merge query and entities into a single query dict
         query_dict: dict[str, str | None] = query if query is not None else entities
 
+        # Helper function to check if a key is a dummy wildcard
+        def is_dummy_wildcard(key: str) -> bool:
+            min_dummy_len = 3  # Minimum length for _x_
+            return (
+                key.startswith("_")
+                and key.endswith("_")
+                and len(key) > min_dummy_len - 1
+            )
+
         # Separate dummy wildcards from regular entities
         dummy_wildcards: dict[str, str | None] = {}
         regular_entities: dict[str, str | None] = {}
 
         for key, value in query_dict.items():
-            if key.startswith("_") and key.endswith("_") and len(key) > 2:
+            if is_dummy_wildcard(key):
                 # This is a dummy wildcard
                 dummy_wildcards[key] = value
             else:
                 regular_entities[key] = value
 
-        # Check that all component entities are queried (exclude dummy wildcards from zip_lists)
+        # Check that all component entities are queried
+        # (exclude dummy wildcards from zip_lists)
         component_entities = {
-            entity for entity in self.zip_lists.keys()
-            if not (entity.startswith("_") and entity.endswith("_") and len(entity) > 2)
+            entity for entity in self.zip_lists if not is_dummy_wildcard(entity)
         }
         queried_entities = set(regular_entities.keys())
-        
+
         if queried_entities != component_entities:
             missing = component_entities - queried_entities
             extra = queried_entities - component_entities
@@ -688,12 +697,15 @@ class BidsComponent(BidsPartialComponent):
         for dummy_key in dummy_wildcards:
             # Extract entity name from dummy wildcard (e.g., "_acq_" -> "acq")
             entity_name = dummy_key[1:-1]
-            
+
             # Check if the corresponding entity is in the query
             if entity_name not in regular_entities:
-                msg = f"Dummy wildcard '{dummy_key}' used without querying entity '{entity_name}'"
+                msg = (
+                    f"Dummy wildcard '{dummy_key}' used without querying "
+                    f"entity '{entity_name}'"
+                )
                 raise ValueError(msg)
-            
+
             # Check if the corresponding entity is absent (None or blank)
             entity_value = regular_entities[entity_name]
             if entity_value is not None and entity_value != "":
@@ -707,7 +719,7 @@ class BidsComponent(BidsPartialComponent):
         # Build a query for matching
         match_values: dict[str, str] = {}
         absent_entities: set[str] = set()
-        
+
         for entity, value in regular_entities.items():
             if value is None or value == "":
                 absent_entities.add(entity)
@@ -717,7 +729,10 @@ class BidsComponent(BidsPartialComponent):
         # Check that all match values exist in the component
         for entity, value in match_values.items():
             if value not in self.zip_lists[entity]:
-                msg = f"Entity value '{value}' not found for entity '{entity}' in component"
+                msg = (
+                    f"Entity value '{value}' not found for entity '{entity}' "
+                    f"in component"
+                )
                 raise ValueError(msg)
 
         # Find the matching row in zip_lists
@@ -741,19 +756,20 @@ class BidsComponent(BidsPartialComponent):
 
         # Build the path by substituting wildcards
         result_path = self.path
-        
+
         # Handle regular entities
         for entity in component_entities:
             wildcard = f"{{{entity}}}"
             if entity in absent_entities:
                 # For absent entities, substitute with empty string
                 result_path = result_path.replace(wildcard, "")
-            else:
-                # For present entities, substitute with the value
-                if entity in self.zip_lists:
-                    result_path = result_path.replace(wildcard, self.zip_lists[entity][matching_index])
+            # For present entities, substitute with the value
+            elif entity in self.zip_lists:
+                entity_value = self.zip_lists[entity][matching_index]
+                result_path = result_path.replace(wildcard, entity_value)
 
-        # Handle dummy wildcards in the path - remove them if corresponding entity is absent
+        # Handle dummy wildcards in the path
+        # Remove them if corresponding entity is absent
         for entity in absent_entities:
             dummy_wildcard = f"{{_{entity}_}}"
             result_path = result_path.replace(dummy_wildcard, "")

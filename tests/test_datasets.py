@@ -756,19 +756,20 @@ class TestBidsComponentGet:
                 "session": ["01", "02"],
             },
         )
-        
+
         if use_query:
             result = comp.get({"subject": "01", "session": "01"})
         else:
             result = comp.get(subject="01", session="01")
-        
+
         assert isinstance(result, str)
         assert result == "sub-01/ses-01/sub-01_ses-01_T1w.nii.gz"
 
     @pytest.mark.parametrize("use_query", [True, False])
     def test_dummy_wildcards_ignored_if_entity_absent(self, use_query: bool):
-        """Test that dummy wildcards are ignored when the corresponding entity is absent."""
-        # When acq is optional, the path might have {_acq_} for the tag part and {acq} for the value
+        """Test that dummy wildcards are ignored when entity is absent."""
+        # When acq is optional, the path might have {_acq_} for the tag
+        # part and {acq} for the value
         comp = BidsComponent(
             name="test",
             path="sub-{subject}/ses-{session}/{_acq_}sub-{subject}_ses-{session}{acq}_T1w.nii.gz",
@@ -779,13 +780,13 @@ class TestBidsComponentGet:
                 "_acq_": ["acq-", ""],  # dummy wildcard for the tag part
             },
         )
-        
+
         # When acq is absent (empty string), both {acq} and {_acq_} should be ignored
         if use_query:
             result = comp.get({"subject": "01", "session": "01", "acq": ""})
         else:
             result = comp.get(subject="01", session="01", acq="")
-        
+
         assert result == "sub-01/ses-01/sub-01_ses-01_T1w.nii.gz"
 
     def test_error_on_both_query_and_entities(self):
@@ -795,29 +796,35 @@ class TestBidsComponentGet:
             path="sub-{subject}/sub-{subject}_T1w.nii.gz",
             zip_lists={"subject": ["01"]},
         )
-        
-        with pytest.raises(TypeError, match="Cannot provide both 'query' and keyword arguments"):
+
+        with pytest.raises(
+            TypeError, match="Cannot provide both 'query' and keyword arguments"
+        ):
             comp.get({"subject": "01"}, subject="01")
 
     @pytest.mark.parametrize("use_query", [True, False])
     def test_error_on_missing_entity_in_component(self, use_query: bool):
-        """Test that querying an entity not present in the component raises a KeyError."""
+        """Test querying an entity not present raises a KeyError."""
         comp = BidsComponent(
             name="test",
             path="sub-{subject}/sub-{subject}_T1w.nii.gz",
             zip_lists={"subject": ["01"]},
         )
-        
+
         if use_query:
-            with pytest.raises(KeyError, match="Queried entity not present in component"):
+            with pytest.raises(
+                KeyError, match="Queried entity not present in component"
+            ):
                 comp.get({"subject": "01", "session": "01"})
         else:
-            with pytest.raises(KeyError, match="Queried entity not present in component"):
+            with pytest.raises(
+                KeyError, match="Queried entity not present in component"
+            ):
                 comp.get(subject="01", session="01")
 
     @pytest.mark.parametrize("use_query", [True, False])
     def test_error_on_entity_value_absent_in_component(self, use_query: bool):
-        """Test that querying an entity value not present in the component raises a ValueError."""
+        """Test querying entity value not present raises a ValueError."""
         comp = BidsComponent(
             name="test",
             path="sub-{subject}/ses-{session}/sub-{subject}_ses-{session}_T1w.nii.gz",
@@ -826,7 +833,7 @@ class TestBidsComponentGet:
                 "session": ["01", "02"],
             },
         )
-        
+
         if use_query:
             with pytest.raises(ValueError, match="Entity value '99' not found"):
                 comp.get({"subject": "99", "session": "01"})
@@ -836,7 +843,7 @@ class TestBidsComponentGet:
 
     @pytest.mark.parametrize("use_query", [True, False])
     def test_error_on_unqueried_entities_in_component(self, use_query: bool):
-        """Test that missing queries for all entities in the component raises a ValueError."""
+        """Test missing queries for all entities raises a ValueError."""
         comp = BidsComponent(
             name="test",
             path="sub-{subject}/ses-{session}/sub-{subject}_ses-{session}_T1w.nii.gz",
@@ -845,17 +852,21 @@ class TestBidsComponentGet:
                 "session": ["01", "02"],
             },
         )
-        
+
         if use_query:
-            with pytest.raises(ValueError, match="Not all component entities were queried"):
+            with pytest.raises(
+                ValueError, match="Not all component entities were queried"
+            ):
                 comp.get({"subject": "01"})
         else:
-            with pytest.raises(ValueError, match="Not all component entities were queried"):
+            with pytest.raises(
+                ValueError, match="Not all component entities were queried"
+            ):
                 comp.get(subject="01")
 
     @pytest.mark.parametrize("use_query", [True, False])
     def test_error_on_dummy_wildcard_without_absent_entity(self, use_query: bool):
-        """Test that a dummy wildcard used without its corresponding entity set to None or blank raises a ValueError."""
+        """Test dummy wildcard without entity None/blank raises ValueError."""
         comp = BidsComponent(
             name="test",
             path="sub-{subject}/{_acq_}sub-{subject}{acq}_T1w.nii.gz",
@@ -865,11 +876,15 @@ class TestBidsComponentGet:
                 "_acq_": ["acq-", ""],
             },
         )
-        
+
         # This should fail because _acq_ is provided but acq is not None/blank
         if use_query:
-            with pytest.raises(ValueError, match="Dummy wildcard '_acq_' can only be used when"):
+            with pytest.raises(
+                ValueError, match="Dummy wildcard '_acq_' can only be used when"
+            ):
                 comp.get({"subject": "01", "acq": "MPRAGE", "_acq_": "test"})
         else:
-            with pytest.raises(ValueError, match="Dummy wildcard '_acq_' can only be used when"):
+            with pytest.raises(
+                ValueError, match="Dummy wildcard '_acq_' can only be used when"
+            ):
                 comp.get(subject="01", acq="MPRAGE", _acq_="test")
