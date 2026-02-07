@@ -184,6 +184,71 @@ class BidsComponentRow(ImmutableList[str]):
         )
         return self.__class__(data, entity=entity)
 
+    def get(
+        self, query: dict[str, str | None] | None = None, /, **entities: str | None
+    ) -> str:
+        """
+        Retrieve the value matching the provided entity.
+
+        For BidsComponentRow, this method expects only the single entity
+        associated with the row.
+
+        Parameters
+        ----------
+        query : dict[str, str | None], optional
+            A dictionary specifying the value to match for the entity. Entities
+            set to blank strings or `None` are treated as absent.
+
+        **entities : Keyword-argument query (str | None)
+            Define entity value as a keyword argument. Providing both `query` and
+            `**entities` will raise an error.
+
+        Returns
+        -------
+        str
+            The entity value.
+
+        Raises
+        ------
+        TypeError
+            If both `query` and `**entities` are provided.
+        KeyError
+            If a queried entity does not match the row's entity.
+        ValueError
+            If the queried entity value is not present in the row.
+        """
+        # Handle input validation
+        if query is not None and entities:
+            msg = "Cannot provide both 'query' and keyword arguments"
+            raise TypeError(msg)
+
+        # Merge query and entities into a single query dict
+        query_dict: dict[str, str | None] = query if query is not None else entities
+
+        # Convert empty strings to None
+        for key in query_dict:
+            if query_dict[key] == "":
+                query_dict[key] = None
+
+        # Check that only the row's entity is queried
+        if len(query_dict) != 1:
+            msg = f"Expected exactly one entity ({self.entity}), got {len(query_dict)}"
+            raise ValueError(msg)
+
+        if self.entity not in query_dict:
+            msg = f"Expected entity '{self.entity}', got {set(query_dict.keys())}"
+            raise KeyError(msg)
+
+        value = query_dict[self.entity]
+
+        # Check that the value exists in the row
+        if value is not None and value not in self._data:
+            msg = f"Entity value '{value}' not found for entity '{self.entity}'"
+            raise ValueError(msg)
+
+        # Return the value (or None if absent)
+        return value if value is not None else ""
+
 
 @attr.define(kw_only=True)
 class BidsPartialComponent:
@@ -462,6 +527,132 @@ class BidsPartialComponent:
             zip_lists=filter_list(self.zip_lists, filters, regex_search=regex_search),
         )
 
+    def get(  # noqa: PLR0912, PLR0915
+        self, query: dict[str, str | None] | None = None, /, **entities: str | None
+    ) -> int:
+        """
+        Retrieve the index matching the provided entities.
+
+        Parameters
+        ----------
+        query : dict[str, str | None], optional
+            A dictionary specifying the values to match for each entity. Entities
+            set to blank strings or `None` are treated as absent.
+
+        **entities : Keyword-argument query (str | None)
+            Define entity values as keyword arguments. Providing both `query` and
+            `**entities` will raise an error.
+
+        Returns
+        -------
+        int
+            The index corresponding to the matched entities.
+
+        Raises
+        ------
+        TypeError
+            If both `query` and `**entities` are provided.
+        KeyError
+            If a queried entity is not present in the component.
+        ValueError
+            If any queried entity value is not present in the component, or if not
+            every entity in the component is queried, or if a dummy wildcard is used
+            without its corresponding entity set to `None` or blank string.
+
+        Notes
+        -----
+        - Wildcards surrounded by single underscores (e.g., `_entity_`) are interpreted
+          as dummy wildcards. These represent the tag portion of optional entities in
+          Snakemake templates.
+        - Dummy wildcards are ignored when their corresponding entity is set as `None`
+          or a blank string. Otherwise, an error will be triggered.
+        """
+        # Handle input validation
+        if query is not None and entities:
+            msg = "Cannot provide both 'query' and keyword arguments"
+            raise TypeError(msg)
+
+        # Merge query and entities into a single query dict
+        # Convert empty strings to None
+        query_dict: dict[str, str | None] = query if query is not None else entities
+        regular_entities: dict[str, str | None] = {}
+        dummy_wildcards: dict[str, str | None] = {}
+
+        for key, value in query_dict.items():
+            # Convert empty string to None
+            normalized_value = None if value == "" else value
+            
+            # Check if this is a dummy wildcard (starts and ends with _)
+            if key.startswith("_") and key.endswith("_") and len(key) >= 3:
+                dummy_wildcards[key] = normalized_value
+            else:
+                regular_entities[key] = normalized_value
+
+        # Check that all component entities are queried
+        component_entities = set(self.zip_lists.keys())
+        queried_entities = set(regular_entities.keys())
+
+        if queried_entities != component_entities:
+            missing = component_entities - queried_entities
+            extra = queried_entities - component_entities
+            if extra:
+                msg = f"Queried entity not present in component: {extra}"
+                raise KeyError(msg)
+            if missing:
+                msg = f"Not all component entities were queried: {missing}"
+                raise ValueError(msg)
+
+        # Validate dummy wildcards
+        for dummy_key in dummy_wildcards:
+            # Extract entity name from dummy wildcard (e.g., "_acq_" -> "acq")
+            entity_name = dummy_key[1:-1]
+
+            # Check if the corresponding entity is in the query
+            if entity_name not in regular_entities:
+                msg = (
+                    f"Dummy wildcard '{dummy_key}' used without querying "
+                    f"entity '{entity_name}'"
+                )
+                raise ValueError(msg)
+
+            # Check if the corresponding entity is absent (None)
+            entity_value = regular_entities[entity_name]
+            if entity_value is not None:
+                msg = (
+                    f"Dummy wildcard '{dummy_key}' can only be used when "
+                    f"entity '{entity_name}' is set to None or blank string"
+                )
+                raise ValueError(msg)
+
+        # Check that all match values exist in the component
+        for entity, value in regular_entities.items():
+            if value is not None and value not in self.zip_lists[entity]:
+                msg = (
+                    f"Entity value '{value}' not found for entity '{entity}' "
+                    f"in component"
+                )
+                raise ValueError(msg)
+
+        # Find the matching row in zip_lists
+        num_combinations = len(next(iter(self.zip_lists.values())))
+        matching_index = None
+
+        for i in range(num_combinations):
+            match = True
+            for entity, value in regular_entities.items():
+                if self.zip_lists[entity][i] != value:
+                    match = False
+                    break
+            if match:
+                matching_index = i
+                break
+
+        if matching_index is None:
+            msg = f"No entry found matching the provided entity values: {regular_entities}"
+            raise ValueError(msg)
+
+        return matching_index
+
 
 @attr.define(kw_only=True)
 class BidsComponent(BidsPartialComponent):
@@ -597,7 +788,26 @@ class BidsComponent(BidsPartialComponent):
         """
         return self.path
 
-    def get(  # noqa: PLR0912, PLR0915
+    def _get_index(self, index: int) -> str:
+        """
+        Build a file path from the component path template using the given index.
+
+        This method will be implemented in a future PR. For now, it's a stub.
+
+        Parameters
+        ----------
+        index : int
+            Index into zip_lists to use for path building.
+
+        Returns
+        -------
+        str
+            The constructed file path.
+        """
+        msg = "_get_index is not yet implemented"
+        raise NotImplementedError(msg)
+
+    def get(
         self, query: dict[str, str | None] | None = None, /, **entities: str | None
     ) -> str:
         """
@@ -648,136 +858,8 @@ class BidsComponent(BidsPartialComponent):
         "sub-001/ses-01/sub-001_ses-01_suffix.nii.gz"
 
         """
-        # Handle input validation
-        if query is not None and entities:
-            msg = "Cannot provide both 'query' and keyword arguments"
-            raise TypeError(msg)
-
-        # Merge query and entities into a single query dict
-        query_dict: dict[str, str | None] = query if query is not None else entities
-
-        # Helper function to check if a key is a dummy wildcard
-        def is_dummy_wildcard(key: str) -> bool:
-            min_dummy_len = 3  # Minimum length for _x_
-            return (
-                key.startswith("_") and key.endswith("_") and len(key) >= min_dummy_len
-            )
-
-        # Separate dummy wildcards from regular entities
-        dummy_wildcards: dict[str, str | None] = {}
-        regular_entities: dict[str, str | None] = {}
-
-        for key, value in query_dict.items():
-            if is_dummy_wildcard(key):
-                # This is a dummy wildcard
-                dummy_wildcards[key] = value
-            else:
-                regular_entities[key] = value
-
-        # Check that all component entities are queried
-        # (exclude dummy wildcards from zip_lists)
-        component_entities = {
-            entity for entity in self.zip_lists if not is_dummy_wildcard(entity)
-        }
-        queried_entities = set(regular_entities.keys())
-
-        if queried_entities != component_entities:
-            missing = component_entities - queried_entities
-            extra = queried_entities - component_entities
-            if extra:
-                msg = f"Queried entity not present in component: {extra}"
-                raise KeyError(msg)
-            if missing:
-                msg = f"Not all component entities were queried: {missing}"
-                raise ValueError(msg)
-
-        # Validate dummy wildcards
-        for dummy_key in dummy_wildcards:
-            # Extract entity name from dummy wildcard (e.g., "_acq_" -> "acq")
-            entity_name = dummy_key[1:-1]
-
-            # Check if the corresponding entity is in the query
-            if entity_name not in regular_entities:
-                msg = (
-                    f"Dummy wildcard '{dummy_key}' used without querying "
-                    f"entity '{entity_name}'"
-                )
-                raise ValueError(msg)
-
-            # Check if the corresponding entity is absent (None or blank)
-            entity_value = regular_entities[entity_name]
-            if entity_value is not None and entity_value != "":
-                msg = (
-                    f"Dummy wildcard '{dummy_key}' can only be used when "
-                    f"entity '{entity_name}' is set to None or blank string"
-                )
-                raise ValueError(msg)
-
-        # Find the matching entry in zip_lists
-        # Build a query for matching
-        match_values: dict[str, str] = {}
-        absent_entities: set[str] = set()
-
-        for entity, value in regular_entities.items():
-            if value is None or value == "":
-                absent_entities.add(entity)
-            else:
-                match_values[entity] = value
-
-        # Check that all match values exist in the component
-        for entity, value in match_values.items():
-            if value not in self.zip_lists[entity]:
-                msg = (
-                    f"Entity value '{value}' not found for entity '{entity}' "
-                    f"in component"
-                )
-                raise ValueError(msg)
-
-        # Find the matching row in zip_lists
-        # We need to find an index where all match_values are present
-        num_combinations = len(next(iter(self.zip_lists.values())))
-        matching_index = None
-
-        for i in range(num_combinations):
-            match = True
-            for entity, value in match_values.items():
-                if self.zip_lists[entity][i] != value:
-                    match = False
-                    break
-            if match:
-                matching_index = i
-                break
-
-        if matching_index is None:
-            msg = f"No entry found matching the provided entity values: {match_values}"
-            raise ValueError(msg)
-
-        # Build the path by substituting wildcards
-        result_path = self.path
-
-        # Handle regular entities
-        for entity in component_entities:
-            wildcard = f"{{{entity}}}"
-            if entity in absent_entities:
-                # For absent entities, substitute with empty string
-                result_path = result_path.replace(wildcard, "")
-            else:
-                # For present entities, substitute with the value
-                entity_value = self.zip_lists[entity][matching_index]
-                result_path = result_path.replace(wildcard, entity_value)
-
-        # Handle dummy wildcards in the path
-        # Remove them if corresponding entity is absent
-        for entity in absent_entities:
-            dummy_wildcard = f"{{_{entity}_}}"
-            result_path = result_path.replace(dummy_wildcard, "")
-
-        # Also handle any dummy wildcards that were explicitly provided in the query
-        for dummy_key in dummy_wildcards:
-            dummy_wildcard = f"{{{dummy_key}}}"
-            result_path = result_path.replace(dummy_wildcard, "")
-
-        return result_path
+        matching_index = super().get(query, **entities)
+        return self._get_index(matching_index)
 
 
 class BidsDataset(dict[str, BidsComponent]):
