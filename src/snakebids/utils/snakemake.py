@@ -2,17 +2,14 @@
 
 from __future__ import annotations
 
+from snakebids.utils.utils import BidsEntity
+
 
 class SnakemakeWildcards:
     """Define and handle optional wildcard syntax for Snakemake.
 
     This class encapsulates the rules for defining variable wildcards,
     dummy wildcards, and directory wildcards, as well as special wildcards.
-
-    Note
-    ----
-    This class is an internal implementation detail and should not be mentioned
-    in public documentation.
 
     Parameters
     ----------
@@ -23,11 +20,11 @@ class SnakemakeWildcards:
 
     # Special wildcard class attributes with their constraints
     # Format: NAME,CONSTRAINT (without braces)
-    underscore = "___,^|(?<=\\/)|(?<!\\/)_(?=[^\\.])"
-    d = "__d__,^|(?<=\\/)|(?<=.)\\/"
-    datatype = "datatype,(?:(?:^|(?<=\\/))[^_\\/\\-\\n]+(?=\\/))?"
-    suffix = "suffix,(?:(?:^|(?<=\\/|_))[^_\\/\\-]+)?"
-    extension = "extension,(?:\\.[^_\\/\\-]+$)?"
+    underscore = r"___,^|(?<=\/)|(?<!\/)_(?=[^\.])"
+    d = r"__d__,^|(?<=\/)|(?<=.)\/"
+    datatype = r"datatype,(?:(?:^|(?<=\/))[^_\/\-\n]+(?=\/))?"
+    suffix = r"suffix,(?:(?:^|(?<=\/|_))[^_\/\-]+)?"
+    extension = r"extension,(?:\.[^_\/\-]+$)?"
 
     def __init__(self, tag: str) -> None:
         """Initialize with an entity tag name.
@@ -38,13 +35,8 @@ class SnakemakeWildcards:
             The entity tag name. "sub" will be replaced with "subject" and
             "ses" with "session".
         """
-        # Replace sub/ses with subject/session
-        if tag == "sub":
-            self._tag = "subject"
-        elif tag == "ses":
-            self._tag = "session"
-        else:
-            self._tag = tag
+        # Use BidsEntity to handle tag to wildcard conversion
+        self._tag = BidsEntity.from_tag(tag).wildcard
 
     @property
     def dummy(self) -> str:
@@ -55,7 +47,7 @@ class SnakemakeWildcards:
         str
             Dummy wildcard format: _TAG_,CONSTRAINT (without braces)
         """
-        constraint = f"(?:(?:^|(?<=\\/)|(?<!\\/)_){self._tag}\\-(?=[^_\\/\\-\\n]))?"
+        constraint = rf"(?:(?:^|(?<=\/)|(?<!\/)_){self._tag}\-(?=[^_\/\-\n]))?"
         return f"_{self._tag}_,{constraint}"
 
     @property
@@ -67,7 +59,7 @@ class SnakemakeWildcards:
         str
             Variable wildcard format: TAG,CONSTRAINT (without braces)
         """
-        constraint = f"(?:(?<={self._tag}\\-)[^_\\/\\-\\n]+(?=_|\\/|$))?"
+        constraint = rf"(?:(?<={self._tag}\-)[^_\/\-\n]+(?=_|\/|$))?"
         return f"{self._tag},{constraint}"
 
     @property
@@ -79,5 +71,5 @@ class SnakemakeWildcards:
         str
             Directory wildcard format: _TAG_d_,CONSTRAINT (without braces)
         """
-        constraint = f"(?:(?:^|(?<=\\/)){self._tag}\\-[^_\\/\\-\\n]+\\/)?"
+        constraint = rf"(?:(?:^|(?<=\/)){self._tag}\-[^_\/\-\n]+\/)?"
         return f"_{self._tag}_d_,{constraint}"
