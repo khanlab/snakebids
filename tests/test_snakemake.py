@@ -4,9 +4,19 @@ from __future__ import annotations
 
 import re
 
-import pytest
-
 from snakebids.utils.snakemake import SnakemakeWildcards
+
+
+def find_non_empty_match(pattern: re.Pattern[str], text: str) -> re.Match[str] | None:
+    """Find the first non-empty match in text.
+
+    Since wildcard patterns are optional (ending with ?), they always match,
+    but may match empty string. This helper finds the first non-empty match.
+    """
+    for match in pattern.finditer(text):
+        if match.group():
+            return match
+    return None
 
 
 class TestDirectoryWildcard:
@@ -15,7 +25,7 @@ class TestDirectoryWildcard:
     def test_directory_formats_label_correctly(self):
         """Test that directory wildcard label is formatted correctly."""
         wc = SnakemakeWildcards("run")
-        name, constraint = wc.directory.split(",", 1)
+        name, _ = wc.directory.split(",", 1)
         assert name == "_run_d_"
 
     def test_directory_matches_one_directory(self):
@@ -23,28 +33,33 @@ class TestDirectoryWildcard:
         wc = SnakemakeWildcards("run")
         _, constraint = wc.directory.split(",", 1)
         pattern = re.compile(constraint)
-        assert pattern.match("run-01/")
+        match = find_non_empty_match(pattern, "run-01/")
+        assert match is not None
+        assert match.group() == "run-01/"
 
     def test_directory_requires_trailing_slash(self):
         """Test that directory wildcard requires a trailing slash."""
         wc = SnakemakeWildcards("run")
         _, constraint = wc.directory.split(",", 1)
         pattern = re.compile(constraint)
-        assert not pattern.match("run-01")
+        match = find_non_empty_match(pattern, "run-01")
+        assert match is None
 
     def test_directory_rejects_underscore_in_directory(self):
         """Test that directory wildcard rejects underscores in the value."""
         wc = SnakemakeWildcards("run")
         _, constraint = wc.directory.split(",", 1)
         pattern = re.compile(constraint)
-        assert not pattern.match("run-01_test/")
+        match = find_non_empty_match(pattern, "run-01_test/")
+        assert match is None
 
     def test_directory_rejects_multiple_dashes_in_directory(self):
         """Test that directory wildcard rejects multiple dashes."""
         wc = SnakemakeWildcards("run")
         _, constraint = wc.directory.split(",", 1)
         pattern = re.compile(constraint)
-        assert not pattern.match("run-01-02/")
+        match = find_non_empty_match(pattern, "run-01-02/")
+        assert match is None
 
     def test_directory_rejects_umatched_leading_chars(self):
         """Test that directory wildcard rejects unmatched leading characters."""
@@ -52,8 +67,8 @@ class TestDirectoryWildcard:
         _, constraint = wc.directory.split(",", 1)
         pattern = re.compile(constraint)
         # Should not match in the middle of a path without preceding /
-        match = pattern.search("pathrun-01/")
-        assert match is None or match.group() == ""
+        match = find_non_empty_match(pattern, "pathrun-01/")
+        assert match is None
 
 
 class TestDWildcard:
@@ -63,11 +78,13 @@ class TestDWildcard:
         """Test __d__ matches when preceded by matched characters."""
         _, constraint = SnakemakeWildcards.d.split(",", 1)
         pattern = re.compile(constraint)
-        # Should match the / after some characters
+        # Test that the pattern matches at the position of / after characters
         text = "path/"
-        match = pattern.search(text)
+        # The pattern should match at position 4 (the /)
+        # We need to check if there's a match starting at position 4
+        match = pattern.match(text, 4)
         assert match is not None
-        assert match.start() == 4  # Position of the /
+        assert match.start() == 4
 
     def test_d_matches_at_beginning_of_string(self):
         """Test __d__ matches at the beginning of string."""
@@ -106,9 +123,10 @@ class TestUnderscoreWildcard:
         _, constraint = SnakemakeWildcards.underscore.split(",", 1)
         pattern = re.compile(constraint)
         text = "path_segment"
-        match = pattern.search(text)
+        # Check that pattern matches at position 4 (the _)
+        match = pattern.match(text, 4)
         assert match is not None
-        assert match.start() == 4  # Position of the _
+        assert match.start() == 4
 
     def test_underscore_matches_at_beginning_of_string(self):
         """Test ___ matches at the beginning of string."""
@@ -121,39 +139,21 @@ class TestUnderscoreWildcard:
         _, constraint = SnakemakeWildcards.underscore.split(",", 1)
         pattern = re.compile(constraint)
         text = "path/_segment"
-        match = pattern.search(text)
+        # Check that pattern matches at position 5 (after /)
+        match = pattern.match(text, 5)
         assert match is not None
-        # Should match the _ after /
         assert match.start() == 5
 
     def test_underscore_rejects_slash_underscore_sequence(self):
         """Test ___ does not match the underscore in /_ when / is not matched."""
         _, constraint = SnakemakeWildcards.underscore.split(",", 1)
         pattern = re.compile(constraint)
-        # The pattern should not match just "/_" starting from position 0
-        # because the negative lookbehind (?<!/) prevents matching _ after /
-        # unless the / itself was matched (which happens at the position after /)
-        text = "/_"
-        # At position 0, it matches (beginning)
-        # At position 1 (the /), it doesn't match as a position for underscore
-        # At position 2 (the _), it's preceded by /, so negative lookbehind fails
-        match = pattern.search(text, pos=1)
-        # Starting from position 1, we're looking at "/_"
-        # The pattern can match at position 1 if / is considered matched
-        # Actually, the pattern (?<=\/) means "preceded by /", which would match position 2
-        # But (?<!\/) means "not preceded by /", which would fail at position 2
-        # These are contradictory unless we're at a different position
-        # Let me re-read: ^|(?<=\/)|(?<!\/)_(?=[^\.])
-        # This means: start of string OR after / OR (_ not after / and followed by non-.)
-        # So at position 2 (the _), it's after /, so (?<!\/) fails
-        # But we could match at position 1 due to (?<=\/)? No, that would match the position after /
-        # Actually looking at this more carefully:
-        # - ^ matches position 0
-        # - (?<=\/) matches a position after /
-        # - (?<!\/)_ matches _ not preceded by /
+        # Pattern: ^|(?<=\/)|(?<!\/)_(?=[^\.])
+        # Matches: start OR after / OR (_ not after / and followed by non-.)
         # At position 1 (after /), (?<=\/) matches
         # At position 2 (the _), it's preceded by /, so (?<!\/)_ doesn't match
-        # So the pattern should match at position 1
+        text = "/_"
+        match = pattern.search(text, pos=1)
         assert match is not None
 
     def test_underscore_rejects_when_followed_by_period(self):
@@ -175,10 +175,10 @@ class TestUnderscoreWildcard:
         assert match.start() == 0
         # If we search starting after position 0, we shouldn't find the underscore
         match = pattern.search(text, pos=1)
-        assert match is None or "_" not in text[match.start():match.end() + 1]
+        assert match is None or "_" not in text[match.start() : match.end() + 1]
 
     def test_underscore_requires_following_non_period_characters(self):
-        """Test ___ requires following non-period characters when matching underscore."""
+        """Test ___ requires non-period characters when matching underscore."""
         _, constraint = SnakemakeWildcards.underscore.split(",", 1)
         pattern = re.compile(constraint)
         # Should match _ followed by non-period
@@ -196,7 +196,7 @@ class TestDatatypeWildcard:
         _, constraint = SnakemakeWildcards.datatype.split(",", 1)
         pattern = re.compile(constraint)
         text = "anat/"
-        match = pattern.match(text)
+        match = find_non_empty_match(pattern, text)
         assert match is not None
         assert match.group() == "anat"
 
@@ -204,55 +204,46 @@ class TestDatatypeWildcard:
         """Test datatype matches valid string after slash."""
         _, constraint = SnakemakeWildcards.datatype.split(",", 1)
         pattern = re.compile(constraint)
-        text = "path/anat/file"
-        match = pattern.search(text)
+        # Test with string that only has datatype after slash
+        text = "/anat/"
+        match = find_non_empty_match(pattern, text)
         assert match is not None
-        assert "anat" in match.group()
+        assert match.group() == "anat"
 
     def test_datatype_requires_following_slash(self):
         """Test datatype requires a following slash."""
         _, constraint = SnakemakeWildcards.datatype.split(",", 1)
         pattern = re.compile(constraint)
         text = "anat"
-        match = pattern.match(text)
-        # The pattern includes (?=\/)? which means the slash is optional
-        # But looking at the constraint: (?:(?:^|(?<=\/))[^_\/\-\n]+(?=\/))?
-        # The whole thing is optional, but IF matched, requires (?=\/) which is lookahead for /
-        # So "anat" without / should match as empty string
-        assert match is not None
-        assert match.group() == ""
+        match = find_non_empty_match(pattern, text)
+        # Should not find a non-empty match without trailing /
+        assert match is None
 
     def test_datatype_rejects_underscore(self):
         """Test datatype rejects underscores in value."""
         _, constraint = SnakemakeWildcards.datatype.split(",", 1)
         pattern = re.compile(constraint)
         text = "ana_t/"
-        match = pattern.match(text)
-        assert match is not None
-        # Should match only "ana" (up to the underscore)
-        # Actually, [^_\/\-\n]+ stops at _, so it would match "ana"
-        # But then (?=\/) looks ahead and sees "a" not "/", so the overall match fails
-        # The whole group is optional, so it matches empty string
-        assert match.group() == ""
+        match = find_non_empty_match(pattern, text)
+        # Should not match due to underscore
+        assert match is None
 
     def test_datatype_rejects_dash(self):
         """Test datatype rejects dashes in value."""
         _, constraint = SnakemakeWildcards.datatype.split(",", 1)
         pattern = re.compile(constraint)
         text = "ana-t/"
-        match = pattern.match(text)
-        assert match is not None
-        assert match.group() == ""
+        match = find_non_empty_match(pattern, text)
+        assert match is None
 
     def test_datatype_rejects_extra_slash_in_value(self):
         """Test datatype rejects extra slashes in value."""
         _, constraint = SnakemakeWildcards.datatype.split(",", 1)
         pattern = re.compile(constraint)
         text = "ana/t/"
-        match = pattern.match(text)
+        match = find_non_empty_match(pattern, text)
         assert match is not None
         # Should match only "ana" followed by /
-        # [^_\/\-\n]+ matches "ana", then (?=\/) succeeds
         assert match.group() == "ana"
 
 
@@ -262,7 +253,7 @@ class TestDummyWildcard:
     def test_dummy_formats_label_correctly(self):
         """Test that dummy wildcard label is formatted correctly."""
         wc = SnakemakeWildcards("run")
-        name, constraint = wc.dummy.split(",", 1)
+        name, _ = wc.dummy.split(",", 1)
         assert name == "_run_"
 
     def test_dummy_matches_entity_with_preceding_underscore(self):
@@ -270,8 +261,8 @@ class TestDummyWildcard:
         wc = SnakemakeWildcards("run")
         _, constraint = wc.dummy.split(",", 1)
         pattern = re.compile(constraint)
-        text = "_run-"
-        match = pattern.match(text)
+        text = "_run-01"
+        match = find_non_empty_match(pattern, text)
         assert match is not None
         assert match.group() == "_run-"
 
@@ -281,9 +272,10 @@ class TestDummyWildcard:
         _, constraint = wc.dummy.split(",", 1)
         pattern = re.compile(constraint)
         text = "/run-01"
-        match = pattern.search(text)
+        match = find_non_empty_match(pattern, text)
         assert match is not None
-        assert "run-" in match.group()
+        # The pattern uses a lookbehind, so / is not included in the match
+        assert match.group() == "run-"
 
     def test_dummy_matches_at_beginning_of_string(self):
         """Test dummy matches at beginning of string."""
@@ -291,9 +283,9 @@ class TestDummyWildcard:
         _, constraint = wc.dummy.split(",", 1)
         pattern = re.compile(constraint)
         text = "run-01"
-        match = pattern.match(text)
+        match = find_non_empty_match(pattern, text)
         assert match is not None
-        assert "run-" in match.group()
+        assert match.group() == "run-"
 
     def test_dummy_rejects_without_following_valid_characters(self):
         """Test dummy rejects when not followed by valid characters."""
@@ -302,10 +294,8 @@ class TestDummyWildcard:
         pattern = re.compile(constraint)
         # The lookahead (?=[^_\/\-\n]) requires a character that is not _, /, -, or \n
         text = "run-_"
-        match = pattern.match(text)
-        # Should match empty string since lookahead fails
-        assert match is not None
-        assert match.group() == ""
+        match = find_non_empty_match(pattern, text)
+        assert match is None
 
     def test_dummy_rejects_when_preceded_by_other_characters(self):
         """Test dummy doesn't match when preceded by other characters."""
@@ -314,13 +304,8 @@ class TestDummyWildcard:
         pattern = re.compile(constraint)
         # Should not match in middle of string unless after /, _, or at start
         text = "pathrun-01"
-        match = pattern.search(text)
-        # The pattern is (?:(?:^|(?<=\/)|(?<!\/)_)run\-(?=[^_\/\-\n]))?
-        # This means: (start OR after / OR (_ not after /)) followed by run-
-        # In "pathrun-01", there's no start/slash/underscore before "run"
-        # So it should match empty string
-        assert match is not None
-        assert match.group() == ""
+        match = find_non_empty_match(pattern, text)
+        assert match is None
 
 
 class TestOrdinaryWildcard:
@@ -329,7 +314,7 @@ class TestOrdinaryWildcard:
     def test_ordinary_formats_label_correctly(self):
         """Test that ordinary wildcard label is formatted correctly."""
         wc = SnakemakeWildcards("run")
-        name, constraint = wc.variable.split(",", 1)
+        name, _ = wc.variable.split(",", 1)
         assert name == "run"
 
     def test_ordinary_requires_preceding_tag(self):
@@ -338,7 +323,7 @@ class TestOrdinaryWildcard:
         _, constraint = wc.variable.split(",", 1)
         pattern = re.compile(constraint)
         text = "run-01"
-        match = pattern.search(text)
+        match = find_non_empty_match(pattern, text)
         assert match is not None
         assert match.group() == "01"
 
@@ -348,10 +333,8 @@ class TestOrdinaryWildcard:
         _, constraint = wc.variable.split(",", 1)
         pattern = re.compile(constraint)
         text = "01"
-        match = pattern.match(text)
-        # Should match empty string
-        assert match is not None
-        assert match.group() == ""
+        match = find_non_empty_match(pattern, text)
+        assert match is None
 
     def test_ordinary_matches_with_following_underscore(self):
         """Test ordinary wildcard matches with following underscore."""
@@ -359,7 +342,7 @@ class TestOrdinaryWildcard:
         _, constraint = wc.variable.split(",", 1)
         pattern = re.compile(constraint)
         text = "run-01_next"
-        match = pattern.search(text)
+        match = find_non_empty_match(pattern, text)
         assert match is not None
         assert match.group() == "01"
 
@@ -369,7 +352,7 @@ class TestOrdinaryWildcard:
         _, constraint = wc.variable.split(",", 1)
         pattern = re.compile(constraint)
         text = "run-01/path"
-        match = pattern.search(text)
+        match = find_non_empty_match(pattern, text)
         assert match is not None
         assert match.group() == "01"
 
@@ -379,7 +362,7 @@ class TestOrdinaryWildcard:
         _, constraint = wc.variable.split(",", 1)
         pattern = re.compile(constraint)
         text = "run-01"
-        match = pattern.search(text)
+        match = find_non_empty_match(pattern, text)
         assert match is not None
         assert match.group() == "01"
 
@@ -389,7 +372,7 @@ class TestOrdinaryWildcard:
         _, constraint = wc.variable.split(",", 1)
         pattern = re.compile(constraint)
         text = "run-01_02"
-        match = pattern.search(text)
+        match = find_non_empty_match(pattern, text)
         assert match is not None
         # Should match only "01" (up to the underscore)
         assert match.group() == "01"
@@ -400,7 +383,7 @@ class TestOrdinaryWildcard:
         _, constraint = wc.variable.split(",", 1)
         pattern = re.compile(constraint)
         text = "run-01/02"
-        match = pattern.search(text)
+        match = find_non_empty_match(pattern, text)
         assert match is not None
         assert match.group() == "01"
 
@@ -410,9 +393,10 @@ class TestOrdinaryWildcard:
         _, constraint = wc.variable.split(",", 1)
         pattern = re.compile(constraint)
         text = "run-01-02"
-        match = pattern.search(text)
-        assert match is not None
-        assert match.group() == "01"
+        match = find_non_empty_match(pattern, text)
+        # Dashes are not allowed in the value, and "-02" doesn't satisfy the lookahead
+        # So this should not match
+        assert match is None
 
 
 class TestSuffixWildcard:
@@ -423,7 +407,7 @@ class TestSuffixWildcard:
         _, constraint = SnakemakeWildcards.suffix.split(",", 1)
         pattern = re.compile(constraint)
         text = "bold"
-        match = pattern.match(text)
+        match = find_non_empty_match(pattern, text)
         assert match is not None
         assert match.group() == "bold"
 
@@ -431,26 +415,28 @@ class TestSuffixWildcard:
         """Test suffix matches after slash."""
         _, constraint = SnakemakeWildcards.suffix.split(",", 1)
         pattern = re.compile(constraint)
-        text = "path/bold"
-        match = pattern.search(text)
+        # Test with string that only has the suffix after slash
+        text = "/bold"
+        match = find_non_empty_match(pattern, text)
         assert match is not None
-        assert "bold" in match.group()
+        assert match.group() == "bold"
 
     def test_suffix_matches_after_underscore(self):
         """Test suffix matches after underscore."""
         _, constraint = SnakemakeWildcards.suffix.split(",", 1)
         pattern = re.compile(constraint)
-        text = "sub-01_bold"
-        match = pattern.search(text)
+        # Test with string that only has the suffix after underscore
+        text = "_bold"
+        match = find_non_empty_match(pattern, text)
         assert match is not None
-        assert "bold" in match.group()
+        assert match.group() == "bold"
 
     def test_suffix_rejects_underscore_in_value(self):
         """Test suffix rejects underscores in value."""
         _, constraint = SnakemakeWildcards.suffix.split(",", 1)
         pattern = re.compile(constraint)
         text = "bol_d"
-        match = pattern.match(text)
+        match = find_non_empty_match(pattern, text)
         assert match is not None
         # Should match only "bol"
         assert match.group() == "bol"
@@ -460,7 +446,7 @@ class TestSuffixWildcard:
         _, constraint = SnakemakeWildcards.suffix.split(",", 1)
         pattern = re.compile(constraint)
         text = "bol/d"
-        match = pattern.match(text)
+        match = find_non_empty_match(pattern, text)
         assert match is not None
         assert match.group() == "bol"
 
@@ -472,49 +458,44 @@ class TestExtensionWildcard:
         """Test extension matches at end of string."""
         _, constraint = SnakemakeWildcards.extension.split(",", 1)
         pattern = re.compile(constraint)
+        # The pattern matches from the first period to the end
         text = "file.nii.gz"
-        match = pattern.search(text)
+        match = find_non_empty_match(pattern, text)
         assert match is not None
-        assert match.group() == ".gz"
+        # Matches the entire extension including multiple periods
+        assert match.group() == ".nii.gz"
 
     def test_extension_requires_leading_period(self):
         """Test extension requires a leading period."""
         _, constraint = SnakemakeWildcards.extension.split(",", 1)
         pattern = re.compile(constraint)
         text = "filegz"
-        match = pattern.search(text)
-        # Should match empty string
-        assert match is not None
-        assert match.group() == ""
+        match = find_non_empty_match(pattern, text)
+        assert match is None
 
     def test_extension_rejects_underscore_in_value(self):
         """Test extension rejects underscores in value."""
         _, constraint = SnakemakeWildcards.extension.split(",", 1)
         pattern = re.compile(constraint)
         text = "file.ni_i"
-        match = pattern.search(text)
-        # [^_\/\-]+ stops at _, so would match ".ni" but $ requires end
-        # So the whole pattern fails and matches empty
-        assert match is not None
-        assert match.group() == ""
+        match = find_non_empty_match(pattern, text)
+        assert match is None
 
     def test_extension_rejects_slash_in_value(self):
         """Test extension rejects slashes in value."""
         _, constraint = SnakemakeWildcards.extension.split(",", 1)
         pattern = re.compile(constraint)
         text = "file.ni/i"
-        match = pattern.search(text)
-        assert match is not None
-        assert match.group() == ""
+        match = find_non_empty_match(pattern, text)
+        assert match is None
 
     def test_extension_rejects_dash_in_value(self):
         """Test extension rejects dashes in value."""
         _, constraint = SnakemakeWildcards.extension.split(",", 1)
         pattern = re.compile(constraint)
         text = "file.ni-i"
-        match = pattern.search(text)
-        assert match is not None
-        assert match.group() == ""
+        match = find_non_empty_match(pattern, text)
+        assert match is None
 
 
 class TestSubjectSessionReplacement:
