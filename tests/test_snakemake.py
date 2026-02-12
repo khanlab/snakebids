@@ -394,8 +394,8 @@ class TestOrdinaryWildcard:
         pattern = re.compile(constraint)
         text = "run-01-02"
         match = find_non_empty_match(pattern, text)
-        # Dashes are not allowed in the value, and "-02" doesn't satisfy the lookahead
-        # So this should not match
+        # Dashes are not allowed in the value, and "-02" does not satisfy the
+        # lookahead, so this should not match
         assert match is None
 
 
