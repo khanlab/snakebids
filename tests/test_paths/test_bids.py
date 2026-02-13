@@ -51,7 +51,7 @@ def make_bids_testsuite(spec: BidsPathSpec):
         )
         custom_ents = (
             _values()
-            .map(BidsEntity)
+            .map(BidsEntity.from_tag)
             .filter(
                 lambda s: str(s)
                 not in (
