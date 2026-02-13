@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Final
+
 from snakebids.utils.utils import BidsEntity
 
 
@@ -14,17 +16,16 @@ class SnakemakeWildcards:
     Parameters
     ----------
     tag : str
-        The entity tag name (e.g., "sub", "ses", "run"). The tag "sub" will be
-        replaced with "subject" and "ses" with "session".
+        The entity tag name (e.g., "sub", "ses", "run").
     """
 
     # Special wildcard class attributes with their constraints
-    # Format: NAME,CONSTRAINT (without braces)
-    underscore = r"___,^|(?<=\/)|(?<!\/)_(?=[^\.])"
-    d = r"__d__,^|(?<=\/)|(?<=.)\/"
-    datatype = r"datatype,(?:(?:^|(?<=\/))[^_\/\-\n]+(?=\/))?"
-    suffix = r"suffix,(?:(?:^|(?<=\/|_))[^_\/\-]+)?"
-    extension = r"extension,(?:\.[^_\/\-]+$)?"
+    # Format: NAME,CONSTRAINT
+    underscore: Final[str] = r"___,^|(?<=\/)|(?<!\/)_(?=[^\.])"
+    d: Final[str] = r"__d__,^|(?<=\/)|(?<=.)\/"
+    datatype: Final[str] = r"datatype,(?:(?:^|(?<=\/))[^_\/\-\n]+(?=\/))?"
+    suffix: Final[str] = r"suffix,(?:(?:^|(?<=\/|_))[^_\/\-]+)?"
+    extension: Final[str] = r"extension,(?:\.[^_\/\-]+$)?"
 
     def __init__(self, tag: str) -> None:
         """Initialize with an entity tag name.
@@ -32,8 +33,7 @@ class SnakemakeWildcards:
         Parameters
         ----------
         tag : str
-            The entity tag name. "sub" will be replaced with "subject" and
-            "ses" with "session".
+            The entity tag name.
         """
         # Use BidsEntity to handle tag to wildcard conversion
         self._tag = BidsEntity.from_tag(tag).wildcard
@@ -45,7 +45,7 @@ class SnakemakeWildcards:
         Returns
         -------
         str
-            Dummy wildcard format: _TAG_,CONSTRAINT (without braces)
+            Dummy wildcard format: _TAG_,CONSTRAINT
         """
         constraint = rf"(?:(?:^|(?<=\/)|(?<!\/)_){self._tag}\-(?=[^_\/\-\n]))?"
         return f"_{self._tag}_,{constraint}"
@@ -57,7 +57,7 @@ class SnakemakeWildcards:
         Returns
         -------
         str
-            Variable wildcard format: TAG,CONSTRAINT (without braces)
+            Variable wildcard format: TAG,CONSTRAINT
         """
         constraint = rf"(?:(?<={self._tag}\-)[^_\/\-\n]+(?=_|\/|$))?"
         return f"{self._tag},{constraint}"
@@ -69,7 +69,7 @@ class SnakemakeWildcards:
         Returns
         -------
         str
-            Directory wildcard format: _TAG_d_,CONSTRAINT (without braces)
+            Directory wildcard format: _TAG_d_,CONSTRAINT
         """
         constraint = rf"(?:(?:^|(?<=\/)){self._tag}\-[^_\/\-\n]+\/)?"
         return f"_{self._tag}_d_,{constraint}"
