@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install
         uses: ./.github/actions/install-uv
 
@@ -46,7 +46,7 @@ jobs:
       matrix:
         python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: Install
       uses: ./.github/actions/install-uv
       id: setup
@@ -66,7 +66,7 @@ jobs:
         split: ['1', '2', '3', '4', '5']
       fail-fast: false
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install
         uses: ./.github/actions/install-uv
         id: setup
@@ -88,7 +88,7 @@ jobs:
           --ignore=src/snakebids/project_template --benchmark-disable
 
       - name: save coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-${{ matrix.python-version }}-${{ matrix.split }}
           path: ./coverage.xml
@@ -98,13 +98,13 @@ jobs:
     needs: [ test ]
     steps:
       - name: checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: download coverage reports
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: coverage-*
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           verbose: true
           fail_ci_if_error: true
