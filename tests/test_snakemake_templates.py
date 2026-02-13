@@ -45,6 +45,7 @@ class TestDirectoryWildcard:
             ("pathrun-01/", ""),
             ("/run-01/rest", "run-01/"),
             ("prefix/run-01/more", "run-01/"),
+            ("prefixrun-01/", ""),  # Leading chars without slash should not match
         ],
     )
     def test_directory_wildcard_matching(self, text: str, expected: str):
