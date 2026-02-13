@@ -12,7 +12,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install
         uses: ./.github/actions/install-uv
         id: setup
@@ -52,7 +52,7 @@ jobs:
           echo "Changes?: ${{ steps.changes.outputs.changed }}"
       - name: Create PR
         if: steps.changes.outputs.changed == 1
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           commit-message: Update test timings file
           branch: maint/update-test-timings
@@ -70,7 +70,7 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install
         uses: ./.github/actions/install-uv
         id: setup
@@ -92,7 +92,7 @@ jobs:
         split: ['1', '2', '3', '4', '5']
       fail-fast: false
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install
         uses: ./.github/actions/install-uv
         id: setup
