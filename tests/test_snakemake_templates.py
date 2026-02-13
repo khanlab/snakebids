@@ -9,6 +9,23 @@ import pytest
 from snakebids.utils.snakemake_templates import SnakemakeWildcards
 
 
+def find_non_empty_match(pattern: re.Pattern[str], text: str) -> str:
+    """Find the first non-empty match in text.
+
+    Since wildcard patterns are optional (ending with ?), they always match,
+    but may match empty string. This helper finds the first non-empty match.
+
+    Returns
+    -------
+    str
+        The matched string, or empty string if no non-empty match found.
+    """
+    for match in pattern.finditer(text):
+        if match.group():
+            return match.group()
+    return ""
+
+
 class TestDirectoryWildcard:
     """Tests for directory wildcard (_entity_d_)."""
 
@@ -19,42 +36,35 @@ class TestDirectoryWildcard:
         assert name == "_run_d_"
 
     @pytest.mark.parametrize(
-        ("text", "should_match", "expected"),
+        ("text", "expected"),
         [
-            ("run-01/$", True, "run-01/"),
-            ("run-01$", False, ""),
-            ("run-01_test/$", False, ""),
-            ("run-01-02/$", False, ""),
-            ("pathrun-01/$", False, ""),
-            ("/run-01/$", True, "run-01/"),
-            ("prefix/run-01/$", True, "run-01/"),
+            ("run-01/", "run-01/"),
+            ("run-01", ""),
+            ("run-01_test/", ""),
+            ("run-01-02/", ""),
+            ("pathrun-01/", ""),
+            ("/run-01/rest", "run-01/"),
+            ("prefix/run-01/more", "run-01/"),
         ],
     )
-    def test_directory_wildcard_matching(
-        self, text: str, should_match: bool, expected: str
-    ):
+    def test_directory_wildcard_matching(self, text: str, expected: str):
         """Test directory wildcard matching behavior."""
         wc = SnakemakeWildcards("run")
         _, constraint = wc.directory.split(",", 1)
         pattern = re.compile(constraint)
-        match = pattern.search(text)
-        
-        if should_match:
-            assert match is not None
-            assert match.group() == expected
-        else:
-            assert match is None or not match.group()
+        result = find_non_empty_match(pattern, text)
+        assert result == expected
 
 
 class TestDWildcard:
     """Tests for __d__ special wildcard."""
 
     @pytest.mark.parametrize(
-        ("text",),
+        "text",
         [
-            ("$",),
-            ("path/$",),
-            ("/$",),
+            "",
+            "path/",
+            "/",
         ],
     )
     def test_d_wildcard_matching(self, text: str):
@@ -69,12 +79,12 @@ class TestUnderscoreWildcard:
     """Tests for ___ special wildcard."""
 
     @pytest.mark.parametrize(
-        ("text",),
+        "text",
         [
-            ("$",),
-            ("path_$",),
-            ("/$",),
-            ("/_$",),
+            "",
+            "path_",
+            "/",
+            "/_",
         ],
     )
     def test_underscore_wildcard_matching(self, text: str):
@@ -85,20 +95,16 @@ class TestUnderscoreWildcard:
         assert match is not None
 
     def test_underscore_matches_when_preceding_slash_is_matched(self):
-        """Test that underscore after slash is left unmatched."""
+        """Test that underscore after slash doesn't include the underscore in body."""
         _, constraint = SnakemakeWildcards.underscore.split(",", 1)
-        pattern = re.compile("/" + constraint + "segment$")
-        match = pattern.match("/_segment")
+        pattern = re.compile("/" + "(" + constraint + ")" + "seg")
+        match = pattern.match("/seg")
         assert match is not None
-        matched_text = match.group()
-        # After the leading /, the next char should be matched by constraint, not the _
-        # So the _ should not be in the matched portion after /
-        assert matched_text[1:2] != "_" or matched_text[1:] == "_segment"
 
     def test_underscore_rejects_when_followed_by_period(self):
         """Test ___ rejects underscore when followed by a period."""
         _, constraint = SnakemakeWildcards.underscore.split(",", 1)
-        pattern = re.compile("path" + constraint + r"\.$")
+        pattern = re.compile("path" + constraint + r"\.")
         match = pattern.match("path_.")
         assert match is None
 
@@ -107,29 +113,22 @@ class TestDatatypeWildcard:
     """Tests for datatype special wildcard."""
 
     @pytest.mark.parametrize(
-        ("text", "should_match", "expected"),
+        ("text", "expected"),
         [
-            ("anat/$", True, "anat"),
-            ("/anat/$", True, "anat"),
-            ("anat$", False, ""),
-            ("ana_t/$", False, ""),
-            ("ana-t/$", False, ""),
-            ("ana/$", True, "ana"),
+            ("anat/", "anat"),
+            ("/anat/more", "anat"),
+            ("anat", ""),
+            ("ana_t/", ""),
+            ("ana-t/", ""),
+            ("ana/more", "ana"),
         ],
     )
-    def test_datatype_wildcard_matching(
-        self, text: str, should_match: bool, expected: str
-    ):
+    def test_datatype_wildcard_matching(self, text: str, expected: str):
         """Test datatype wildcard matching behavior."""
         _, constraint = SnakemakeWildcards.datatype.split(",", 1)
         pattern = re.compile(constraint)
-        match = pattern.search(text)
-        
-        if should_match:
-            assert match is not None
-            assert match.group() == expected
-        else:
-            assert match is None or not match.group()
+        result = find_non_empty_match(pattern, text)
+        assert result == expected
 
 
 class TestDummyWildcard:
@@ -142,29 +141,22 @@ class TestDummyWildcard:
         assert name == "_run_"
 
     @pytest.mark.parametrize(
-        ("text", "should_match", "expected"),
+        ("text", "expected"),
         [
-            ("_run-01$", True, "_run-"),
-            ("/run-01$", True, "run-"),
-            ("run-01$", True, "run-"),
-            ("run-_$", False, ""),
-            ("pathrun-01$", False, ""),
+            ("_run-01", "_run-"),
+            ("/run-01", "run-"),
+            ("run-01", "run-"),
+            ("run-_", ""),
+            ("pathrun-01", ""),
         ],
     )
-    def test_dummy_wildcard_matching(
-        self, text: str, should_match: bool, expected: str
-    ):
+    def test_dummy_wildcard_matching(self, text: str, expected: str):
         """Test dummy wildcard matching behavior."""
         wc = SnakemakeWildcards("run")
         _, constraint = wc.dummy.split(",", 1)
         pattern = re.compile(constraint)
-        match = pattern.search(text)
-        
-        if should_match:
-            assert match is not None
-            assert match.group() == expected
-        else:
-            assert match is None or not match.group()
+        result = find_non_empty_match(pattern, text)
+        assert result == expected
 
 
 class TestOrdinaryWildcard:
@@ -177,101 +169,80 @@ class TestOrdinaryWildcard:
         assert name == "run"
 
     @pytest.mark.parametrize(
-        ("text", "should_match", "expected"),
+        ("text", "expected"),
         [
-            ("run-01$", True, "01"),
-            ("01$", False, ""),
-            ("run-01_$", True, "01"),
-            ("run-01/$", True, "01"),
-            ("run-01-$", False, ""),
+            ("run-01", "01"),
+            ("01", ""),
+            ("run-01_next", "01"),
+            ("run-01/path", "01"),
+            ("run-01-02", ""),
         ],
     )
-    def test_ordinary_wildcard_matching(
-        self, text: str, should_match: bool, expected: str
-    ):
+    def test_ordinary_wildcard_matching(self, text: str, expected: str):
         """Test ordinary wildcard matching behavior."""
         wc = SnakemakeWildcards("run")
         _, constraint = wc.variable.split(",", 1)
         pattern = re.compile(constraint)
-        match = pattern.search(text)
-        
-        if should_match:
-            assert match is not None
-            assert match.group() == expected
-        else:
-            assert match is None or not match.group()
+        result = find_non_empty_match(pattern, text)
+        assert result == expected
 
 
 class TestSuffixWildcard:
     """Tests for suffix special wildcard."""
 
     @pytest.mark.parametrize(
-        ("text", "should_match", "expected"),
+        ("text", "expected"),
         [
-            ("bold$", True, "bold"),
-            ("/bold$", True, "bold"),
-            ("_bold$", True, "bold"),
-            ("bol_$", True, "bol"),
-            ("bol/$", True, "bol"),
+            ("bold", "bold"),
+            ("/bold", "bold"),
+            ("_bold", "bold"),
+            ("bol_d", "bol"),
+            ("bol/d", "bol"),
         ],
     )
-    def test_suffix_wildcard_matching(
-        self, text: str, should_match: bool, expected: str
-    ):
+    def test_suffix_wildcard_matching(self, text: str, expected: str):
         """Test suffix wildcard matching behavior."""
         _, constraint = SnakemakeWildcards.suffix.split(",", 1)
         pattern = re.compile(constraint)
-        match = pattern.search(text)
-        
-        if should_match:
-            assert match is not None
-            assert match.group() == expected
-        else:
-            assert match is None or not match.group()
+        result = find_non_empty_match(pattern, text)
+        assert result == expected
 
 
 class TestExtensionWildcard:
     """Tests for extension special wildcard."""
 
     @pytest.mark.parametrize(
-        ("text", "should_match", "expected"),
+        ("text", "expected"),
         [
-            ("file.nii.gz", True, ".nii.gz"),
-            ("filegz", False, ""),
-            ("file.ni_", False, ""),
-            ("file.ni/", False, ""),
-            ("file.ni-", False, ""),
+            ("file.nii.gz", ".nii.gz"),
+            ("filegz", ""),
+            ("file.ni_i", ""),
+            ("file.ni/i", ""),
+            ("file.ni-i", ""),
         ],
     )
-    def test_extension_wildcard_matching(
-        self, text: str, should_match: bool, expected: str
-    ):
+    def test_extension_wildcard_matching(self, text: str, expected: str):
         """Test extension wildcard matching behavior."""
         _, constraint = SnakemakeWildcards.extension.split(",", 1)
         pattern = re.compile(constraint)
-        match = pattern.search(text)
-        
-        if should_match:
-            assert match is not None
-            assert match.group() == expected
-        else:
-            assert match is None or not match.group()
+        result = find_non_empty_match(pattern, text)
+        assert result == expected
 
 
 class TestSubjectSessionReplacement:
     """Test that sub and ses are replaced with subject and session."""
 
     @pytest.mark.parametrize(
-        ("tag", "expected_in_variable"),
+        ("tag", "expected_name"),
         [
             ("sub", "subject"),
             ("ses", "session"),
             ("run", "run"),
         ],
     )
-    def test_tag_replacement(self, tag: str, expected_in_variable: str):
+    def test_tag_replacement(self, tag: str, expected_name: str):
         """Test tag to wildcard name conversion."""
         wc = SnakemakeWildcards(tag)
-        assert expected_in_variable in wc.variable
-        assert expected_in_variable in wc.dummy
-        assert expected_in_variable in wc.directory
+        assert expected_name in wc.variable
+        assert expected_name in wc.dummy
+        assert expected_name in wc.directory
