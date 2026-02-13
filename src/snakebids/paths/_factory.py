@@ -33,9 +33,10 @@ class BidsFunction(Protocol):
 
 
 def _handle_subses_dir(
-    root: str | Path | None = None,
-    *,
+    root: str | Path | None,
     spec: BidsPathSpec,
+    /,
+    *,
     sub_dir_default: bool,
     ses_dir_default: bool,
     sub_dir: str | bool | None,
@@ -173,7 +174,7 @@ def bids_factory(spec: BidsPathSpec, *, _implicit: bool = False) -> BidsFunction
         if (
             result := _handle_subses_dir(
                 root,
-                spec=spec,
+                spec,
                 sub_dir_default=subject_dir_default,
                 ses_dir_default=session_dir_default,
                 sub_dir=entities.pop("include_subject_dir", None),
