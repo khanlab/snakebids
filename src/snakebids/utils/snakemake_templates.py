@@ -47,7 +47,7 @@ class SnakemakeWildcards:
         str
             Dummy wildcard format: _TAG_,CONSTRAINT
         """
-        constraint = rf"(?:(?:^|(?<=\/)|(?<!\/)_){self._tag}\-(?=[^_\/\-\n]))?"
+        constraint = rf"(?:(?:^|(?<=\/)|(?<=[^\/])_){self._tag}\-(?=[^_\/\-\n]))?"
         return f"_{self._tag}_,{constraint}"
 
     @property
