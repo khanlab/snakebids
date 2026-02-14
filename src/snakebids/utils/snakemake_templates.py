@@ -244,7 +244,7 @@ class SnakemakeWildcards:
 
     # Special wildcard class attributes with their constraints
     # Format: NAME,CONSTRAINT
-    underscore: Final[str] = r"___,^|(?<=\/)|(?<!\/)_(?=[^\.])"
+    underscore: Final[str] = r"___,^|(?<=\/)|(?<=[^\/])_(?=[^\.])"
     d: Final[str] = r"__d__,^|(?<=\/)|(?<=.)\/"
     datatype: Final[str] = r"datatype,(?:(?:^|(?<=\/))[^_\/\-\n]+(?=\/))?"
     suffix: Final[str] = r"suffix,(?:(?:^|(?<=\/|_))[^_\/\-]+)?"
@@ -270,7 +270,7 @@ class SnakemakeWildcards:
         str
             Dummy wildcard format: _TAG_,CONSTRAINT
         """
-        constraint = rf"(?:(?:^|(?<=\/)|(?<!\/)_){self._tag}\-(?=[^_\/\-\n]))?"
+        constraint = rf"(?:(?:^|(?<=\/)|(?<=[^\/])_){self._tag}\-(?=[^_\/\-\n]))?"
         return f"_{self._tag}_,{constraint}"
 
     @property

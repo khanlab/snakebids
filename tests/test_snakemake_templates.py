@@ -26,224 +26,264 @@ def find_non_empty_match(pattern: re.Pattern[str], text: str) -> str:
     return ""
 
 
-class TestDirectoryWildcard:
-    """Tests for directory wildcard (_entity_d_)."""
-
-    def test_directory_formats_label_correctly(self):
-        """Test that directory wildcard label is formatted correctly."""
-        wc = SnakemakeWildcards("run")
-        name, _ = wc.directory.split(",", 1)
-        assert name == "_run_d_"
-
-    @pytest.mark.parametrize(
-        ("text", "expected"),
-        [
-            ("run-01/", "run-01/"),
-            ("run-01", ""),
-            ("run-01_test/", ""),
-            ("run-01-02/", ""),
-            ("pathrun-01/", ""),
-            ("/run-01/rest", "run-01/"),
-            ("prefix/run-01/more", "run-01/"),
-            ("prefixrun-01/", ""),  # Leading chars without slash should not match
-        ],
-    )
-    def test_directory_wildcard_matching(self, text: str, expected: str):
-        """Test directory wildcard matching behavior."""
-        wc = SnakemakeWildcards("run")
-        _, constraint = wc.directory.split(",", 1)
-        pattern = re.compile(constraint)
-        result = find_non_empty_match(pattern, text)
-        assert result == expected
+def do_match(pattern: str, text: str) -> str | None:
+    match = re.match(f"(?:{pattern})$", text)
+    if match is not None:
+        return match.group(1)
+    return None
 
 
-class TestDWildcard:
-    """Tests for __d__ special wildcard."""
-
-    @pytest.mark.parametrize(
-        "text",
-        [
-            "",
-            "path/",
-            "/",
-        ],
-    )
-    def test_d_wildcard_matching(self, text: str):
-        """Test __d__ wildcard matching behavior."""
-        _, constraint = SnakemakeWildcards.d.split(",", 1)
-        pattern = re.compile(constraint)
-        match = pattern.match(text)
-        assert match is not None
+def test_directory_formats_label_correctly():
+    """Test that directory wildcard label is formatted correctly."""
+    wc = SnakemakeWildcards("run")
+    name, _ = wc.directory.split(",", 1)
+    assert name == "_run_d_"
 
 
-class TestUnderscoreWildcard:
-    """Tests for ___ special wildcard."""
-
-    @pytest.mark.parametrize(
-        "text",
-        [
-            "",
-            "path_",
-            "/",
-            "/_",
-        ],
-    )
-    def test_underscore_wildcard_matching(self, text: str):
-        """Test ___ wildcard matching behavior."""
-        _, constraint = SnakemakeWildcards.underscore.split(",", 1)
-        pattern = re.compile(constraint)
-        match = pattern.match(text)
-        assert match is not None
-
-    def test_underscore_matches_when_preceding_slash_is_matched(self):
-        """Test that underscore after slash doesn't include the underscore in body."""
-        _, constraint = SnakemakeWildcards.underscore.split(",", 1)
-        pattern = re.compile("/" + "(" + constraint + ")" + "seg")
-        match = pattern.match("/seg")
-        assert match is not None
-
-    def test_underscore_rejects_when_followed_by_period(self):
-        """Test ___ rejects underscore when followed by a period."""
-        _, constraint = SnakemakeWildcards.underscore.split(",", 1)
-        pattern = re.compile("path" + constraint + r"\.")
-        match = pattern.match("path_.")
-        assert match is None
-
-
-class TestDatatypeWildcard:
-    """Tests for datatype special wildcard."""
-
-    @pytest.mark.parametrize(
-        ("text", "expected"),
-        [
-            ("anat/", "anat"),
-            ("/anat/more", "anat"),
-            ("anat", ""),
-            ("ana_t/", ""),
-            ("ana-t/", ""),
-            ("ana/more", "ana"),
-        ],
-    )
-    def test_datatype_wildcard_matching(self, text: str, expected: str):
-        """Test datatype wildcard matching behavior."""
-        _, constraint = SnakemakeWildcards.datatype.split(",", 1)
-        pattern = re.compile(constraint)
-        result = find_non_empty_match(pattern, text)
-        assert result == expected
+@pytest.mark.parametrize(
+    ("before", "text", "after", "expected"),
+    [
+        ("", "", "", ""),
+        ("", "more", "more", ""),
+        ("prefix", "prefix", "", ""),
+        ("prefix", "prefixmore", "more", ""),
+        ("", "run-01/", "", "run-01/"),
+        ("", "nur-01/", "", None),
+        ("", "run-/", "", None),
+        ("", "run01/", "", None),
+        ("", "run-_/", "", None),
+        ("", "run--/", "", None),
+        ("", "run-\n/", "", None),
+        ("", "run-01//", "", None),
+        ("", "run-01", "", None),
+        ("", "/run-01/", "", None),
+        ("/", "/run-01/", "", "run-01/"),
+        ("", "prefixrun-01/", "", None),
+        ("prefix", "prefixrun-01/", "", None),
+        ("prefix", "prefix/run-01/", "", None),
+        ("prefix/", "prefix/run-01/", "", "run-01/"),
+        ("prefix/", "prefix/run-01/more", "more", "run-01/"),
+        ("", "run-01_test/", "", None),
+        ("", "run-01-02/", "", None),
+    ],
+)
+def test_directory_wildcard_matching(before: str, after: str, text: str, expected: str):
+    """Test directory wildcard matching behavior."""
+    wc = SnakemakeWildcards("run")
+    _, constraint = wc.directory.split(",", 1)
+    assert do_match(f"{before}({constraint}){after}", text) == expected
 
 
-class TestDummyWildcard:
-    """Tests for dummy wildcard (_entity_)."""
-
-    def test_dummy_formats_label_correctly(self):
-        """Test that dummy wildcard label is formatted correctly."""
-        wc = SnakemakeWildcards("run")
-        name, _ = wc.dummy.split(",", 1)
-        assert name == "_run_"
-
-    @pytest.mark.parametrize(
-        ("text", "expected"),
-        [
-            ("_run-01", "_run-"),
-            ("/run-01", "run-"),
-            ("run-01", "run-"),
-            ("run-_", ""),
-            ("pathrun-01", ""),
-        ],
-    )
-    def test_dummy_wildcard_matching(self, text: str, expected: str):
-        """Test dummy wildcard matching behavior."""
-        wc = SnakemakeWildcards("run")
-        _, constraint = wc.dummy.split(",", 1)
-        pattern = re.compile(constraint)
-        result = find_non_empty_match(pattern, text)
-        assert result == expected
+@pytest.mark.parametrize(
+    ("before", "text", "after", "expected"),
+    [
+        ("prefix", "prefix/", "", "/"),
+        ("", "prefix/", "", None),
+        ("", "", "", ""),
+        ("", "more", "more", ""),
+        ("prefix", "prefixmore", "more", None),
+        ("prefix", "prefix/more", "more", "/"),
+        ("prefix/", "prefix/more", "more", ""),
+        ("prefix", "prefix//more", "more", None),
+        ("", "/more", "more", None),
+        ("/", "/more", "more", ""),
+        ("", "/", "", None),
+        ("/", "/", "", ""),
+        ("/", "//", "", "/"),
+    ],
+)
+def test_d_wildcard_matching(before: str, after: str, text: str, expected: bool):
+    """Test __d__ wildcard matching behavior."""
+    _, constraint = SnakemakeWildcards.d.split(",", 1)
+    assert do_match(f"{before}({constraint}){after}", text) == expected
 
 
-class TestOrdinaryWildcard:
-    """Tests for ordinary/variable wildcard (entity)."""
-
-    def test_ordinary_formats_label_correctly(self):
-        """Test that ordinary wildcard label is formatted correctly."""
-        wc = SnakemakeWildcards("run")
-        name, _ = wc.variable.split(",", 1)
-        assert name == "run"
-
-    @pytest.mark.parametrize(
-        ("text", "expected"),
-        [
-            ("run-01", "01"),
-            ("01", ""),
-            ("run-01_next", "01"),
-            ("run-01/path", "01"),
-            ("run-01-02", ""),
-        ],
-    )
-    def test_ordinary_wildcard_matching(self, text: str, expected: str):
-        """Test ordinary wildcard matching behavior."""
-        wc = SnakemakeWildcards("run")
-        _, constraint = wc.variable.split(",", 1)
-        pattern = re.compile(constraint)
-        result = find_non_empty_match(pattern, text)
-        assert result == expected
+@pytest.mark.parametrize(
+    ("before", "text", "after", "expected"),
+    [
+        ("", "", "", ""),
+        ("", "more", "more", ""),
+        ("prefix", "prefix", "", None),
+        ("prefix", "prefixmore", "more", None),
+        ("prefix", "prefix_more", "more", "_"),
+        ("prefix", "prefix_.more", "more", None),
+        ("prefix", "prefix/more", "more", None),
+        ("prefix/", "prefix/more", "more", ""),
+        ("prefix/", "prefix/_more", "more", None),
+        ("prefix", "prefix/_more", "more", None),
+        ("", "_more", "more", None),
+        ("", "_m", "", None),
+        ("", "_.", "\\.", None),
+        ("", "_", "", None),
+    ],
+)
+def test_underscore_wildcard_matching(
+    before: str, after: str, text: str, expected: bool
+):
+    _, constraint = SnakemakeWildcards.underscore.split(",", 1)
+    assert do_match(f"{before}({constraint}){after}", text) == expected
 
 
-class TestSuffixWildcard:
-    """Tests for suffix special wildcard."""
-
-    @pytest.mark.parametrize(
-        ("text", "expected"),
-        [
-            ("bold", "bold"),
-            ("/bold", "bold"),
-            ("_bold", "bold"),
-            ("bol_d", "bol"),
-            ("bol/d", "bol"),
-        ],
-    )
-    def test_suffix_wildcard_matching(self, text: str, expected: str):
-        """Test suffix wildcard matching behavior."""
-        _, constraint = SnakemakeWildcards.suffix.split(",", 1)
-        pattern = re.compile(constraint)
-        result = find_non_empty_match(pattern, text)
-        assert result == expected
-
-
-class TestExtensionWildcard:
-    """Tests for extension special wildcard."""
-
-    @pytest.mark.parametrize(
-        ("text", "expected"),
-        [
-            ("file.nii.gz", ".nii.gz"),
-            ("filegz", ""),
-            ("file.ni_i", ""),
-            ("file.ni/i", ""),
-            ("file.ni-i", ""),
-        ],
-    )
-    def test_extension_wildcard_matching(self, text: str, expected: str):
-        """Test extension wildcard matching behavior."""
-        _, constraint = SnakemakeWildcards.extension.split(",", 1)
-        pattern = re.compile(constraint)
-        result = find_non_empty_match(pattern, text)
-        assert result == expected
+@pytest.mark.parametrize(
+    ("before", "text", "after", "expected"),
+    [
+        ("", "", "", ""),
+        ("", "more", "more", ""),
+        ("prefix", "prefix", "", ""),
+        ("prefix", "prefixmore", "more", ""),
+        ("", "anat01/", "/", "anat01"),
+        ("", "anat/", "", None),
+        ("", "anat", "", None),
+        ("", "anat_/", "/", None),
+        ("", "anat-01/", "/", None),
+        ("", "an/a/", "/", None),
+        ("", "ana\n/", "/", None),
+        ("", "/ana-01/", "/", None),
+        ("/", "/anat01/", "", None),
+        ("/", "/anat01/", "/", "anat01"),
+        ("prefix", "prefixanat01/", "/", None),
+        ("prefix", "prefix/anat/", "/", None),
+        ("prefix/", "prefix/anat/", "", None),
+        ("prefix/", "prefix/anat/", "/", "anat"),
+        ("prefix/", "prefix/anat01/more", "/more", "anat01"),
+    ],
+)
+def test_datatype_wildcard_matching(before: str, after: str, text: str, expected: bool):
+    _, constraint = SnakemakeWildcards.datatype.split(",", 1)
+    assert do_match(f"{before}({constraint}){after}", text) == expected
 
 
-class TestSubjectSessionReplacement:
-    """Test that sub and ses are replaced with subject and session."""
+@pytest.mark.parametrize(
+    ("before", "text", "after", "expected"),
+    [
+        ("", "", "", ""),
+        ("", "more", "more", ""),
+        ("prefix", "prefix", "", ""),
+        ("prefix", "prefixmore", "more", ""),
+        ("", "run-0", "0", "run-"),
+        ("", "nur-0", "0", None),
+        ("", "run-", "", None),
+        ("", "run-0", "", None),
+        ("", "run0", "0", None),
+        ("", "run", "", None),
+        ("", "run-_", "_", None),
+        ("", "run--", "-", None),
+        ("", "run-\n", "\n", None),
+        ("", "run-/", "/", None),
+        ("", "/run-0", "0", None),
+        ("/", "/run-0", "0", "run-"),
+        ("_", "_run-0", "0", None),
+        ("", "_run-0", "0", None),
+        ("prefix_", "prefix_run-0", "0", None),
+        ("prefix", "prefix_run-0", "0", "_run-"),
+        ("prefix", "prefix/run-0", "0", None),
+        ("prefix/", "prefix/run-0", "0", "run-"),
+        ("prefix/", "prefix/_run-0", "0", None),
+        ("prefix/_", "prefix/_run-0", "0", None),
+        ("prefix/", "prefix/run-0/more", "0/more", "run-"),
+    ],
+)
+def test_dummy_wildcard_matching(before: str, after: str, text: str, expected: bool):
+    _, constraint = SnakemakeWildcards("run").dummy.split(",", 1)
+    assert do_match(f"{before}({constraint}){after}", text) == expected
 
-    @pytest.mark.parametrize(
-        ("tag", "expected_name"),
-        [
-            ("sub", "subject"),
-            ("ses", "session"),
-            ("run", "run"),
-        ],
-    )
-    def test_tag_replacement(self, tag: str, expected_name: str):
-        """Test tag to wildcard name conversion."""
-        wc = SnakemakeWildcards(tag)
-        assert expected_name in wc.variable
-        assert expected_name in wc.dummy
-        assert expected_name in wc.directory
+
+@pytest.mark.parametrize(
+    ("before", "text", "after", "expected"),
+    [
+        ("", "", "", ""),
+        ("", "more", "more", ""),
+        ("prefix", "prefix", "", ""),
+        ("prefix", "prefixmore", "more", ""),
+        ("run-", "run-value0", "", "value0"),
+        ("", "run-value0", "", None),
+        ("run-", "nur-value0", "", None),
+        ("run-", "run-", "", ""),
+        ("run", "runvalue0", "", None),
+        ("run-", "run-_", "", None),
+        ("run-", "run--", "", None),
+        ("run-", "run-\nfwaef", "", None),
+        ("run-", "run-/", "", None),
+        ("/run-", "/run-value0", "", "value0"),
+        ("prefix/run-", "prefix/run-0", "", "0"),
+        ("prefixrun-", "prefixrun-0", "", "0"),
+        ("run-", "run-00", "0", None),
+        ("run-", "run-0more", "more", None),
+        ("run-", "run-0_more", "_more", "0"),
+        ("run-", "run-0/more", "/more", "0"),
+        ("run-", "run-0_more", "more", None),
+        ("run-", "run-0/more", "more", None),
+    ],
+)
+def test_ordinary_wildcard_matching(before: str, after: str, text: str, expected: bool):
+    _, constraint = SnakemakeWildcards("run").variable.split(",", 1)
+    assert do_match(f"{before}({constraint}){after}", text) == expected
+
+
+@pytest.mark.parametrize(
+    ("before", "text", "after", "expected"),
+    [
+        ("", "", "", ""),
+        ("", "more", "more", ""),
+        ("prefix", "prefix", "", ""),
+        ("prefix", "prefixmore", "more", ""),
+        ("", "suffix.ext", "", "suffix.ext"),
+        ("", "suffix-ext", "", None),
+        ("", "suffix_ext", "", None),
+        ("", "suffix/ext", "", None),
+        ("", "_suffix.ext", "", None),
+        ("_", "_suffix.ext", "", "suffix.ext"),
+        ("/_", "/_suffix.ext", "", "suffix.ext"),
+        ("", "/suffix.ext", "", None),
+        ("/", "/suffix.ext", "", "suffix.ext"),
+        ("/", "/suffix.extmore", "more", "suffix.ext"),
+        ("/", "/suffix.ext_more", "_more", "suffix.ext"),
+        ("/", "/suffix.ext/more", "/more", "suffix.ext"),
+        ("/", "/suffix.ext-more", "-more", "suffix.ext"),
+    ],
+)
+def test_suffix_wildcard_matching(before: str, after: str, text: str, expected: bool):
+    _, constraint = SnakemakeWildcards.suffix.split(",", 1)
+    assert do_match(f"{before}({constraint}){after}", text) == expected
+
+
+@pytest.mark.parametrize(
+    ("before", "text", "after", "expected"),
+    [
+        ("", "", "", ""),
+        ("", "more", "more", ""),
+        ("prefix", "prefix", "", ""),
+        ("prefix", "prefixmore", "more", ""),
+        ("", ".ext", "", ".ext"),
+        ("", ".ext-more", "", None),
+        ("", ".ext_more", "", None),
+        ("", ".ext/more", "", None),
+        ("", "before.ext", "", None),
+        ("before", "before.ext", "", ".ext"),
+        ("/_", "/_.ext", "", ".ext"),
+        ("/_", "/_.extmore", "more", None),
+        ("/_", "/_.ext/more", "/more", None),
+        ("/_", "/_.ext_more", "_more", None),
+    ],
+)
+def test_extension_wildcard_matching(
+    before: str, after: str, text: str, expected: bool
+):
+    _, constraint = SnakemakeWildcards.extension.split(",", 1)
+    assert do_match(f"{before}({constraint}){after}", text) == expected
+
+
+@pytest.mark.parametrize(
+    ("tag", "expected_name"),
+    [
+        ("sub", "subject"),
+        ("ses", "session"),
+        ("run", "run"),
+    ],
+)
+def test_tag_replacement(tag: str, expected_name: str):
+    """Test tag to wildcard name conversion."""
+    wc = SnakemakeWildcards(tag)
+    assert expected_name in wc.variable
+    assert expected_name in wc.dummy
+    assert expected_name in wc.directory
