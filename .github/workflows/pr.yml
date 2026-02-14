@@ -11,7 +11,7 @@ jobs:
       pull-requests: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/labeler@v5
+      - uses: actions/labeler@v6
 
   deployment_on_base:
     runs-on: ubuntu-latest
@@ -30,6 +30,6 @@ jobs:
 
     steps:
       - name: Assign reviewer
-        uses: kentaro-m/auto-assign-action@v2.0.0
+        uses: kentaro-m/auto-assign-action@v2.0.1
         with:
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
