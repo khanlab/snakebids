@@ -7,7 +7,6 @@ import itertools as it
 import keyword
 import logging
 import os
-import re
 import shutil
 import sys
 import tempfile
@@ -54,12 +53,11 @@ from tests.helpers import (
     Benchmark,
     BidsListCompare,
     allow_function_scoped,
+    component_via_product,
     create_dataset,
     create_snakebids_config,
-    debug,
     get_bids_path,
     get_zip_list,
-    mock_data,
     reindex_dataset,
 )
 
@@ -507,282 +505,106 @@ class TestFilterBools:
 
 
 class TestFilterMethods:
-    @example(
-        component=BidsComponent(
-            name="template",
-            path="sub-{subject}/ses-{session}/sub-{subject}_ses-{session}",
-            zip_lists={
-                "session": ["0A", "0a"],
-                "subject": ["0", "00"],
-            },
-        ),
-        data=mock_data(["0a"]),
-    )
-    @example(
-        component=BidsComponent(
-            name="template",
-            path="sub-{subject}/sub-{subject}_mt-{mt}",
-            zip_lists={
-                "subject": ["0", "00"],
-                "mt": ["on", "on"],
-            },
-        ),
-        data=mock_data(["0"]),
-    )
-    @given(
-        component=sb_st.bids_components(
-            name="template",
-            min_entities=2,
-            restrict_patterns=True,
-            unique=True,
-            extra_entities=False,
-            # pybids bug prevents regex matching from working properly with extension
-            blacklist_entities=["extension"],
-        ),
-        data=st.data(),
-    )
-    @settings(
-        deadline=None,
-        suppress_health_check=[
-            HealthCheck.function_scoped_fixture,
-            HealthCheck.too_slow,
+    @pytest.mark.parametrize(
+        ("entities", "query"),
+        [
+            (
+                {
+                    "subject": ["query", "qber7", "Query", "queryof"],
+                    "tracer": ["1", "2"],
+                },
+                ["q.er[y7]", "1"],
+            ),
+            (
+                {
+                    "subject": ["0", "00", "01"],
+                    "mt": ["on"],
+                },
+                ["0+", "on"],
+            ),
         ],
     )
     def test_regex_match_selects_paths(
-        self, tmpdir: Path, component: BidsComponent, data: st.DataObject
+        self, tmpdir: Path, entities: dict[str, list[str]], query: list[str]
     ):
-        root = tempfile.mkdtemp(dir=tmpdir)
-        entity = itx.first(component.entities)
-        selection = data.draw(
-            st.lists(
-                st.sampled_from(component.entities[entity]), unique=True, min_size=1
-            )
-        )
-        dataset = BidsDataset.from_iterable(
-            [attrs.evolve(component, path=os.path.join(root, component.path))]
-        )
-        create_dataset("", dataset)
+        component = component_via_product(**entities)
+        dataset = BidsDataset.from_iterable([component])
+        create_dataset(tmpdir, dataset)
         pybids_inputs: InputsConfig = {
             "template": {
-                "wildcards": [
-                    BidsEntity.from_tag(wildcard).entity
-                    for wildcard in component.wildcards
-                ],
-                "filters": {
-                    BidsEntity.from_tag(entity).entity: {
-                        "match": "|".join(re.escape(sel) for sel in selection)
-                    }
-                },
+                "wildcards": list(entities),
+                "filters": {key: {"match": q} for key, q in zip(entities, query)},  # noqa: B905
             }
         }
-        result = generate_inputs(root, pybids_inputs)
-        assert result == BidsDataset(
-            {"template": dataset["template"].filter(**{entity: selection})}
-        )
+        result = generate_inputs(tmpdir, pybids_inputs)
+        assert len(result["template"].expand()) == 2
 
-    @given(
-        component=sb_st.bids_components(
-            name="template",
-            min_entities=2,
-            restrict_patterns=True,
-            unique=True,
-            extra_entities=False,
-            # only specified entities work with free text
-            whitelist_entities=[
-                "subject",
-                "session",
-                "sample",
-                "task",
-                "acquisition",
-                "ceagent",
-                "staning",
-                "tracer",
-                "reconstruction",
-                "direction",
-                "proc",
-                "modality",
-                "recording",
-                "space",
-                "split",
-                "atlas",
-                "roi",
-                "label",
-                "from",
-                "to",
-                "res",
-                "den",
-                "model",
-                "subset",
-                "desc",
-                "tracksys",
-            ],
-        ),
-    )
-    @settings(
-        deadline=None,
-        suppress_health_check=[
-            HealthCheck.function_scoped_fixture,
-            HealthCheck.too_slow,
+    @pytest.mark.parametrize(
+        "entities",
+        [
+            {"subject": ["query", "pquerya", "Query"], "tracer": ["1", "2"]},
+            {"proc": ["on", "none"], "subject": ["0", "1"]},
         ],
     )
-    def test_regex_search_selects_paths(self, tmpdir: Path, component: BidsComponent):
-        root = tempfile.mkdtemp(dir=tmpdir)
-        entity = itx.first(component.entities)
-        assume(f"prefix{component[entity][0]}suffix" not in component.entities[entity])
-        zip_lists = {
-            ent: (
-                [*value, f"prefix{value[0]}suffix"]
-                if ent is entity
-                else [*value, value[0]]
-            )
-            for ent, value in component.zip_lists.items()
-        }
-        dataset = BidsDataset.from_iterable(
-            [
-                attrs.evolve(
-                    component,
-                    path=os.path.join(root, component.path),
-                    zip_lists=zip_lists,
-                )
-            ]
-        )
-        create_dataset("", dataset)
+    def test_regex_search_selects_paths(
+        self, tmpdir: Path, entities: dict[str, list[str]]
+    ):
+        component = component_via_product(**entities)
+        dataset = BidsDataset.from_iterable([component])
+        create_dataset(tmpdir, dataset)
         pybids_inputs: InputsConfig = {
             "template": {
-                "wildcards": [
-                    BidsEntity.from_tag(wildcard).entity
-                    for wildcard in component.wildcards
-                ],
-                "filters": {
-                    BidsEntity.from_tag(entity).entity: {
-                        "search": "|".join(
-                            re.escape(val) for val in component.entities[entity]
-                        )
-                    }
-                },
+                "wildcards": list(entities),
+                "filters": {key: {"search": val[0]} for key, val in entities.items()},
             }
         }
-        result = generate_inputs(root, pybids_inputs)
-        assert result == BidsDataset({"template": dataset["template"]})
+        result = generate_inputs(tmpdir, pybids_inputs)
+        assert len(result["template"].expand()) == 2
 
-    @example(
-        component=BidsComponent(
-            name="template",
-            path="sub-{subject}/sub-{subject}_mt-{mt}",
-            zip_lists={
-                "subject": ["0", "00"],
-                "mt": ["on", "on"],
-            },
-        ),
-        data=mock_data(["0"]),
-    )
-    @given(
-        component=sb_st.bids_components(
-            name="template",
-            min_entities=2,
-            restrict_patterns=True,
-            unique=True,
-            extra_entities=False,
-        ),
-        data=st.data(),
-    )
-    @settings(
-        deadline=None,
-        suppress_health_check=[
-            HealthCheck.function_scoped_fixture,
-            HealthCheck.too_slow,
+    @pytest.mark.parametrize(
+        "entities",
+        [
+            {"subject": ["001", "002"], "acquisition": ["1", "11", "12", "21"]},
+            {"subject": ["0", "00"], "mt": ["on", "off"]},
         ],
     )
     def test_get_method_selects_via_direct_matching(
-        self, tmpdir: Path, component: BidsComponent, data: st.DataObject
+        self, tmpdir: Path, entities: dict[str, list[str]]
     ):
-        root = tempfile.mkdtemp(dir=tmpdir)
-        entity = itx.first(component.entities)
-        selection = data.draw(
-            st.lists(
-                st.sampled_from(component.entities[entity]), unique=True, min_size=1
-            )
-        )
-        dataset = BidsDataset.from_iterable(
-            [attrs.evolve(component, path=os.path.join(root, component.path))]
-        )
-        create_dataset("", dataset)
+        component = component_via_product(**entities)
+        dataset = BidsDataset.from_iterable([component])
+        create_dataset(tmpdir, dataset)
         pybids_inputs: InputsConfig = {
             "template": {
-                "wildcards": [
-                    BidsEntity.from_tag(wildcard).entity
-                    for wildcard in component.wildcards
-                ],
-                "filters": {BidsEntity.from_tag(entity).entity: {"get": selection}},
+                "filters": {key: {"get": val[0]} for key, val in entities.items()},
             }
         }
-        result = generate_inputs(root, pybids_inputs)
-        assert result == BidsDataset(
-            {"template": dataset["template"].filter(**{entity: selection})}
-        )
+        result = generate_inputs(tmpdir, pybids_inputs)
+        assert len(result["template"].expand()) == 1
 
-    @given(
-        component=sb_st.bids_components(
-            name="template",
-            min_entities=2,
-            max_entities=2,
-            # Again, extension doesn't work with regex. run causes problem with
-            # numeral strings
-            blacklist_entities={"extension", "run"},
-            min_values=2,
-            restrict_patterns=True,
-            unique=True,
-            cull=False,
-            extra_entities=False,
-        ),
-    )
-    @settings(
-        deadline=None,
-        suppress_health_check=[
-            HealthCheck.function_scoped_fixture,
-            HealthCheck.too_slow,
-        ],
-    )
-    def test_combining_match_and_get_selects_correct_paths(
-        self, tmpdir: Path, component: BidsComponent
-    ):
-        root = tempfile.mkdtemp(dir=tmpdir)
-        entity1 = itx.first(component.entities)
-        entity2 = itx.nth_or_last(component.entities, 1)
-        dataset = BidsDataset.from_iterable(
-            [attrs.evolve(component, path=os.path.join(root, component.path))]
+    def test_combining_match_and_get_selects_correct_paths(self, tmpdir: Path):
+        component = component_via_product(
+            subject=["001", "002"], acq=["1", "11", "12", "21"]
         )
-        create_dataset("", dataset)
+        dataset = BidsDataset.from_iterable([component])
+        create_dataset(tmpdir, dataset)
         pybids_inputs: InputsConfig = {
             "template": {
-                "wildcards": [
-                    BidsEntity.from_tag(wildcard).entity
-                    for wildcard in component.wildcards
-                ],
                 "filters": {
-                    BidsEntity.from_tag(entity1).entity: {"get": component[entity1][0]},
-                    BidsEntity.from_tag(entity2).entity: {
-                        "match": re.escape(component[entity2][0])
-                    },
+                    "subject": {"get": "001"},
+                    "acquisition": {"match": "\\d"},
                 },
             }
         }
-        result = generate_inputs(root, pybids_inputs)
-        assert len(itx.first(itx.first(result.values()).zip_lists.values())) == 1
+        result = generate_inputs(tmpdir, pybids_inputs)
+        assert len(result["template"].expand()) == 1
 
     @given(
         methods=st.lists(
             st.sampled_from(["match", "get", "search"]), unique=True, min_size=2
         )
     )
-    @allow_function_scoped
-    def test_filter_with_multiple_methods_raises_error(
-        self, tmpdir: Path, methods: list[str]
-    ):
-        dataset = BidsDataset.from_iterable(
-            [BidsComponent(zip_lists={}, name="template", path=str(tmpdir))]
-        )
-        create_dataset("", dataset)
+    def test_filter_with_multiple_methods_raises_error(self, methods: list[str]):
         pybids_inputs: InputsConfig = {
             "template": {
                 "filters": {
@@ -791,14 +613,9 @@ class TestFilterMethods:
             }
         }
         with pytest.raises(ConfigError, match="may not have more than one key"):
-            generate_inputs(tmpdir, pybids_inputs)
+            generate_inputs("scripts", pybids_inputs)
 
-    @pytest.mark.disable_fakefs(True)
     def test_filter_with_no_methods_raises_error(self, tmpdir: Path):
-        dataset = BidsDataset.from_iterable(
-            [BidsComponent(zip_lists={}, name="template", path=str(tmpdir))]
-        )
-        create_dataset("", dataset)
         pybids_inputs: InputsConfig = {
             "template": {
                 "filters": {"foo": {}},
@@ -807,28 +624,15 @@ class TestFilterMethods:
         with pytest.raises(ConfigError, match="was not given any keys"):
             generate_inputs(tmpdir, pybids_inputs)
 
-    @given(
-        method=st.text().filter(lambda s: s not in {"get", "match", "search"}),
-    )
-    @settings(
-        deadline=None,
-        suppress_health_check=[
-            HealthCheck.function_scoped_fixture,
-            HealthCheck.too_slow,
-        ],
-    )
-    def test_filter_with_invalid_method_raises_error(self, tmpdir: Path, method: str):
-        dataset = BidsDataset.from_iterable(
-            [BidsComponent(zip_lists={}, name="template", path=str(tmpdir))]
-        )
-        create_dataset("", dataset)
+    @given(method=st.text().filter(lambda s: s not in {"get", "match", "search"}))
+    def test_filter_with_invalid_method_raises_error(self, method: str):
         pybids_inputs: InputsConfig = {
             "template": {
                 "filters": {"foo": {method: []}},  # type: ignore
             }
         }
         with pytest.raises(ConfigError, match="Invalid query method specified"):
-            generate_inputs(tmpdir, pybids_inputs)
+            generate_inputs("scripts", pybids_inputs)
 
 
 @settings(

@@ -82,28 +82,25 @@ class TestPostFilter:
         assert len(excl) == 1
         assert isinstance(excl[0], str)
 
-    def test_empty_list_of_exclusions_gives_inclusive_regex(self):
+    def test_empty_list_of_exclusions_treated_as_none(self):
         pf = PostFilter()
         pf.add_filter("", None, iter([]))
-        assert "" in pf.exclusions
-        excl = pf.exclusions[""]
-        assert excl == ["^.*"]
+        assert "" not in pf.exclusions
 
     @given(
-        key=st.text(),
-        exclusion=st.text() | st.lists(st.text()),
+        exclusion=st.text() | st.lists(st.text(), min_size=1),
         test=st.text(),
     )
     def test_exclusion_regex_excludes_correct_values(
-        self, key: str, exclusion: str | list[str], test: str
+        self, exclusion: str | list[str], test: str
     ):
         excl_list = list(itx.always_iterable(exclusion))
         assume(test not in excl_list)
 
         pf = PostFilter()
-        pf.add_filter(key, None, exclusion)
+        pf.add_filter("", None, exclusion)
+        pattern = pf.exclusions[""][0]
         # normalize exclusion into a list for testing
-        pattern = pf.exclusions[key][0]
         # should not match excluded values
         for ex in excl_list:
             assert re.match(pattern, ex) is None
@@ -462,9 +459,8 @@ class TestGetMatchingFiles:
             filter_dict["search"] = {"search": "error" if error else "search"}
         return UnifiedFilter.from_filter_dict(filter_dict)
 
-    @pytest.mark.parametrize(
-        ("get", "search"), [(False, False), (True, True), (True, False), (False, True)]
-    )
+    @pytest.mark.parametrize("get", [False, True])
+    @pytest.mark.parametrize("search", [False, True])
     def test_get_and_search_called_correctly(self, get: bool, search: bool):
         """Test appropriate call of BIDSLayout.get.
 

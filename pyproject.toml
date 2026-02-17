@@ -101,9 +101,6 @@ docs = [
 [project.scripts]
 snakebids = "snakebids.admin:main"
 
-[tool.poe]
-executor.type = "uv"
-
 [tool.poe.tasks]
 setup = "pre-commit install"
 sort.cmd = "ruff check --fix --select I001 $path"
