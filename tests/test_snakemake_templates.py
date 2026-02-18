@@ -10,10 +10,7 @@ import more_itertools as itx
 import pytest
 from hypothesis import assume, example, given
 
-from snakebids.utils.snakemake_templates import (
-    UNDERSCORE_SQUELCHERS,
-    SnakemakeFormatter,
-)
+from snakebids.utils.snakemake_templates import SnakemakeFormatter
 from tests.helpers import Benchmark
 
 
@@ -370,7 +367,9 @@ class TestUnderscoreSquelching:
         key = f"_{entity}_"
         formatter = SnakemakeFormatter()
         target = literal.replace("{{", "{") + (
-            "_" if literal and literal[-1] not in UNDERSCORE_SQUELCHERS else ""
+            "_"
+            if literal and literal[-1] not in SnakemakeFormatter.UNDERSCORE_SQUELCHERS
+            else ""
         )
         if entity != "_":
             target += entity + "-"
@@ -386,7 +385,7 @@ class TestUnderscoreSquelching:
     ):
         formatter = SnakemakeFormatter()
         target = f"{entity}-" if entity != "_" else ""
-        if value and value[-1] not in UNDERSCORE_SQUELCHERS:
+        if value and value[-1] not in SnakemakeFormatter.UNDERSCORE_SQUELCHERS:
             target = f"{value}_{target}"
         elif literal and not value:
             target = f"_{target}"
