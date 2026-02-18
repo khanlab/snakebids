@@ -5,8 +5,10 @@ from __future__ import annotations
 import re
 
 import pytest
+from hypothesis import given
 
-from snakebids.utils.snakemake_templates import SnakemakeWildcards
+from snakebids.utils.snakemake_templates import SnakemakeFormatter, SnakemakeWildcards
+from tests.test_snakemake_templates.strategies import safe_field_names
 
 
 def do_match(pattern: str, text: str) -> str | None:
@@ -16,11 +18,55 @@ def do_match(pattern: str, text: str) -> str | None:
     return None
 
 
-def test_directory_formats_label_correctly():
+class TestCorrectLabels:
+    @given(entity=safe_field_names())
+    def test_directory_formats_label_correctly(self, entity: str):
+        """Test that directory wildcard label is formatted correctly."""
+        wc = SnakemakeWildcards(entity)
+        formatter = SnakemakeFormatter()
+        assert (
+            formatter.format(f"{{{wc.directory}}}", **{entity: "foo"})
+            == f"{entity}-foo/"
+        )
+
+    @given(entity=safe_field_names())
+    def test_dummy_formats_label_correctly(self, entity: str):
+        """Test that directory wildcard label is formatted correctly."""
+        wc = SnakemakeWildcards(entity)
+        formatter = SnakemakeFormatter()
+        assert formatter.format(f"{{{wc.dummy}}}", **{entity: "foo"}) == f"{entity}-"
+
+    @given(entity=safe_field_names(min_size=1).filter(lambda s: not s.isdigit()))
+    def test_variable_formats_label_correctly(self, entity: str):
+        """Test that directory wildcard label is formatted correctly."""
+        wc = SnakemakeWildcards(entity)
+        formatter = SnakemakeFormatter()
+        assert formatter.format(f"{{{wc.variable}}}", **{entity: "foo"}) == "foo"
+
+    def test_underscore_formats_label_correctly(self):
+        """Test that directory wildcard label is formatted correctly."""
+        formatter = SnakemakeFormatter()
+        assert formatter.format(f"foo{{{SnakemakeWildcards.underscore}}}") == "foo_"
+
+    def test_slash_formats_label_correctly(self):
+        """Test that directory wildcard label is formatted correctly."""
+        formatter = SnakemakeFormatter()
+        assert (
+            formatter.format(f"anat{{{SnakemakeWildcards.slash}}}", datatype="anat")
+            == "anat/"
+        )
+
+
+@pytest.mark.parametrize("entity", ["datatype", "suffix", "extension"])
+def test_special_entities_formats_label_correctly(entity: str):
     """Test that directory wildcard label is formatted correctly."""
-    wc = SnakemakeWildcards("run")
-    name, _ = wc.directory.split(",", 1)
-    assert name == "_run_d_"
+    formatter = SnakemakeFormatter()
+    assert (
+        formatter.format(
+            f"{{{getattr(SnakemakeWildcards, entity)}}}", **{entity: "foo"}
+        )
+        == "foo"
+    )
 
 
 @pytest.mark.parametrize(
