@@ -42,7 +42,7 @@ class SnakemakeFormatter(string.Formatter):
     def vformat(self, format_string: str, args: Any, kwargs: Any) -> str: ...
 
     def vformat(self, format_string: str, args: Any, kwargs: Any) -> str:
-        """Call base vformat after resetting scuelch_undercore."""
+        """Call base vformat after resetting squelch_underscore."""
         self.squelch_underscore = True
         return super().vformat(format_string, args, kwargs)
 
