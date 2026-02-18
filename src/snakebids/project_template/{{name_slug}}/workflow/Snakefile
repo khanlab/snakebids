@@ -27,7 +27,7 @@ rule all:
         cat <<EOF
 All set 🚀🚀!
 
-To get going, replace this \`rule all\` block with your own and start adding some rules.
+To get going, replace this \\`rule all\\` block with your own and start adding some rules.
 
 If you need help, check out the tutorial:
     https://snakebids.readthedocs.io/en/stable/tutorial/tutorial.html
