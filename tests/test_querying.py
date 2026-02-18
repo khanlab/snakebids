@@ -302,7 +302,7 @@ class TestUnifiedFilter:
 class TestCompileFilters:
     @pytest.mark.parametrize(
         ("method_a", "method_b"),
-        list(it.combinations(tuple(_VALID_FILTER_METHODS), 2)),
+        list(it.combinations(sorted(_VALID_FILTER_METHODS), 2)),
     )
     def test_multiple_filtering_methods_raises_error(
         self, method_a: str, method_b: str
