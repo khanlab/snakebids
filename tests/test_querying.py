@@ -4,7 +4,7 @@ import itertools as it
 import re
 import string
 from collections.abc import Sequence
-from typing import cast
+from typing import Any, cast
 
 import more_itertools as itx
 import pytest
@@ -51,6 +51,52 @@ class TestPostFilter:
         pf = PostFilter()
         assert pf.inclusions == {}
         assert pf.exclusions == {}
+
+    @given(other=sb_st.everything_except(PostFilter))
+    def test_postfilter_not_equal_to_other_types(self, other: Any):
+        assert PostFilter() != other
+
+    @given(
+        inclusions=st.dictionaries(st.text(), st.text() | st.lists(st.text())),
+        exclusions=st.dictionaries(st.text(), st.text() | st.lists(st.text())),
+    )
+    def test_postfilter_equal_to_self(
+        self,
+        inclusions: dict[str, str | list[str]],
+        exclusions: dict[str, str | list[str]],
+    ):
+        pf1 = PostFilter()
+        pf2 = PostFilter()
+        for pf in (pf1, pf2):
+            for key, val in inclusions.items():
+                pf.add_filter(key, inclusions=val, exclusions=None)
+            for key, val in exclusions.items():
+                pf.add_filter(key, inclusions=None, exclusions=val)
+        assert pf1 == pf2
+
+    @given(
+        inclusions=st.dictionaries(st.text(), st.text() | st.lists(st.text())),
+        exclusions=st.dictionaries(st.text(), st.text() | st.lists(st.text())),
+    )
+    def test_postfilter_not_equal_when_filters_different(
+        self,
+        inclusions: dict[str, str | list[str]],
+        exclusions: dict[str, str | list[str]],
+    ):
+        assume(inclusions != exclusions)
+        pf1 = PostFilter()
+        pf2 = PostFilter()
+        for key, val in inclusions.items():
+            pf1.add_filter(key, inclusions=val, exclusions=None)
+        for key, val in exclusions.items():
+            pf1.add_filter(key, inclusions=None, exclusions=val)
+
+        for key, val in exclusions.items():
+            pf2.add_filter(key, inclusions=val, exclusions=None)
+        for key, val in inclusions.items():
+            pf2.add_filter(key, inclusions=None, exclusions=val)
+
+        assert pf1 != pf2
 
     @given(key=st.text(), val=st.text() | st.iterables(st.text()))
     def test_add_filter_turns_inclusions_into_list(
@@ -488,7 +534,9 @@ class TestGetMatchingFiles:
             get_matching_files(layout, filters)  # pyright: ignore[reportArgumentType]
 
     @given(get=st.sets(st.text()), search=st.sets(st.text()))
-    def test_returns_union_of_get_and_search(self, get: set[str], search: set[str]):
+    def test_returns_intersection_of_get_and_search(
+        self, get: set[str], search: set[str]
+    ):
         files = get_matching_files(
             _FakeBIDSLayout(get, search),  # pyright: ignore[reportArgumentType]
             self._create_unified_filter(get=True, search=True, error=False),

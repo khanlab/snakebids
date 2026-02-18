@@ -604,7 +604,10 @@ class TestFilterMethods:
             st.sampled_from(["match", "get", "search"]), unique=True, min_size=2
         )
     )
-    def test_filter_with_multiple_methods_raises_error(self, methods: list[str]):
+    @allow_function_scoped
+    def test_filter_with_multiple_methods_raises_error(
+        self, methods: list[str], tmpdir: Path
+    ):
         pybids_inputs: InputsConfig = {
             "template": {
                 "filters": {
@@ -613,7 +616,7 @@ class TestFilterMethods:
             }
         }
         with pytest.raises(ConfigError, match="may not have more than one key"):
-            generate_inputs("scripts", pybids_inputs)
+            generate_inputs(tmpdir, pybids_inputs)
 
     def test_filter_with_no_methods_raises_error(self, tmpdir: Path):
         pybids_inputs: InputsConfig = {
@@ -625,14 +628,15 @@ class TestFilterMethods:
             generate_inputs(tmpdir, pybids_inputs)
 
     @given(method=st.text().filter(lambda s: s not in {"get", "match", "search"}))
-    def test_filter_with_invalid_method_raises_error(self, method: str):
+    @allow_function_scoped
+    def test_filter_with_invalid_method_raises_error(self, method: str, tmpdir: Path):
         pybids_inputs: InputsConfig = {
             "template": {
                 "filters": {"foo": {method: []}},  # type: ignore
             }
         }
         with pytest.raises(ConfigError, match="Invalid query method specified"):
-            generate_inputs("scripts", pybids_inputs)
+            generate_inputs(tmpdir, pybids_inputs)
 
 
 @settings(
