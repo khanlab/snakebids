@@ -700,7 +700,7 @@ def _parse_custom_path(
 
     Returns
     -------
-    ZipList
+    input_zip_list, input_list, input_wildcards
     """
     if not (wildcards := glob_wildcards(input_path)):
         _logger.warning("No wildcards defined in %s", input_path)
