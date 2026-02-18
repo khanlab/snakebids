@@ -83,7 +83,7 @@ class PostFilter:
         if hit is None:
             return None
         # regex to exclude subjects
-        return [f"^(?!{exclude_string}$).*"]
+        return [f"^(?!({exclude_string})$).*"]
 
 
 @attrs.define
