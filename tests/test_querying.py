@@ -372,7 +372,7 @@ class TestCompileFilters:
         with pytest.raises(_InvalidKeyError):
             _compile_filters({"": {method: ""}}, with_regex=False)  # type: ignore[arg-type]
 
-    def test_none_as_filter_value_raises_error(self):
+    def test_none_as_direct_filter_value_raises_error(self):
         # None as a direct filter value should raise a _NoneValueError
         with pytest.raises(_NoneValueError):
             _compile_filters({"subject": None}, with_regex=False)  # type: ignore[arg-type]

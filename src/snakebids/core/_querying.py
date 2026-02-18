@@ -378,11 +378,10 @@ def _compile_filters(filters: FilterMap, *, with_regex: bool) -> CompiledFilter:
                 assert isinstance(raw_filter, dict)
             filt = raw_filter[filt_type]  # pyright: ignore[reportTypedDictNotRequiredAccess]
 
-        # Validate that the filter value is not None
+        # Validate that the filter value and any items within are not None
+        # This prevents errors when users leave filter values blank in YAML configs
         if filt is None:
             raise _NoneValueError(key, raw_filter)
-
-        # Validate that individual values within sequences are not None
         for f in itx.always_iterable(filt, base_type=(str, dict)):
             if f is None:
                 raise _NoneValueError(key, raw_filter)
