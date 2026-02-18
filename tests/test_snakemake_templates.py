@@ -9,23 +9,6 @@ import pytest
 from snakebids.utils.snakemake_templates import SnakemakeWildcards
 
 
-def find_non_empty_match(pattern: re.Pattern[str], text: str) -> str:
-    """Find the first non-empty match in text.
-
-    Since wildcard patterns are optional (ending with ?), they always match,
-    but may match empty string. This helper finds the first non-empty match.
-
-    Returns
-    -------
-    str
-        The matched string, or empty string if no non-empty match found.
-    """
-    for match in pattern.finditer(text):
-        if match.group():
-            return match.group()
-    return ""
-
-
 def do_match(pattern: str, text: str) -> str | None:
     match = re.match(f"(?:{pattern})$", text)
     if match is not None:
@@ -67,7 +50,9 @@ def test_directory_formats_label_correctly():
         ("", "run-01-02/", "", None),
     ],
 )
-def test_directory_wildcard_matching(before: str, after: str, text: str, expected: str):
+def test_directory_wildcard_matching(
+    before: str, text: str, after: str, expected: str | None
+):
     """Test directory wildcard matching behavior."""
     wc = SnakemakeWildcards("run")
     _, constraint = wc.directory.split(",", 1)
@@ -92,9 +77,9 @@ def test_directory_wildcard_matching(before: str, after: str, text: str, expecte
         ("/", "//", "", "/"),
     ],
 )
-def test_d_wildcard_matching(before: str, after: str, text: str, expected: bool):
+def test_d_wildcard_matching(before: str, text: str, after: str, expected: str | None):
     """Test __d__ wildcard matching behavior."""
-    _, constraint = SnakemakeWildcards.d.split(",", 1)
+    _, constraint = SnakemakeWildcards.slash.split(",", 1)
     assert do_match(f"{before}({constraint}){after}", text) == expected
 
 
@@ -118,7 +103,7 @@ def test_d_wildcard_matching(before: str, after: str, text: str, expected: bool)
     ],
 )
 def test_underscore_wildcard_matching(
-    before: str, after: str, text: str, expected: bool
+    before: str, text: str, after: str, expected: str | None
 ):
     _, constraint = SnakemakeWildcards.underscore.split(",", 1)
     assert do_match(f"{before}({constraint}){after}", text) == expected
@@ -148,7 +133,9 @@ def test_underscore_wildcard_matching(
         ("prefix/", "prefix/anat01/more", "/more", "anat01"),
     ],
 )
-def test_datatype_wildcard_matching(before: str, after: str, text: str, expected: bool):
+def test_datatype_wildcard_matching(
+    before: str, text: str, after: str, expected: str | None
+):
     _, constraint = SnakemakeWildcards.datatype.split(",", 1)
     assert do_match(f"{before}({constraint}){after}", text) == expected
 
@@ -183,7 +170,9 @@ def test_datatype_wildcard_matching(before: str, after: str, text: str, expected
         ("prefix/", "prefix/run-0/more", "0/more", "run-"),
     ],
 )
-def test_dummy_wildcard_matching(before: str, after: str, text: str, expected: bool):
+def test_dummy_wildcard_matching(
+    before: str, text: str, after: str, expected: str | None
+):
     _, constraint = SnakemakeWildcards("run").dummy.split(",", 1)
     assert do_match(f"{before}({constraint}){after}", text) == expected
 
@@ -215,7 +204,9 @@ def test_dummy_wildcard_matching(before: str, after: str, text: str, expected: b
         ("run-", "run-0/more", "more", None),
     ],
 )
-def test_ordinary_wildcard_matching(before: str, after: str, text: str, expected: bool):
+def test_ordinary_wildcard_matching(
+    before: str, text: str, after: str, expected: str | None
+):
     _, constraint = SnakemakeWildcards("run").variable.split(",", 1)
     assert do_match(f"{before}({constraint}){after}", text) == expected
 
@@ -242,7 +233,9 @@ def test_ordinary_wildcard_matching(before: str, after: str, text: str, expected
         ("/", "/suffix.ext-more", "-more", "suffix.ext"),
     ],
 )
-def test_suffix_wildcard_matching(before: str, after: str, text: str, expected: bool):
+def test_suffix_wildcard_matching(
+    before: str, text: str, after: str, expected: str | None
+):
     _, constraint = SnakemakeWildcards.suffix.split(",", 1)
     assert do_match(f"{before}({constraint}){after}", text) == expected
 
@@ -267,7 +260,7 @@ def test_suffix_wildcard_matching(before: str, after: str, text: str, expected: 
     ],
 )
 def test_extension_wildcard_matching(
-    before: str, after: str, text: str, expected: bool
+    before: str, text: str, after: str, expected: str | None
 ):
     _, constraint = SnakemakeWildcards.extension.split(",", 1)
     assert do_match(f"{before}({constraint}){after}", text) == expected
