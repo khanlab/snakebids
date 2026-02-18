@@ -18,6 +18,7 @@ from snakebids.core._querying import (
     UnifiedFilter,
     _compile_filters,
     _InvalidKeyError,
+    _NoneValueError,
     _TooFewKeysError,
     _TooManyKeysError,
     get_matching_files,
@@ -33,13 +34,15 @@ def _filters(*, min_size: int = 0):
     )
 
 
-_mixed_filters: st.SearchStrategy[dict[str, str | list[str] | dict[str, None]]] = (
+_mixed_filters: st.SearchStrategy[dict[str, str | list[str] | dict[str, str]]] = (
     st.dictionaries(
         sb_st.bids_entity().map(str),
         (
             st.text()
             | st.lists(st.text(), min_size=1)
-            | st.sampled_from(tuple(_VALID_FILTER_METHODS)).map(lambda m: {m: None})
+            | st.sampled_from(tuple(_VALID_FILTER_METHODS)).map(
+                lambda m: {m: "dummy" if m in ("match", "search") else "value"}
+            )
         ),
         max_size=6,
     )
@@ -368,6 +371,22 @@ class TestCompileFilters:
         # unknown filtering key should raise a _InvalidKeyError
         with pytest.raises(_InvalidKeyError):
             _compile_filters({"": {method: ""}}, with_regex=False)  # type: ignore[arg-type]
+
+    def test_none_as_filter_value_raises_error(self):
+        # None as a direct filter value should raise a _NoneValueError
+        with pytest.raises(_NoneValueError):
+            _compile_filters({"subject": None}, with_regex=False)  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize("method", list(_VALID_FILTER_METHODS))
+    def test_none_in_filter_spec_raises_error(self, method: str):
+        # None as a value within a FilterSpec dict should raise a _NoneValueError
+        with pytest.raises(_NoneValueError):
+            _compile_filters({"subject": {method: None}}, with_regex=False)  # type: ignore[arg-type]
+
+    def test_none_in_list_raises_error(self):
+        # None as a value within a list should raise a _NoneValueError
+        with pytest.raises(_NoneValueError):
+            _compile_filters({"subject": ["01", None, "02"]}, with_regex=False)  # type: ignore[arg-type]
 
     @given(entity=sb_st.bids_entity().map(str), val=st.text())
     def test_string_filter_wrapped_with_list(self, entity: str, val: str):

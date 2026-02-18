@@ -320,6 +320,24 @@ class _InvalidKeyError(FilterSpecError):
         return ConfigError(msg)
 
 
+@attrs.define
+class _NoneValueError(FilterSpecError):
+    """Exception raised when filter value is None."""
+
+    requirement: Final[str] = attrs.field(
+        default="Filter values must not be None.", init=False
+    )
+
+    @override
+    def get_config_error(self, component_name: str) -> ConfigError:
+        msg = (
+            f"Filter '{self.entity}' for component '{component_name}' has a None value. "
+            f"{self.requirement} This can occur when a filter is left blank in the "
+            f"configuration file."
+        )
+        return ConfigError(msg)
+
+
 def _compile_filters(filters: FilterMap, *, with_regex: bool) -> CompiledFilter:
     """Convert filter configuration into dict consumable by pybids get().
 
@@ -359,6 +377,15 @@ def _compile_filters(filters: FilterMap, *, with_regex: bool) -> CompiledFilter:
             if TYPE_CHECKING:
                 assert isinstance(raw_filter, dict)
             filt = raw_filter[filt_type]  # pyright: ignore[reportTypedDictNotRequiredAccess]
+
+        # Validate that the filter value is not None
+        if filt is None:
+            raise _NoneValueError(key, raw_filter)
+
+        # Validate that individual values within sequences are not None
+        for f in itx.always_iterable(filt, base_type=(str, dict)):
+            if f is None:
+                raise _NoneValueError(key, raw_filter)
 
         # these two must not be simultaneously true or false
         if with_regex == (filt_type == "get"):
