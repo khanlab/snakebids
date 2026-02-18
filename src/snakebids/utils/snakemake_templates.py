@@ -8,8 +8,6 @@ from typing import Any, Final, overload
 
 from typing_extensions import LiteralString, override
 
-UNDERSCORE_SQUELCHERS: Final = {"/", "_"}
-
 
 class SnakemakeFormatter(string.Formatter):
     """Custom formatter for snakemake templates with optional BIDS entities.
@@ -29,6 +27,8 @@ class SnakemakeFormatter(string.Formatter):
     ``session``, which are recognized and automatically converted.
     """
 
+    UNDERSCORE_SQUELCHERS: Final = {"/", "_"}
+
     @override
     def __init__(self) -> None:
         super().__init__()
@@ -36,12 +36,19 @@ class SnakemakeFormatter(string.Formatter):
 
     @overload
     def vformat(
-        self, format_string: LiteralString, args: Any, kwargs: Any
+        self,
+        format_string: LiteralString,
+        args: Sequence[LiteralString],
+        kwargs: Mapping[LiteralString, LiteralString],
     ) -> LiteralString: ...
     @overload
-    def vformat(self, format_string: str, args: Any, kwargs: Any) -> str: ...
+    def vformat(
+        self, format_string: str, args: Sequence[Any], kwargs: Mapping[Any, Any]
+    ) -> str: ...
 
-    def vformat(self, format_string: str, args: Any, kwargs: Any) -> str:
+    def vformat(
+        self, format_string: str, args: Sequence[Any], kwargs: Mapping[Any, Any]
+    ) -> str:
         """Call base vformat after resetting squelch_underscore."""
         self.squelch_underscore = True
         return super().vformat(format_string, args, kwargs)
@@ -108,7 +115,7 @@ class SnakemakeFormatter(string.Formatter):
             i = close
             anchor = i + 1
             if literal_text:
-                self.squelch_underscore = literal_text[-1] in UNDERSCORE_SQUELCHERS
+                self.squelch_underscore = literal_text[-1] in self.UNDERSCORE_SQUELCHERS
             yield literal_text, field_name, "", None
 
     @override
@@ -165,7 +172,7 @@ class SnakemakeFormatter(string.Formatter):
             value = str(kwargs[key])
             # Update squelch_underscore based on returned value
             if value:
-                self.squelch_underscore = value[-1] in UNDERSCORE_SQUELCHERS
+                self.squelch_underscore = value[-1] in self.UNDERSCORE_SQUELCHERS
             return value
 
         leading_underscore = "" if self.squelch_underscore else "_"
