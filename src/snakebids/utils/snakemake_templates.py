@@ -245,7 +245,7 @@ class SnakemakeWildcards:
     # Special wildcard class attributes with their constraints
     # Format: NAME,CONSTRAINT
     underscore: Final[str] = r"___,^|(?<=\/)|(?<=[^\/])_(?=[^\.])"
-    d: Final[str] = r"__d__,^|(?<=\/)|(?<=.)\/"
+    slash: Final[str] = r"__d__,^|(?<=\/)|(?<=.)\/"
     datatype: Final[str] = r"datatype,(?:(?:^|(?<=\/))[^_\/\-\n]+(?=\/))?"
     suffix: Final[str] = r"suffix,(?:(?:^|(?<=\/|_))[^_\/\-]+)?"
     extension: Final[str] = r"extension,(?:\.[^_\/\-]+$)?"
