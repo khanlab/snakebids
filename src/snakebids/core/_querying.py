@@ -314,6 +314,20 @@ class _InvalidKeyError(FilterSpecError):
         return ConfigError(msg)
 
 
+@attrs.define
+class _NoneValueError(FilterSpecError):
+    """Exception raised when filter value is None."""
+
+    @override
+    def get_config_error(self, component_name: str) -> ConfigError:
+        msg = (
+            f"Filter '{self.entity}' for component '{component_name}' has a None "
+            f"value. This can occur when a filter is left blank in the configuration "
+            f"file."
+        )
+        return ConfigError(msg)
+
+
 def _compile_filters(filters: FilterMap, *, with_regex: bool) -> CompiledFilter:
     """Convert filter configuration into dict consumable by pybids get().
 
@@ -323,7 +337,9 @@ def _compile_filters(filters: FilterMap, *, with_regex: bool) -> CompiledFilter:
         When filter configuration is invalidly specified.
     """
 
-    def wrap(filt: str, method: str):
+    def wrap(filt: str | None, method: str):
+        if filt is None:
+            raise _NoneValueError(key, raw_filter)
         if method == "get":
             return filt
         # use flag group to remove the default case-insensitivity enforced by pybids
@@ -353,6 +369,11 @@ def _compile_filters(filters: FilterMap, *, with_regex: bool) -> CompiledFilter:
             if TYPE_CHECKING:
                 assert isinstance(raw_filter, dict)
             filt = raw_filter[filt_type]  # pyright: ignore[reportTypedDictNotRequiredAccess]
+
+        # Validate that the filter value is not None
+        # This prevents errors when users leave filter values blank in YAML configs
+        if filt is None:
+            raise _NoneValueError(key, raw_filter)
 
         # these two must not be simultaneously true or false
         if with_regex == (filt_type == "get"):
