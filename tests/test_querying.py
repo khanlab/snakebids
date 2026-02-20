@@ -18,6 +18,7 @@ from snakebids.core._querying import (
     UnifiedFilter,
     _compile_filters,
     _InvalidKeyError,
+    _NoneValueError,
     _TooFewKeysError,
     _TooManyKeysError,
     get_matching_files,
@@ -39,7 +40,9 @@ _mixed_filters: st.SearchStrategy[dict[str, str | list[str] | dict[str, str]]] =
         (
             st.text()
             | st.lists(st.text(), min_size=1)
-            | st.sampled_from(tuple(_VALID_FILTER_METHODS)).map(lambda m: {m: ""})
+            | st.sampled_from(tuple(_VALID_FILTER_METHODS)).map(
+                lambda m: {m: "dummy"}
+            )
         ),
         max_size=6,
     )
@@ -369,6 +372,32 @@ class TestCompileFilters:
         # unknown filtering key should raise a _InvalidKeyError
         with pytest.raises(_InvalidKeyError):
             _compile_filters({"": {method: ""}}, with_regex=False)  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize(
+        "value",
+        [None, ["01", None, "02"]],
+    )
+    @pytest.mark.parametrize(
+        ("method", "with_regex"),
+        [
+            (None, False),
+            ("get", False),
+            ("match", True),
+            ("search", True),
+        ],
+    )
+    def test_none_filter_value_raises_error(
+        self,
+        method: str | None,
+        with_regex: bool,
+        value: None | list[str | None],
+    ):
+        # None as a filter value should raise _NoneValueError
+        filter_config: dict[str, Any] = (
+            {"subject": value} if method is None else {"subject": {method: value}}
+        )
+        with pytest.raises(_NoneValueError):
+            _compile_filters(filter_config, with_regex=with_regex)  # type: ignore[arg-type]
 
     @given(entity=sb_st.bids_entity().map(str), val=st.text())
     def test_string_filter_wrapped_with_list(self, entity: str, val: str):
