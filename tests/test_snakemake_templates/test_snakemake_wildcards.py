@@ -326,3 +326,44 @@ def test_tag_replacement(tag: str, expected_name: str):
     assert expected_name in wc.variable
     assert expected_name in wc.dummy
     assert expected_name in wc.directory
+
+
+@pytest.mark.parametrize(
+    ("tag", "wildcard_label", "bids_tag"),
+    [
+        ("sub", "subject", "sub"),
+        ("ses", "session", "ses"),
+    ],
+)
+def test_subject_session_label_vs_tag_in_constraints(
+    tag: str, wildcard_label: str, bids_tag: str
+):
+    """Regression test: subject/session wildcard labels and constraint tag prefixes.
+
+    The wildcard *label* (used inside ``{...}``) must remain the full name
+    ("subject"/"session"), while the regex *constraints* must reference the
+    short BIDS tag prefix ("sub-"/"ses-") that actually appears in file paths.
+    These two values must not be confused.
+    """
+    wc = SnakemakeWildcards(tag)
+
+    # Wildcard labels must use the full wildcard name
+    assert wildcard_label in wc.variable
+    assert wildcard_label in wc.dummy
+    assert wildcard_label in wc.directory
+
+    # Constraints must reference the short BIDS tag prefix
+    _, variable_constraint = wc.variable.split(",", 1)
+    _, dummy_constraint = wc.dummy.split(",", 1)
+    _, dir_constraint = wc.directory.split(",", 1)
+
+    # The regex constraints use escaped hyphens (e.g. "sub\-"), so we check for
+    # the tag name followed by the literal backslash-hyphen sequence.
+    assert f"{bids_tag}\\-" in variable_constraint
+    assert f"{bids_tag}\\-" in dummy_constraint
+    assert f"{bids_tag}\\-" in dir_constraint
+
+    # Constraints must NOT use the full wildcard label as the tag prefix
+    assert f"{wildcard_label}\\-" not in variable_constraint
+    assert f"{wildcard_label}\\-" not in dummy_constraint
+    assert f"{wildcard_label}\\-" not in dir_constraint
