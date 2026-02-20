@@ -8,8 +8,6 @@ from typing import Any, Final, overload
 
 from typing_extensions import LiteralString, override
 
-from snakebids.utils.utils import BidsEntity
-
 
 class SnakemakeWildcards:
     """Define and handle optional wildcard syntax for Snakemake.
@@ -39,8 +37,14 @@ class SnakemakeWildcards:
         tag : str
             The entity tag name.
         """
-        # Use BidsEntity to handle tag to wildcard conversion
-        self._tag = BidsEntity.from_tag(tag).wildcard
+        # subject/session are special: the wildcard label uses the full name, but the
+        # BIDS tag prefix in file paths (and therefore in regex constraints) is the
+        # short form. This mirrors the same special-casing in SnakemakeFormatter.
+        # TODO: a future refactor should unify this mapping across the codebase.
+        _WILDCARD_MAP = {"sub": "subject", "ses": "session"}
+        _TAG_MAP = {"subject": "sub", "session": "ses"}
+        self._wildcard = _WILDCARD_MAP.get(tag, tag)
+        self._tag = _TAG_MAP.get(self._wildcard, self._wildcard)
 
     @property
     def dummy(self) -> str:
@@ -52,7 +56,7 @@ class SnakemakeWildcards:
             Dummy wildcard format: _TAG_,CONSTRAINT
         """
         constraint = rf"(?:(?:^|(?<=\/)|(?<=[^\/])_){self._tag}\-(?=[^_\/\-\n]))?"
-        return f"_{self._tag}_,{constraint}"
+        return f"_{self._wildcard}_,{constraint}"
 
     @property
     def variable(self) -> str:
@@ -64,7 +68,7 @@ class SnakemakeWildcards:
             Variable wildcard format: TAG,CONSTRAINT
         """
         constraint = rf"(?:(?<={self._tag}\-)[^_\/\-\n]+(?=_|\/|$))?"
-        return f"{self._tag},{constraint}"
+        return f"{self._wildcard},{constraint}"
 
     @property
     def directory(self) -> str:
@@ -76,7 +80,7 @@ class SnakemakeWildcards:
             Directory wildcard format: _TAG_d_,CONSTRAINT
         """
         constraint = rf"(?:(?:^|(?<=\/)){self._tag}\-[^_\/\-\n]+\/)?"
-        return f"_{self._tag}_d_,{constraint}"
+        return f"_{self._wildcard}_d_,{constraint}"
 
 
 class SnakemakeFormatter(string.Formatter):
