@@ -41,10 +41,10 @@ class SnakemakeWildcards:
         # BIDS tag prefix in file paths (and therefore in regex constraints) is the
         # short form. This mirrors the same special-casing in SnakemakeFormatter.
         # TODO: a future refactor should unify this mapping across the codebase.
-        _WILDCARD_MAP = {"sub": "subject", "ses": "session"}
-        _TAG_MAP = {"subject": "sub", "session": "ses"}
-        self._wildcard = _WILDCARD_MAP.get(tag, tag)
-        self._tag = _TAG_MAP.get(self._wildcard, self._wildcard)
+        self._wildcard = {"sub": "subject", "ses": "session"}.get(tag, tag)
+        self._tag = {"subject": "sub", "session": "ses"}.get(
+            self._wildcard, self._wildcard
+        )
 
     @property
     def dummy(self) -> str:

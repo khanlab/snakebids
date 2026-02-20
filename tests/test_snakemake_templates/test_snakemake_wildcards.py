@@ -329,15 +329,13 @@ def test_tag_replacement(tag: str, expected_name: str):
 
 
 @pytest.mark.parametrize(
-    ("tag", "wildcard_label", "bids_tag"),
+    ("tag", "wildcard_label"),
     [
-        ("sub", "subject", "sub"),
-        ("ses", "session", "ses"),
+        ("sub", "subject"),
+        ("ses", "session"),
     ],
 )
-def test_subject_session_label_vs_tag_in_constraints(
-    tag: str, wildcard_label: str, bids_tag: str
-):
+def test_subject_session_label_vs_tag_in_constraints(tag: str, wildcard_label: str):
     """Regression test: subject/session wildcard labels and constraint tag prefixes.
 
     The wildcard *label* (used inside ``{...}``) must remain the full name
@@ -347,23 +345,15 @@ def test_subject_session_label_vs_tag_in_constraints(
     """
     wc = SnakemakeWildcards(tag)
 
-    # Wildcard labels must use the full wildcard name
-    assert wildcard_label in wc.variable
-    assert wildcard_label in wc.dummy
-    assert wildcard_label in wc.directory
+    # Wildcard labels must use the full wildcard name, and constraints must
+    # reference the short BIDS tag prefix, not the full wildcard label
+    for wildcard in (wc.variable, wc.dummy, wc.directory):
+        # Wildcard labels must use the full wildcard name
+        assert wildcard_label in wildcard
 
-    # Constraints must reference the short BIDS tag prefix
-    _, variable_constraint = wc.variable.split(",", 1)
-    _, dummy_constraint = wc.dummy.split(",", 1)
-    _, dir_constraint = wc.directory.split(",", 1)
-
-    # The regex constraints use escaped hyphens (e.g. "sub\-"), so we check for
-    # the tag name followed by the literal backslash-hyphen sequence.
-    assert f"{bids_tag}\\-" in variable_constraint
-    assert f"{bids_tag}\\-" in dummy_constraint
-    assert f"{bids_tag}\\-" in dir_constraint
-
-    # Constraints must NOT use the full wildcard label as the tag prefix
-    assert f"{wildcard_label}\\-" not in variable_constraint
-    assert f"{wildcard_label}\\-" not in dummy_constraint
-    assert f"{wildcard_label}\\-" not in dir_constraint
+        # Extract constraint and verify it uses short tag, not full label
+        _, constraint = wildcard.split(",", 1)
+        # The regex constraints use escaped hyphens (e.g. "sub\-")
+        assert f"{tag}\\-" in constraint
+        # Ensure constraints do NOT use the full wildcard label as tag prefix
+        assert f"{wildcard_label}\\-" not in constraint
