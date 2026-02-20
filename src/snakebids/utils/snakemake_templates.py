@@ -25,8 +25,8 @@ class SnakemakeWildcards:
     # Format: NAME,CONSTRAINT
     underscore: Final[str] = r"___,^|(?<=\/)|(?<=[^\/])_(?=[^\.])"
     slash: Final[str] = r"__d__,^|(?<=\/)|(?<=.)\/"
-    datatype: Final[str] = r"datatype,(?:(?:^|(?<=\/))[^_\/\-\n]+(?=\/))?"
-    suffix: Final[str] = r"suffix,(?:(?:^|(?<=\/|_))[^_\/\-]+)?"
+    datatype: Final[str] = r"datatype,(?:(?:^|(?<=\/))[^_\/\-\.]+(?=\/))?"
+    suffix: Final[str] = r"suffix,(?:(?:^|(?<=\/|_))[^_\/\-\.]+)?"
     extension: Final[str] = r"extension,(?:\.[^_\/\-]+$)?"
 
     def __init__(self, tag: str) -> None:
@@ -55,7 +55,7 @@ class SnakemakeWildcards:
         str
             Dummy wildcard format: _TAG_,CONSTRAINT
         """
-        constraint = rf"(?:(?:^|(?<=\/)|(?<=[^\/])_){self._tag}\-(?=[^_\/\-\n]))?"
+        constraint = rf"(?:(?:^|(?<=\/)|(?<=[^\/])_){self._tag}\-(?=[^_\/\-\.]))?"
         return f"_{self._wildcard}_,{constraint}"
 
     @property
@@ -67,7 +67,7 @@ class SnakemakeWildcards:
         str
             Variable wildcard format: TAG,CONSTRAINT
         """
-        constraint = rf"(?:(?<={self._tag}\-)[^_\/\-\n]+(?=_|\/|$))?"
+        constraint = rf"(?:(?<={self._tag}\-)[^_\/\-\.]+(?=_|\/|$))?"
         return f"{self._wildcard},{constraint}"
 
     @property
@@ -79,7 +79,7 @@ class SnakemakeWildcards:
         str
             Directory wildcard format: _TAG_d_,CONSTRAINT
         """
-        constraint = rf"(?:(?:^|(?<=\/)){self._tag}\-[^_\/\-\n]+\/)?"
+        constraint = rf"(?:(?:^|(?<=\/)){self._tag}\-[^_\/\-\.]+\/)?"
         return f"_{self._wildcard}_d_,{constraint}"
 
 
