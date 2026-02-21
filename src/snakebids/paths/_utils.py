@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from enum import Enum, auto
 from typing import TypeAlias
 
 import importlib_resources as impr
@@ -10,7 +11,12 @@ from typing_extensions import NotRequired, TypedDict
 from snakebids.io.yaml import get_yaml_io
 from snakebids.paths import resources
 
-__all__ = ["BidsPathEntitySpec", "BidsPathSpec", "BidsPathSpecFile"]
+__all__ = [
+    "BidsPathEntitySpec",
+    "BidsPathSpec",
+    "BidsPathSpecFile",
+    "SnakemakeTemplates",
+]
 
 
 class BidsPathEntitySpec(TypedDict):
@@ -74,3 +80,36 @@ def get_spec_path(version: str) -> impr.abc.Traversable:
 def find_entity(spec: BidsPathSpec, entity: str) -> BidsPathEntitySpec:
     """Return configuration for specified entity out of BidsPathSpec."""
     return itx.one(item for item in spec if item["entity"] == entity)
+
+
+class SnakemakeTemplates(Enum):
+    """Enum for indicating special template behaviors in Snakemake wildcards.
+
+    This enum is used to specify optional entities in BidsComponent wildcards.
+    When used as a value in a wildcards dictionary, it signals that the
+    entity should be treated as optional in the generated Snakemake template.
+    """
+
+    OPTIONAL_WILDCARD = auto()
+    """Indicates that an entity should be treated as optional in Snakemake templates.
+
+    When this value is used for an entity in a wildcards dictionary, the `bids()`
+    function will generate a constrained wildcard that allows the entity to be
+    present or absent in the path.
+
+    Example
+    -------
+    >>> from snakebids.paths import bids, SnakemakeTemplates
+    >>> # Generate a path with optional 'acq' entity
+    >>> template = bids(
+    ...     subject="{subject}",
+    ...     session="{session}",
+    ...     acq=SnakemakeTemplates.OPTIONAL_WILDCARD,
+    ...     suffix="T1w.nii.gz"
+    ... )
+
+    .. warning::
+        Templates with optional wildcards are not compatible with Python's
+        `str.format()` method. They use Snakemake-specific constraint syntax
+        that can only be interpreted by Snakemake's wildcard resolution system.
+    """

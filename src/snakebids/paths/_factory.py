@@ -3,15 +3,18 @@ from __future__ import annotations
 import itertools as it
 import os
 import sys
+import textwrap
 import warnings
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Protocol
+from typing import Literal, Protocol, TypeAlias
 
 import more_itertools as itx
 
 from snakebids.io.console import in_interactive_session
 from snakebids.paths import specs
-from snakebids.paths._utils import BidsPathSpec, find_entity
+from snakebids.paths._utils import BidsPathSpec, SnakemakeTemplates, find_entity
+from snakebids.utils.snakemake_templates import SnakemakeWildcards
 
 
 class BidsFunction(Protocol):
@@ -24,88 +27,98 @@ class BidsFunction(Protocol):
         self,
         root: str | Path | None = None,
         *,
-        datatype: str | None = None,
-        prefix: str | None = None,
-        suffix: str | None = None,
-        extension: str | None = None,
-        **entities: str | bool,
+        datatype: str | SnakemakeTemplates | None = None,
+        prefix: str | SnakemakeTemplates | None = None,
+        suffix: str | SnakemakeTemplates | None = None,
+        extension: str | SnakemakeTemplates | None = None,
+        **entities: str | SnakemakeTemplates,
     ) -> str: ...
 
 
-def _handle_subses_dir(
-    root: str | Path | None,
-    spec: BidsPathSpec,
-    /,
-    *,
-    sub_dir_default: bool,
-    ses_dir_default: bool,
-    sub_dir: str | bool | None,
-    ses_dir: str | bool | None,
-    datatype: str | None = None,
-    prefix: str | None = None,
-    suffix: str | None = None,
-    extension: str | None = None,
-    **entities: str | bool,
-) -> str | None:
-    newspec = None
-    warn_subses_dir = False
+_WildcardKinds: TypeAlias = Literal["fixed", "optional"]
 
-    if isinstance(ses_dir, bool):
-        warn_subses_dir = True
-        if ses_dir ^ ses_dir_default:
-            if newspec is None:
-                newspec = spec.copy()
-            find_entity(newspec, "session")["dir"] = ses_dir
 
-    if isinstance(sub_dir, bool):
-        warn_subses_dir = True
-        if sub_dir ^ sub_dir_default:
-            if newspec is None:
-                newspec = spec.copy()
-            find_entity(newspec, "subject")["dir"] = sub_dir
+class _LeadingUnderscore:
+    def __init__(self, kind: _WildcardKinds, emitter: _UnderscoreEmitter):
+        self.emitter = emitter
+        self.kind: _WildcardKinds = kind
 
-    if warn_subses_dir:
-        wrn_msg = (
-            "include_session_dir and include_subject_dir are deprecated and "
-            "will be removed in a future release. Builder functions without "
-            "directories can be created using the bids_factory and spec "
-            "functions:\n"
-            "\tfrom snakebids.paths import bids_factory, specs\n"
-            "\tbids_ses = bids_factory(specs.v0_0_0(subject_dir=False))\n"
-            "\tbids_ses(...)\n"
-        ).expandtabs(4)
-        warnings.warn(wrn_msg, stacklevel=4)
-    if newspec:
-        return bids_factory(newspec)(
-            root,
-            datatype=datatype,
-            prefix=prefix,
-            suffix=suffix,
-            extension=extension,
-            **entities,
+    def __str__(self) -> str:
+        return self.emitter.next(self.kind)
+
+
+class _UnderscoreEmitter:
+    def __init__(self) -> None:
+        self.emitter = None
+        self.emitter_kinds: dict[_WildcardKinds, Iterator[str]] = {
+            "fixed": it.repeat("_"),
+            "optional": it.chain([str(SnakemakeWildcards.underscore)], it.repeat("_")),
+        }
+
+    def new(self, kind: _WildcardKinds):
+        return _LeadingUnderscore(kind, self)
+
+    def next(self, kind: _WildcardKinds):
+        if self.emitter is None:
+            self.emitter = self.emitter_kinds[kind]
+            return ""
+        if kind == "optional":
+            return ""
+        return next(self.emitter)
+
+
+class _NameBuilder(list[str | _LeadingUnderscore]):
+    def __init__(self, emitter: _UnderscoreEmitter):
+        self.emitter = emitter
+
+    def append_entity(self, key: str, value: str | SnakemakeTemplates) -> None:
+        if value is SnakemakeTemplates.OPTIONAL_WILDCARD:
+            wcard_kind = "optional"
+            wc = SnakemakeWildcards(key)
+            value = f"{wc.dummy}{wc.variable}"
+        else:
+            wcard_kind = "fixed"
+            value = f"{key}-{value}"
+
+        self.append(self.emitter.new(wcard_kind))
+        self.append(value)
+
+    def append_literal(self, literal: str) -> None:
+        self.append(self.emitter.new("fixed"))
+        self.append(literal)
+
+    def append_suffix(self, suffix: str | SnakemakeTemplates) -> None:
+        self.append_literal(
+            str(SnakemakeWildcards.suffix)
+            if suffix is SnakemakeTemplates.OPTIONAL_WILDCARD
+            else suffix
         )
-    return None
+
+    def append_extension(self, extension: str | SnakemakeTemplates) -> None:
+        self.append(
+            str(SnakemakeWildcards.extension)
+            if extension is SnakemakeTemplates.OPTIONAL_WILDCARD
+            else extension
+        )
+
+    def sanitized(self):
+        return list(filter(lambda s: isinstance(s, str), self))
 
 
-def _get_entity_parser(aliases: dict[str, str]):
-    def parse_entities(entities: dict[str, str | bool]) -> dict[str, str]:
-        result: dict[str, str] = {}
-        for entity, val in entities.items():
-            # strip underscores from keys (needed so that users can use reserved
-            # keywords by appending a _)
-            stripped = entity.rstrip("_")
-            unaliased = aliases.get(stripped, stripped)
-            if unaliased in result:
-                aliased = itx.nth(aliases, list(aliases.values()).index(unaliased))
-                err = (
-                    "Long and short names of an entity cannot be used in the same "
-                    f"call to bids(): got '{aliased}' and '{unaliased}'"
-                )
-                raise ValueError(err)
-            result[unaliased] = str(val)
-        return result
+class _PathBuilder(list[str]):
+    def append_entity(self, key: str, value: str | SnakemakeTemplates):
+        self.append(
+            str(SnakemakeWildcards(key).directory)
+            if value is SnakemakeTemplates.OPTIONAL_WILDCARD
+            else f"{key}-{value}{os.sep}"
+        )
 
-    return parse_entities
+    def append_datatype(self, datatype: str | SnakemakeTemplates):
+        self.append(
+            f"{SnakemakeWildcards.datatype}{SnakemakeWildcards.slash}"
+            if datatype is SnakemakeTemplates.OPTIONAL_WILDCARD
+            else datatype + os.sep
+        )
 
 
 def bids_factory(spec: BidsPathSpec, *, _implicit: bool = False) -> BidsFunction:
@@ -119,29 +132,129 @@ def bids_factory(spec: BidsPathSpec, *, _implicit: bool = False) -> BidsFunction
             Flag used internally to mark the default generated bids function. The
             resulting builder will warn when custom entities are used
     """
-    order: list[str] = []
-    dirs: set[str] = set()
-    aliases: dict[str, str] = {}
+    return _Bids(spec, _implicit=_implicit)
 
-    subject_dir_default = find_entity(spec, "subject").get("dir", False)
-    session_dir_default = find_entity(spec, "session").get("dir", False)
-    for entry in spec:
-        tag = entry.get("tag", entry["entity"])
-        order.append(tag)
-        aliases[entry["entity"]] = tag
-        if entry.get("dir"):
-            dirs.add(tag)
 
-    parse_entities = _get_entity_parser(aliases)
+class _Bids:
+    def __init__(self, spec: BidsPathSpec, *, _implicit: bool = False):
+        self.spec = spec
+        self._implicit = _implicit
 
-    def bids(
+        self.order: list[str] = []
+        self.dirs: set[str] = set()
+        self.aliases: dict[str, str] = {}
+
+        self.subject_dir_default = find_entity(spec, "subject").get("dir", False)
+        self.session_dir_default = find_entity(spec, "session").get("dir", False)
+
+        for entry in spec:
+            tag = entry.get("tag", entry["entity"])
+            self.order.append(tag)
+            self.aliases[entry["entity"]] = tag
+            if entry.get("dir"):
+                self.dirs.add(tag)
+
+    def parse_entities(self, entities: dict[str, str | SnakemakeTemplates]):
+        result: dict[str, str | SnakemakeTemplates] = {}
+        for entity, val in entities.items():
+            # strip underscores from keys (needed so that users can use reserved
+            # keywords by appending a _)
+            stripped = entity.rstrip("_")
+            unaliased = self.aliases.get(stripped, stripped)
+            if unaliased in result:
+                aliased = itx.nth(
+                    self.aliases, list(self.aliases.values()).index(unaliased)
+                )
+                err = (
+                    "Long and short names of an entity cannot be used in the same "
+                    f"call to bids(): got '{aliased}' and '{unaliased}'"
+                )
+                raise ValueError(err)
+            # Check if the value is the OPTIONAL_WILDCARD enum
+            result[unaliased] = val
+        return result
+
+    def handle_subses_dir(
+        self,
+        root: str | Path | None,
+        /,
+        *,
+        sub_dir: str | bool | SnakemakeTemplates | None,
+        ses_dir: str | bool | SnakemakeTemplates | None,
+        datatype: str | SnakemakeTemplates | None = None,
+        prefix: str | SnakemakeTemplates | None = None,
+        suffix: str | SnakemakeTemplates | None = None,
+        extension: str | SnakemakeTemplates | None = None,
+        **entities: str | SnakemakeTemplates,
+    ) -> str | None:
+        newspec = None
+        warn_subses_dir = False
+
+        if isinstance(ses_dir, bool):
+            warn_subses_dir = True
+            if ses_dir ^ self.session_dir_default:
+                if newspec is None:
+                    newspec = self.spec.copy()
+                find_entity(newspec, "session")["dir"] = ses_dir
+
+        if isinstance(sub_dir, bool):
+            warn_subses_dir = True
+            if sub_dir ^ self.subject_dir_default:
+                if newspec is None:
+                    newspec = self.spec.copy()
+                find_entity(newspec, "subject")["dir"] = sub_dir
+
+        if warn_subses_dir:
+            wrn_msg = (
+                "include_session_dir and include_subject_dir are deprecated and "
+                "will be removed in a future release. Builder functions without "
+                "directories can be created using the bids_factory and spec "
+                "functions:\n"
+                "\tfrom snakebids.paths import bids_factory, specs\n"
+                "\tbids_ses = bids_factory(specs.v0_0_0(subject_dir=False))\n"
+                "\tbids_ses(...)\n"
+            ).expandtabs(4)
+            warnings.warn(wrn_msg, stacklevel=4)
+        if newspec:
+            return _Bids(newspec)(
+                root,
+                datatype=datatype,
+                prefix=prefix,
+                suffix=suffix,
+                extension=extension,
+                **entities,
+            )
+        return None
+
+    def check_custom_parts_without_explicit_spec(
+        self, custom_parts: _NameBuilder, path: str
+    ):
+        if custom_parts and self._implicit and not in_interactive_session():
+            wrn_msg = (
+                textwrap.fill(
+                    "Path generated with unrecognized entities, and a snakebids spec "
+                    "has not been explicitly declared. This could break in future "
+                    "snakebids versions, as the default spec can be changed without "
+                    "warning.",
+                ),
+                f"\tpath = {path!r}",
+                f"\tentities = {custom_parts.sanitized()!r}",
+                "",
+                "Please declare a spec using:",
+                "\tfrom snakebids import set_bids_spec",
+                f'\tset_bids_spec("{specs.LATEST}")',
+            )
+            warnings.warn("\n".join(wrn_msg), stacklevel=3)
+
+    def __call__(  # noqa: PLR0912
+        self,
         root: str | Path | None = None,
         *,
-        datatype: str | None = None,
-        prefix: str | None = None,
-        suffix: str | None = None,
-        extension: str | None = None,
-        **entities: str | bool,
+        datatype: str | SnakemakeTemplates | None = None,
+        prefix: str | SnakemakeTemplates | None = None,
+        suffix: str | SnakemakeTemplates | None = None,
+        extension: str | SnakemakeTemplates | None = None,
+        **entities: str | SnakemakeTemplates,
     ) -> str:
         """Generate bids or bids-like paths.
 
@@ -172,11 +285,8 @@ def bids_factory(spec: BidsPathSpec, *, _implicit: bool = False) -> BidsFunction
             for ``space-T1w``)
         """
         if (
-            result := _handle_subses_dir(
+            result := self.handle_subses_dir(
                 root,
-                spec,
-                sub_dir_default=subject_dir_default,
-                ses_dir_default=session_dir_default,
                 sub_dir=entities.pop("include_subject_dir", None),
                 ses_dir=entities.pop("include_session_dir", None),
                 datatype=datatype,
@@ -187,6 +297,10 @@ def bids_factory(spec: BidsPathSpec, *, _implicit: bool = False) -> BidsFunction
             )
         ) is not None:
             return result
+
+        if prefix is SnakemakeTemplates.OPTIONAL_WILDCARD:
+            msg = "prefix may not be specified as optional"
+            raise ValueError(msg)
 
         if not any([entities, suffix, extension]) and any([datatype, prefix]):
             raise ValueError(
@@ -203,59 +317,55 @@ def bids_factory(spec: BidsPathSpec, *, _implicit: bool = False) -> BidsFunction
                 )
             )
 
-        parsed = parse_entities(entities)
+        parsed = self.parse_entities(entities)
 
-        spec_parts: list[str] = []
-        custom_parts: list[str] = []
-        split: int = sys.maxsize + 1
-        path_parts: list[str] = []
+        emitter = _UnderscoreEmitter()
+        spec_parts = _NameBuilder(emitter)
+        custom_parts = _NameBuilder(emitter)
+        split: int = sys.maxsize
+        path_parts = _PathBuilder()
 
-        if root:
-            path_parts.append(str(root))
-        if prefix:
-            spec_parts.append(prefix)
-        for entity in order:
+        if prefix is not None:
+            spec_parts.append_literal(prefix)
+
+        for entity in self.order:
             # Check for `*` first so that if user specifies an entity called `*` we
             # don't skip setting the split
             if entity == "*":
                 split = len(spec_parts)
-            elif value := parsed.pop(entity, None):
-                spec_parts.append(f"{entity}-{value}")
-                if entity in dirs:
-                    path_parts.append(f"{entity}-{value}")
+                continue
+
+            if value := parsed.pop(entity, None):
+                spec_parts.append_entity(entity, value)
+                if entity in self.dirs:
+                    path_parts.append_entity(entity, value)
+
+        split = min(split, len(spec_parts))
+
         for key, value in parsed.items():
-            custom_parts.append(f"{key}-{value}")
+            custom_parts.append_entity(key, value)
 
-        if datatype:
-            path_parts.append(datatype)
-        tail = [suffix] if suffix is not None else []
-        path_parts.append(
-            "_".join(
-                it.chain(
-                    spec_parts[:split],
-                    custom_parts,
-                    spec_parts[split:],
-                    tail,
-                )
-            )
-        )
-        result = os.path.join(*path_parts)
+        if datatype is not None:
+            path_parts.append_datatype(datatype)
+
+        if suffix is not None:
+            spec_parts.append_suffix(suffix)
+
         if extension is not None:
-            result += extension
+            spec_parts.append_extension(extension)
 
-        if custom_parts and _implicit and not in_interactive_session():
-            wrn_msg = (
-                f"Path generated with unrecognized entities, and a snakebids spec has "
-                "not been explicitly declared. This could break in future snakebids "
-                "versions, as the default spec can be changed without warning.\n"
-                f"\tpath = {result!r}\n"
-                f"\tentities = {custom_parts!r}\n\n"
-                "Please declare a spec using:\n"
-                "\tfrom snakebids import set_bids_spec\n"
-                f'\tset_bids_spec("{specs.LATEST}")\n'
-            ).expandtabs(4)
-            warnings.warn(wrn_msg, stacklevel=3)
+        all_parts = it.chain(
+            path_parts,
+            spec_parts[:split],
+            custom_parts,
+            spec_parts[split:],
+        )
+
+        result = "".join(map(str, all_parts))
+
+        if root is not None:
+            result = os.path.join(root, result)
+
+        self.check_custom_parts_without_explicit_spec(custom_parts, result)
 
         return result
-
-    return bids

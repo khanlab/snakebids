@@ -21,6 +21,7 @@ __all__ = [
     "BidsPathEntitySpec",
     "BidsPathSpec",
     "BidsPathSpecFile",
+    "SnakemakeTemplates",
     "bids",
     "bids_factory",
     "filter_list",

@@ -3,17 +3,18 @@ from __future__ import annotations
 from pathlib import Path
 
 from snakebids.paths._config import get_bids_func
+from snakebids.paths._utils import SnakemakeTemplates
 from snakebids.paths.specs import LATEST
 
 
 def bids(
     root: str | Path | None = None,
     *,
-    datatype: str | None = None,
-    prefix: str | None = None,
-    suffix: str | None = None,
-    extension: str | None = None,
-    **entities: str | bool,
+    datatype: str | SnakemakeTemplates | None = None,
+    prefix: str | SnakemakeTemplates | None = None,
+    suffix: str | SnakemakeTemplates | None = None,
+    extension: str | SnakemakeTemplates | None = None,
+    **entities: str | SnakemakeTemplates,
 ) -> str:
     """Generate bids or bids-like paths.
 
@@ -61,7 +62,10 @@ def bids(
         suffix.
     entities
         bids entities as keyword arguments paired with values (e.g. ``space="T1w"``
-        for ``space-T1w``)
+        for ``space-T1w``). Entities can also be specified as optional using
+        ``SnakemakeTemplates.OPTIONAL_WILDCARD``, which generates Snakemake-compatible
+        templates with constrained wildcards that allow the entity to be present or
+        absent.
 
 
     Examples
@@ -116,6 +120,43 @@ def bids(
     will be ordered based on the OrderedDict defined here. If entities not known are
     provided, they will be just be placed at the end (before the suffix), in the
     order you provide them in.
+
+    **Optional Wildcards**
+
+    .. warning::
+
+        It is not recommended to purposefully generate paths with optional wildcards.
+        This feature is to facilitate indexing and handling of preexistant, poorly
+        formatted datasets with irregular entity compositions, not to generate new such
+        datasets!
+
+    For workflows that need to handle datasets with inconsistent entity presence,
+    ``SnakemakeTemplates.OPTIONAL_WILDCARD`` marks entities as optional. This generates
+    Snakemake templates with constrained wildcards that match paths both with and
+    without the entity::
+
+        from snakebids.paths import bids, SnakemakeTemplates
+
+        # Generate a pattern with optional 'acq' entity
+        pattern = bids(
+            subject='{subject}',
+            session='{session}',
+            acq=SnakemakeTemplates.OPTIONAL_WILDCARD,
+            suffix='T1w.nii.gz'
+        )
+        # Pattern: sub-{subject}/ses-{session}/sub-{subject}_ses-{session}
+        #          {_acq_,constraint}{acq,constraint}_T1w.nii.gz
+
+    This pattern will match both:
+    - ``sub-01/ses-01/sub-01_ses-01_acq-MPRAGE_T1w.nii.gz`` (with acq)
+    - ``sub-01/ses-01/sub-01_ses-01_T1w.nii.gz`` (without acq)
+
+    .. warning::
+
+        Templates with optional wildcards use Snakemake-specific constraint syntax
+        and are **not** compatible with Python's ``str.format()`` method. They must
+        be formatted using ``SnakemakeFormatter`` or processed by Snakemake's
+        wildcard resolution system.
     """
     return get_bids_func()(
         root,
