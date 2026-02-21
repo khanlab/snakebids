@@ -109,6 +109,7 @@ def test_directory_wildcard_matching(
     ("before", "text", "after", "expected"),
     [
         ("prefix", "prefix/", "", "/"),
+        ("prefix\n", "prefix\n/", "", "/"),
         ("", "prefix/", "", None),
         ("", "", "", ""),
         ("", "more", "more", ""),
@@ -120,7 +121,7 @@ def test_directory_wildcard_matching(
         ("/", "/more", "more", ""),
         ("", "/", "", None),
         ("/", "/", "", ""),
-        ("/", "//", "", "/"),
+        ("/", "//", "", None),
     ],
 )
 def test_d_wildcard_matching(before: str, text: str, after: str, expected: str | None):

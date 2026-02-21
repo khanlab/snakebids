@@ -42,7 +42,9 @@ class SnakemakeWildcards:
     underscore: Final[_Wildcard] = _Wildcard(
         label="___", constraint=r"^|(?<=\/)|(?<=[^\/])_(?=[^\.])"
     )
-    slash: Final[_Wildcard] = _Wildcard(label="__d__", constraint=r"^|(?<=\/)|(?<=.)\/")
+    slash: Final[_Wildcard] = _Wildcard(
+        label="__d__", constraint=r"^|(?<=\/)|(?<=[^\/])\/"
+    )
     datatype: Final[_Wildcard] = _Wildcard(
         label="datatype", constraint=r"(?:(?:^|(?<=\/))[^_\/\-\.]+(?=\/))?"
     )
