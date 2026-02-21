@@ -122,7 +122,7 @@ class TestSpecDocstrings:
 
 class TestCustomEntityWarnings:
     def test_using_custom_entities_with_default_bids_raises_warning(self):
-        with pytest.warns(UserWarning, match="spec has not been explicitly declared"):
+        with pytest.warns(UserWarning, match="Path generated with unrecognized "):
             bids(foo="bar")
 
     def test_no_warning_when_spec_declared(self):
