@@ -638,6 +638,21 @@ class TestFilterMethods:
         with pytest.raises(ConfigError, match="Invalid query method specified"):
             generate_inputs(tmpdir, pybids_inputs)
 
+    @pytest.mark.parametrize("method", ["match", "get", "search", None])
+    @pytest.mark.parametrize("value", [None, [None]])
+    def test_filter_with_none_raises_error(
+        self, method: str | None, value: None | list[None], tmpdir: Path
+    ):
+        pybids_inputs: InputsConfig = {
+            "template": {
+                "filters": {"foo": value if method is None else {method: value}},  # type: ignore
+            }
+        }
+        with pytest.raises(
+            ConfigError, match="Filter 'foo' for component 'template' has a None"
+        ):
+            generate_inputs(tmpdir, pybids_inputs)
+
 
 @settings(
     deadline=800,

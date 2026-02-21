@@ -40,9 +40,7 @@ _mixed_filters: st.SearchStrategy[dict[str, str | list[str] | dict[str, str]]] =
         (
             st.text()
             | st.lists(st.text(), min_size=1)
-            | st.sampled_from(tuple(_VALID_FILTER_METHODS)).map(
-                lambda m: {m: "dummy"}
-            )
+            | st.sampled_from(tuple(_VALID_FILTER_METHODS)).map(lambda m: {m: "dummy"})
         ),
         max_size=6,
     )

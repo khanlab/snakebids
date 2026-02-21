@@ -121,7 +121,8 @@ class UnifiedFilter:
     def _has_empty_list(self, items: Iterable[Any]):
         """Check if any of the lists within iterable are empty."""
         return any(
-            itx.ilen(itx.always_iterable(item, base_type=(str, dict))) == 0
+            item is not None
+            and itx.ilen(itx.always_iterable(item, base_type=(str, dict))) == 0
             for item in items
         )
 
@@ -372,7 +373,7 @@ def _compile_filters(filters: FilterMap, *, with_regex: bool) -> CompiledFilter:
 
         # Validate that the filter value is not None
         # This prevents errors when users leave filter values blank in YAML configs
-        if filt is None:
+        if filt is None:  # type: ignore
             raise _NoneValueError(key, raw_filter)
 
         # these two must not be simultaneously true or false
