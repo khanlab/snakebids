@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools as it
 import os
+import re
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -11,12 +12,15 @@ from hypothesis import assume, example, given
 from hypothesis import strategies as st
 from pathvalidate import Platform, is_valid_filename, is_valid_filepath
 
-from snakebids.paths import bids, specs
+from snakebids.paths import specs
 from snakebids.paths._factory import bids_factory
-from snakebids.paths._utils import BidsPathSpec
+from snakebids.paths._utils import BidsPathSpec, SnakemakeTemplates
+from snakebids.snakemake_compat import regex_from_filepattern
+from snakebids.utils.snakemake_templates import SnakemakeFormatter
 from snakebids.utils.utils import BidsEntity
 from tests import strategies as sb_st
-from tests.helpers import Benchmark, is_strictly_increasing
+from tests.helpers import Benchmark, debug, is_strictly_increasing
+from tests.test_snakemake_templates.strategies import safe_field_names
 
 
 def _get_entity_tags(entities: Iterable[str]):
@@ -25,8 +29,16 @@ def _get_entity_tags(entities: Iterable[str]):
 
 def _values() -> st.SearchStrategy[str]:
     return st.text(min_size=1).filter(
-        lambda s: is_valid_filename(s, Platform.LINUX) and "_" not in s and "-" not in s
+        lambda s: is_valid_filename(s, Platform.LINUX) and not (set("_-.") & set(s))
     )
+
+
+def _field_names():
+    return safe_field_names(min_size=1).filter(lambda s: not s.isdigit())
+
+
+def _identifiers():
+    return st.from_regex(r"[a-zA-Z][a-zA-Z0-9]*", fullmatch=True)
 
 
 def _roots():
@@ -39,10 +51,11 @@ def make_bids_testsuite(spec: BidsPathSpec):
     has_dir = {e["entity"] for e in spec if e.get("dir")}
     bids = bids_factory(spec)
 
-    def _bids_args(
+    def _entities(
         entities: set[str] | None = std_entities,
         nonstandard: bool = True,
-        custom: bool = True,
+        custom: st.SearchStrategy[str] | None = None,
+        prefix: bool = False,
     ):
         std_ents = (
             sb_st.bids_entity(whitelist_entities=entities)
@@ -50,7 +63,7 @@ def make_bids_testsuite(spec: BidsPathSpec):
             else sb_st.nothing()
         )
         custom_ents = (
-            _values()
+            (_values() if custom is None else custom)
             .map(BidsEntity.from_tag)
             .filter(
                 lambda s: str(s)
@@ -58,17 +71,41 @@ def make_bids_testsuite(spec: BidsPathSpec):
                     {"datatype", "suffix", "extension", "prefix"} | set(std_entities)
                 )
             )
-            if custom
-            else sb_st.nothing()
         )
         nonstd_ents = (
             sb_st.bids_entity(whitelist_entities=["datatype", "suffix", "extension"])
             if nonstandard
             else sb_st.nothing()
         )
+        prefix_ent = st.just(BidsEntity("prefix")) if prefix else sb_st.nothing()
+        return std_ents | custom_ents | nonstd_ents | prefix_ent
+
+    def _bids_args(
+        entities: set[str] | None = std_entities,
+        nonstandard: bool = True,
+        custom: st.SearchStrategy[str] | None = None,
+        prefix: bool = False,
+        use_wildcard_only: bool = False,
+    ):
+        def normalize(d: dict[BidsEntity, tuple[bool, str]]):
+            result: dict[str, str] = {}
+            for key, val in d.items():
+                if use_wildcard_only:
+                    newkey = key.wildcard
+                elif val[0] and str(key) in has_tag:
+                    newkey = key.entity
+                else:
+                    newkey = key.tag
+                newval = val[1]
+                if newkey == "extension":
+                    newval = f".{newval}"
+
+                result[newkey] = newval
+            return result
+
         return (
             st.dictionaries(
-                keys=std_ents | custom_ents | nonstd_ents,
+                keys=_entities(entities, nonstandard, custom, prefix),
                 # The boolean here is to decide whether to use the entity or the tag in
                 # the BidsEntity generated above
                 values=st.tuples(
@@ -77,14 +114,7 @@ def make_bids_testsuite(spec: BidsPathSpec):
                 ),
                 min_size=1,
             )
-            .map(
-                # we only want to use the full entity name if the spec in use
-                # understands the full entity name
-                lambda d: {
-                    key.entity if val[0] and str(key) in has_tag else key.tag: val[1]
-                    for key, val in d.items()
-                }
-            )
+            .map(normalize)
             .filter(lambda s: set(s) - {"datatype", "extension"})
         )
 
@@ -94,6 +124,10 @@ def make_bids_testsuite(spec: BidsPathSpec):
             self, entities: dict[str, str]
         ):
             assert bids(**entities).count("_") == len(entities) - 1
+
+        @given(_bids_args(nonstandard=False))
+        def test_underscores_never_doubled(self, entities: dict[str, str]):
+            assert "__" not in bids(**entities)
 
         @given(_bids_args(nonstandard=False))
         def test_number_of_dashes_corresponds_to_number_entities(
@@ -144,11 +178,9 @@ def make_bids_testsuite(spec: BidsPathSpec):
         def test_no_underscore_at_end_if_no_suffix(self, entities: dict[str, str]):
             assert bids(**entities)[-1] != "_"
 
-        @given(entities=_bids_args(nonstandard=True, entities=None))
-        def test_no_underscore_at_beginning_if_only_suffix(
-            self, entities: dict[str, str]
-        ):
-            assert bids(**entities)[0] != "_"
+        @given(entities=_bids_args())
+        def test_never_underscore_at_name_beginning(self, entities: dict[str, str]):
+            assert Path(bids(**entities)).name[0] != "_"
 
         @given(entities=_bids_args(), root=_roots())
         def test_beginning_of_path_always_root(
@@ -185,7 +217,11 @@ def make_bids_testsuite(spec: BidsPathSpec):
             for tag in tags:
                 assert f"_{tag}-" in path
 
-        @given(entities=_bids_args(entities=has_tag, nonstandard=False, custom=False))
+        @given(
+            entities=_bids_args(
+                entities=has_tag, nonstandard=False, custom=st.nothing()
+            )
+        )
         def test_full_entity_names_not_in_path(self, entities: dict[str, str]):
             non_tags = [
                 normed.entity
@@ -196,7 +232,11 @@ def make_bids_testsuite(spec: BidsPathSpec):
             for entity in non_tags:
                 assert f"{entity}-" not in path
 
-        @given(entities=_bids_args(entities=has_tag, nonstandard=False, custom=False))
+        @given(
+            entities=_bids_args(
+                entities=has_tag, nonstandard=False, custom=st.nothing()
+            )
+        )
         def test_long_and_short_names_cannot_be_used_simultaneously(
             self, entities: dict[str, str]
         ):
@@ -211,7 +251,7 @@ def make_bids_testsuite(spec: BidsPathSpec):
             assert itx.first(tags) in err.value.args[0]
 
         @given(
-            entities=_bids_args(nonstandard=False, custom=False),
+            entities=_bids_args(nonstandard=False, custom=st.nothing()),
             custom=_bids_args(entities=None, nonstandard=False),
         )
         def test_entities_found_in_name_in_correct_order(
@@ -239,15 +279,20 @@ def make_bids_testsuite(spec: BidsPathSpec):
         ):
             assert Path(bids(root=root, **entities)).parent == Path(root)
 
-        @given(entities=_bids_args(entities=has_dir, nonstandard=False, custom=False))
+        @given(
+            entities=_bids_args(
+                entities=has_dir, nonstandard=False, custom=st.nothing()
+            )
+        )
         def test_dir_entities_each_own_dir(self, entities: dict[str, str]):
-            for par in itx.islice_extended(Path(bids(**entities)).parents, 0, -1):
+            for par in Path(bids(**entities)).parents[:-1]:
                 count = 0
                 for e in list(entities):
                     tag = BidsEntity.normalize(e).tag
                     if (
+                        # tag found in parent
                         par.name[: len(tag)] == tag
-                        # if found, appears nowhere else
+                        # and nowhere else
                         and f"{tag}-" not in str(par.parent)
                     ):
                         del entities[e]
@@ -257,7 +302,9 @@ def make_bids_testsuite(spec: BidsPathSpec):
             assert not entities
 
         @given(
-            entities=_bids_args(entities=has_dir, nonstandard=False, custom=False),
+            entities=_bids_args(
+                entities=has_dir, nonstandard=False, custom=st.nothing()
+            ),
             root=_roots().filter(lambda s: s != "."),
         )
         def test_directories_in_correct_order(
@@ -274,24 +321,21 @@ def make_bids_testsuite(spec: BidsPathSpec):
                 path.index(f"{os.path.sep}{e}-") for e in order
             )
 
-        @given(entities=_bids_args(nonstandard=False), root=_roots())
-        def test_values_paired_with_entities(self, entities: dict[str, str], root: str):
-            path = Path(bids(root=root, **entities))
-            name = "_" + path.name
-            parent = os.path.sep + str(path.parent)
+        @given(entities=_bids_args(nonstandard=False))
+        def test_values_paired_with_entities(self, entities: dict[str, str]):
+            path = Path(bids(**entities))
 
-            def assert_follows(string: str, first: str, second: str):
-                start = string.index(first) + len(first)
-                assert string[start : start + len(second)] == second
+            name_mapping = dict(s.split("-") for s in path.name.split("_"))
+            parent_mapping = dict(s.split("-") for s in path.parent.parts)
 
             for entity, value in entities.items():
                 tag = BidsEntity.normalize(entity).tag
-                assert_follows(name, f"_{tag}-", value)
+                assert name_mapping[tag] == value
                 if entity in has_dir:
-                    assert_follows(parent, f"{os.path.sep}{tag}-", value)
+                    assert parent_mapping[tag] == value
 
         def test_bids_with_no_args_gives_empty_path(self):
-            assert not bids()
+            assert bids() == ""
 
         @given(
             args=st.dictionaries(
@@ -305,27 +349,119 @@ def make_bids_testsuite(spec: BidsPathSpec):
             ):
                 bids(**args)
 
+        @given(entities=_bids_args(nonstandard=False), suffix=st.text())
+        def test_suffix_at_end(self, entities: dict[str, str], suffix: str):
+            assert bids(suffix=suffix, **entities).endswith(suffix)
+
+        @given(
+            entities=_bids_args(nonstandard=False),
+            suffix=st.text(),
+            ext=st.text(),
+        )
+        def test_extension_at_end(
+            self, entities: dict[str, str], suffix: str, ext: str
+        ):
+            assert bids(suffix=suffix, extension=ext, **entities).endswith(ext)
+
+        @given(
+            mandatory=_bids_args(custom=_field_names(), use_wildcard_only=True),
+            optional=_bids_args(custom=_field_names(), use_wildcard_only=True),
+        )
+        def test_optional_wildcards_format_into_bids_paths(
+            self, mandatory: dict[str, str], optional: dict[str, str]
+        ):
+            """Test that optional wildcards compose correctly with hypothesis."""
+            args = mandatory | optional
+            reference = bids(**args)
+            template = bids(
+                root="",
+                **(
+                    {k: v.replace("{", "{{") for k, v in mandatory.items()}
+                    | dict.fromkeys(optional, SnakemakeTemplates.OPTIONAL_WILDCARD)
+                ),
+            )
+
+            formatter = SnakemakeFormatter()
+
+            assert formatter.format(template, **args) == reference
+
+        @debug(mandatory={"prefix": "0"}, optional={"A": "0", "extension": ".0"})
+        @given(
+            mandatory=_bids_args(
+                use_wildcard_only=True, custom=_identifiers(), prefix=True
+            ),
+            optional=_bids_args(use_wildcard_only=True, custom=_identifiers()),
+        )
+        def test_optional_wildcards_match_bids_paths(
+            self, mandatory: dict[str, str], optional: dict[str, str]
+        ):
+            """Test that optional wildcards compose correctly with hypothesis."""
+            mandatory = {k: v.replace("{", "{{") for k, v in mandatory.items()}
+            args = mandatory | optional
+            reference = bids(**args)
+            template = bids(
+                root="",
+                **(
+                    mandatory
+                    | dict.fromkeys(optional, SnakemakeTemplates.OPTIONAL_WILDCARD)
+                ),
+            )
+            regex = regex_from_filepattern(template)
+            match = re.match(regex, reference)
+            assert match is not None
+            gathered_args = match.groupdict()
+            for arg, val in optional.items():
+                assert gathered_args[arg] == val
+
+        @given(
+            mandatory=_bids_args(use_wildcard_only=True, custom=_identifiers()),
+            optional=_bids_args(use_wildcard_only=True, custom=_identifiers()),
+        )
+        def test_pathlib_roundtrip(
+            self, mandatory: dict[str, str], optional: dict[str, str]
+        ):
+            template = bids(
+                root="",
+                **(
+                    mandatory
+                    | dict.fromkeys(optional, SnakemakeTemplates.OPTIONAL_WILDCARD)
+                ),
+            )
+            assert str(Path(template)) == template
+
+        def test_prefix_may_not_be_optional(self):
+            with pytest.raises(
+                ValueError,
+                match="prefix may not be specified as optional",
+            ):
+                bids(prefix=SnakemakeTemplates.OPTIONAL_WILDCARD)
+
     return BidsTests
 
 
 TestV0_0_0 = make_bids_testsuite(specs.v0_0_0())
 
-TestV0_10_1 = make_bids_testsuite(specs.v0_11_0())
+TestV0_11_0 = make_bids_testsuite(specs.v0_11_0())
+
+TestV0_15_0 = make_bids_testsuite(specs.v0_15_0())
 
 
-def test_benchmark_bids(benchmark: Benchmark):
-    """If refactoring bids, be sure this benchmark doesn't needlessly increase"""
-    benchmark(
-        bids,
-        root="foo/bar",
-        subject_dir=False,
-        subject="001",
-        session="32",
-        run="stop",
-        foo="bar",
-        england="britain",
-        space="cosmos",
-        rome="fell",
-        suffix="suffix",
-        extension=".ext",
-    )
+class TestBenchmarkBids:
+    call = {  # noqa: RUF012
+        "root": "foo/bar",
+        "subject_dir": False,
+        "subject": "001",
+        "session": "32",
+        "run": "stop",
+        "foo": "bar",
+        "england": "britain",
+        "space": "cosmos",
+        "rome": "fell",
+        "suffix": "suffix",
+        "extension": ".ext",
+    }
+
+    def test_new_bids(self, benchmark: Benchmark):
+        """If refactoring bids, be sure this benchmark doesn't needlessly increase"""
+        new_bids = bids_factory(specs.v0_0_0())
+        benchmark(new_bids, **self.call)  # type: ignore

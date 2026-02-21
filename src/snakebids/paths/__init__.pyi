@@ -13,6 +13,7 @@ from ._utils import (
     BidsPathEntitySpec,
     BidsPathSpec,
     BidsPathSpecFile,
+    SnakemakeTemplates,
 )
 
 __all__ = [
@@ -20,6 +21,7 @@ __all__ = [
     "BidsPathEntitySpec",
     "BidsPathSpec",
     "BidsPathSpecFile",
+    "SnakemakeTemplates",
     "bids",
     "bids_factory",
     "set_bids_spec",

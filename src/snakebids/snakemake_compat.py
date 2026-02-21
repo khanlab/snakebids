@@ -11,6 +11,13 @@ except ImportError:
 
 from snakemake.exceptions import WildcardError
 from snakemake.io import expand
+
+# Handle different snakemake versions for regex function
+try:
+    from snakemake.io import regex_from_filepattern
+except ImportError:
+    from snakemake.io import regex as regex_from_filepattern
+
 from snakemake.script import Snakemake
 
 __all__ = [
@@ -21,4 +28,5 @@ __all__ = [
     "get_argument_parser",
     "load_configfile",
     "main",
+    "regex_from_filepattern",
 ]
