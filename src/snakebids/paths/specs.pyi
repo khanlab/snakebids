@@ -21,7 +21,7 @@ def v0_0_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
         sub-{subject}/ses-{session}/{datatype}/{prefix}_sub-{subject}_ses-{session}_
         task-{task}_acq-{acq}_ce-{ce}_rec-{rec}_dir-{dir}_run-{run}_mod-{mod}_
         echo-{echo}_hemi-{hemi}_space-{space}_res-{res}_den-{den}_label-{label}_
-        desc-{desc}_..._{suffix}_{extension}
+        desc-{desc}_..._{suffix}{extension}
 
 
     Parameters
@@ -54,7 +54,7 @@ def v0_11_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
         atlas-{atlas}_seg-{segmentation}_hemi-{hemisphere}_res-{resolution}_
         den-{density}_roi-{roi}_from-{from}_to-{to}_split-{split}_
         recording-{recording}_chunk-{chunk}_model-{model}_subset-{subset}_
-        label-{label}_..._desc-{description}_{suffix}_{extension}
+        label-{label}_..._desc-{description}_{suffix}{extension}
 
 
     Parameters
@@ -86,7 +86,7 @@ def v0_15_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
         space-{space}_atlas-{atlas}_seg-{segmentation}_hemi-{hemisphere}_
         res-{resolution}_den-{density}_roi-{roi}_from-{from}_to-{to}_split-{split}_
         recording-{recording}_chunk-{chunk}_model-{model}_subset-{subset}_
-        label-{label}_..._desc-{description}_{suffix}_{extension}
+        label-{label}_..._desc-{description}_{suffix}{extension}
 
 
     Parameters
@@ -118,7 +118,7 @@ def latest(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
         space-{space}_atlas-{atlas}_seg-{segmentation}_hemi-{hemisphere}_
         res-{resolution}_den-{density}_roi-{roi}_from-{from}_to-{to}_split-{split}_
         recording-{recording}_chunk-{chunk}_model-{model}_subset-{subset}_
-        label-{label}_..._desc-{description}_{suffix}_{extension}
+        label-{label}_..._desc-{description}_{suffix}{extension}
 
 
     Parameters
