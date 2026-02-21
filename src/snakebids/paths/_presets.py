@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from snakebids.paths._config import get_bids_func
-from snakebids.paths.specs import _LATEST
+from snakebids.paths._config import LATEST, get_bids_func
 
 
 def bids(
@@ -128,4 +127,4 @@ def bids(
 
 
 assert bids.__doc__  # noqa: S101
-bids.__doc__ = bids.__doc__.replace("<version>", _LATEST)
+bids.__doc__ = bids.__doc__.replace("<version>", LATEST)

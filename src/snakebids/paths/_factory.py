@@ -244,6 +244,8 @@ def bids_factory(spec: BidsPathSpec, *, _implicit: bool = False) -> BidsFunction
             result += extension
 
         if custom_parts and _implicit and not in_interactive_session():
+            from snakebids.paths._config import LATEST  # noqa: PLC0415
+
             wrn_msg = (
                 f"Path generated with unrecognized entities, and a snakebids spec has "
                 "not been explicitly declared. This could break in future snakebids "
@@ -252,7 +254,7 @@ def bids_factory(spec: BidsPathSpec, *, _implicit: bool = False) -> BidsFunction
                 f"\tentities = {custom_parts!r}\n\n"
                 "Please declare a spec using:\n"
                 "\tfrom snakebids import set_bids_spec\n"
-                f'\tset_bids_spec("{specs._LATEST}")\n'
+                f'\tset_bids_spec("{LATEST}")\n'
             ).expandtabs(4)
             warnings.warn(wrn_msg, stacklevel=3)
 

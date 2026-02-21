@@ -26,19 +26,16 @@ if not TYPE_CHECKING:
 
 
 _SPECS = ["v0_0_0", "v0_11_0", "v0_15_0"]
-# _LATEST = "v0_15_0"
 # </AUTOUPDATE>
-
-# To automatically use latest spec as "_LATEST", remove this line and uncomment the
-# generated line in scripts/update_bids.py
-_LATEST = "v0_0_0"
 
 
 @ft.lru_cache
 def __getattr__(name: str):
     """Allow dynamic retrieval of latest spec."""
     if name == "latest":
-        name = _LATEST
+        from snakebids.paths._config import LATEST  # noqa: PLC0415
+
+        name = LATEST
 
     if name not in _SPECS:
         msg = f"module '{__name__}' has no attribute '{name}'"

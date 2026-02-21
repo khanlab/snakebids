@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 #
 
 VALID_SPECS: TypeAlias = Literal["v0_0_0", "v0_11_0", "v0_15_0", "latest"]
+LATEST = "v0_0_0"
 # </AUTOUPDATE>
 
 __all__ = ["set_bids_spec"]

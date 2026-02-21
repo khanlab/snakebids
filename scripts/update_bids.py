@@ -138,19 +138,26 @@ def main():
     latest_version, latest_spec = get_latest(all_specs)
     generate_stub(
         specs,
-        ["from ._utils import BidsPathSpec", "_LATEST: str"],
+        ["from ._utils import BidsPathSpec"],
         spec_stub(all_specs, latest_spec),
     )
 
     versions = [spec["version"].replace(".", "_") for spec in all_specs]
     spec_list = ",".join(f'"{v}"' for v in versions)
     valid_specs = spec_list + ', "latest"'
-    update_source(_config, None, [f"VALID_SPECS: TypeAlias = Literal[{valid_specs}]"])
+    update_source(
+        _config,
+        None,
+        [
+            f"VALID_SPECS: TypeAlias = Literal[{valid_specs}]",
+            f'LATEST = "{latest_version}"',
+        ],
+    )
 
     update_source(
         specs,
         it.chain((version for version in versions), ("latest",)),
-        [f"_SPECS = [{spec_list}]", f'# _LATEST = "{latest_version}"'],
+        [f"_SPECS = [{spec_list}]"],
     )
 
 
