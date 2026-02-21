@@ -67,7 +67,7 @@ class SnakemakeWildcards:
         str
             Variable wildcard format: TAG,CONSTRAINT
         """
-        constraint = rf"(?:(?<={self._tag}\-)[^_\/\-\.]+(?=_|\/|$))?"
+        constraint = rf"(?:(?<={self._tag}\-)[^_\/\-\.]+(?=_|\/|\.|$))?"
         return f"{self._wildcard},{constraint}"
 
     @property

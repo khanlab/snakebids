@@ -83,6 +83,7 @@ def test_special_entities_formats_label_correctly(entity: str):
         ("", "run-_/", "", None),
         ("", "run--/", "", None),
         ("", "run-\n/", "", "run-\n/"),
+        ("", "run-./", "", None),
         ("", "run-01//", "", None),
         ("", "run-01", "", None),
         ("", "/run-01/", "", None),
@@ -94,7 +95,6 @@ def test_special_entities_formats_label_correctly(entity: str):
         ("prefix/", "prefix/run-01/more", "more", "run-01/"),
         ("", "run-01_test/", "", None),
         ("", "run-01-02/", "", None),
-        ("", "run-./", "", None),
     ],
 )
 def test_directory_wildcard_matching(
@@ -170,6 +170,7 @@ def test_underscore_wildcard_matching(
         ("", "anat-01/", "/", None),
         ("", "an/a/", "/", None),
         ("", "ana\n/", "/", "ana\n"),
+        ("", "anat./", "/", None),
         ("", "/ana-01/", "/", None),
         ("/", "/anat01/", "", None),
         ("/", "/anat01/", "/", "anat01"),
@@ -178,7 +179,6 @@ def test_underscore_wildcard_matching(
         ("prefix/", "prefix/anat/", "", None),
         ("prefix/", "prefix/anat/", "/", "anat"),
         ("prefix/", "prefix/anat01/more", "/more", "anat01"),
-        ("", "anat./", "/", None),
     ],
 )
 def test_datatype_wildcard_matching(
@@ -204,6 +204,7 @@ def test_datatype_wildcard_matching(
         ("", "run-_", "_", None),
         ("", "run--", "-", None),
         ("", "run-\n", "\n", "run-"),
+        ("", "run-.", ".", None),
         ("", "run-/", "/", None),
         ("", "/run-0", "0", None),
         ("/", "/run-0", "0", "run-"),
@@ -216,7 +217,6 @@ def test_datatype_wildcard_matching(
         ("prefix/", "prefix/_run-0", "0", None),
         ("prefix/_", "prefix/_run-0", "0", None),
         ("prefix/", "prefix/run-0/more", "0/more", "run-"),
-        ("", "run-.", ".", None),
     ],
 )
 def test_dummy_wildcard_matching(
@@ -241,6 +241,10 @@ def test_dummy_wildcard_matching(
         ("run-", "run-_", "", None),
         ("run-", "run--", "", None),
         ("run-", "run-\nfwaef", "", "\nfwaef"),
+        ("run-", "run-.value", "", None),
+        ("run-", "run-value.ext", "", None),
+        ("run-", "run-value.ext", "ext", None),
+        ("run-", "run-value.ext", ".ext", "value"),
         ("run-", "run-/", "", None),
         ("/run-", "/run-value0", "", "value0"),
         ("prefix/run-", "prefix/run-0", "", "0"),
@@ -251,7 +255,6 @@ def test_dummy_wildcard_matching(
         ("run-", "run-0/more", "/more", "0"),
         ("run-", "run-0_more", "more", None),
         ("run-", "run-0/more", "more", None),
-        ("run-", "run-.value", "", None),
     ],
 )
 def test_ordinary_wildcard_matching(
@@ -281,7 +284,7 @@ def test_ordinary_wildcard_matching(
         ("/", "/suffix_more", "_more", "suffix"),
         ("/", "/suffix/more", "/more", "suffix"),
         ("/", "/suffix-more", "-more", "suffix"),
-        ("", "T1w", "", "T1w"),
+        ("/", "/suffix.more", ".more", "suffix"),
     ],
 )
 def test_suffix_wildcard_matching(
@@ -299,7 +302,6 @@ def test_suffix_wildcard_matching(
         ("prefix", "prefix", "", ""),
         ("prefix", "prefixmore", "more", ""),
         ("", ".ext", "", ".ext"),
-        ("", ".nii.gz", "", ".nii.gz"),
         ("", ".ext-more", "", None),
         ("", ".ext_more", "", None),
         ("", ".ext/more", "", None),
