@@ -138,7 +138,7 @@ def main():
     latest_version, latest_spec = get_latest(all_specs)
     generate_stub(
         specs,
-        ["from ._utils import BidsPathSpec", "LATEST: str"],
+        ["from ._utils import BidsPathSpec", "_LATEST: str"],
         spec_stub(all_specs, latest_spec),
     )
 
@@ -149,8 +149,8 @@ def main():
 
     update_source(
         specs,
-        it.chain((version for version in versions), ("latest", "LATEST")),
-        [f"_SPECS = [{spec_list}]", f'# LATEST = "{latest_version}"'],
+        it.chain((version for version in versions), ("latest",)),
+        [f"_SPECS = [{spec_list}]", f'# _LATEST = "{latest_version}"'],
     )
 
 

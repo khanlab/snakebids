@@ -252,7 +252,7 @@ def bids_factory(spec: BidsPathSpec, *, _implicit: bool = False) -> BidsFunction
                 f"\tentities = {custom_parts!r}\n\n"
                 "Please declare a spec using:\n"
                 "\tfrom snakebids import set_bids_spec\n"
-                f'\tset_bids_spec("{specs.LATEST}")\n'
+                f'\tset_bids_spec("{specs._LATEST}")\n'
             ).expandtabs(4)
             warnings.warn(wrn_msg, stacklevel=3)
 

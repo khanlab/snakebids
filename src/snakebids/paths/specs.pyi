@@ -5,7 +5,7 @@
 
 from ._utils import BidsPathSpec
 
-LATEST: str
+_LATEST: str
 
 def v0_0_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
     """Get the v0.0.0 BidsPathSpec.
