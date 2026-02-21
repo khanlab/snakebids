@@ -6,7 +6,24 @@ import string
 from collections.abc import Iterator, Mapping, Sequence
 from typing import Any, Final, overload
 
+import attrs
 from typing_extensions import LiteralString, override
+
+
+@attrs.define(frozen=True)
+class _Wildcard:
+    """Represents a single wildcard with label, constraint, and formatted output."""
+
+    label: str
+    constraint: str
+
+    @property
+    def wildcard(self) -> str:
+        """Return the brace-wrapped wildcard string."""
+        return f"{{{self.label},{self.constraint}}}"
+
+    def __str__(self) -> str:
+        return self.wildcard
 
 
 class SnakemakeWildcards:
@@ -21,13 +38,25 @@ class SnakemakeWildcards:
         The entity tag name (e.g., "sub", "ses", "run").
     """
 
-    # Special wildcard class attributes with their constraints
-    # Format: NAME,CONSTRAINT
-    underscore: Final[str] = r"___,^|(?<=\/)|(?<=[^\/])_(?=[^\.])"
-    slash: Final[str] = r"__d__,^|(?<=\/)|(?<=.)\/"
-    datatype: Final[str] = r"datatype,(?:(?:^|(?<=\/))[^_\/\-\.]+(?=\/))?"
-    suffix: Final[str] = r"suffix,(?:(?:^|(?<=\/|_))[^_\/\-\.]+)?"
-    extension: Final[str] = r"extension,(?:\.[^_\/\-]+$)?"
+    # Special wildcard class attributes (static, tag-independent)
+    underscore: Final[_Wildcard] = _Wildcard(
+        label="___", constraint=r"^|(?<=\/)|(?<=[^\/])_(?=[^\.])"
+    )
+    slash: Final[_Wildcard] = _Wildcard(label="__d__", constraint=r"^|(?<=\/)|(?<=.)\/")
+    datatype: Final[_Wildcard] = _Wildcard(
+        label="datatype", constraint=r"(?:(?:^|(?<=\/))[^_\/\-\.]+(?=\/))?"
+    )
+    suffix: Final[_Wildcard] = _Wildcard(
+        label="suffix", constraint=r"(?:(?:^|(?<=\/|_))[^_\/\-\.]+)?"
+    )
+    extension: Final[_Wildcard] = _Wildcard(
+        label="extension", constraint=r"(?:\.[^_\/\-]+$)?"
+    )
+
+    # Instance attributes (tag-dependent)
+    variable: _Wildcard
+    dummy: _Wildcard
+    directory: _Wildcard
 
     def __init__(self, tag: str) -> None:
         """Initialize with an entity tag name.
@@ -46,41 +75,19 @@ class SnakemakeWildcards:
             self._wildcard, self._wildcard
         )
 
-    @property
-    def dummy(self) -> str:
-        """Return the dummy wildcard in NAME,CONSTRAINT format.
-
-        Returns
-        -------
-        str
-            Dummy wildcard format: _TAG_,CONSTRAINT
-        """
-        constraint = rf"(?:(?:^|(?<=\/)|(?<=[^\/])_){self._tag}\-(?=[^_\/\-\.]))?"
-        return f"_{self._wildcard}_,{constraint}"
-
-    @property
-    def variable(self) -> str:
-        """Return the variable wildcard in NAME,CONSTRAINT format.
-
-        Returns
-        -------
-        str
-            Variable wildcard format: TAG,CONSTRAINT
-        """
-        constraint = rf"(?:(?<={self._tag}\-)[^_\/\-\.]+(?=_|\/|\.|$))?"
-        return f"{self._wildcard},{constraint}"
-
-    @property
-    def directory(self) -> str:
-        """Return the directory wildcard in NAME,CONSTRAINT format.
-
-        Returns
-        -------
-        str
-            Directory wildcard format: _TAG_d_,CONSTRAINT
-        """
-        constraint = rf"(?:(?:^|(?<=\/)){self._tag}\-[^_\/\-\.]+\/)?"
-        return f"_{self._wildcard}_d_,{constraint}"
+        # Initialize instance wildcards with tag-dependent constraints
+        self.variable = _Wildcard(
+            label=self._wildcard,
+            constraint=rf"(?:(?<={self._tag}\-)[^_\/\-\.]+(?=_|\/|\.|$))?",
+        )
+        self.dummy = _Wildcard(
+            label=f"_{self._wildcard}_",
+            constraint=rf"(?:(?:^|(?<=\/)|(?<=[^\/])_){self._tag}\-(?=[^_\/\-\.]))?",
+        )
+        self.directory = _Wildcard(
+            label=f"_{self._wildcard}_d_",
+            constraint=rf"(?:(?:^|(?<=\/)){self._tag}\-[^_\/\-\.]+\/)?",
+        )
 
 
 class SnakemakeFormatter(string.Formatter):

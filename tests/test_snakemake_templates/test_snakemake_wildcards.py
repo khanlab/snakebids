@@ -6,6 +6,7 @@ import re
 
 import pytest
 from hypothesis import given
+from hypothesis import strategies as st
 
 from snakebids.utils.snakemake_templates import SnakemakeFormatter, SnakemakeWildcards
 from tests.test_snakemake_templates.strategies import safe_field_names
@@ -25,8 +26,8 @@ class TestCorrectLabels:
         wc = SnakemakeWildcards(entity)
         formatter = SnakemakeFormatter()
         assert (
-            formatter.format(f"{{{wc.directory}}}", **{entity: "foo"})
-            == f"{entity}-foo/"
+            formatter.format(str(wc.directory), **{wc._wildcard: "foo"})
+            == f"{wc._tag}-foo/"
         )
 
     @given(entity=safe_field_names())
@@ -34,25 +35,25 @@ class TestCorrectLabels:
         """Test that directory wildcard label is formatted correctly."""
         wc = SnakemakeWildcards(entity)
         formatter = SnakemakeFormatter()
-        assert formatter.format(f"{{{wc.dummy}}}", **{entity: "foo"}) == f"{entity}-"
+        assert formatter.format(str(wc.dummy), **{wc._wildcard: "foo"}) == f"{wc._tag}-"
 
     @given(entity=safe_field_names(min_size=1).filter(lambda s: not s.isdigit()))
     def test_variable_formats_label_correctly(self, entity: str):
         """Test that directory wildcard label is formatted correctly."""
         wc = SnakemakeWildcards(entity)
         formatter = SnakemakeFormatter()
-        assert formatter.format(f"{{{wc.variable}}}", **{entity: "foo"}) == "foo"
+        assert formatter.format(str(wc.variable), **{wc._wildcard: "foo"}) == "foo"
 
     def test_underscore_formats_label_correctly(self):
         """Test that directory wildcard label is formatted correctly."""
         formatter = SnakemakeFormatter()
-        assert formatter.format(f"foo{{{SnakemakeWildcards.underscore}}}") == "foo_"
+        assert formatter.format(f"foo{SnakemakeWildcards.underscore}") == "foo_"
 
     def test_slash_formats_label_correctly(self):
         """Test that directory wildcard label is formatted correctly."""
         formatter = SnakemakeFormatter()
         assert (
-            formatter.format(f"anat{{{SnakemakeWildcards.slash}}}", datatype="anat")
+            formatter.format(f"anat{SnakemakeWildcards.slash}", datatype="anat")
             == "anat/"
         )
 
@@ -62,9 +63,7 @@ def test_special_entities_formats_label_correctly(entity: str):
     """Test that directory wildcard label is formatted correctly."""
     formatter = SnakemakeFormatter()
     assert (
-        formatter.format(
-            f"{{{getattr(SnakemakeWildcards, entity)}}}", **{entity: "foo"}
-        )
+        formatter.format(f"{getattr(SnakemakeWildcards, entity)}", **{entity: "foo"})
         == "foo"
     )
 
@@ -102,7 +101,7 @@ def test_directory_wildcard_matching(
 ):
     """Test directory wildcard matching behavior."""
     wc = SnakemakeWildcards("run")
-    _, constraint = wc.directory.split(",", 1)
+    constraint = wc.directory.constraint
     assert do_match(f"{before}({constraint}){after}", text) == expected
 
 
@@ -126,7 +125,7 @@ def test_directory_wildcard_matching(
 )
 def test_d_wildcard_matching(before: str, text: str, after: str, expected: str | None):
     """Test __d__ wildcard matching behavior."""
-    _, constraint = SnakemakeWildcards.slash.split(",", 1)
+    constraint = SnakemakeWildcards.slash.constraint
     assert do_match(f"{before}({constraint}){after}", text) == expected
 
 
@@ -152,7 +151,7 @@ def test_d_wildcard_matching(before: str, text: str, after: str, expected: str |
 def test_underscore_wildcard_matching(
     before: str, text: str, after: str, expected: str | None
 ):
-    _, constraint = SnakemakeWildcards.underscore.split(",", 1)
+    constraint = SnakemakeWildcards.underscore.constraint
     assert do_match(f"{before}({constraint}){after}", text) == expected
 
 
@@ -184,7 +183,7 @@ def test_underscore_wildcard_matching(
 def test_datatype_wildcard_matching(
     before: str, text: str, after: str, expected: str | None
 ):
-    _, constraint = SnakemakeWildcards.datatype.split(",", 1)
+    constraint = SnakemakeWildcards.datatype.constraint
     assert do_match(f"{before}({constraint}){after}", text) == expected
 
 
@@ -222,7 +221,7 @@ def test_datatype_wildcard_matching(
 def test_dummy_wildcard_matching(
     before: str, text: str, after: str, expected: str | None
 ):
-    _, constraint = SnakemakeWildcards("run").dummy.split(",", 1)
+    constraint = SnakemakeWildcards("run").dummy.constraint
     assert do_match(f"{before}({constraint}){after}", text) == expected
 
 
@@ -260,7 +259,7 @@ def test_dummy_wildcard_matching(
 def test_ordinary_wildcard_matching(
     before: str, text: str, after: str, expected: str | None
 ):
-    _, constraint = SnakemakeWildcards("run").variable.split(",", 1)
+    constraint = SnakemakeWildcards("run").variable.constraint
     assert do_match(f"{before}({constraint}){after}", text) == expected
 
 
@@ -290,7 +289,7 @@ def test_ordinary_wildcard_matching(
 def test_suffix_wildcard_matching(
     before: str, text: str, after: str, expected: str | None
 ):
-    _, constraint = SnakemakeWildcards.suffix.split(",", 1)
+    constraint = SnakemakeWildcards.suffix.constraint
     assert do_match(f"{before}({constraint}){after}", text) == expected
 
 
@@ -316,7 +315,7 @@ def test_suffix_wildcard_matching(
 def test_extension_wildcard_matching(
     before: str, text: str, after: str, expected: str | None
 ):
-    _, constraint = SnakemakeWildcards.extension.split(",", 1)
+    constraint = SnakemakeWildcards.extension.constraint
     assert do_match(f"{before}({constraint}){after}", text) == expected
 
 
@@ -331,9 +330,9 @@ def test_extension_wildcard_matching(
 def test_tag_replacement(tag: str, expected_name: str):
     """Test tag to wildcard name conversion."""
     wc = SnakemakeWildcards(tag)
-    assert expected_name in wc.variable
-    assert expected_name in wc.dummy
-    assert expected_name in wc.directory
+    assert expected_name in wc.variable.label
+    assert expected_name in wc.dummy.label
+    assert expected_name in wc.directory.label
 
 
 @pytest.mark.parametrize(
@@ -357,11 +356,55 @@ def test_subject_session_label_vs_tag_in_constraints(tag: str, wildcard_label: s
     # reference the short BIDS tag prefix, not the full wildcard label
     for wildcard in (wc.variable, wc.dummy, wc.directory):
         # Wildcard labels must use the full wildcard name
-        assert wildcard_label in wildcard
+        assert wildcard_label in wildcard.label
 
-        # Extract constraint and verify it uses short tag, not full label
-        _, constraint = wildcard.split(",", 1)
+        constraint = wildcard.constraint
         # The regex constraints use escaped hyphens (e.g. "sub\-")
         assert f"{tag}\\-" in constraint
         # Ensure constraints do NOT use the full wildcard label as tag prefix
         assert f"{wildcard_label}\\-" not in constraint
+
+
+class TestBraceWrappedOutput:
+    @pytest.mark.parametrize("attribute", ["variable", "dummy", "directory"])
+    @given(entity=st.text())
+    def test_dynamic_wildcards_are_brace_wrapped(self, entity: str, attribute: str):
+        """Test that variable wildcard returns a brace-wrapped string."""
+        wildcard = getattr(SnakemakeWildcards(entity), attribute).wildcard
+        assert wildcard.startswith("{")
+        assert wildcard.endswith("}")
+
+    @pytest.mark.parametrize(
+        "attr",
+        ["underscore", "slash", "datatype", "suffix", "extension"],
+    )
+    def test_class_attributes_are_brace_wrapped(self, attr: str):
+        value = getattr(SnakemakeWildcards, attr).wildcard
+        assert value.startswith("{")
+        assert value.endswith("}")
+
+
+class TestConstraintsAccessor:
+    """Test that .constraint exposes raw regex constraint strings."""
+
+    @given(entity=st.text())
+    def test_wildcard_wraps_constraint(self, entity: str):
+        wc = SnakemakeWildcards(entity)
+        assert wc.variable.constraint in wc.variable.wildcard
+        assert wc.dummy.constraint in wc.dummy.wildcard
+        assert wc.directory.constraint in wc.directory.wildcard
+
+    @pytest.mark.parametrize(
+        "attribute",
+        [
+            "underscore",
+            "slash",
+            "datatype",
+            "suffix",
+            "extension",
+        ],
+    )
+    def test_class_wildcard_wraps_constraint(self, attribute: str):
+        """Test that class-level brace-wrapped attr contains the constraint."""
+        wildcard = getattr(SnakemakeWildcards, attribute)
+        assert wildcard.constraint in wildcard.wildcard
