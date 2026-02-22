@@ -3,18 +3,18 @@ from __future__ import annotations
 from pathlib import Path
 
 from snakebids.paths._config import get_bids_func
-from snakebids.paths._utils import SnakemakeTemplates
+from snakebids.paths._utils import BidsFlags
 from snakebids.paths.specs import LATEST
 
 
 def bids(
     root: str | Path | None = None,
     *,
-    datatype: str | SnakemakeTemplates | None = None,
-    prefix: str | SnakemakeTemplates | None = None,
-    suffix: str | SnakemakeTemplates | None = None,
-    extension: str | SnakemakeTemplates | None = None,
-    **entities: str | SnakemakeTemplates,
+    datatype: str | BidsFlags | None = None,
+    prefix: str | BidsFlags | None = None,
+    suffix: str | BidsFlags | None = None,
+    extension: str | BidsFlags | None = None,
+    **entities: str | BidsFlags,
 ) -> str:
     """Generate bids or bids-like paths.
 
@@ -63,7 +63,7 @@ def bids(
     entities
         bids entities as keyword arguments paired with values (e.g. ``space="T1w"``
         for ``space-T1w``). Entities can also be specified as optional using
-        ``SnakemakeTemplates.OPTIONAL_WILDCARD``, which generates Snakemake-compatible
+        ``OPTIONAL_WILDCARD``, which generates Snakemake-compatible
         templates with constrained wildcards that allow the entity to be present or
         absent.
 
@@ -131,17 +131,17 @@ def bids(
         datasets!
 
     For workflows that need to handle datasets with inconsistent entity presence,
-    ``SnakemakeTemplates.OPTIONAL_WILDCARD`` marks entities as optional. This generates
+    ``OPTIONAL_WILDCARD`` marks entities as optional. This generates
     Snakemake templates with constrained wildcards that match paths both with and
     without the entity::
 
-        from snakebids.paths import bids, SnakemakeTemplates
+        from snakebids.paths import bids, OPTIONAL_WILDCARD
 
         # Generate a pattern with optional 'acq' entity
         pattern = bids(
             subject='{subject}',
             session='{session}',
-            acq=SnakemakeTemplates.OPTIONAL_WILDCARD,
+            acq=OPTIONAL_WILDCARD,
             suffix='T1w.nii.gz'
         )
         # Pattern: sub-{subject}/ses-{session}/sub-{subject}_ses-{session}

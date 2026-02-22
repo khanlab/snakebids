@@ -12,10 +12,11 @@ from snakebids.io.yaml import get_yaml_io
 from snakebids.paths import resources
 
 __all__ = [
+    "OPTIONAL_WILDCARD",
+    "BidsFlags",
     "BidsPathEntitySpec",
     "BidsPathSpec",
     "BidsPathSpecFile",
-    "SnakemakeTemplates",
 ]
 
 
@@ -82,7 +83,7 @@ def find_entity(spec: BidsPathSpec, entity: str) -> BidsPathEntitySpec:
     return itx.one(item for item in spec if item["entity"] == entity)
 
 
-class SnakemakeTemplates(Enum):
+class BidsFlags(Enum):
     """Enum for indicating special template behaviors in Snakemake wildcards.
 
     This enum is used to specify optional entities in BidsComponent wildcards.
@@ -99,12 +100,12 @@ class SnakemakeTemplates(Enum):
 
     Example
     -------
-    >>> from snakebids.paths import bids, SnakemakeTemplates
+    >>> from snakebids.paths import bids, OPTIONAL_WILDCARD
     >>> # Generate a path with optional 'acq' entity
     >>> template = bids(
     ...     subject="{subject}",
     ...     session="{session}",
-    ...     acq=SnakemakeTemplates.OPTIONAL_WILDCARD,
+    ...     acq=BidsFlags.OPTIONAL_WILDCARD,
     ...     suffix="T1w.nii.gz"
     ... )
 
@@ -113,3 +114,6 @@ class SnakemakeTemplates(Enum):
         `str.format()` method. They use Snakemake-specific constraint syntax
         that can only be interpreted by Snakemake's wildcard resolution system.
     """
+
+
+OPTIONAL_WILDCARD = BidsFlags.OPTIONAL_WILDCARD

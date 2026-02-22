@@ -10,18 +10,20 @@ from ._presets import (
     bids,
 )
 from ._utils import (
+    OPTIONAL_WILDCARD,
+    BidsFlags,
     BidsPathEntitySpec,
     BidsPathSpec,
     BidsPathSpecFile,
-    SnakemakeTemplates,
 )
 
 __all__ = [
+    "OPTIONAL_WILDCARD",
+    "BidsFlags",
     "BidsFunction",
     "BidsPathEntitySpec",
     "BidsPathSpec",
     "BidsPathSpecFile",
-    "SnakemakeTemplates",
     "bids",
     "bids_factory",
     "set_bids_spec",
