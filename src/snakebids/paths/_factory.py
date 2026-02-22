@@ -13,7 +13,12 @@ import more_itertools as itx
 
 from snakebids.io.console import in_interactive_session
 from snakebids.paths import specs
-from snakebids.paths._utils import BidsPathSpec, SnakemakeTemplates, find_entity
+from snakebids.paths._utils import (
+    OPTIONAL_WILDCARD,
+    BidsFlags,
+    BidsPathSpec,
+    find_entity,
+)
 from snakebids.utils.snakemake_templates import SnakemakeWildcards
 
 
@@ -27,11 +32,11 @@ class BidsFunction(Protocol):
         self,
         root: str | Path | None = None,
         *,
-        datatype: str | SnakemakeTemplates | None = None,
-        prefix: str | SnakemakeTemplates | None = None,
-        suffix: str | SnakemakeTemplates | None = None,
-        extension: str | SnakemakeTemplates | None = None,
-        **entities: str | SnakemakeTemplates,
+        datatype: str | BidsFlags | None = None,
+        prefix: str | BidsFlags | None = None,
+        suffix: str | BidsFlags | None = None,
+        extension: str | BidsFlags | None = None,
+        **entities: str | BidsFlags,
     ) -> str: ...
 
 
@@ -71,8 +76,8 @@ class _NameBuilder(list[str | _LeadingUnderscore]):
     def __init__(self, emitter: _UnderscoreEmitter):
         self.emitter = emitter
 
-    def append_entity(self, key: str, value: str | SnakemakeTemplates) -> None:
-        if value is SnakemakeTemplates.OPTIONAL_WILDCARD:
+    def append_entity(self, key: str, value: str | BidsFlags) -> None:
+        if value is OPTIONAL_WILDCARD:
             wcard_kind = "optional"
             wc = SnakemakeWildcards(key)
             value = f"{wc.dummy}{wc.variable}"
@@ -87,17 +92,15 @@ class _NameBuilder(list[str | _LeadingUnderscore]):
         self.append(self.emitter.new("fixed"))
         self.append(literal)
 
-    def append_suffix(self, suffix: str | SnakemakeTemplates) -> None:
+    def append_suffix(self, suffix: str | BidsFlags) -> None:
         self.append_literal(
-            str(SnakemakeWildcards.suffix)
-            if suffix is SnakemakeTemplates.OPTIONAL_WILDCARD
-            else suffix
+            str(SnakemakeWildcards.suffix) if suffix is OPTIONAL_WILDCARD else suffix
         )
 
-    def append_extension(self, extension: str | SnakemakeTemplates) -> None:
+    def append_extension(self, extension: str | BidsFlags) -> None:
         self.append(
             str(SnakemakeWildcards.extension)
-            if extension is SnakemakeTemplates.OPTIONAL_WILDCARD
+            if extension is OPTIONAL_WILDCARD
             else extension
         )
 
@@ -106,17 +109,17 @@ class _NameBuilder(list[str | _LeadingUnderscore]):
 
 
 class _PathBuilder(list[str]):
-    def append_entity(self, key: str, value: str | SnakemakeTemplates):
+    def append_entity(self, key: str, value: str | BidsFlags):
         self.append(
             str(SnakemakeWildcards(key).directory)
-            if value is SnakemakeTemplates.OPTIONAL_WILDCARD
+            if value is OPTIONAL_WILDCARD
             else f"{key}-{value}{os.sep}"
         )
 
-    def append_datatype(self, datatype: str | SnakemakeTemplates):
+    def append_datatype(self, datatype: str | BidsFlags):
         self.append(
             f"{SnakemakeWildcards.datatype}{SnakemakeWildcards.slash}"
-            if datatype is SnakemakeTemplates.OPTIONAL_WILDCARD
+            if datatype is OPTIONAL_WILDCARD
             else datatype + os.sep
         )
 
@@ -154,8 +157,8 @@ class _Bids:
             if entry.get("dir"):
                 self.dirs.add(tag)
 
-    def parse_entities(self, entities: dict[str, str | SnakemakeTemplates]):
-        result: dict[str, str | SnakemakeTemplates] = {}
+    def parse_entities(self, entities: dict[str, str | BidsFlags]):
+        result: dict[str, str | BidsFlags] = {}
         for entity, val in entities.items():
             # strip underscores from keys (needed so that users can use reserved
             # keywords by appending a _)
@@ -179,13 +182,13 @@ class _Bids:
         root: str | Path | None,
         /,
         *,
-        sub_dir: str | bool | SnakemakeTemplates | None,
-        ses_dir: str | bool | SnakemakeTemplates | None,
-        datatype: str | SnakemakeTemplates | None = None,
-        prefix: str | SnakemakeTemplates | None = None,
-        suffix: str | SnakemakeTemplates | None = None,
-        extension: str | SnakemakeTemplates | None = None,
-        **entities: str | SnakemakeTemplates,
+        sub_dir: str | bool | BidsFlags | None,
+        ses_dir: str | bool | BidsFlags | None,
+        datatype: str | BidsFlags | None = None,
+        prefix: str | BidsFlags | None = None,
+        suffix: str | BidsFlags | None = None,
+        extension: str | BidsFlags | None = None,
+        **entities: str | BidsFlags,
     ) -> str | None:
         newspec = None
         warn_subses_dir = False
@@ -250,11 +253,11 @@ class _Bids:
         self,
         root: str | Path | None = None,
         *,
-        datatype: str | SnakemakeTemplates | None = None,
-        prefix: str | SnakemakeTemplates | None = None,
-        suffix: str | SnakemakeTemplates | None = None,
-        extension: str | SnakemakeTemplates | None = None,
-        **entities: str | SnakemakeTemplates,
+        datatype: str | BidsFlags | None = None,
+        prefix: str | BidsFlags | None = None,
+        suffix: str | BidsFlags | None = None,
+        extension: str | BidsFlags | None = None,
+        **entities: str | BidsFlags,
     ) -> str:
         """Generate bids or bids-like paths.
 
@@ -298,7 +301,7 @@ class _Bids:
         ) is not None:
             return result
 
-        if prefix is SnakemakeTemplates.OPTIONAL_WILDCARD:
+        if prefix is OPTIONAL_WILDCARD:
             msg = "prefix may not be specified as optional"
             raise ValueError(msg)
 

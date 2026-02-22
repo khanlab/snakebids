@@ -11,27 +11,29 @@ from .core import (
     write_derivative_json,
 )
 from .paths import (
+    OPTIONAL_WILDCARD,
+    BidsFlags,
     BidsFunction,
     BidsPathEntitySpec,
     BidsPathSpec,
     BidsPathSpecFile,
-    SnakemakeTemplates,
     bids,
     bids_factory,
     set_bids_spec,
 )
 
 __all__ = [
+    "OPTIONAL_WILDCARD",
     "BidsComponent",
     "BidsComponentRow",
     "BidsDataset",
     "BidsDatasetDict",
+    "BidsFlags",
     "BidsFunction",
     "BidsPartialComponent",
     "BidsPathEntitySpec",
     "BidsPathSpec",
     "BidsPathSpecFile",
-    "SnakemakeTemplates",
     "bids",
     "bids_factory",
     "filter_list",

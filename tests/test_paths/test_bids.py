@@ -14,7 +14,7 @@ from pathvalidate import Platform, is_valid_filename, is_valid_filepath
 
 from snakebids.paths import specs
 from snakebids.paths._factory import bids_factory
-from snakebids.paths._utils import BidsPathSpec, SnakemakeTemplates
+from snakebids.paths._utils import OPTIONAL_WILDCARD, BidsPathSpec
 from snakebids.snakemake_compat import regex_from_filepattern
 from snakebids.utils.snakemake_templates import SnakemakeFormatter
 from snakebids.utils.utils import BidsEntity
@@ -377,7 +377,7 @@ def make_bids_testsuite(spec: BidsPathSpec):
                 root="",
                 **(
                     {k: v.replace("{", "{{") for k, v in mandatory.items()}
-                    | dict.fromkeys(optional, SnakemakeTemplates.OPTIONAL_WILDCARD)
+                    | dict.fromkeys(optional, OPTIONAL_WILDCARD)
                 ),
             )
 
@@ -401,10 +401,7 @@ def make_bids_testsuite(spec: BidsPathSpec):
             reference = bids(**args)
             template = bids(
                 root="",
-                **(
-                    mandatory
-                    | dict.fromkeys(optional, SnakemakeTemplates.OPTIONAL_WILDCARD)
-                ),
+                **(mandatory | dict.fromkeys(optional, OPTIONAL_WILDCARD)),
             )
             regex = regex_from_filepattern(template)
             match = re.match(regex, reference)
@@ -422,10 +419,7 @@ def make_bids_testsuite(spec: BidsPathSpec):
         ):
             template = bids(
                 root="",
-                **(
-                    mandatory
-                    | dict.fromkeys(optional, SnakemakeTemplates.OPTIONAL_WILDCARD)
-                ),
+                **(mandatory | dict.fromkeys(optional, OPTIONAL_WILDCARD)),
             )
             assert str(Path(template)) == template
 
@@ -434,7 +428,7 @@ def make_bids_testsuite(spec: BidsPathSpec):
                 ValueError,
                 match="prefix may not be specified as optional",
             ):
-                bids(prefix=SnakemakeTemplates.OPTIONAL_WILDCARD)
+                bids(prefix=OPTIONAL_WILDCARD)
 
     return BidsTests
 
