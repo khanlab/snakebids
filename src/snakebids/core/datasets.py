@@ -283,17 +283,6 @@ class BidsPartialComponent:
         ]
         return "\n".join(output)
 
-    # Note: we can't use cached property here because it's incompatible with slots.
-    _input_lists: MultiSelectDict[str, list[str]] | None = attr.field(
-        default=None, init=False, eq=False, repr=False
-    )
-    _input_wildcards: MultiSelectDict[str, str] | None = attr.field(
-        default=None, init=False, eq=False, repr=False
-    )
-    _entities: list[str] | None = attr.field(
-        default=None, init=False, eq=False, repr=False
-    )
-
     @property
     def zip_lists(self):
         """Table of unique wildcard groupings for each member in the component.
@@ -305,29 +294,25 @@ class BidsPartialComponent:
         """
         return self._zip_lists
 
-    @property
+    @ft.cached_property
     def entities(self) -> MultiSelectDict[str, list[str]]:
         """Component entities and their associated values.
 
         Dictionary where each key is an entity and each value is a list of the
         unique values found for that entity. These lists might not be the same length.
         """
-        if self._input_lists is None:
-            self._input_lists = MultiSelectDict(
-                {entity: list(set(values)) for entity, values in self.zip_lists.items()}
-            )
-        return self._input_lists
+        return MultiSelectDict(
+            {entity: list(set(values)) for entity, values in self.zip_lists.items()}
+        )
 
-    @property
+    @ft.cached_property
     def wildcards(self) -> MultiSelectDict[str, str]:
         """Wildcards in brace-wrapped syntax.
 
         Dictionary where each key is the name of a wildcard entity, and each value is
         the Snakemake wildcard used for that entity.
         """
-        if self._input_wildcards is None:
-            self._input_wildcards = MultiSelectDict(get_wildcard_dict(self.zip_lists))
-        return self._input_wildcards
+        return MultiSelectDict(get_wildcard_dict(self.zip_lists))
 
     @property
     def input_zip_lists(self) -> ZipList:

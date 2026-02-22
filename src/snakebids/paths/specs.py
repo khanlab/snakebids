@@ -35,7 +35,7 @@ _SPECS = ["v0_0_0", "v0_11_0", "v0_15_0"]
 LATEST = "v0_0_0"
 
 
-@ft.lru_cache
+@ft.cache
 def __getattr__(name: str):
     """Allow dynamic retrieval of latest spec."""
     if name == "latest":

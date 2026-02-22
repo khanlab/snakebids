@@ -86,7 +86,7 @@ def get_console_size() -> tuple[int | None, int | None]:
 # Detect our environment
 
 
-@ft.lru_cache
+@ft.cache
 def in_interactive_session() -> bool:
     """Check if we're running in an interactive shell.
 
