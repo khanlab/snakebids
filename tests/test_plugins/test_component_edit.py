@@ -13,7 +13,11 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 import tests.strategies as sb_st
-from snakebids.plugins.component_edit import ComponentEdit, FilterParseError
+from snakebids.plugins.component_edit import (
+    ComponentEdit,
+    FilterParse,
+    FilterParseError,
+)
 from snakebids.types import InputsConfig, OptionalFilter
 from tests.helpers import allow_function_scoped
 
@@ -70,6 +74,45 @@ class TestAddArguments:
                 "entity": "value"
             }
             assert args.__dict__[f"{comp_edit.PREFIX}.wildcards.{key}"] == ["test"]
+
+    @given(value=st.sampled_from([None, *FilterParse.boolean_filters]))
+    @allow_function_scoped
+    def test_repeated_filter_merges(self, value: str | None):
+        comp_edit = ComponentEdit()
+        p = argparse.ArgumentParser()
+        comp_edit.add_cli_arguments(p, {"pybids_inputs": {"comp": {}}})
+        newvalue = "=second" if value is None else f":{value}"
+        argv = [
+            "--filter-comp",
+            "entity=first",
+            "--filter-comp",
+            f"entity2{newvalue}",
+        ]
+        args = p.parse_args(argv)
+        assert args.__dict__[f"{comp_edit.PREFIX}.filter.comp"] == {
+            "entity": "first",
+            "entity2": "second"
+            if value is None
+            else FilterParse.boolean_filters[value],
+        }
+
+    @given(value=st.sampled_from([None, *FilterParse.boolean_filters]))
+    @allow_function_scoped
+    def test_repeated_filter_same_key_overwritten(self, value: str | None):
+        comp_edit = ComponentEdit()
+        p = argparse.ArgumentParser()
+        comp_edit.add_cli_arguments(p, {"pybids_inputs": {"comp": {}}})
+        newvalue = "=second" if value is None else f":{value}"
+        argv = [
+            "--filter-comp",
+            "entity=first",
+            "--filter-comp",
+            f"entity{newvalue}",
+        ]
+        args = p.parse_args(argv)
+        assert args.__dict__[f"{comp_edit.PREFIX}.filter.comp"] == {
+            "entity": "second" if value is None else FilterParse.boolean_filters[value],
+        }
 
     @given(
         pybids_inputs=sb_st.inputs_configs(),
