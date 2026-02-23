@@ -1006,3 +1006,82 @@ class TestBenchmarkContains:
 
     def test_filter(self, benchmark: Benchmark):
         benchmark(self.comp.filter, **self._get_query())
+def _has_annotated_string() -> bool:
+    try:
+        from snakemake.io import AnnotatedString  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
+class TestExpandNoneHandling:
+    """Tests for None value conversion in expand()."""
+
+    def test_none_extra_wildcard_treated_as_empty_string(self):
+        """None values in extra wildcards are converted to empty string."""
+        component = BidsComponent(
+            name="test",
+            path="sub-{subject}",
+            zip_lists={"subject": ["001"]},
+        )
+        # Path with optional entity that gets a None value
+        paths = component.expand(
+            "sub-{subject}{_acq_}{acq}",
+            acq=None,
+        )
+        # None → "" → optional entity not included
+        assert paths == ["sub-001"]
+
+    def test_none_in_extra_wildcard_list(self):
+        """None values within a list of extra wildcards are converted to ''."""
+        component = BidsComponent(
+            name="test",
+            path="sub-{subject}",
+            zip_lists={"subject": ["001"]},
+        )
+        paths = component.expand(
+            "sub-{subject}{_acq_}{acq}",
+            acq=["mprage", None],
+        )
+        assert "sub-001_acq-mprage" in paths
+        assert "sub-001" in paths
+
+
+class TestExpandAnnotatedString:
+    """Tests for AnnotatedString flag propagation in expand()."""
+
+    @pytest.mark.skipif(
+        not _has_annotated_string(),
+        reason="snakemake AnnotatedString not available",
+    )
+    def test_annotated_string_flags_propagated_to_outputs(self):
+        """AnnotatedString flags are preserved on expanded output paths."""
+        from snakemake.io import AnnotatedString
+
+        component = BidsComponent(
+            name="test",
+            path="sub-{subject}",
+            zip_lists={"subject": ["001", "002"]},
+        )
+        template = AnnotatedString("sub-{subject}_T1w.nii.gz")
+        template.flags["temp"] = True
+
+        paths = component.expand(template)
+        for path in paths:
+            assert isinstance(path, AnnotatedString)
+            assert path.flags.get("temp") is True
+
+    @pytest.mark.skipif(
+        not _has_annotated_string(),
+        reason="snakemake AnnotatedString not available",
+    )
+    def test_plain_string_not_annotated(self):
+        """Plain string templates produce plain string outputs."""
+        component = BidsComponent(
+            name="test",
+            path="sub-{subject}",
+            zip_lists={"subject": ["001"]},
+        )
+        paths = component.expand("sub-{subject}_T1w.nii.gz")
+        assert type(paths[0]) is str  # noqa: E721
