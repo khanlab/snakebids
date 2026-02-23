@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Final, cast
 
 import attrs
 from typing_extensions import override
@@ -55,6 +55,13 @@ class FilterParseError(Exception):
 class FilterParse(argparse.Action):
     """Class for parsing CLI filters in argparse."""
 
+    boolean_filters: Final = {
+        "optional": OptionalFilter,
+        "required": True,
+        "any": True,
+        "none": False,
+    }
+
     # Constructor calling
     @override
     def __call__(
@@ -64,16 +71,10 @@ class FilterParse(argparse.Action):
         values: str | Sequence[Any] | None,
         option_string: str | None = None,
     ):
-        result = {}
         if not values:
             return
 
-        boolean_filters = {
-            "optional": OptionalFilter,
-            "required": True,
-            "any": True,
-            "none": False,
-        }
+        result: dict[str, Any] = getattr(namespace, self.dest, None) or {}
         for pair in values:
             if "=" in pair:
                 # split it into key and value
@@ -84,10 +85,10 @@ class FilterParse(argparse.Action):
             if ":" in key:
                 key, spec = cast("tuple[str, str]", key.split(":", 1))
                 spec = spec.lower()
-                if spec in boolean_filters:
+                if spec in self.boolean_filters:
                     if value is not None:
                         raise FilterParseError.unneeded_value(pair, key, spec, value)
-                    value = boolean_filters[spec]
+                    value = self.boolean_filters[spec]
                 elif spec in {"match", "search"}:
                     if value is None:
                         raise FilterParseError.missing_value(pair, key, spec)
