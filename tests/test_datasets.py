@@ -10,7 +10,7 @@ from typing import Any
 
 import more_itertools as itx
 import pytest
-from hypothesis import assume, given
+from hypothesis import assume, example, given
 from hypothesis import strategies as st
 
 from snakebids.core.datasets import (
@@ -21,10 +21,12 @@ from snakebids.core.datasets import (
 )
 from snakebids.exceptions import DuplicateComponentError
 from snakebids.paths._presets import bids
+from snakebids.paths._utils import OPTIONAL_WILDCARD
 from snakebids.snakemake_compat import WildcardError
 from snakebids.types import Expandable, ZipList
 from snakebids.utils import sb_itertools as sb_it
 from snakebids.utils.snakemake_io import glob_wildcards
+from snakebids.utils.snakemake_templates import SnakemakeWildcards
 from snakebids.utils.utils import BidsEntity, get_wildcard_dict, zip_list_eq
 from tests import strategies as sb_st
 from tests.helpers import (
@@ -63,7 +65,7 @@ class TestBidsComponentAliases:
 
 
 class TestBidsComponentValidation:
-    @given(sb_st.zip_lists().filter(lambda v: len(v) > 1))
+    @given(sb_st.zip_lists(min_entities=2))
     def test_zip_lists_must_be_same_length(self, zip_lists: ZipList):
         itx.first(zip_lists.values()).append("foo")
         with pytest.raises(ValueError, match="zip_lists must all be of equal length"):
@@ -82,7 +84,7 @@ class TestBidsComponentValidation:
         ):
             BidsComponent(name="foo", path=path, zip_lists=zip_lists)
 
-    @given(sb_st.zip_lists().filter(lambda v: len(v) > 1))
+    @given(sb_st.zip_lists(min_entities=2))
     def test_path_cannot_have_missing_entities(self, zip_lists: ZipList):
         # Snakebids strategies won't return a zip_list with just datatype, but now that
         # we've dropped an entity we need to check again
@@ -94,6 +96,72 @@ class TestBidsComponentValidation:
             ValueError, match="zip_lists entries must match the wildcards in input_path"
         ):
             BidsComponent(name="foo", path=path, zip_lists=zip_lists)
+
+    @example({"subject": [""], "suffix": ["foo"], "extension": [".ext"]})
+    @example({"subject": ["1"], "session": ["1"], "datatype": [""]})
+    @given(sb_st.zip_lists())
+    def test_optional_wildcards_accepted(self, zip_list: ZipList):
+        path = bids(root="", **dict.fromkeys(zip_list, OPTIONAL_WILDCARD))
+        BidsComponent(name="foo", path=path, zip_lists=zip_list)
+
+    @given(
+        entity=sb_st.bids_entity().map(str) | st.just(""),
+        kind=st.sampled_from(["directory", "dummy", "slash"]),
+    )
+    def test_special_wildcard_rejected_without_ordinary_wildcard_in_path(
+        self, entity: str, kind: str
+    ):
+        with pytest.raises(
+            ValueError,
+            match="found special wildcards without associated entities",
+        ):
+            BidsComponent(
+                name="foo",
+                path=str(getattr(SnakemakeWildcards(entity), kind)),
+                zip_lists={},
+            )
+
+    def test_special_error_for_double_underscore_wildcard(self):
+        with pytest.raises(
+            ValueError,
+            match="got '__', perhaps instead",
+        ):
+            BidsComponent(
+                name="foo",
+                path="{__}",
+                zip_lists={},
+            )
+
+    @given(
+        entity=sb_st.bids_entity().map(str) | st.just(""),
+        kind=st.sampled_from(["directory", "dummy", "slash"]),
+    )
+    def test_special_wildcard_rejected_without_ordinary_wildcard_in_ziplist(
+        self, entity: str, kind: str
+    ):
+        if kind == "slash":
+            entity = "datatype"
+        with pytest.raises(
+            ValueError,
+            match="zip_lists entries must match the wildcards",
+        ):
+            BidsComponent(
+                name="foo",
+                path=f"{getattr(SnakemakeWildcards(entity), kind)}{{{entity}}}",
+                zip_lists={},
+            )
+
+    def test_special_wildcard_keys_rejected_in_zip_lists(self):
+        """zip_lists keys must not be special wildcards (starting with '_')."""
+        with pytest.raises(
+            ValueError,
+            match="Special wildcards cannot be keys in zip_lists",
+        ):
+            BidsComponent(
+                name="foo",
+                path="{_acq_}{acq}",
+                zip_lists={"acq": ["98"], "_acq_": ["98"]},
+            )
 
 
 class TestBidsComponentEq:

@@ -7,8 +7,7 @@ import warnings
 from collections.abc import Iterable
 from math import inf
 from pathlib import Path
-from string import Formatter
-from typing import Any, NoReturn, cast, overload
+from typing import Any, NoReturn, overload
 
 import attr
 import more_itertools as itx
@@ -16,7 +15,6 @@ from bids import BIDSLayout
 from pvandyken.deprecated import deprecated
 from typing_extensions import Self, TypedDict
 
-import snakebids.utils.sb_itertools as sb_it
 from snakebids.core.filtering import filter_list
 from snakebids.exceptions import DuplicateComponentError
 from snakebids.io.console import get_console_size
@@ -24,6 +22,7 @@ from snakebids.io.printing import format_zip_lists, quote_wrap
 from snakebids.snakemake_compat import expand as sn_expand
 from snakebids.types import ZipList
 from snakebids.utils.containers import ImmutableList, MultiSelectDict
+from snakebids.utils.snakemake_templates import SnakemakeFormatter
 from snakebids.utils.utils import get_wildcard_dict, property_alias, zip_list_eq
 
 
@@ -219,6 +218,12 @@ class BidsPartialComponent:
         if len(lengths) > 1:
             msg = "zip_lists must all be of equal length"
             raise ValueError(msg)
+
+        # Ensure no special wildcards (those starting with "_") appear in zip_lists
+        for key in value:
+            if key.startswith("_") and len(key) > 1:
+                msg = f"Special wildcards cannot be keys in zip_lists: '{key}'"
+                raise ValueError(msg)
 
     def __repr__(self) -> str:
         return self.pformat()
@@ -496,16 +501,63 @@ class BidsComponent(BidsPartialComponent):
     @_zip_lists.validator  # type: ignore
     def _validate_zip_lists(self, __attr: str, value: dict[str, list[str]]) -> None:
         super()._validate_zip_lists(__attr, value)
-        _, raw_fields, *_ = sb_it.unpack(
-            zip(*Formatter().parse(self.path), strict=True), [[], [], []]
+
+        fmt = SnakemakeFormatter()
+        # Parse the path using SnakemakeFormatter to correctly strip constraints
+
+        # Categorize wildcards found in the path
+        ordinary_fields: set[str] = set()
+        surplus_special_fields: dict[str, str] = {}
+
+        # {___} is always valid; others are classified below
+        for _, field, _, _ in fmt.parse(self.path):
+            if field is None or field == "___":
+                continue
+            if field == "__d__":
+                assoc = "datatype"
+            elif field.startswith("_") and field.endswith("_") and len(field) > 1:
+                assoc = field[1:-1]
+            else:
+                ordinary_fields.add(field)
+                continue
+
+            if assoc.endswith("_d"):
+                assoc = assoc[:-2]
+
+            if assoc not in value:
+                surplus_special_fields[field] = assoc
+
+        # Verify all ordinary wildcards in path have corresponding zip_lists entries
+        if ordinary_fields != set(value):
+            raise self._format_mismatched_entities_error(ordinary_fields)
+
+        if surplus_special_fields:
+            raise self._format_surplus_special_entities_error(surplus_special_fields)
+
+    def _format_mismatched_entities_error(self, fields: set[str]):
+        list_fields = set(self.zip_lists)
+        msg = f"zip_lists entries must match the wildcards in input_path: {self.path!r}"
+        if surplus := (fields - list_fields):
+            formatted = ", ".join(map(repr, surplus))
+            msg += f"\n{formatted} in path but not in zip_list"
+        if surplus := (list_fields - fields):
+            formatted = ", ".join(map(repr, surplus))
+            msg += f"\n{formatted} in zip_list but not in path"
+
+        return ValueError(msg)
+
+    def _format_surplus_special_entities_error(self, fields: dict[str, str]):
+        msg = (
+            "found special wildcards without associated entities in path: "
+            f"{self.path!r}"
         )
-        raw_fields = cast("Iterable[str]", raw_fields)
-        if (fields := set(filter(None, raw_fields))) != set(value):
-            msg = (
-                "zip_lists entries must match the wildcards in input_path: "
-                f"{self.path}: {fields} != zip_lists: {set(value)}"
-            )
-            raise ValueError(msg)
+        for special, assoc in fields.items():
+            if special == "__":
+                msg += f"\ngot {special!r}, perhaps instead of '___'?"
+                continue
+            msg += f"\ngot {special!r} but not {assoc!r}"
+
+        return ValueError(msg)
 
     def __repr__(self) -> str:
         return self.pformat()
