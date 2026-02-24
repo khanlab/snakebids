@@ -114,12 +114,13 @@ class TestBidsComponentValidation:
         with pytest.raises(
             ValueError,
             match="found special wildcards without associated entities",
-        ):
+        ) as err:
             BidsComponent(
                 name="foo",
                 path=str(getattr(SnakemakeWildcards(entity), kind)),
                 zip_lists={},
             )
+        assert "," not in err.value.args[0].splitlines()[0]
 
     def test_special_error_for_double_underscore_wildcard(self):
         with pytest.raises(
@@ -144,12 +145,13 @@ class TestBidsComponentValidation:
         with pytest.raises(
             ValueError,
             match="zip_lists entries must match the wildcards",
-        ):
+        ) as err:
             BidsComponent(
                 name="foo",
                 path=f"{getattr(SnakemakeWildcards(entity), kind)}{{{entity}}}",
                 zip_lists={},
             )
+        assert "," not in err.value.args[0].splitlines()[0]
 
     def test_special_wildcard_keys_rejected_in_zip_lists(self):
         """zip_lists keys must not be special wildcards (starting with '_')."""

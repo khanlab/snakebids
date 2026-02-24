@@ -1,6 +1,7 @@
 # ruff: noqa: PLR2004
 from __future__ import annotations
 
+import re
 from math import inf
 
 import pyparsing as pp
@@ -8,8 +9,10 @@ from hypothesis import assume, given
 from hypothesis import strategies as st
 
 import tests.strategies as sb_st
+from snakebids import bids
 from snakebids.core.datasets import BidsComponent, BidsDataset
 from snakebids.io.printing import format_zip_lists
+from snakebids.paths._utils import OPTIONAL_WILDCARD
 from snakebids.types import ZipList
 
 
@@ -200,3 +203,22 @@ class TestMultipleLevelsOfIndentationUsed:
         for line in dataset.pformat(tabstop=tabstop).splitlines():
             indents.add(get_indent_length(line))
         assert len(indents) == 4
+
+
+@given(sb_st.zip_lists())
+def test_repr_strips_wildcard_constraints(zip_lists: ZipList):
+    """repr of BidsComponent should not contain regex constraints in the path."""
+    path = bids("", **dict.fromkeys(zip_lists, OPTIONAL_WILDCARD))
+    component = BidsComponent(
+        name="t1w",
+        path=path,
+        zip_lists=zip_lists,
+    )
+    assert component.path == path
+    # The path line in repr should have constraints stripped
+    path_line = next(
+        line
+        for line in repr(component).splitlines()
+        if line.strip().startswith("path=")
+    )
+    assert re.search(r",[^}]+", path_line) is None
