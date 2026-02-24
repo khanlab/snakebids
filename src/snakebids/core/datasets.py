@@ -536,7 +536,10 @@ class BidsComponent(BidsPartialComponent):
 
     def _format_mismatched_entities_error(self, fields: set[str]):
         list_fields = set(self.zip_lists)
-        msg = f"zip_lists entries must match the wildcards in input_path: {self.path!r}"
+        msg = (
+            "zip_lists entries must match the wildcards in input_path: "
+            f"{self._stripped_path!r}"
+        )
         if surplus := (fields - list_fields):
             formatted = ", ".join(map(repr, surplus))
             msg += f"\n{formatted} in path but not in zip_list"
@@ -549,7 +552,7 @@ class BidsComponent(BidsPartialComponent):
     def _format_surplus_special_entities_error(self, fields: dict[str, str]):
         msg = (
             "found special wildcards without associated entities in path: "
-            f"{self.path!r}"
+            f"{self._stripped_path!r}"
         )
         for special, assoc in fields.items():
             if special == "__":
@@ -562,10 +565,18 @@ class BidsComponent(BidsPartialComponent):
     def __repr__(self) -> str:
         return self.pformat()
 
+    @property
+    def _stripped_path(self) -> str:
+        fmt = SnakemakeFormatter()
+        return "".join(
+            (lit or "") + (f"{{{field}}}" if field is not None else "")
+            for lit, field, _, _ in fmt.parse(self.path)
+        )
+
     def _pformat_body(self):
         return [
             f"name={quote_wrap(self.name)},",
-            f"path={quote_wrap(self.path)},",
+            f"path={quote_wrap(self._stripped_path)},",
         ]
 
     def __eq__(self, other: BidsComponent | object) -> bool:
