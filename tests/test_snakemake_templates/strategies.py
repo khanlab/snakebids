@@ -43,5 +43,5 @@ def constraints(*, exclude_characters: Collection[str] | None = None):
 
 def literals(*, exclude_characters: Collection[str] | None = None):
     return st.text(st.characters(exclude_characters=exclude_characters)).map(
-        lambda s: s.replace("{", "{{")
+        lambda s: s.replace("{", "{{").replace("}", "}}")
     )

@@ -111,6 +111,9 @@ class SnakemakeFormatter(string.Formatter):
     """
 
     UNDERSCORE_SQUELCHERS: Final = {"/", "_"}
+    _UNEXPECTED_CLOSE = "unexpected '}' in string"
+    _MISSING_CLOSE = "expected '}' before end of string"
+    _UNEXPECTED_OPEN = "unexpected '{' in field name"
 
     @override
     def __init__(self) -> None:
@@ -137,7 +140,7 @@ class SnakemakeFormatter(string.Formatter):
         return super().vformat(format_string, args, kwargs)
 
     @override
-    def parse(
+    def parse(  # noqa: PLR0912
         self, format_string: str
     ) -> Iterator[tuple[str, str | None, str | None, str | None]]:
         """Parse format string, stripping constraints and format specifications.
@@ -145,10 +148,6 @@ class SnakemakeFormatter(string.Formatter):
         The function is implemented from scratch in order to avoid the special treatment
         of ``!``, ``:``, and ``[`` by ``string.Formatter.parse()``. It is about 4-5
         times slower than the native implementation, but reasonably well optimized.
-
-        Unlike the native implementation, no error is raised when a singleton ``}`` is
-        encountered outside of a field. This is primarily for efficiency, but also
-        improves compatibility with snakemake templates, which allow such ``}``.
 
         Specifying conversion and format strings is not possible. Any text following
         ``,`` is treated as a constraint and discarded. Snakemake constraints allow
@@ -167,36 +166,63 @@ class SnakemakeFormatter(string.Formatter):
         i = -1
         anchor = 0
         length = len(format_string)
+        next_char = "{"
+        j = format_string.find("}")
+        j = length if j == -1 else j
+
         while anchor < length:
-            i = format_string.find("{", i + 1)
-            if i < 0:
-                yield format_string[anchor:], None, None, None
-                return
+            i = format_string.find(next_char, i + 1)
+
+            # point i to the earlier character, j to the further
+            if i > j:
+                i, j = j, i
+            elif i == -1:
+                # if end of string, terminate
+                if j == length:
+                    yield format_string[anchor:], None, None, None
+                    return
+                i = j
+                j = length
+
+            # if final character
             if i + 1 == length:
-                msg = "expected '}' before end of string"
-                raise ValueError(msg)
-            if format_string[i + 1] == "{":
+                if format_string[i] == "{":
+                    raise ValueError(self._MISSING_CLOSE)
+                raise ValueError(self._UNEXPECTED_CLOSE)
+
+            # if doubled brace
+            if format_string[i + 1] == format_string[i]:
                 i += 1
-                self.squelch_underscore = False
                 yield format_string[anchor:i], None, None, None
                 anchor = i + 1
+                next_char = format_string[i]
+                self.squelch_underscore = False
                 continue
+
+            # if undoubled } outside of field
+            if format_string[i] == "}":
+                raise ValueError(self._UNEXPECTED_CLOSE)
+
+            # Otherwise, must be {, so start field
             literal_text = format_string[anchor:i]
-            field_name = None
-            close = format_string.find("}", i + 1)
-            if close < 0:
-                msg = "expected '}' before end of string"
-                raise ValueError(msg)
-            if format_string.find("{", i + 1, close) != -1:
-                msg = "unexpected '{' in field name"
-                raise ValueError(msg)
-            if (comma := format_string.find(",", i + 1, close)) != -1:
+            if j == length:
+                raise ValueError(self._MISSING_CLOSE)
+            if format_string.find("{", i + 1, j) != -1:
+                raise ValueError(self._UNEXPECTED_OPEN)
+
+            # take only field name before comma
+            comma = format_string.find(",", i + 1, j)
+            if comma != -1:
                 field_name = format_string[i + 1 : comma]
             else:
-                field_name = format_string[i + 1 : close]
+                field_name = format_string[i + 1 : j]
 
-            i = close
+            # setup for the next field
+            i = j
+            j = format_string.find("}", j + 1)
+            j = length if j == -1 else j
             anchor = i + 1
+            next_char = "{"
             if literal_text:
                 self.squelch_underscore = literal_text[-1] in self.UNDERSCORE_SQUELCHERS
             yield literal_text, field_name, "", None
