@@ -4,7 +4,7 @@ import functools as ft
 import itertools as it
 import textwrap
 import warnings
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from math import inf
 from pathlib import Path
 from typing import Any, NoReturn, overload
@@ -22,7 +22,7 @@ from snakebids.io.printing import format_zip_lists, quote_wrap
 from snakebids.snakemake_compat import expand as sn_expand
 from snakebids.types import ZipList
 from snakebids.utils.containers import ImmutableList, MultiSelectDict
-from snakebids.utils.snakemake_templates import SnakemakeFormatter
+from snakebids.utils.snakemake_templates import MissingEntityError, SnakemakeFormatter
 from snakebids.utils.utils import get_wildcard_dict, property_alias, zip_list_eq
 
 
@@ -452,6 +452,25 @@ class BidsPartialComponent:
             zip_lists=filter_list(self.zip_lists, filters, regex_search=regex_search),
         )
 
+    def _contains(self, entities: Mapping[str, str]):
+        """Check if the given entity subset found in the component.
+
+        It does not check for a complete match. Thus, an empty query always returns
+        True. For the purposes of .get, errors for missing query entities comes from the
+        Formatter.
+        """
+        if not entities:
+            return True
+
+        # Note: purposefully similar to the code in filter_list, this has been optimized
+        # for speed
+        idx_sets = (
+            {i for i, v in enumerate(self.zip_lists[key]) if v == entities[key]}
+            for key in entities
+        )
+        matches = set[int].intersection(*idx_sets)
+        return len(matches) > 0
+
 
 @attr.define(kw_only=True)
 class BidsComponent(BidsPartialComponent):
@@ -644,6 +663,104 @@ class BidsComponent(BidsPartialComponent):
         Wildcard-filled path that matches the files for this component.
         """
         return self.path
+
+    def get(
+        self, query: Mapping[str, str | None] | None = None, /, **entities: str | None
+    ) -> str:
+        """
+        Retrieve the path matching the provided entities.
+
+        Parameters
+        ----------
+        query : dict[str, str | None], optional
+            A dictionary specifying the values to match for each entity. Entities
+            set to blank strings or `None` are treated as absent.
+
+        **entities : Keyword-argument query (str | None)
+            Define entity values as keyword arguments. Providing both `query` and
+            `**entities` will raise an error.
+
+        Returns
+        -------
+        str
+            The path corresponding to the matched entities.
+
+        Raises
+        ------
+        TypeError
+            If both `query` and `**entities` are provided.
+        KeyError
+            If a queried entity is not present in the component.
+        ValueError
+            If any queried entity value is not present in the component, or if not
+            every entity in the component is queried, or if a dummy wildcard is used
+            without its corresponding entity set to `None` or blank string.
+
+        Notes
+        -----
+        - Wildcards surrounded by single underscores (e.g., `_entity_`) are interpreted
+          as dummy wildcards. These represent the tag portion of optional entities in
+          Snakemake templates.
+        - Dummy wildcards are incorporated into the path template when provided. If
+          provided without their associated entity, an error is raised.
+        """
+        # Handle input validation
+        if query is not None and entities:
+            msg = "Cannot provide both 'query' and keyword arguments"
+            raise TypeError(msg)
+
+        query_dict = query if query is not None else entities
+
+        # validate dummy keys, separate regular keys
+        regular_entities: dict[str, str] = {}
+        for key, value in query_dict.items():
+            # Check if this is a dummy wildcard (starts and ends with _)
+            if key == "___":
+                continue
+            if key == "__d__":
+                assoc = "datatype"
+            elif key.startswith("_") and key.endswith("_") and len(key) > 1:
+                assoc = key[1:-1]
+            else:
+                regular_entities[key] = "" if value is None else value
+                continue
+
+            if assoc.endswith("_d"):
+                assoc = assoc[:-2]
+            if assoc not in self.zip_lists:
+                msg = f"got {key!r} but associated entity not in component: {assoc!r}"
+                raise ValueError(msg)
+
+        # Look for a match
+        try:
+            if not self._contains(regular_entities):
+                msg = (
+                    "no entry found matching the provided entity values: "
+                    f"{regular_entities}"
+                )
+                raise ValueError(msg)
+        except KeyError as err:
+            msg = f"queried entity not present in component: {err.args[0]}"
+            raise KeyError(msg) from err
+
+        # format the template
+        formatter = SnakemakeFormatter()
+        try:
+            return formatter.vformat(
+                self.path,
+                (),
+                # The formatter interprets blank strings as empty
+                {k: v or "" for k, v in query_dict.items()},
+            )
+        except MissingEntityError as err:
+            error = err
+            missing = err.entity
+        except KeyError as err:
+            error = err
+            missing = err.args[0]
+
+        msg = f"component entity not queried: '{missing}'"
+        raise ValueError(msg) from error
 
 
 class BidsDataset(dict[str, BidsComponent]):
