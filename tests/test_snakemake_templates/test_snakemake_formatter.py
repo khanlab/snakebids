@@ -21,7 +21,7 @@ from tests.test_snakemake_templates.strategies import (
 
 class TestParserBenchmarks:
     times = 10000
-    text = "fewaigq{{eafwefao{wafwa,waffwahaw,a:fa}{fea!f:wagwa}jawjigaw{fwa,afewaew}k"
+    text = "fewaigq{{eafwefao{wafwa,waffwahaw,a:fa}{fea!f:wagwa}jawjgaw{fwa,afewaew}k"
 
     @staticmethod
     def run(
@@ -45,8 +45,9 @@ class TestParserBenchmarks:
 class TestParse:
     """Tests for SnakemakeFormatter.parse() method."""
 
+    @example(literals=["}}"], wildcards=["{}", "{}"])
     @given(
-        literals=st.lists(literals().map(lambda s: s.replace("}", ""))),
+        literals=st.lists(literals()),
         wildcards=st.lists(
             field_names(exclude_characters="!:").map(
                 lambda s: f"{{{s}}}".replace("[", "[]")
@@ -98,13 +99,16 @@ class TestParse:
             list(formatter.parse("prefix_{subject"))
 
     def test_parse_raises_error_for_trailing_opening_brace(self):
-        """Test that raises ValueError for a trailing opening brace."""
         formatter = SnakemakeFormatter()
         with pytest.raises(ValueError, match="expected '}' before end of string"):
             list(formatter.parse("prefix_{"))
 
+    def test_parse_raises_error_for_trailing_closing_brace(self):
+        formatter = SnakemakeFormatter()
+        with pytest.raises(ValueError, match="unexpected '}' in string"):
+            list(formatter.parse("prefix_}"))
+
     def test_parse_raises_error_for_nested_opening_brace(self):
-        """Test that raises ValueError for nested opening brace in field name."""
         formatter = SnakemakeFormatter()
         with pytest.raises(ValueError, match="unexpected '{' in field name"):
             list(formatter.parse("prefix_{subject{inner}suffix}"))
@@ -113,6 +117,11 @@ class TestParse:
         formatter = SnakemakeFormatter()
         with pytest.raises(ValueError, match="unexpected '{' in field name"):
             list(formatter.parse("prefix_{subject,constraint{inner}suffix}"))
+
+    def test_parse_raises_error_for_lone_closing_brace(self):
+        formatter = SnakemakeFormatter()
+        with pytest.raises(ValueError, match="unexpected '}' in string"):
+            list(formatter.parse("prefix_}subject,constraint{inner}suffix}"))
 
 
 class TestFormatting:
@@ -135,9 +144,7 @@ class TestFormatting:
         wildcards = [f"{{{name},constraint}}" for name in field_names]
         path = "".join(itx.interleave_longest(literals, wildcards))
         target = "".join(
-            itx.interleave_longest(
-                [s.replace("{{", "{") for s in literals], field_names
-            )
+            itx.interleave_longest([s.format() for s in literals], field_names)
         )
         assert (
             SnakemakeFormatter().vformat(path, (), {n: n for n in field_names})
@@ -155,7 +162,7 @@ class TestFormatting:
         path = "".join(itx.interleave_longest(literals, wildcards))
         target = "".join(
             itx.interleave_longest(
-                [s.replace("{{", "{") for s in literals], map(str, field_names)
+                [s.format() for s in literals], map(str, field_names)
             )
         )
         assert (
@@ -174,7 +181,7 @@ class TestFormatting:
         path = "".join(itx.interleave_longest(literals, wildcards))
         target = "".join(
             itx.interleave_longest(
-                [s.replace("{{", "{") for s in literals],
+                [s.format() for s in literals],
                 map(str, range(len(field_names))),
             )
         )
@@ -331,7 +338,7 @@ class TestUnderscoreSquelching:
         assume(entity not in {"subject", "session"})
         key = f"_{entity}_"
         formatter = SnakemakeFormatter()
-        target = literal.replace("{{", "{") + (
+        target = literal.format() + (
             "_"
             if literal and literal[-1] not in SnakemakeFormatter.UNDERSCORE_SQUELCHERS
             else ""
@@ -357,7 +364,7 @@ class TestUnderscoreSquelching:
         else:
             target = f"{value}{target}"
 
-        target = literal.replace("{{", "{") + f"{target}"
+        target = literal.format() + f"{target}"
 
         assert (
             formatter.vformat(
@@ -379,7 +386,7 @@ class TestUnderscoreSquelching:
     ):
         formatter = SnakemakeFormatter()
         target = (
-            literal.replace("{{", "{")
+            literal.format()
             + ("_" if literal else "")
             + (f"{before}-_" if not skip and before != "_" else "")
             + (entity + "-" if entity != "_" else "")
@@ -417,7 +424,7 @@ class TestUnderscoreSquelching:
     ):
         formatter = SnakemakeFormatter()
         target = (
-            literal.replace("{{", "{")
+            literal.format()
             + (before_value if not skip else "_" if literal else "")
             + (entity + "-" if entity != "_" else "")
         )
