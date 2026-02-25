@@ -376,7 +376,10 @@ def make_bids_testsuite(spec: BidsPathSpec):
             template = bids(
                 root="",
                 **(
-                    {k: v.replace("{", "{{") for k, v in mandatory.items()}
+                    {
+                        k: v.replace("{", "{{").replace("}", "}}")
+                        for k, v in mandatory.items()
+                    }
                     | dict.fromkeys(optional, OPTIONAL_WILDCARD)
                 ),
             )
