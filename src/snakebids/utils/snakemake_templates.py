@@ -92,6 +92,22 @@ class SnakemakeWildcards:
         )
 
 
+class MissingEntityError(KeyError):
+    """Raised when special wildcard unaccompanied by associated key."""
+
+    def __init__(self, msg: str, dummy: str, entity: str, *args: object) -> None:
+        super().__init__(msg, *args)
+        self.dummy = dummy
+        self.entity = entity
+
+    @classmethod
+    def format_msg(cls, dummy: str, entity: str):
+        """Return instance with formatted error message."""
+        return cls(
+            f"Missing required entity '{entity}' for wildcard '{dummy}'", dummy, entity
+        )
+
+
 class SnakemakeFormatter(string.Formatter):
     """Custom formatter for snakemake templates with optional BIDS entities.
 
@@ -355,8 +371,7 @@ class SnakemakeFormatter(string.Formatter):
         try:
             entity_value = str(kwargs[entity])
         except KeyError as err:
-            msg = f"Missing required entity '{entity}' for wildcard '{key}'"
-            raise KeyError(msg) from err
+            raise MissingEntityError.format_msg(key, entity) from err
 
         # Return nothing if value blank
         if not entity_value:

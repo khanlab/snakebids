@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import copy
+import functools as ft
 import itertools as it
+import operator as op
 import re
 import string
 import warnings
@@ -31,6 +33,7 @@ from snakebids.utils.utils import BidsEntity, get_wildcard_dict, zip_list_eq
 from tests import strategies as sb_st
 from tests.helpers import (
     Benchmark,
+    component_via_product,
     expand_zip_list,
     get_bids_path,
     get_zip_list,
@@ -810,3 +813,196 @@ class TestBidsComponentIndexing:
         assert tuple(dicts.zip_lists[selectors]) == tuple(
             itx.unique_everseen(selectors)
         )
+
+
+class TestBidsComponentGet:
+    """Test the BidsComponent.get method for retrieving file paths."""
+
+    @given(
+        comp=sb_st.bids_components(
+            min_entities=0, min_values=1, restrict_patterns=True
+        ),
+        data=st.data(),
+        use_query=st.booleans(),
+    )
+    def test_get_returns_str_path(
+        self, use_query: bool, data: st.DataObject, comp: BidsComponent
+    ):
+        if comp.zip_lists:
+            length = len(itx.first(comp.zip_lists.values()))
+            i = data.draw(st.integers(0, length - 1))
+            items = data.draw(st.permutations(list(comp.zip_lists.items())))
+            query = {k: v[i] for k, v in items}
+        else:
+            query = {}
+        result = comp.get(query) if use_query else comp.get(**query)
+
+        assert itx.one(comp.filter(**query).expand()) == result
+
+    @given(
+        comp=sb_st.bids_components(min_entities=0),
+        extra=st.text().filter(lambda s: s != "_"),
+    )
+    def test_error_when_unknown_special_wildcard(self, comp: BidsComponent, extra: str):
+        assume(extra not in comp.zip_lists)
+        if comp.zip_lists:
+            items = list(comp.zip_lists.items())
+            query = {k: v[0] for k, v in items}
+        else:
+            query = {}
+        query[f"_{extra}_"] = "foo"
+        with pytest.raises(ValueError, match="got .* but associated entity"):
+            comp.get(query)
+
+    @given(
+        comp=sb_st.bids_components(restrict_patterns=True),
+        data=st.data(),
+    )
+    def test_allow_associated_special_wildcards(
+        self, comp: BidsComponent, data: st.DataObject
+    ):
+        items = list(comp.zip_lists.items())
+        query = {k: v[0] for k, v in items}
+        mut_key = data.draw(st.sampled_from(list(query)))
+        wc = SnakemakeWildcards(mut_key)
+        query[wc.directory.label] = "DIRECTORY/"
+        query[wc.dummy.label] = "DUMMY"
+
+        comp.get(query)
+
+    def test_slash_wildcard_when_datatype_present(self):
+        comp = BidsComponent(
+            name="test",
+            path="{datatype}",
+            zip_lists={
+                "datatype": ["anat"],
+            },
+        )
+        query = {"__d__": "/", "datatype": "anat"}
+        comp.get(query)
+
+    def test_underscore_wildcard_permitted(self):
+        comp = BidsComponent(
+            name="test",
+            path="",
+            zip_lists={},
+        )
+        query = {"___": "_"}
+        comp.get(query)
+
+    def test_special_wildcards_passed_through(self):
+        comp = BidsComponent(
+            name="test",
+            path=bids(
+                subject=OPTIONAL_WILDCARD,
+                datatype=OPTIONAL_WILDCARD,
+                suffix=OPTIONAL_WILDCARD,
+            ),
+            zip_lists={"subject": ["1"], "datatype": ["anat"], "suffix": ["T1w"]},
+        )
+        query = {
+            "_subject_d_": "DIRECTORY/",
+            "_subject_": "DUMMY*",
+            "subject": "1",
+            "datatype": "anat",
+            "__d__": "/",
+            "___": "_",
+            "suffix": "T1w",
+        }
+        assert comp.get(query) == "DIRECTORY/anat/DUMMY*1_T1w"
+
+    def test_error_on_both_query_and_entities(self):
+        """Test that using both query and **entities raises a TypeError."""
+        comp = BidsComponent(
+            name="test",
+            path="",
+            zip_lists={},
+        )
+
+        with pytest.raises(
+            TypeError, match="Cannot provide both 'query' and keyword arguments"
+        ):
+            comp.get({"subject": "01"}, subject="01")
+
+    @given(
+        comp=sb_st.bids_components(min_entities=0),
+        extra=st.text().map(lambda s: s.strip("_")),
+        data=st.data(),
+        use_query=st.booleans(),
+    )
+    def test_error_on_missing_entity_in_component(
+        self, use_query: bool, comp: BidsComponent, extra: str, data: st.DataObject
+    ):
+        assume(extra not in comp.zip_lists)
+        if comp.zip_lists:
+            items = data.draw(st.permutations(list(comp.zip_lists.items())))
+            query = {k: v[0] for k, v in items}
+        else:
+            query = {}
+        query[extra] = "foo"
+        with pytest.raises(KeyError, match="queried entity not present in component"):
+            comp.get(query) if use_query else comp.get(**query)
+
+    @given(
+        comp=sb_st.bids_components(),
+        data=st.data(),
+        use_query=st.booleans(),
+    )
+    def test_error_on_unqueried_entities_in_component(
+        self, use_query: bool, comp: BidsComponent, data: st.DataObject
+    ):
+        items = data.draw(st.permutations(list(comp.zip_lists.items())))
+        query = {k: v[0] for k, v in items[:-1]}
+        with pytest.raises(ValueError, match="component entity not queried"):
+            comp.get(query) if use_query else comp.get(**query)
+
+    def test_error_on_unqueried_special_entities_in_component(self):
+        comp = BidsComponent(
+            name="foo",
+            path=bids(subject=OPTIONAL_WILDCARD),
+            zip_lists={"subject": ["1"]},
+        )
+        with pytest.raises(ValueError, match="component entity not queried: 'subject'"):
+            comp.get()
+
+    @given(
+        comp=sb_st.bids_components(min_values=0),
+        data=st.data(),
+        use_query=st.booleans(),
+    )
+    def test_error_on_missing_entry_in_component(
+        self, use_query: bool, comp: BidsComponent, data: st.DataObject
+    ):
+        items = data.draw(st.permutations(list(comp.zip_lists.items())))
+        if not len(items[0][1]):
+            query = {k: "foo" for k, _ in items}
+        else:
+            query = {k: v[0] for k, v in items}
+            mut_key = data.draw(st.sampled_from(list(query)))
+            query[mut_key] = ft.reduce(op.add, comp.zip_lists[mut_key]) + "_"
+
+        with pytest.raises(ValueError, match="no entry found matching the provided"):
+            comp.get(query) if use_query else comp.get(**query)
+
+
+class TestBenchmarkContains:
+    comp = component_via_product(
+        subject=["1", "2", "3", "4", "5", "6"],
+        session=["1", "2", "3"],
+        run=["1", "2", "3"],
+        acq=["MPRAGE", "epi"],
+        suffix=["T1w.nii.gz", "T2w.nii.gz"],
+    )
+
+    frac = 1
+
+    def _get_query(self):
+        length = len(itx.first(self.comp.zip_lists.values()))
+        i = round((length - 1) * self.frac)
+        return {k: v[i] for k, v in self.comp.zip_lists.items()}
+
+    def test_contains(self, benchmark: Benchmark):
+        benchmark(self.comp._contains, self._get_query())
+
+    def test_filter(self, benchmark: Benchmark):
+        benchmark(self.comp.filter, **self._get_query())
