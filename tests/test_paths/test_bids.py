@@ -19,7 +19,7 @@ from snakebids.snakemake_compat import regex_from_filepattern
 from snakebids.utils.snakemake_templates import SnakemakeFormatter
 from snakebids.utils.utils import BidsEntity
 from tests import strategies as sb_st
-from tests.helpers import Benchmark, debug, is_strictly_increasing
+from tests.helpers import Benchmark, is_strictly_increasing
 from tests.test_snakemake_templates.strategies import safe_field_names
 
 
@@ -385,7 +385,6 @@ def make_bids_testsuite(spec: BidsPathSpec):
 
             assert formatter.format(template, **args) == reference
 
-        @debug(mandatory={"prefix": "0"}, optional={"A": "0", "extension": ".0"})
         @given(
             mandatory=_bids_args(
                 use_wildcard_only=True, custom=_identifiers(), prefix=True
