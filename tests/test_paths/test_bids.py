@@ -28,9 +28,9 @@ def _get_entity_tags(entities: Iterable[str]):
 
 
 def _values() -> st.SearchStrategy[str]:
-    return st.text(min_size=1).filter(
-        lambda s: is_valid_filename(s, Platform.LINUX) and not (set("_-.") & set(s))
-    )
+    return st.text(
+        st.characters(exclude_characters="_-.{}", codec="utf-8"), min_size=1
+    ).filter(lambda s: is_valid_filename(s, Platform.LINUX))
 
 
 def _field_names():
@@ -375,13 +375,7 @@ def make_bids_testsuite(spec: BidsPathSpec):
             reference = bids(**args)
             template = bids(
                 root="",
-                **(
-                    {
-                        k: v.replace("{", "{{").replace("}", "}}")
-                        for k, v in mandatory.items()
-                    }
-                    | dict.fromkeys(optional, OPTIONAL_WILDCARD)
-                ),
+                **(mandatory | dict.fromkeys(optional, OPTIONAL_WILDCARD)),
             )
 
             formatter = SnakemakeFormatter()
@@ -398,7 +392,6 @@ def make_bids_testsuite(spec: BidsPathSpec):
             self, mandatory: dict[str, str], optional: dict[str, str]
         ):
             """Test that optional wildcards compose correctly with hypothesis."""
-            mandatory = {k: v.replace("{", "{{") for k, v in mandatory.items()}
             args = mandatory | optional
             reference = bids(**args)
             template = bids(
@@ -411,6 +404,31 @@ def make_bids_testsuite(spec: BidsPathSpec):
             gathered_args = match.groupdict()
             for arg, val in optional.items():
                 assert gathered_args[arg] == val
+
+        @given(
+            mandatory=_bids_args(
+                use_wildcard_only=True, custom=_identifiers(), prefix=True
+            ),
+            optional=_bids_args(use_wildcard_only=True, custom=_identifiers()),
+        )
+        def test_match_format_roundtrip(
+            self, mandatory: dict[str, str], optional: dict[str, str]
+        ):
+            """Test that optional wildcards compose correctly with hypothesis."""
+            args = mandatory | optional
+            reference = bids(**args)
+            template = bids(
+                root="",
+                **(mandatory | dict.fromkeys(optional, OPTIONAL_WILDCARD)),
+            )
+            regex = regex_from_filepattern(template)
+            match = re.match(regex, reference)
+            assert match is not None
+            gathered_args = match.groupdict()
+
+            formatter = SnakemakeFormatter()
+
+            assert formatter.format(template, **gathered_args) == reference.format()
 
         @given(
             mandatory=_bids_args(use_wildcard_only=True, custom=_identifiers()),

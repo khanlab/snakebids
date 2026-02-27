@@ -9,7 +9,10 @@ import more_itertools as itx
 import pytest
 from hypothesis import assume, example, given
 
-from snakebids.utils.snakemake_templates import SnakemakeFormatter
+import tests.strategies as sb_st
+from snakebids import bids
+from snakebids.paths import OPTIONAL_WILDCARD
+from snakebids.utils.snakemake_templates import SnakemakeFormatter, SnakemakeWildcards
 from tests.helpers import Benchmark
 from tests.test_snakemake_templates.strategies import (
     constraints,
@@ -133,7 +136,8 @@ class TestFormatting:
             # Formatter splits field names on . and [ for indexing.
             field_names(exclude_characters=".[", min_size=1).filter(
                 # Digits and empty strings are used to query args instead of kwargs
-                lambda s: not s.isdigit()
+                # Values ending with _ or / are rejected by _validate
+                lambda s: not s.isdigit() and not s.endswith(("/", "_"))
             )
         ),
     )
@@ -193,14 +197,15 @@ class TestFormatting:
         literals=st.lists(literals()),
         field_names=st.lists(
             # Digits and empty strings are used to query args instead of kwargs
-            safe_field_names(min_size=1).filter(lambda s: not s.isdigit()),
+            safe_field_names(exclude_characters="_/", min_size=1).filter(
+                lambda s: not s.isdigit()
+            ),
             min_size=2,
         ),
     )
     def test_get_value_raises_error_for_missing_ordinary_entity(
         self, literals: list[str], field_names: list[str]
     ):
-        """Test that get_value() returns kwargs value directly when key exists."""
         unique = "".join(field_names)
         wildcards = [f"{{{name},constraint}}" for name in field_names] + [
             f"{{{unique},constraint}}"
@@ -215,7 +220,10 @@ class TestFormatting:
 class TestDirectoryWildcard:
     """Tests for directory wildcard functionality (_TAG_d_)."""
 
-    @given(key=safe_field_names().map(lambda s: f"_{s}_d_"), value=st.text())
+    @given(
+        key=safe_field_names().map(lambda s: f"_{s}_d_"),
+        value=st.text().map(lambda s: s + "/"),
+    )
     def test_directory_returns_itself_when_given(self, key: str, value: str):
         formatter = SnakemakeFormatter()
         assert formatter.get_value(key, (), {key: value}) == value
@@ -260,26 +268,28 @@ class TestDirectoryWildcard:
 class TestDummyWildcard:
     """Tests for dummy wildcard functionality (_TAG_)."""
 
-    @given(key=safe_field_names().map(lambda s: f"_{s}_"), value=st.text())
+    @given(
+        key=safe_field_names().map(lambda s: f"_{s}_"),
+        value=st.text().filter(lambda s: not s.endswith(("/", "_"))),
+    )
     def test_dummy_returns_itself_when_given(self, key: str, value: str):
         """Test dummy wildcard returns assigned value when directly given as key."""
         formatter = SnakemakeFormatter()
         assert formatter.get_value(key, (), {key: value}) == value
 
-    @pytest.mark.parametrize("squelch_underscore", [True, False])
-    @given(entity=safe_field_names(), value=st.text())
+    @given(
+        entity=safe_field_names(),
+        value=st.text(),
+        underscore=st.sampled_from(["_", ""]),
+    )
     def test_dummy_returns_default_when_corresponding_entity_given(
-        self, entity: str, value: str, squelch_underscore: bool
+        self, entity: str, value: str, underscore: str
     ):
-        """Test dummy wildcard returns the correct format based on squelch state."""
         assume(entity not in {"subject", "session"})
         key = f"_{entity}_"
         formatter = SnakemakeFormatter()
-        formatter.squelch_underscore = squelch_underscore
-        if value:
-            target = f"{entity}-" if squelch_underscore else f"_{entity}-"
-        else:
-            target = ""
+        formatter._underscore = underscore
+        target = f"{underscore}{entity}-" if value else ""
         assert formatter.get_value(key, (), {entity: value}) == target
 
     @given(entity=safe_field_names(), value=st.text())
@@ -349,30 +359,35 @@ class TestUnderscoreSquelching:
 
     @given(
         literal=literals().map(lambda s: s.rstrip("/_")),
-        value=st.text() | st.sampled_from(["/", "_"]),
+        value=st.text().filter(lambda s: not s.endswith(("/", "_"))),
         entity=st.sampled_from(["_", "entity"]),
+        missing=st.booleans(),
     )
     def test_squelching_after_ordinary_wildcard(
-        self, literal: str, value: str, entity: str
+        self, literal: str, value: str, entity: str, missing: bool
     ):
-        formatter = SnakemakeFormatter()
-        target = f"{entity}-" if entity != "_" else ""
-        if value and value[-1] not in SnakemakeFormatter.UNDERSCORE_SQUELCHERS:
-            target = f"{value}_{target}"
-        elif literal and not value:
-            target = f"_{target}"
+        formatter = SnakemakeFormatter(allow_missing=missing)
+
+        if missing:
+            underscore = "_" if literal else str(SnakemakeWildcards.underscore)
+        elif value:
+            underscore = "_"
         else:
-            target = f"{value}{target}"
+            underscore = ""
 
-        target = literal.format() + f"{target}"
+        target = (
+            literal.format()
+            + ("_" if literal and not value and not missing else "")
+            + ("{before}" if missing else value)
+            + underscore
+            + (entity + "-" if entity != "_" else "")
+        )
 
+        kwargs = {entity: "foo"}
+        if not missing:
+            kwargs["before"] = value
         assert (
-            formatter.vformat(
-                f"{literal}{{before}}{{_{entity}_}}",
-                (),
-                {"before": value, entity: "foo"},
-            )
-            == target
+            formatter.format(f"{literal}{{before}}{{_{entity}_}}", **kwargs) == target
         )
 
     @given(
@@ -392,13 +407,30 @@ class TestUnderscoreSquelching:
             + (entity + "-" if entity != "_" else "")
         )
 
+        kwargs = {entity: "foo", before: "" if skip else "foo"}
         assert (
-            formatter.vformat(
-                f"{literal}{{_{before}_}}{{_{entity}_}}",
-                (),
-                {before: "" if skip else "foo", entity: "foo"},
-            )
+            formatter.format(f"{literal}{{_{before}_}}{{_{entity}_}}", **kwargs)
             == target
+        )
+
+    @given(
+        literal=literals().map(lambda s: s.rstrip("/_")),
+        entity=st.sampled_from(["_", "entity"]),
+    )
+    def test_squelching_after_missing_dummy_wildcard(self, literal: str, entity: str):
+        formatter = SnakemakeFormatter(allow_missing=True)
+        formatted_before = "{_before_}" + (
+            str(SnakemakeWildcards.underscore) if not literal else "_"
+        )
+        target = (
+            literal.format()
+            + formatted_before
+            + (entity + "-" if entity != "_" else "")
+        )
+
+        kwargs = {entity: "foo"}
+        assert (
+            formatter.format(f"{literal}{{_before_}}{{_{entity}_}}", **kwargs) == target
         )
 
     @pytest.mark.parametrize(
@@ -409,7 +441,7 @@ class TestUnderscoreSquelching:
         ],
     )
     @given(
-        literal=literals().map(lambda s: s.rstrip("/_")),
+        literal=literals(),
         skip=st.booleans(),
         entity=st.sampled_from(["_", "entity"]),
     )
@@ -425,7 +457,13 @@ class TestUnderscoreSquelching:
         formatter = SnakemakeFormatter()
         target = (
             literal.format()
-            + (before_value if not skip else "_" if literal else "")
+            + (
+                before_value
+                if not skip
+                else "_"
+                if literal and not literal.endswith(("/", "_"))
+                else ""
+            )
             + (entity + "-" if entity != "_" else "")
         )
         assert (
@@ -433,6 +471,30 @@ class TestUnderscoreSquelching:
                 f"{literal}{{{before_wildcard}}}{{_{entity}_}}",
                 (),
                 {before_entity: "" if skip else "foo", entity: "foo"},
+            )
+            == target
+        )
+
+    @given(
+        literal=literals(),
+        entity=st.sampled_from(["_", "entity"]),
+        before_wildcard=st.sampled_from(["__d__", "_dir_d_"]),
+    )
+    def test_squelching_occurs_after_missing_slash_wildcard(
+        self,
+        literal: str,
+        entity: str,
+        before_wildcard: str,
+    ):
+        formatter = SnakemakeFormatter(allow_missing=True)
+        target = (
+            literal.format()
+            + f"{{{before_wildcard}}}"
+            + (entity + "-" if entity != "_" else "")
+        )
+        assert (
+            formatter.format(
+                f"{literal}{{{before_wildcard}}}{{_{entity}_}}", **{entity: "foo"}
             )
             == target
         )
@@ -486,21 +548,12 @@ class TestDWildcard:
 class TestTripleUnderscore:
     """Tests for ___ special wildcard."""
 
-    @pytest.mark.parametrize(
-        ("squelch_underscore", "expected"),
-        [
-            (False, "_"),
-            (True, ""),
-        ],
-    )
-    def test_triple_underscore_returns_based_on_squelch_state(
-        self, squelch_underscore: bool, expected: str
-    ):
-        """Test ___ returns underscore when not squelched, blank when squelched."""
+    @pytest.mark.parametrize("underscore", ["_", ""])
+    def test_triple_underscore_returns_based_on_squelch_state(self, underscore: str):
         formatter = SnakemakeFormatter()
-        formatter.squelch_underscore = squelch_underscore
+        formatter._underscore = underscore
         result = formatter.get_value("___", (), {})
-        assert result == expected
+        assert result == underscore
 
 
 class TestIntegration:
@@ -605,3 +658,150 @@ class TestIntegration:
             acq="mprage",
         )
         assert result == "sub-001_acq-mprage_T1w.nii.gz"
+
+
+class TestValidation:
+    """Tests for _validate error conditions in SnakemakeFormatter."""
+
+    @given(value=st.text(min_size=1).filter(lambda s: s != "/"))
+    def test_d_wildcard_rejects_non_slash_value(self, value: str):
+        """__d__ assigned a value other than '/' raises ValueError."""
+        formatter = SnakemakeFormatter()
+        with pytest.raises(ValueError, match="__d__ assigned invalid value"):
+            formatter.format("{__d__}", __d__=value)
+
+    @pytest.mark.parametrize("value", ["/", ""])
+    def test_d_wildcard_accepts_valid_values(self, value: str):
+        """__d__ assigned '/' or '' passes validation."""
+        formatter = SnakemakeFormatter()
+        assert formatter.format("{__d__}", __d__=value) == value
+
+    @given(value=st.text(min_size=1).filter(lambda s: s != "_"))
+    def test_triple_underscore_rejects_non_underscore_value(self, value: str):
+        """___ assigned a value other than '_' raises ValueError."""
+        formatter = SnakemakeFormatter()
+        with pytest.raises(ValueError, match="___ assigned invalid value"):
+            formatter.format("{___}", ___=value)
+
+    @pytest.mark.parametrize("value", ["_", ""])
+    def test_triple_underscore_accepts_valid_values(self, value: str):
+        """___ assigned '_' or '' passes validation."""
+        formatter = SnakemakeFormatter()
+        assert formatter.format("{___}", ___=value) == value
+
+    @given(value=st.text(min_size=1).filter(lambda s: not s.endswith("/")))
+    def test_directory_wildcard_rejects_value_not_ending_in_slash(self, value: str):
+        """Directory wildcard assigned value not ending in '/' raises ValueError."""
+        formatter = SnakemakeFormatter()
+        with pytest.raises(ValueError, match="does not end in '/'"):
+            formatter.get_value("_entity_d_", (), {"_entity_d_": value})
+
+    @given(value=st.text().map(lambda s: s + "/"))
+    def test_directory_wildcard_accepts_value_ending_in_slash(self, value: str):
+        """Directory wildcard assigned value ending in '/' passes validation."""
+        formatter = SnakemakeFormatter()
+        assert formatter.get_value("_entity_d_", (), {"_entity_d_": value}) == value
+
+    @given(
+        bad_suffix=st.sampled_from(["_", "/"]),
+        value=st.text(),
+    )
+    def test_ordinary_entity_rejects_value_ending_with_disallowed_char(
+        self, bad_suffix: str, value: str
+    ):
+        """Ordinary entity value ending with '_' or '/' raises ValueError."""
+        formatter = SnakemakeFormatter()
+        with pytest.raises(ValueError, match="ending with disallowed character"):
+            formatter.format("{entity}", entity=value + bad_suffix)
+
+    @given(
+        value=st.text(min_size=1).filter(lambda s: not s.endswith(("/", "_"))),
+    )
+    def test_ordinary_entity_accepts_valid_value(self, value: str):
+        """Ordinary entity value not ending with '_' or '/' passes validation."""
+        formatter = SnakemakeFormatter()
+        assert formatter.format("{entity}", entity=value) == value
+
+    @given(
+        bad_suffix=st.sampled_from(["_", "/"]),
+        value=st.text(),
+    )
+    def test_integer_key_validates_value(self, bad_suffix: str, value: str):
+        """Integer key with value ending in disallowed char raises ValueError."""
+        formatter = SnakemakeFormatter()
+        with pytest.raises(ValueError, match="ending with disallowed character"):
+            formatter.vformat("{0}", [value + bad_suffix], {})
+
+    @given(
+        value=st.text(min_size=1).filter(lambda s: not s.endswith(("/", "_"))),
+    )
+    def test_integer_key_accepts_valid_value(self, value: str):
+        """Integer key with normal value passes validation."""
+        formatter = SnakemakeFormatter()
+        assert formatter.vformat("{0}", [value], {}) == value
+
+
+class TestAllowMissing:
+    """Tests for allow_missing behavior in SnakemakeFormatter."""
+
+    # MARK
+    @example(name="run", constraint=r"\d+")
+    @example(name="__d__", constraint=r"\w+")
+    @example(name="_dir_d_", constraint="")
+    @example(name="_acq_", constraint="")
+    @given(
+        name=safe_field_names(min_size=1).filter(lambda s: not s.isdigit()),
+        constraint=constraints() | st.just(""),
+    )
+    def test_allow_missing_preserves_wildcard_from_template(
+        self, name: str, constraint: str
+    ):
+        """Missing wildcard (with or without constraint) is preserved verbatim."""
+        formatter = SnakemakeFormatter(allow_missing=True)
+        template = f"{{{name},{constraint}}}" if constraint else f"{{{name}}}"
+        result = formatter.format(template)
+        assert result == template
+
+    def test_allow_missing_resets_between_vformat_calls(self):
+        """_field_constraints is reset on each vformat call."""
+        formatter = SnakemakeFormatter(allow_missing=True)
+        # First call with constraint
+        r1 = formatter.format(r"sub-{subject,\d+}")
+        assert r1 == r"sub-{subject,\d+}"
+        # Second call without constraint: should use the new (no-constraint) form
+        r2 = formatter.format("{subject}")
+        assert r2 == "{subject}"
+
+    @given(
+        name=safe_field_names(min_size=1).filter(lambda s: not s.isdigit()),
+        constraint_a=constraints() | st.just(""),
+        constraint_b=constraints() | st.just(""),
+    )
+    def test_allow_missing_preserves_each_fields_constraint(
+        self, name: str, constraint_a: str, constraint_b: str
+    ):
+        """Same wildcard with different constraints preserves each independently."""
+        formatter = SnakemakeFormatter(allow_missing=True)
+        field_a = f"{{{name},{constraint_a}}}" if constraint_a else f"{{{name}}}"
+        field_b = f"{{{name},{constraint_b}}}" if constraint_b else f"{{{name}}}"
+        template = f"{field_a}_lit_{field_b}"
+        result = formatter.format(template)
+        assert result == template
+
+
+def _bids_args():
+    return st.dictionaries(
+        keys=sb_st.bids_entity().map(lambda e: e.wildcard),
+        values=st.text(st.characters(exclude_characters="_-./{}"), min_size=1),
+    ).filter(lambda s: set(s) - {"datatype", "extension"})
+
+
+@given(bidsargs=_bids_args())
+def test_single_and_multistep_format_equivalent(bidsargs: dict[str, str]):
+    template = bids("", **dict.fromkeys(bidsargs, OPTIONAL_WILDCARD))
+    formatter = SnakemakeFormatter(allow_missing=True)
+    single_step = formatter.format(template, **bidsargs)
+    multistep = template
+    for k, v in bidsargs.items():
+        multistep = formatter.format(multistep, **{k: v})
+    assert single_step == multistep
