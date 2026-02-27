@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import string
 from collections.abc import Iterator, Mapping, Sequence
-from typing import Any, Final, overload
+from typing import TYPE_CHECKING, Any, Final, overload
 
 import attrs
 from typing_extensions import LiteralString, override
@@ -99,6 +99,13 @@ class SnakemakeFormatter(string.Formatter):
     appropriate defaults for dummy wildcards and managing underscore suppression
     based on context.
 
+    Values for the magic wildcards may be explicitly provided and will be used
+    transparently when given.
+
+    To ensure output integrity, no entity wildcard may have ``/`` or ``_`` as the final
+    character, except for ``__d__`` and ``___``, which if not set to a blank string may
+    ONLY be assigned either ``/`` and ``_`` respectively.
+
     Wildcard Label Syntax:
     - Ordinary wildcards: {TAG} (e.g., {subject}, {acq}, {run})
     - Dummy wildcards: {_TAG_} (e.g., {_subject_}, {_acq_}, {_run_})
@@ -116,9 +123,11 @@ class SnakemakeFormatter(string.Formatter):
     _UNEXPECTED_OPEN = "unexpected '{' in field name"
 
     @override
-    def __init__(self) -> None:
+    def __init__(self, allow_missing: bool = False) -> None:
         super().__init__()
-        self.squelch_underscore = True
+        self.allow_missing = allow_missing
+        self._current_field: str | None = None
+        self._underscore: str = ""
 
     @overload
     def vformat(
@@ -135,8 +144,9 @@ class SnakemakeFormatter(string.Formatter):
     def vformat(
         self, format_string: str, args: Sequence[Any], kwargs: Mapping[Any, Any]
     ) -> str:
-        """Call base vformat after resetting squelch_underscore."""
-        self.squelch_underscore = True
+        """Call base vformat after resetting _underscore."""
+        self._underscore = ""
+        self._current_field = None
         return super().vformat(format_string, args, kwargs)
 
     @override
@@ -196,7 +206,7 @@ class SnakemakeFormatter(string.Formatter):
                 yield format_string[anchor:i], None, None, None
                 anchor = i + 1
                 next_char = format_string[i]
-                self.squelch_underscore = False
+                self._underscore = "_"
                 continue
 
             # if undoubled } outside of field
@@ -214,8 +224,12 @@ class SnakemakeFormatter(string.Formatter):
             comma = format_string.find(",", i + 1, j)
             if comma != -1:
                 field_name = format_string[i + 1 : comma]
+                # Store full text (with constraint) for allow_missing support
+                self._current_field = format_string[i + 1 : j]
             else:
                 field_name = format_string[i + 1 : j]
+                # Clear any stale constraint from a previous occurrence
+                self._current_field = None
 
             # setup for the next field
             i = j
@@ -224,7 +238,9 @@ class SnakemakeFormatter(string.Formatter):
             anchor = i + 1
             next_char = "{"
             if literal_text:
-                self.squelch_underscore = literal_text[-1] in self.UNDERSCORE_SQUELCHERS
+                self._underscore = (
+                    "" if literal_text[-1] in self.UNDERSCORE_SQUELCHERS else "_"
+                )
             yield literal_text, field_name, "", None
 
     @override
@@ -271,25 +287,48 @@ class SnakemakeFormatter(string.Formatter):
         KeyError
             When a required entity is missing from kwargs
         """
+        # This wrapper sets the next leading underscore based on the returned value
+        # and handles missing keys
+        try:
+            value = self._get_value(key, args, kwargs)
+        except KeyError:
+            if self.allow_missing:
+                # Return original brace-wrapped wildcard including constraint
+                if TYPE_CHECKING:
+                    assert isinstance(key, str)
+                if key == "__d__" or self._is_directory_wildcard(key):
+                    self._underscore = ""
+                elif not self._underscore:
+                    self._underscore = SnakemakeWildcards.underscore.wildcard
+                # if _current_field is "", key must necessarily be ""
+                original = self._current_field or key
+                return f"{{{original}}}"
+            raise
+
+        if value:
+            self._underscore = "" if value[-1] in self.UNDERSCORE_SQUELCHERS else "_"
+        return value
+
+    def _get_value(
+        self, key: str | int, args: Sequence[Any], kwargs: Mapping[str, Any]
+    ) -> Any:
         # Rule 0. If it's an integer key, use parent behavior
         if isinstance(key, int):
-            return super().get_value(key, args, kwargs)
+            result = str(super().get_value(key, args, kwargs))
+            self._validate(key, result)
+            return result
 
         # Rule 1. If key is found in kwargs, return it directly
         if key in kwargs:
-            # No support for conversion bits, so formatting will be as string
-            value = str(kwargs[key])
-            # Update squelch_underscore based on returned value
-            if value:
-                self.squelch_underscore = value[-1] in self.UNDERSCORE_SQUELCHERS
-            return value
+            result = str(kwargs[key])
+            self._validate(key, result)
+            return result
 
-        leading_underscore = "" if self.squelch_underscore else "_"
+        leading_underscore = self._underscore
         trailing_slash = ""
 
         # Rule 4. Handle ___ special wildcard
         if key == "___":
-            self.squelch_underscore = True
             return leading_underscore
 
         # Rule 3. Handle __d__ using datatype as entity
@@ -332,6 +371,33 @@ class SnakemakeFormatter(string.Formatter):
         if is_directory:
             result += entity_value
 
-        self.squelch_underscore = bool(trailing_slash)
-
         return leading_underscore + result + trailing_slash
+
+    def _validate(self, key: str | int, value: str):
+        if key == "__d__":
+            if value and value != "/":
+                msg = f"__d__ assigned invalid value {value!r}, must be '/' or ''"
+                raise ValueError(msg)
+            return
+        if key == "___":
+            if value and value != "_":
+                msg = f"___ assigned invalid value {value!r}, must be '_' or ''"
+                raise ValueError(msg)
+            return
+
+        if isinstance(key, str) and self._is_directory_wildcard(key):
+            if value.endswith("/"):
+                return
+            msg = f"entity {key!r} assigned value {value!r} that does not end in '/'"
+            raise ValueError(msg)
+
+        if value.endswith(("_", "/")):
+            msg = (
+                f"entity {key!r} assigned value {value!r} ending with disallowed "
+                f"character {value[-1]!r}. This can result in inconsistent behaviour."
+            )
+            raise ValueError(msg)
+
+    def _is_directory_wildcard(self, key: str):
+        min_dir_length = 3
+        return key.startswith("_") and key.endswith("_d_") and len(key) > min_dir_length
