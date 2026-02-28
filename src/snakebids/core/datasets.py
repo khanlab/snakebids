@@ -344,7 +344,7 @@ class BidsPartialComponent:
         paths: Iterable[Path | str] | Path | str,
         /,
         allow_missing: bool | str | Iterable[str] = False,
-        **wildcards: str | Iterable[str],
+        **wildcards: Iterable[str | None] | str | None,
     ) -> list[str]:
         """Safely expand over given paths with component wildcards.
 
@@ -375,7 +375,7 @@ class BidsPartialComponent:
 
         # When zip_lists is empty and no extra wildcards, return paths as-is
         # (no formatting: avoids errors on arbitrary path text with {wildcards})
-        if not self.zip_lists and not wildcards:
+        if allow_missing and not self.zip_lists and not wildcards:
             return path_list
 
         return _expand(
@@ -589,7 +589,7 @@ class BidsComponent(BidsPartialComponent):
         paths: Iterable[Path | str] | Path | str | None = None,
         /,
         allow_missing: bool | str | Iterable[str] = False,
-        **wildcards: str | Iterable[str],
+        **wildcards: Iterable[str | None] | str | None,
     ) -> list[str]:
         """Safely expand over given paths with component wildcards.
 
@@ -619,7 +619,7 @@ class BidsComponent(BidsPartialComponent):
             Keywords not found in the path will be ignored. Keywords take values or
             lists of values to be expanded over the provided paths.
         """
-        paths = paths or self.path
+        paths = self.path if paths is None else paths
         return super().expand(paths, allow_missing, **wildcards)
 
     @property

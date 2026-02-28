@@ -6,39 +6,39 @@ from typing import Any
 
 import more_itertools as itx
 
-from snakebids.snakemake_compat import WildcardError
-from snakebids.types import ZipList
-from snakebids.utils.snakemake_templates import SnakemakeFormatter
+from snakebids.types import ZipListLike
+from snakebids.utils.snakemake_templates import MissingEntityError, SnakemakeFormatter
 
 try:
-    from snakemake.io import AnnotatedString as _AnnotatedString
+    from snakemake.io import AnnotatedString as _AnnotatedString  # type: ignore
+
+except ImportError:
 
     def _get_flags(path: Any) -> dict[str, Any] | None:
-        """Extract flags from an AnnotatedString path for preservation during expansion."""
-        if isinstance(path, _AnnotatedString) and path.flags:
-            return dict(path.flags)
+        """Return None when snakemake is not installed (no AnnotatedString support)."""
+        return None
+
+    def _make_annotated(s: str, flags: dict[str, Any]) -> str:
+        """Return the string unchanged when snakemake is not installed."""
+        return s
+else:
+
+    def _get_flags(path: Any) -> dict[str, Any] | None:
+        """Extract flags from an AnnotatedString path."""
+        if isinstance(path, _AnnotatedString) and path.flags:  # type: ignore
+            return dict(path.flags)  # type: ignore
         return None
 
     def _make_annotated(s: str, flags: dict[str, Any]) -> str:
         """Create an AnnotatedString with the given flags copied from the template."""
         result = _AnnotatedString(s)
-        result.flags.update(flags)
+        result.flags.update(flags)  # type: ignore
         return result
-
-except ImportError:
-
-    def _get_flags(path: Any) -> dict[str, Any] | None:  # type: ignore[misc]
-        """Return None when snakemake is not installed (no AnnotatedString support)."""
-        return None
-
-    def _make_annotated(s: str, flags: dict[str, Any]) -> str:  # type: ignore[misc]
-        """Return the string unchanged when snakemake is not installed."""
-        return s
 
 
 def expand(
     paths: Iterable[Any],
-    zip_lists: ZipList,
+    zip_lists: ZipListLike,
     allow_missing: bool,
     **wildcards: Any,
 ) -> list[str]:
@@ -59,36 +59,28 @@ def expand(
         else:
             extra[k] = ["" if v is None else v for v in itx.always_iterable(vals)]
 
-    # Build zip-list rows
-    if zip_lists:
-        rows: list[dict[str, str]] = [
-            dict(zip(zip_lists.keys(), vals, strict=True))
-            for vals in zip(*zip_lists.values(), strict=True)
-        ]
-    else:
-        rows = [{}]
+    rows = list(zip(*zip_lists.values(), strict=True))
 
-    # Compute extra wildcard combinations (product)
-    if extra:
-        extra_keys = list(extra.keys())
-        extra_combos: list[tuple[str, ...]] = list(it.product(*extra.values()))
-    else:
-        extra_keys = []
-        extra_combos = [()]
+    results: list[str] = []
+    for path in paths:
+        path_str = str(path)
+        flags = _get_flags(path)
+        for row, *combo in it.product(rows, *extra.values()):
+            kwargs = {
+                **dict(zip(zip_lists, row, strict=True)),
+                **dict(zip(extra, combo, strict=True)),
+            }
+            try:
+                result = formatter.vformat(path_str, (), kwargs)
+            except MissingEntityError as err:
+                msg = f"no values given for wildcard {err.entity!r}."
+                raise KeyError(msg) from err
+            except KeyError as err:
+                msg = f"no values given for wildcard {err.args[0]!r}."
+                raise KeyError(msg) from err
 
-    try:
-        results: list[str] = []
-        for path in paths:
-            path_str = str(path)
-            flags = _get_flags(path)
-            for row in rows:
-                for combo in extra_combos:
-                    kwargs = {**row, **dict(zip(extra_keys, combo, strict=True))}
-                    result: str = formatter.format(path_str, **kwargs)
-                    if flags is not None:
-                        result = _make_annotated(result, flags)
-                    results.append(result)
-    except KeyError as e:
-        raise WildcardError(f"No values given for wildcard {e}.") from e
+            if flags is not None:
+                result = _make_annotated(result, flags)
+            results.append(result)
 
     return list(dict.fromkeys(results))
