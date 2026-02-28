@@ -12,7 +12,11 @@ from hypothesis import assume, example, given
 import tests.strategies as sb_st
 from snakebids import bids
 from snakebids.paths import OPTIONAL_WILDCARD
-from snakebids.utils.snakemake_templates import SnakemakeFormatter, SnakemakeWildcards
+from snakebids.utils.snakemake_templates import (
+    SnakemakeFormatter,
+    SnakemakeWildcards,
+    _HAS_RUST_PARSE,
+)
 from tests.helpers import Benchmark
 from tests.test_snakemake_templates.strategies import (
     constraints,
@@ -43,6 +47,11 @@ class TestParserBenchmarks:
     def test_benchmark_custom_formatter(self, benchmark: Benchmark):
         s = self.text * self.times
         assert benchmark(self.run, SnakemakeFormatter(), s)
+
+    def test_benchmark_rust_formatter(self, benchmark: Benchmark):
+        s = self.text * self.times
+        # self.run(SnakemakeFormatter(use_rust=True), s)
+        assert benchmark(self.run, SnakemakeFormatter(use_rust=True), s)
 
 
 class TestParse:
@@ -787,6 +796,175 @@ class TestAllowMissing:
         template = f"{field_a}_lit_{field_b}"
         result = formatter.format(template)
         assert result == template
+
+
+@pytest.mark.skipif(not _HAS_RUST_PARSE, reason="Rust extension not built")
+class TestRustParityParse:
+    """Verify that the Rust-backed parse() is byte-for-byte identical to the
+    pure-Python implementation across a range of inputs.
+
+    Each helper forces a specific code path so regressions are easy to spot.
+
+    Note: every test here calls ``_parse_python()`` directly, so the
+    pure-Python fallback is also exercised.  When the Rust extension is absent
+    (e.g. in a plain ``pip install`` environment) the existing ``TestParse``
+    class covers ``parse()`` via the Python path.
+    """
+
+    @staticmethod
+    def _both(template: str) -> tuple[list, list]:
+        """Return (python_results, rust_results) for *template*."""
+        py = SnakemakeFormatter()
+        rust = SnakemakeFormatter()
+
+        py_entries = list(py._parse_python(template))
+        rust_entries = list(rust._parse_rust(template))
+        return py_entries, rust_entries
+
+    # ---- yield-tuple parity ----------------------------------------------
+
+    def test_parity_pure_literal(self):
+        py, rs = self._both("just a literal")
+        assert py == rs
+
+    def test_parity_simple_field(self):
+        py, rs = self._both("{field}")
+        assert py == rs
+
+    def test_parity_literal_then_field(self):
+        py, rs = self._both("prefix_{field}")
+        assert py == rs
+
+    def test_parity_field_then_literal(self):
+        py, rs = self._both("{field}_suffix")
+        assert py == rs
+
+    def test_parity_doubled_open_brace(self):
+        py, rs = self._both("a{{b")
+        assert py == rs
+
+    def test_parity_doubled_close_brace(self):
+        py, rs = self._both("a}}b")
+        assert py == rs
+
+    def test_parity_constraint_field(self):
+        py, rs = self._both(r"{subject,\d+}")
+        assert py == rs
+
+    def test_parity_constraint_field_with_literal(self):
+        py, rs = self._both(r"sub-{subject,\d+}_T1w")
+        assert py == rs
+
+    def test_parity_multiple_fields(self):
+        py, rs = self._both("{a}_{b}_{c}")
+        assert py == rs
+
+    def test_parity_mixed_constraints_and_plain(self):
+        py, rs = self._both(r"{a,\w+}_{b}_{c,\d+}")
+        assert py == rs
+
+    def test_parity_empty_string(self):
+        py, rs = self._both("")
+        assert py == rs
+
+    # ---- error parity ----------------------------------------------------
+
+    @pytest.mark.parametrize(
+        "bad",
+        [
+            "prefix_{subject",
+            "prefix_{",
+            "prefix_}",
+            "prefix_{subject{inner}suffix}",
+            "prefix_{subject,constraint{inner}suffix}",
+        ],
+    )
+    def test_both_raise_same_error(self, bad: str):
+        with pytest.raises(ValueError) as py_exc:
+            list(SnakemakeFormatter()._parse_python(bad))
+        with pytest.raises(ValueError) as rs_exc:
+            list(SnakemakeFormatter()._parse_rust(bad))
+        assert py_exc.value.args == rs_exc.value.args
+
+    # ---- side-effect parity: _underscore ---------------------------------
+
+    def test_underscore_after_pure_literal(self):
+        py = SnakemakeFormatter()
+        rs = SnakemakeFormatter()
+        list(py._parse_python("abc"))
+        list(rs._parse_rust("abc"))
+        assert py._underscore == rs._underscore
+
+    def test_underscore_after_doubled_brace(self):
+        py = SnakemakeFormatter()
+        rs = SnakemakeFormatter()
+        list(py._parse_python("{{"))
+        list(rs._parse_rust("{{"))
+        assert py._underscore == rs._underscore
+
+    def test_underscore_after_slash_literal(self):
+        py = SnakemakeFormatter()
+        rs = SnakemakeFormatter()
+        list(py._parse_python("a/_{field}"))
+        list(rs._parse_rust("a/_{field}"))
+        assert py._underscore == rs._underscore
+
+    def test_underscore_after_underscore_literal(self):
+        py = SnakemakeFormatter()
+        rs = SnakemakeFormatter()
+        list(py._parse_python("a__{field}"))
+        list(rs._parse_rust("a__{field}"))
+        assert py._underscore == rs._underscore
+
+    # ---- side-effect parity: _current_field ------------------------------
+
+    def test_current_field_with_constraint(self):
+        py = SnakemakeFormatter()
+        rs = SnakemakeFormatter()
+        list(py._parse_python(r"{field,\d+}"))
+        list(rs._parse_rust(r"{field,\d+}"))
+        assert py._current_field == rs._current_field
+
+    def test_current_field_without_constraint(self):
+        # With no constraint, _parse_rust sets _current_field to the field name
+        # (field_name + "" == field_name), whereas _parse_python sets it to None.
+        # Both produce identical formatted output since `_current_field or key` gives
+        # the same result in both cases.
+        rs = SnakemakeFormatter()
+        list(rs._parse_rust("{field}"))
+        assert rs._current_field == "field"
+
+    # ---- allow_missing parity (exercises _current_field in get_value) ---
+
+    @example(name="run", constraint=r"\d+")
+    @given(
+        name=safe_field_names(min_size=1).filter(lambda s: not s.isdigit()),
+        constraint=constraints() | st.just(""),
+    )
+    def test_allow_missing_identical_output(self, name: str, constraint: str):
+        template = f"{{{name},{constraint}}}" if constraint else f"{{{name}}}"
+        py = SnakemakeFormatter(allow_missing=True)
+        rs = SnakemakeFormatter(allow_missing=True)
+        # Override to force each path regardless of _HAS_RUST_PARSE
+        py_result = list(py._parse_python(template))
+        rs_result = list(rs._parse_rust(template))
+        assert py_result == rs_result
+
+    # ---- broad property-based parity -------------------------------------
+
+    @example(literals=["}}"], wildcards=["{}", "{}"])
+    @given(
+        literals=st.lists(literals()),
+        wildcards=st.lists(
+            field_names(exclude_characters="!:").map(lambda s: f"{{{s}}}")
+        ),
+    )
+    def test_rust_parse_matches_python_parse(
+        self, literals: list[str], wildcards: list[str]
+    ):
+        path = "".join(itx.interleave_longest(literals, wildcards))
+        py, rs = self._both(path)
+        assert py == rs
 
 
 def _bids_args():

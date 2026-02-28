@@ -9,6 +9,13 @@ from typing import TYPE_CHECKING, Any, Final, overload
 import attrs
 from typing_extensions import LiteralString, override
 
+try:
+    from snakebids._rust import _core as _rust_core
+
+    _HAS_RUST_PARSE = True
+except ImportError:
+    _HAS_RUST_PARSE = False
+
 
 @attrs.define(frozen=True)
 class _Wildcard:
@@ -123,11 +130,12 @@ class SnakemakeFormatter(string.Formatter):
     _UNEXPECTED_OPEN = "unexpected '{' in field name"
 
     @override
-    def __init__(self, allow_missing: bool = False) -> None:
+    def __init__(self, allow_missing: bool = False, use_rust: bool = False) -> None:
         super().__init__()
         self.allow_missing = allow_missing
         self._current_field: str | None = None
         self._underscore: str = ""
+        self._use_rust = use_rust
 
     @overload
     def vformat(
@@ -150,10 +158,55 @@ class SnakemakeFormatter(string.Formatter):
         return super().vformat(format_string, args, kwargs)
 
     @override
-    def parse(  # noqa: PLR0912
+    def parse(
         self, format_string: str
     ) -> Iterator[tuple[str, str | None, str | None, str | None]]:
         """Parse format string, stripping constraints and format specifications.
+
+        When the optional Rust extension (``snakebids._rust._core``) is available the
+        parsing is delegated to a compiled implementation for better performance.
+        Otherwise the pure-Python implementation is used transparently.
+
+        Parameters
+        ----------
+        format_string : str
+            The format string to parse
+
+        Yields
+        ------
+            Each iteration yields (literal_text, field_name, ""|None, None)
+        """
+        if _HAS_RUST_PARSE and self._use_rust:
+            yield from self._parse_rust(format_string)
+        else:
+            yield from self._parse_python(format_string)
+
+    def _parse_rust(
+        self, format_string: str
+    ) -> Iterator[tuple[str, str | None, str | None, str | None]]:
+        """Parse using the compiled Rust extension."""
+        try:
+            entries = _rust_core.parse_format_string(format_string)
+        except UnicodeEncodeError:
+            # Python strings may contain lone surrogates (unpaired UTF-16
+            # surrogate code points such as \ud800-\udfff) which are valid
+            # in Python's internal string representation but cannot be
+            # encoded as valid UTF-8 required by Rust's &str.  Fall back to
+            # the pure-Python implementation transparently.
+            yield from self._parse_python(format_string)
+            return
+        for literal, field_name, squelch_underscore, constraint in entries:
+            if squelch_underscore is not None:
+                self._underscore = "" if squelch_underscore else "_"
+            if constraint is not None:
+                self._current_field = (field_name or "") + constraint
+            format_spec: str | None = "" if field_name is not None else None
+            yield literal, field_name, format_spec, None
+
+    def _parse_python(  # noqa: PLR0912
+        self, format_string: str
+    ) -> Iterator[tuple[str, str | None, str | None, str | None]]:
+        """Pure-Python parse implementation (fallback when Rust is unavailable).
 
         The function is implemented from scratch in order to avoid the special treatment
         of ``!``, ``:``, and ``[`` by ``string.Formatter.parse()``. It is about 4-5
