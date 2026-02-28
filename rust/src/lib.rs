@@ -12,22 +12,25 @@ const UNEXPECTED_OPEN: &str = "unexpected '{' in field name";
 
 /// Parse a Snakemake-style format string character by character.
 ///
-/// Returns a list of 5-tuples per parsed segment:
-///   `(literal_text, field_name, new_underscore, new_current_field, update_current_field)`
+/// Returns a list of 4-tuples per parsed segment:
+///   `(literal_text, field_name, squelch_underscore, constraint)`
 ///
-/// - `literal_text`         – the literal portion before the next field (or at end of string)
-/// - `field_name`           – `None` for non-field segments; the field name for field segments
-/// - `new_underscore`       – `None` = no change; `Some(s)` = set `_underscore` to `s`
-/// - `new_current_field`    – new `_current_field` value (only meaningful when `update_current_field`)
-/// - `update_current_field` – whether `_current_field` should be updated
+/// - `literal_text`       – the literal portion before the next field (or at end of string)
+/// - `field_name`         – `None` for non-field segments; the field name for field segments
+/// - `squelch_underscore` – `None` = no change to `_underscore` (empty literal before a field,
+///                          or an end-of-string segment); `Some(true)` = set `_underscore = ""`
+///                          (literal ends in `'/'` or `'_'`); `Some(false)` = set `_underscore = "_"`
+///                          (all other non-empty literals, including doubled-brace segments)
+/// - `constraint`         – `None` for non-field segments; `""` for a field with no constraint;
+///                          `",<text>"` (starting with `,`) for a field that has a constraint;
+///                          Python can derive `_current_field` as `field_name + constraint`
 ///
 /// Raises `ValueError` on malformed input (same conditions as the Python implementation).
 #[pyfunction]
 pub fn parse_format_string(
     format_string: &str,
-) -> PyResult<Vec<(String, Option<String>, Option<String>, Option<String>, bool)>> {
-    let mut entries: Vec<(String, Option<String>, Option<String>, Option<String>, bool)> =
-        Vec::new();
+) -> PyResult<Vec<(String, Option<String>, Option<bool>, Option<String>)>> {
+    let mut entries: Vec<(String, Option<String>, Option<bool>, Option<String>)> = Vec::new();
 
     let mut chars = format_string.chars();
 
@@ -39,7 +42,7 @@ pub fn parse_format_string(
             // ---- End of string ------------------------------------------
             None => {
                 if !literal.is_empty() {
-                    entries.push((literal, None, None, None, false));
+                    entries.push((literal, None, None, None));
                 }
                 return Ok(entries);
             }
@@ -52,76 +55,48 @@ pub fn parse_format_string(
                         return Err(PyValueError::new_err(MISSING_CLOSE));
                     }
                     Some('{') => {
-                        // `{{` — escaped open brace (emits up-to-and-including first `{`)
+                        // `{{` — escaped open brace; always sets _underscore to "_"
                         literal.push('{');
-                        entries.push((literal, None, Some("_".to_string()), None, false));
-                        literal = String::new();
-                    }
-                    Some('}') => {
-                        // `{}` — empty field name
-                        let new_underscore = literal.chars().last().map(|last| {
-                            if last == '/' || last == '_' {
-                                String::new()
-                            } else {
-                                "_".to_string()
-                            }
-                        });
-                        entries.push((
-                            literal,
-                            Some(String::new()),
-                            new_underscore,
-                            None,
-                            true,
-                        ));
+                        entries.push((literal, None, Some(false), None));
                         literal = String::new();
                     }
                     Some(first) => {
-                        // Start of a real field.  Collect everything up to the matching `}`.
+                        // `{}` or `{name}` or `{name,constraint}` — a real field.
+                        // Collect everything up to the matching `}`.
                         let mut field_content = String::new();
-                        field_content.push(first);
-
-                        let closing = loop {
-                            match chars.next() {
-                                None => {
-                                    return Err(PyValueError::new_err(MISSING_CLOSE));
+                        if first != '}' {
+                            field_content.push(first);
+                            loop {
+                                match chars.next() {
+                                    None => {
+                                        return Err(PyValueError::new_err(MISSING_CLOSE));
+                                    }
+                                    Some('{') => {
+                                        // Nested `{` inside a field is not allowed.
+                                        return Err(PyValueError::new_err(UNEXPECTED_OPEN));
+                                    }
+                                    Some('}') => break,
+                                    Some(c) => field_content.push(c),
                                 }
-                                Some('{') => {
-                                    // Nested `{` inside a field is not allowed.
-                                    return Err(PyValueError::new_err(UNEXPECTED_OPEN));
-                                }
-                                Some('}') => break field_content,
-                                Some(c) => field_content.push(c),
                             }
-                        };
+                        }
 
                         // Split field name from constraint at the first `,`.
-                        let (field_name, new_current_field) =
-                            match closing.find(',') {
-                                Some(comma) => {
-                                    let name = closing[..comma].to_string();
-                                    let full = closing.clone();
-                                    (name, Some(full))
-                                }
-                                None => (closing, None),
-                            };
+                        let (field_name, constraint) = match field_content.find(',') {
+                            Some(comma) => {
+                                let name = field_content[..comma].to_string();
+                                let cons = field_content[comma..].to_string();
+                                (name, cons)
+                            }
+                            None => (field_content, String::new()),
+                        };
 
-                        // `_underscore` update based on the last char of the literal.
-                        let new_underscore: Option<String> =
-                            literal.chars().last().map(|last| {
-                                if last == '/' || last == '_' {
-                                    String::new()
-                                } else {
-                                    "_".to_string()
-                                }
-                            });
+                        // `squelch_underscore`: None when literal is empty (no update needed),
+                        // Some(true) when literal ends in a squelcher ('/' or '_'),
+                        // Some(false) otherwise.
+                        let squelch = literal.chars().last().map(|c| c == '/' || c == '_');
 
-                        entries.push((
-                            literal,
-                            Some(field_name),
-                            new_underscore,
-                            new_current_field,
-                            true,
-                        ));
+                        entries.push((literal, Some(field_name), squelch, Some(constraint)));
                         literal = String::new();
                     }
                 }
@@ -131,9 +106,9 @@ pub fn parse_format_string(
             Some('}') => {
                 match chars.next() {
                     Some('}') => {
-                        // `}}` — escaped close brace
+                        // `}}` — escaped close brace; always sets _underscore to "_"
                         literal.push('}');
-                        entries.push((literal, None, Some("_".to_string()), None, false));
+                        entries.push((literal, None, Some(false), None));
                         literal = String::new();
                     }
                     _ => {

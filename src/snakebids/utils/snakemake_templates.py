@@ -194,11 +194,11 @@ class SnakemakeFormatter(string.Formatter):
             # the pure-Python implementation transparently.
             yield from self._parse_python(format_string)
             return
-        for literal, field_name, new_us, new_cf, update_cf in entries:
-            if new_us is not None:
-                self._underscore = new_us
-            if update_cf:
-                self._current_field = new_cf
+        for literal, field_name, squelch_underscore, constraint in entries:
+            if squelch_underscore is not None:
+                self._underscore = "" if squelch_underscore else "_"
+            if constraint is not None:
+                self._current_field = (field_name or "") + constraint
             format_spec: str | None = "" if field_name is not None else None
             yield literal, field_name, format_spec, None
 
