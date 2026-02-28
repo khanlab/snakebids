@@ -187,8 +187,11 @@ class SnakemakeFormatter(string.Formatter):
         try:
             entries = _rust_core.parse_format_string(format_string)
         except UnicodeEncodeError:
-            # Rust requires valid UTF-8; strings with lone surrogates fall back
-            # to the pure-Python implementation transparently.
+            # Python strings may contain lone surrogates (unpaired UTF-16
+            # surrogate code points such as \ud800-\udfff) which are valid
+            # in Python's internal string representation but cannot be
+            # encoded as valid UTF-8 required by Rust's &str.  Fall back to
+            # the pure-Python implementation transparently.
             yield from self._parse_python(format_string)
             return
         for literal, field_name, new_us, new_cf, update_cf in entries:

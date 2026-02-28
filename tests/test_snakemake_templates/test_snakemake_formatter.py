@@ -799,6 +799,11 @@ class TestRustParityParse:
     pure-Python implementation across a range of inputs.
 
     Each helper forces a specific code path so regressions are easy to spot.
+
+    Note: every test here calls ``_parse_python()`` directly, so the
+    pure-Python fallback is also exercised.  When the Rust extension is absent
+    (e.g. in a plain ``pip install`` environment) the existing ``TestParse``
+    class covers ``parse()`` via the Python path.
     """
 
     @staticmethod

@@ -54,6 +54,8 @@ pub fn parse_format_string(
         Vec::new();
 
     // Mirrors Python locals: i=-1, anchor=0, next_char='{', j=first '}'
+    // Python uses -1 as a sentinel meaning "find() returned no match"; Rust
+    // uses Option<usize> for the same purpose (None = not found).
     let mut i: Option<usize> = None; // None ≡ Python's -1
     let mut anchor: usize = 0;
     let mut next_char: char = '{';
