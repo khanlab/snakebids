@@ -15,11 +15,11 @@ from bids import BIDSLayout
 from pvandyken.deprecated import deprecated
 from typing_extensions import Self, TypedDict
 
+from snakebids.core.expanding import expand as _expand
 from snakebids.core.filtering import filter_list
 from snakebids.exceptions import DuplicateComponentError
 from snakebids.io.console import get_console_size
 from snakebids.io.printing import format_zip_lists, quote_wrap
-from snakebids.snakemake_compat import expand as sn_expand
 from snakebids.types import ZipList
 from snakebids.utils.containers import ImmutableList, MultiSelectDict
 from snakebids.utils.snakemake_templates import MissingEntityError, SnakemakeFormatter
@@ -122,16 +122,11 @@ class BidsComponentRow(ImmutableList[str]):
             Keywords not found in the path will be ignored. Keywords take values or
             lists of values to be expanded over the provided paths.
         """
-        return sn_expand(
+        return _expand(
             list(itx.always_iterable(paths)),
-            allow_missing=allow_missing
-            if isinstance(allow_missing, bool)
-            else list(itx.always_iterable(allow_missing)),
-            **{self.entity: list(dict.fromkeys(self._data))},
-            **{
-                wildcard: list(itx.always_iterable(v))
-                for wildcard, v in wildcards.items()
-            },
+            zip_lists={self.entity: list(dict.fromkeys(self._data))},
+            allow_missing=bool(allow_missing),
+            **wildcards,
         )
 
     def filter(
@@ -349,7 +344,7 @@ class BidsPartialComponent:
         paths: Iterable[Path | str] | Path | str,
         /,
         allow_missing: bool | str | Iterable[str] = False,
-        **wildcards: str | Iterable[str],
+        **wildcards: Iterable[str | None] | str | None,
     ) -> list[str]:
         """Safely expand over given paths with component wildcards.
 
@@ -376,39 +371,18 @@ class BidsPartialComponent:
             Keywords not found in the path will be ignored. Keywords take values or
             lists of values to be expanded over the provided paths.
         """
+        path_list = list(itx.always_iterable(paths))
 
-        def sequencify(item: bool | str | Iterable[str]) -> bool | list[str]:
-            if isinstance(item, bool):
-                return item
-            return list(itx.always_iterable(item))
+        # When zip_lists is empty and no extra wildcards, return paths as-is
+        # (no formatting: avoids errors on arbitrary path text with {wildcards})
+        if allow_missing and not self.zip_lists and not wildcards:
+            return path_list
 
-        allow_missing_seq = sequencify(allow_missing)
-        if self.zip_lists:
-            inner_expand = list(
-                # order preserving deduplication
-                dict.fromkeys(
-                    sn_expand(
-                        list(itx.always_iterable(paths)),
-                        zip,
-                        allow_missing=True if wildcards else allow_missing_seq,
-                        **self.zip_lists,
-                    )
-                )
-            )
-        else:
-            inner_expand = list(itx.always_iterable(paths))
-        if not wildcards:
-            return inner_expand
-
-        return sn_expand(
-            inner_expand,
-            allow_missing=allow_missing_seq,
-            # Turn all the wildcard items into lists because Snakemake doesn't handle
-            # iterables very well
-            **{
-                wildcard: list(itx.always_iterable(v))
-                for wildcard, v in wildcards.items()
-            },
+        return _expand(
+            path_list,
+            zip_lists=self.zip_lists,
+            allow_missing=bool(allow_missing),
+            **wildcards,
         )
 
     def filter(
@@ -615,7 +589,7 @@ class BidsComponent(BidsPartialComponent):
         paths: Iterable[Path | str] | Path | str | None = None,
         /,
         allow_missing: bool | str | Iterable[str] = False,
-        **wildcards: str | Iterable[str],
+        **wildcards: Iterable[str | None] | str | None,
     ) -> list[str]:
         """Safely expand over given paths with component wildcards.
 
@@ -645,7 +619,7 @@ class BidsComponent(BidsPartialComponent):
             Keywords not found in the path will be ignored. Keywords take values or
             lists of values to be expanded over the provided paths.
         """
-        paths = paths or self.path
+        paths = self.path if paths is None else paths
         return super().expand(paths, allow_missing, **wildcards)
 
     @property
