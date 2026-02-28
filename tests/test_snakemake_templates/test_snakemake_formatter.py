@@ -48,6 +48,11 @@ class TestParserBenchmarks:
         s = self.text * self.times
         assert benchmark(self.run, SnakemakeFormatter(), s)
 
+    def test_benchmark_rust_formatter(self, benchmark: Benchmark):
+        s = self.text * self.times
+        # self.run(SnakemakeFormatter(use_rust=True), s)
+        assert benchmark(self.run, SnakemakeFormatter(use_rust=True), s)
+
 
 class TestParse:
     """Tests for SnakemakeFormatter.parse() method."""

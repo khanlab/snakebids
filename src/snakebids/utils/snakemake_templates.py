@@ -130,11 +130,12 @@ class SnakemakeFormatter(string.Formatter):
     _UNEXPECTED_OPEN = "unexpected '{' in field name"
 
     @override
-    def __init__(self, allow_missing: bool = False) -> None:
+    def __init__(self, allow_missing: bool = False, use_rust: bool = False) -> None:
         super().__init__()
         self.allow_missing = allow_missing
         self._current_field: str | None = None
         self._underscore: str = ""
+        self._use_rust = use_rust
 
     @overload
     def vformat(
@@ -175,7 +176,7 @@ class SnakemakeFormatter(string.Formatter):
         ------
             Each iteration yields (literal_text, field_name, ""|None, None)
         """
-        if _HAS_RUST_PARSE:
+        if _HAS_RUST_PARSE and self._use_rust:
             yield from self._parse_rust(format_string)
         else:
             yield from self._parse_python(format_string)
