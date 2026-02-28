@@ -9,6 +9,13 @@ from typing import TYPE_CHECKING, Any, Final, overload
 import attrs
 from typing_extensions import LiteralString, override
 
+try:
+    from snakebids._rust import _core as _rust_core
+
+    _HAS_RUST_PARSE = True
+except ImportError:
+    _HAS_RUST_PARSE = False
+
 
 @attrs.define(frozen=True)
 class _Wildcard:
@@ -150,10 +157,52 @@ class SnakemakeFormatter(string.Formatter):
         return super().vformat(format_string, args, kwargs)
 
     @override
-    def parse(  # noqa: PLR0912
+    def parse(
         self, format_string: str
     ) -> Iterator[tuple[str, str | None, str | None, str | None]]:
         """Parse format string, stripping constraints and format specifications.
+
+        When the optional Rust extension (``snakebids._rust._core``) is available the
+        parsing is delegated to a compiled implementation for better performance.
+        Otherwise the pure-Python implementation is used transparently.
+
+        Parameters
+        ----------
+        format_string : str
+            The format string to parse
+
+        Yields
+        ------
+            Each iteration yields (literal_text, field_name, ""|None, None)
+        """
+        if _HAS_RUST_PARSE:
+            yield from self._parse_rust(format_string)
+        else:
+            yield from self._parse_python(format_string)
+
+    def _parse_rust(
+        self, format_string: str
+    ) -> Iterator[tuple[str, str | None, str | None, str | None]]:
+        """Parse using the compiled Rust extension."""
+        try:
+            entries = _rust_core.parse_format_string(format_string)
+        except UnicodeEncodeError:
+            # Rust requires valid UTF-8; strings with lone surrogates fall back
+            # to the pure-Python implementation transparently.
+            yield from self._parse_python(format_string)
+            return
+        for literal, field_name, new_us, new_cf, update_cf in entries:
+            if new_us is not None:
+                self._underscore = new_us
+            if update_cf:
+                self._current_field = new_cf
+            format_spec: str | None = "" if field_name is not None else None
+            yield literal, field_name, format_spec, None
+
+    def _parse_python(  # noqa: PLR0912
+        self, format_string: str
+    ) -> Iterator[tuple[str, str | None, str | None, str | None]]:
+        """Pure-Python parse implementation (fallback when Rust is unavailable).
 
         The function is implemented from scratch in order to avoid the special treatment
         of ``!``, ``:``, and ``[`` by ``string.Formatter.parse()``. It is about 4-5
