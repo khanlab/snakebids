@@ -88,7 +88,7 @@ jobs:
           --ignore=src/snakebids/project_template --benchmark-disable
 
       - name: save coverage report
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-${{ matrix.python-version }}-${{ matrix.split }}
           path: ./coverage.xml
@@ -100,7 +100,7 @@ jobs:
       - name: checkout repository
         uses: actions/checkout@v6
       - name: download coverage reports
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: coverage-*
       - name: Upload coverage reports to Codecov
