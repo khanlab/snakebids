@@ -103,10 +103,24 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           pattern: coverage-*
+          path: coverage-artifacts
+
+      - name: verify coverage artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Downloaded artifacts:"
+          find coverage-artifacts -maxdepth 3 -type f -print
+          if ! find coverage-artifacts -type f -name 'coverage.xml' | grep -q .; then
+            echo "ERROR: No coverage.xml files found under coverage-artifacts/"
+            exit 1
+          fi
+
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
         with:
           verbose: true
           fail_ci_if_error: true
+          directory: coverage-artifacts
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
