@@ -5,6 +5,7 @@
 [![Documentation Status](https://readthedocs.org/projects/snakebids/badge/?version=stable)](https://snakebids.readthedocs.io/en/stable/?badge=stable)
 [![Version](https://img.shields.io/github/v/tag/khanlab/snakebids?label=version)](https://pypi.org/project/snakebids/)
 [![Python versions](https://img.shields.io/pypi/pyversions/snakebids)](https://pypi.org/project/snakebids/)
+[![Bioconda](https://img.shields.io/conda/vn/bioconda/snakebids.svg)](https://bioconda.github.io/recipes/snakebids/README.html)
 [![DOI](https://zenodo.org/badge/309495236.svg)](https://zenodo.org/badge/latestdoi/309495236)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -26,6 +27,16 @@ Snakebids can be installed using pip:
 
 ```bash
 pip install snakebids
+```
+
+Or with conda/mamba using the [bioconda](https://bioconda.github.io) channel:
+
+```bash
+conda install -c conda-forge -c bioconda snakebids
+```
+
+```bash
+mamba install -c conda-forge -c bioconda snakebids
 ```
 
 ## Usage
