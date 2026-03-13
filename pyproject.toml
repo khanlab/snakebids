@@ -52,8 +52,8 @@ repository = "https://github.com/khanlab/snakebids"
 documentation = "https://snakebids.readthedocs.io/"
 
 [build-system]
-requires = ["hatchling", "hatch-vcs"]
-build-backend = "hatchling.build"
+requires = ["maturin"]
+build-backend = "maturin"
 
 [tool.hatch.version]
 source = "vcs"
@@ -276,6 +276,10 @@ more_itertools = "itx"
 
 [tool.ruff.lint.flake8-pytest-style]
 fixture-parentheses = false
+
+[tool.maturin]
+module-name = "snakebids._rust._core"
+python-source = "src"
 
 [tool.codespell]
 # Ref: https://github.com/codespell-project/codespell#using-a-config-file
