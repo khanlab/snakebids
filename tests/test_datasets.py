@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import functools as ft
+import importlib.util
 import itertools as it
 import operator as op
 import re
@@ -24,7 +25,6 @@ from snakebids.core.datasets import (
 from snakebids.exceptions import DuplicateComponentError
 from snakebids.paths._presets import bids
 from snakebids.paths._utils import OPTIONAL_WILDCARD
-from snakebids.snakemake_compat import WildcardError
 from snakebids.types import Expandable, ZipList
 from snakebids.utils import sb_itertools as sb_it
 from snakebids.utils.snakemake_io import glob_wildcards
@@ -375,37 +375,28 @@ class TestExpandables:
         component=sb_st.expandables(
             restrict_patterns=True, unique=True, blacklist_entities=["extension"]
         ),
-        wildcards=st.lists(
+        wildcards=st.dictionaries(
             st.text(string.ascii_letters, min_size=1, max_size=10).filter(
                 lambda s: s not in sb_st.valid_entities
+            ),
+            st.lists(
+                st.text(sb_st.alphanum, min_size=1, max_size=10),
+                min_size=1,
+                max_size=3,
             ),
             min_size=1,
             max_size=5,
         ),
-        data=st.data(),
     )
     def test_expand_with_extra_args_returns_all_paths(
-        self, component: Expandable, wildcards: list[str], data: st.DataObject
+        self, component: Expandable, wildcards: dict[str, list[str]]
     ):
-        num_wildcards = len(wildcards)
-        values = data.draw(
-            st.lists(
-                st.lists(
-                    st.text(sb_st.alphanum, min_size=1, max_size=10),
-                    min_size=1,
-                    max_size=3,
-                ),
-                min_size=num_wildcards,
-                max_size=num_wildcards,
-            )
-        )
         path_tpl = bids(
             **get_wildcard_dict(component.zip_lists),
             **get_wildcard_dict(wildcards),
         )
-        wcard_dict = dict(zip(wildcards, values, strict=True))
-        zlist = expand_zip_list(component.zip_lists, wcard_dict)
-        paths = component.expand(path_tpl, **wcard_dict)
+        zlist = expand_zip_list(component.zip_lists, wildcards)
+        paths = component.expand(path_tpl, **wildcards)
         assert zip_list_eq(glob_wildcards(path_tpl, paths), zlist)
 
     @given(
@@ -421,7 +412,7 @@ class TestExpandables:
 
     @given(
         component=sb_st.expandables(restrict_patterns=True),
-        wildcard=st.text(string.ascii_letters, min_size=1, max_size=10).filter(
+        wildcard=st.text(string.ascii_letters, min_size=1).filter(
             lambda s: s not in sb_st.valid_entities
         ),
     )
@@ -431,11 +422,29 @@ class TestExpandables:
         )
         paths = component.expand(path_tpl, allow_missing=True)
         for path in paths:
-            assert re.search(r"\{.+\}", path)
+            assert len(re.findall(r"\{.+\}", path)) == 1
 
     @given(
         component=sb_st.expandables(restrict_patterns=True),
-        wildcard=st.text(string.ascii_letters, min_size=1, max_size=10).filter(
+        wildcard=st.text(string.ascii_letters, min_size=1).filter(
+            lambda s: s not in sb_st.valid_entities
+        ),
+    )
+    def test_partial_expansion_with_constraint(
+        self, component: Expandable, wildcard: str
+    ):
+        path_tpl = bids(
+            "",
+            **get_wildcard_dict(component.zip_lists),
+            **{wildcard: OPTIONAL_WILDCARD},
+        )
+        paths = component.expand(path_tpl, allow_missing=True)
+        for path in paths:
+            assert len(re.findall(r"\{[^}]+,[^}]+\}", path)) == 2  # noqa: PLR2004
+
+    @given(
+        component=sb_st.expandables(restrict_patterns=True),
+        wildcard=st.text(string.ascii_letters, min_size=1).filter(
             lambda s: s not in sb_st.valid_entities
         ),
     )
@@ -443,7 +452,7 @@ class TestExpandables:
         path_tpl = bids(
             **get_wildcard_dict(component.zip_lists), **get_wildcard_dict(wildcard)
         )
-        with pytest.raises(WildcardError):
+        with pytest.raises(KeyError, match="no values given for wildcard"):
             component.expand(path_tpl)
 
     @given(component=sb_st.expandables(restrict_patterns=True, path_safe=True))
@@ -470,10 +479,14 @@ class TestExpandables:
                 == path
             )
 
-    @given(path=st.text())
-    def test_expandable_with_no_wildcards_returns_path_unaltered(self, path: str):
-        component = BidsPartialComponent(zip_lists={})
-        assert itx.one(component.expand(path)) == path
+    @given(
+        path=st.text().map(lambda s: s.replace("{", "{{").replace("}", "}}")),
+        component=sb_st.expandables(),
+    )
+    def test_expandable_with_no_wildcards_returns_path_unaltered(
+        self, path: str, component: BidsComponent
+    ):
+        assert itx.one(component.expand(path)) == path.format()
 
     @given(component=sb_st.expandables(min_values=0, max_values=0, path_safe=True))
     def test_expandable_with_no_entries_returns_empty_list(self, component: Expandable):
@@ -515,6 +528,70 @@ class TestBidsComponentExpand:
         novel_path = _get_novel_path("comp", component)
         paths = component.expand(novel_path)
         assert not glob_wildcards(component.path, paths)
+
+    @given(component=sb_st.bids_components(), paths=st.just("") | st.lists(st.just("")))
+    def test_returns_back_empty_containers(
+        self, component: BidsComponent, paths: str | list[str]
+    ):
+        assert component.expand(paths) == list(set(itx.always_iterable(paths)))
+
+
+class TestExpandNoneHandling:
+    """Tests for None value conversion in expand()."""
+
+    def test_none_extra_wildcard_treated_as_empty_string(self):
+        """None values in extra wildcards are converted to empty string."""
+        component = BidsComponent(
+            name="test",
+            path="sub-{subject}",
+            zip_lists={"subject": ["001"]},
+        )
+        # Path with optional entity that gets a None value
+        paths = component.expand(
+            "sub-{subject}{_acq_}{acq}",
+            acq=[None, "MPRAGE"],
+        )
+        # None → "" → optional entity not included
+        assert paths == ["sub-001", "sub-001_acq-MPRAGE"]
+
+
+def _has_annotated_string():
+    return bool(importlib.util.find_spec("snakemake"))
+
+
+@pytest.mark.skipif(
+    not _has_annotated_string(),
+    reason="snakemake AnnotatedString not available",
+)
+class TestExpandAnnotatedString:
+    """Tests for AnnotatedString flag propagation in expand()."""
+
+    def test_annotated_string_flags_propagated_to_outputs(self):
+        """AnnotatedString flags are preserved on expanded output paths."""
+        from snakemake.io import AnnotatedString  # noqa: PLC0415 # type: ignore
+
+        component = BidsComponent(
+            name="test",
+            path="sub-{subject}",
+            zip_lists={"subject": ["001", "002"]},
+        )
+        template = AnnotatedString("sub-{subject}_T1w.nii.gz")
+        template.flags["temp"] = True  # type: ignore
+
+        paths = component.expand(template)
+        for path in paths:
+            assert isinstance(path, AnnotatedString)
+            assert path.flags.get("temp") is True  # type: ignore
+
+    def test_plain_string_not_annotated(self):
+        """Plain string templates produce plain string outputs."""
+        component = BidsComponent(
+            name="test",
+            path="sub-{subject}",
+            zip_lists={"subject": ["001"]},
+        )
+        paths = component.expand("sub-{subject}_T1w.nii.gz")
+        assert type(paths[0]) is str
 
 
 class TestFiltering:
