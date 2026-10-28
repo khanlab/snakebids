@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 
 import pandas as pd
+from upath import UPath
 
 from snakebids.exceptions import ConfigError
 
@@ -24,7 +25,8 @@ def read_participants_tsv(bids_dir: Path | str) -> pd.DataFrame | None:
     Parameters
     ----------
     bids_dir
-        Root of the BIDS dataset
+        Root of the BIDS dataset. May be a local path or a remote URL supported by
+        :mod:`fsspec` (e.g. ``gs://bucket/dataset``)
 
     Returns
     -------
@@ -36,17 +38,18 @@ def read_participants_tsv(bids_dir: Path | str) -> pd.DataFrame | None:
     ConfigError
         If the file cannot be parsed or has no ``participant_id`` column
     """
-    path = Path(bids_dir, PARTICIPANTS_FILE)
+    path = UPath(bids_dir) / PARTICIPANTS_FILE
     if not path.is_file():
         return None
     try:
-        table = pd.read_csv(
-            path,
-            sep="\t",
-            dtype={"participant_id": str},
-            na_values=["n/a"],
-            keep_default_na=False,
-        )
+        with path.open() as f:
+            table = pd.read_csv(
+                f,
+                sep="\t",
+                dtype={"participant_id": str},
+                na_values=["n/a"],
+                keep_default_na=False,
+            )
     except (pd.errors.ParserError, pd.errors.EmptyDataError) as err:
         msg = f"Could not parse {path}: {err}"
         raise ConfigError(msg) from err

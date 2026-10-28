@@ -22,6 +22,9 @@ dependencies = [
     "attrs >=23.2.0",
     "boutiques >=0.5.25",
     "more-itertools >=8",
+    # used directly to read participants.tsv from local or remote datasets; same
+    # minimum as pybids
+    "universal-pathlib >=0.2.2",
     # package developed in complete tandem with snakebids, so no need for a range
     "pvandyken-deprecated ==0.0.4",
     # Need this until py39

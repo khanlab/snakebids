@@ -2477,6 +2477,7 @@ dependencies = [
     { name = "snakemake", version = "7.32.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "snakemake", version = "9.13.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "typing-extensions" },
+    { name = "universal-pathlib" },
 ]
 
 [package.dev-dependencies]
@@ -2534,6 +2535,7 @@ requires-dist = [
     { name = "snakemake", marker = "python_full_version < '3.11'", specifier = ">=5.28.0,<8" },
     { name = "snakemake", marker = "python_full_version >= '3.11'", specifier = ">=7.18.2" },
     { name = "typing-extensions", specifier = ">=3.10.0" },
+    { name = "universal-pathlib", specifier = ">=0.2.2" },
 ]
 
 [package.metadata.requires-dev]

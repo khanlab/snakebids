@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+from upath import UPath
 
 from snakebids.core.input_generation import generate_inputs
 from snakebids.core.participants import query_participants, read_participants_tsv
@@ -24,10 +25,8 @@ PYBIDS_INPUTS: InputsConfig = {
 }
 
 
-def write_participants(root: Path, contents: str = PARTICIPANTS) -> Path:
-    path = root / "participants.tsv"
-    path.write_text(contents)
-    return path
+def write_participants(root: Path | UPath, contents: str = PARTICIPANTS) -> None:
+    (root / "participants.tsv").write_text(contents)
 
 
 @pytest.fixture
@@ -74,6 +73,18 @@ class TestReadParticipantsTsv:
         write_participants(tmp_path, "")
         with pytest.raises(ConfigError, match="Could not parse"):
             read_participants_tsv(tmp_path)
+
+    def test_reads_remote_dataset(self):
+        # fsspec's in-memory filesystem stands in for gs://, s3://, etc.
+        root = UPath("memory://bucket/remote_ds")
+        root.mkdir(parents=True, exist_ok=True)
+        write_participants(root)
+        table = read_participants_tsv("memory://bucket/remote_ds")
+        assert table is not None
+        assert list(table.index) == ["001", "002", "003"]
+
+    def test_returns_none_when_missing_from_remote_dataset(self):
+        assert read_participants_tsv("memory://bucket/empty_ds") is None
 
     def test_duplicate_ids_warn(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
         write_participants(tmp_path, "participant_id\nsub-001\nsub-001\n")
