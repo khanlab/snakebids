@@ -11,6 +11,7 @@ inputs = generate_inputs(
     derivatives=config.get("derivatives", None),
     participant_label=config.get("participant_label", None),
     exclude_participant_label=config.get("exclude_participant_label", None),
+    participant_filter=config.get("participant_filter", None),
     validate=not config.get("plugins.validator.skip", False)
 )
 

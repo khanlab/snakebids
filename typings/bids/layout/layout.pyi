@@ -335,6 +335,14 @@ class BIDSLayout:
             A list of BIDSFiles (default) or strings (see return_type).
         """
         ...
+    def get_subjects(
+        self, **filters: str | Query | Sequence[str | Query]
+    ) -> list[str]:
+        """Return the unique subject labels in the layout.
+
+        Generated dynamically by pybids as ``get_<entity>s`` for each entity.
+        """
+        ...
     def get_file(self, filename, scope=...):  # -> None:
         """Return the BIDSFile object with the specified path.
 

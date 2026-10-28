@@ -19,4 +19,5 @@ class SnakebidsConfig(TypedDict):
     analysis_level: str
     participant_label: list[str] | None
     exclude_participant_label: list[str] | None
+    participant_filter: str | None
     derivatives: list[str] | None

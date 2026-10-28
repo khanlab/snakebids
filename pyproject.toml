@@ -84,6 +84,7 @@ dev = [
     "requests-mock ~=1.12.1",
     "pytest-cov ~=6.2.1",
     "docstring-parser ~=0.16",
+    "pandas-stubs >=2.2",
 ]
 
 docs = [

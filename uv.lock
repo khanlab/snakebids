@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.10, <4.0"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -1365,6 +1365,39 @@ wheels = [
 ]
 
 [[package]]
+name = "pandas-stubs"
+version = "2.3.3.260113"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.11'",
+]
+dependencies = [
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "types-pytz", marker = "python_full_version < '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/92/5d/be23854a73fda69f1dbdda7bc10fbd6f930bd1fa87aaec389f00c901c1e8/pandas_stubs-2.3.3.260113.tar.gz", hash = "sha256:076e3724bcaa73de78932b012ec64b3010463d377fa63116f4e6850643d93800", size = 116131, upload-time = "2026-01-13T22:30:16.704Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d1/c6/df1fe324248424f77b89371116dab5243db7f052c32cc9fe7442ad9c5f75/pandas_stubs-2.3.3.260113-py3-none-any.whl", hash = "sha256:ec070b5c576e1badf12544ae50385872f0631fc35d99d00dc598c2954ec564d3", size = 168246, upload-time = "2026-01-13T22:30:15.244Z" },
+]
+
+[[package]]
+name = "pandas-stubs"
+version = "3.0.5.260914"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.13'",
+    "python_full_version == '3.12.*'",
+    "python_full_version == '3.11.*'",
+]
+dependencies = [
+    { name = "numpy", version = "2.3.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c1/93/8948ae6c1e1e3d6833596fd266f7be2d27c1451b8be094975ad42c5e842e/pandas_stubs-3.0.5.260914.tar.gz", hash = "sha256:3f6fc1f147f68fd89c007105e7c94a948acb4ecd7eb20dc1c02e153c4ed5c250", size = 117622, upload-time = "2026-09-14T16:42:35.065Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9a/cb/5ad79e02a556cc23fed5816de0109fa8af660c66cfa5f4af74c3e8d4cd26/pandas_stubs-3.0.5.260914-py3-none-any.whl", hash = "sha256:39a1300c5c5c55fdf609e3476805decce5d5015539a4dcb683449f8feaeee2fb", size = 177344, upload-time = "2026-09-14T16:42:33.771Z" },
+]
+
+[[package]]
 name = "pastel"
 version = "0.2.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2451,6 +2484,8 @@ dev = [
     { name = "docstring-parser" },
     { name = "hypothesis" },
     { name = "mkinit", marker = "sys_platform != 'win32'" },
+    { name = "pandas-stubs", version = "2.3.3.260113", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "pandas-stubs", version = "3.0.5.260914", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pathvalidate" },
     { name = "poethepoet" },
     { name = "pre-commit" },
@@ -2506,6 +2541,7 @@ dev = [
     { name = "docstring-parser", specifier = "~=0.16" },
     { name = "hypothesis", specifier = "~=6.137.1" },
     { name = "mkinit", marker = "sys_platform != 'win32'", specifier = ">=1.1.0,<2.0.0" },
+    { name = "pandas-stubs", specifier = ">=2.2" },
     { name = "pathvalidate", specifier = "~=3.3.0" },
     { name = "poethepoet", specifier = "~=0.36.0" },
     { name = "pre-commit", specifier = "~=4.2.0" },
@@ -3043,6 +3079,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/eb/79/72064e6a701c2183016abbbfedaba506d81e30e232a68c9f0d6f6fcd1574/traitlets-5.14.3.tar.gz", hash = "sha256:9ed0579d3502c94b4b3732ac120375cda96f923114522847de4b3bb98b96b6b7", size = 161621, upload-time = "2024-04-19T11:11:49.746Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/00/c0/8f5d070730d7836adc9c9b6408dec68c6ced86b304a9b26a14df072a6e8c/traitlets-5.14.3-py3-none-any.whl", hash = "sha256:b74e89e397b1ed28cc831db7aea759ba6640cb3de13090ca145426688ff1ac4f", size = 85359, upload-time = "2024-04-19T11:11:46.763Z" },
+]
+
+[[package]]
+name = "types-pytz"
+version = "2026.5.0.20261006"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ba/47/b493f47f2dd0971db06459439ebdeb114cf95029188268099b331bbc4727/types_pytz-2026.5.0.20261006.tar.gz", hash = "sha256:1a522c2ec03aad8d4baaf97105958019ad51704b1e471c882d1c6ccea3e5e64b", size = 11073, upload-time = "2026-10-06T08:15:12.87Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/77/38/e375026fb4ff74fed6bdb84d7d336571d0603b6b9675751579cec84cfc9b/types_pytz-2026.5.0.20261006-py3-none-any.whl", hash = "sha256:9e4a893b362a8eed4e10a348c80603ade65bdb3819419e589364afafe2ea08b1", size = 10168, upload-time = "2026-10-06T08:15:11.985Z" },
 ]
 
 [[package]]

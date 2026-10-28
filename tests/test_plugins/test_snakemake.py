@@ -435,6 +435,7 @@ def test_integration(
             "output_dir": Path(root).resolve(),
             "participant_label": None,
             "exclude_participant_label": None,
+            "participant_filter": None,
             "derivatives": [],
             "snakemake_version": "version",
             "snakebids_version": "version",
