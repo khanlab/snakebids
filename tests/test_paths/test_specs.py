@@ -50,6 +50,37 @@ def test_session_dir_can_be_excluded():
     assert session.get("dir") is False
 
 
+def test_spec_modifications_do_not_leak_into_later_calls():
+    spec = specs.v0_15_0(subject_dir=False)
+    spec.insert(0, {"entity": "foo"})
+    fresh = specs.v0_15_0()
+    assert fresh[0]["entity"] == "subject"
+    assert find_entity(fresh, "subject").get("dir") is True
+
+
+@pytest.mark.parametrize("spec_name", ["v0_0_0", "v0_11_0", "v0_15_0"])
+def test_templates_adds_template_entities(spec_name: str):
+    spec = getattr(specs, spec_name)(templates=True)
+    assert [e["entity"] for e in spec[:3]] == ["template", "cohort", "subject"]
+    assert "template" not in [e["entity"] for e in getattr(specs, spec_name)()]
+
+
+def test_templates_spec_gives_templateflow_paths():
+    tpl_bids = bids_factory(specs.v0_15_0(templates=True))
+    assert (
+        tpl_bids(
+            root="out", template="dhcpAsym", cohort="36", res="01", suffix="T1w.nii.gz"
+        )
+        == "out/tpl-dhcpAsym/cohort-36/tpl-dhcpAsym_cohort-36_res-01_T1w.nii.gz"
+    )
+    assert tpl_bids(template="ABAv3", seg="all", suffix="dseg.nii.gz") == (
+        "tpl-ABAv3/tpl-ABAv3_seg-all_dseg.nii.gz"
+    )
+    assert tpl_bids(subject="01", datatype="anat", suffix="T1w.nii.gz") == (
+        "sub-01/anat/sub-01_T1w.nii.gz"
+    )
+
+
 def test_spec_can_be_set_with_str():
     set_bids_spec("v0_0_0")
     assert bids(acquisition="foo") == "acquisition-foo"

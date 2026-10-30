@@ -7,7 +7,9 @@ from ._utils import BidsPathSpec
 
 LATEST: str
 
-def v0_0_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
+def v0_0_0(
+    subject_dir: bool = True, session_dir: bool = True, templates: bool = False
+) -> BidsPathSpec:
     """Get the v0.0.0 BidsPathSpec.
 
     This spec alone equips :func:`~snakebids.bids` with 2 extra arguments:
@@ -32,9 +34,15 @@ def v0_0_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
     session_dir : bool, optional
         If False, downstream path generator will not include the session dir
         `*/ses-{session}/*`
+    templates : bool, optional
+        If True, add ``template`` (``tpl-``) and ``cohort`` entities before all others,
+        each with its own directory, as in TemplateFlow:
+        `tpl-{template}/cohort-{cohort}/tpl-{template}_cohort-{cohort}_*`
     """
 
-def v0_11_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
+def v0_11_0(
+    subject_dir: bool = True, session_dir: bool = True, templates: bool = False
+) -> BidsPathSpec:
     """Spec corresponding to `BIDS v1.9.0`_.
 
     Significantly expanded from the v0.0.0 spec, now including long names for every
@@ -65,9 +73,15 @@ def v0_11_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
     session_dir : bool, optional
         If False, downstream path generator will not include the session dir
         `*/ses-{session}/*`
+    templates : bool, optional
+        If True, add ``template`` (``tpl-``) and ``cohort`` entities before all others,
+        each with its own directory, as in TemplateFlow:
+        `tpl-{template}/cohort-{cohort}/tpl-{template}_cohort-{cohort}_*`
     """
 
-def v0_15_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
+def v0_15_0(
+    subject_dir: bool = True, session_dir: bool = True, templates: bool = False
+) -> BidsPathSpec:
     """Spec corresponding to `BIDS v1.10.1`_.
 
     In addition to the official spec, it includes `from` and `to` entities intended for
@@ -97,9 +111,15 @@ def v0_15_0(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
     session_dir : bool, optional
         If False, downstream path generator will not include the session dir
         `*/ses-{session}/*`
+    templates : bool, optional
+        If True, add ``template`` (``tpl-``) and ``cohort`` entities before all others,
+        each with its own directory, as in TemplateFlow:
+        `tpl-{template}/cohort-{cohort}/tpl-{template}_cohort-{cohort}_*`
     """
 
-def latest(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
+def latest(
+    subject_dir: bool = True, session_dir: bool = True, templates: bool = False
+) -> BidsPathSpec:
     """Spec corresponding to `BIDS v1.10.1`_.
 
     In addition to the official spec, it includes `from` and `to` entities intended for
@@ -129,4 +149,8 @@ def latest(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
     session_dir : bool, optional
         If False, downstream path generator will not include the session dir
         `*/ses-{session}/*`
+    templates : bool, optional
+        If True, add ``template`` (``tpl-``) and ``cohort`` entities before all others,
+        each with its own directory, as in TemplateFlow:
+        `tpl-{template}/cohort-{cohort}/tpl-{template}_cohort-{cohort}_*`
     """
