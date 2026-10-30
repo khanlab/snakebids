@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import functools as ft
 from typing import TYPE_CHECKING
 
@@ -49,14 +50,24 @@ def __getattr__(name: str):
 
     spec = spec_config["spec"]
 
-    def get_spec(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
+    def get_spec(
+        subject_dir: bool = True, session_dir: bool = True, templates: bool = False
+    ) -> BidsPathSpec:
+        # Copy so that modifications don't leak into later calls
+        result = copy.deepcopy(spec)
         if not subject_dir:
-            find_entity(spec, "subject")["dir"] = False
+            find_entity(result, "subject")["dir"] = False
 
         if not session_dir:
-            find_entity(spec, "session")["dir"] = False
+            find_entity(result, "session")["dir"] = False
 
-        return spec
+        if templates:
+            result[:0] = [
+                {"entity": "template", "tag": "tpl", "dir": True},
+                {"entity": "cohort", "dir": True},
+            ]
+
+        return result
 
     get_spec.__doc__ = spec_func.format_doc(spec_config)
     get_spec.__name__ = name

@@ -9,7 +9,9 @@ if TYPE_CHECKING:
     from snakebids.paths._utils import BidsPathSpec, BidsPathSpecFile
 
 TEMPLATE = '''
-def {spec}(subject_dir: bool = True, session_dir: bool = True) -> BidsPathSpec:
+def {spec}(
+    subject_dir: bool = True, session_dir: bool = True, templates: bool = False
+) -> BidsPathSpec:
     """{docstring}
     """
     ...
@@ -24,6 +26,10 @@ subject_dir
 session_dir : bool, optional
     If False, downstream path generator will not include the session dir
     `*/ses-{{session}}/*`
+templates : bool, optional
+    If True, add ``template`` (``tpl-``) and ``cohort`` entities before all others,
+    each with its own directory, as in TemplateFlow:
+    `tpl-{{template}}/cohort-{{cohort}}/tpl-{{template}}_cohort-{{cohort}}_*`
 
 """
 
