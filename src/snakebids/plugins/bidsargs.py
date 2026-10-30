@@ -63,6 +63,9 @@ class BidsArgs(PluginBase):
     exclude_participant_label
         Indicate if ``exclude_participant_label`` should be defined. Used to excluded
         specific subjects from processesing
+    participant_filter
+        Indicate if ``participant_filter`` should be defined. Used to select subjects
+        for processing based on a query of the dataset's ``participants.tsv``
     derivatives
         Indicate if ``derivatives`` should be defined. Used to allow automatic
         derivative indexing or specify paths to derivatives.
@@ -81,6 +84,7 @@ class BidsArgs(PluginBase):
     - ``participant_label``: Collection of subject labels to include in analysis
     - ``exclude_participant_label``: Collection of subject labels to exclude from
       analysis
+    - ``participant_filter``: Query selecting subjects from ``participants.tsv``
     - ``derivatives``: Collection of derivative folder paths to include in bids
       indexing.
 
@@ -115,6 +119,7 @@ class BidsArgs(PluginBase):
     analysis_level_choices_config: str | None = None
     participant_label: bool = True
     exclude_participant_label: bool = True
+    participant_filter: bool = True
     derivatives: bool = True
 
     def __eq__(self, other: Any):
@@ -197,6 +202,20 @@ class BidsArgs(PluginBase):
                 metavar="LABEL",
                 dest="exclude_participant_label",
                 nargs="+",
+            )
+        if self.participant_filter:
+            self.try_add_argument(
+                group,
+                "--participant-filter",
+                "--participant_filter",
+                help="Query selecting the participants to analyze based on the "
+                "columns of participants.tsv, e.g. "
+                "\"age > 30 and group == 'patient'\". "
+                "Evaluated with pandas.DataFrame.query. Participants not listed in "
+                "participants.tsv are excluded. Can be combined with "
+                "--participant-label and --exclude-participant-label.",
+                dest="participant_filter",
+                metavar="QUERY",
             )
         if self.derivatives:
             self.try_add_argument(

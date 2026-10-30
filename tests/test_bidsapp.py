@@ -162,6 +162,7 @@ class TestDependencies:
                     analysis_level=False,
                     participant_label=False,
                     exclude_participant_label=False,
+                    participant_filter=False,
                     # leave derivatives in so that the DependenciesPlugin
                     # assertion doesn't get tripped
                 ),

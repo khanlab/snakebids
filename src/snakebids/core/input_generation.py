@@ -17,6 +17,7 @@ from typing import (
 )
 
 import more_itertools as itx
+import pandas as pd
 from bids import BIDSLayout, BIDSLayoutIndexer
 
 from snakebids.core._querying import (
@@ -27,6 +28,11 @@ from snakebids.core._querying import (
 )
 from snakebids.core.datasets import BidsComponent, BidsDataset, BidsDatasetDict
 from snakebids.core.filtering import filter_list
+from snakebids.core.participants import (
+    PARTICIPANTS_FILE,
+    query_participants,
+    read_participants_tsv,
+)
 from snakebids.exceptions import (
     ConfigError,
     DuplicateComponentError,
@@ -57,6 +63,7 @@ def generate_inputs(
     limit_to: Iterable[str] | None = ...,
     participant_label: Iterable[str] | str | None = ...,
     exclude_participant_label: Iterable[str] | str | None = ...,
+    participant_filter: str | None = ...,
     use_bids_inputs: Literal[True] | None = ...,
     index_metadata: bool = ...,
     validate: bool = ...,
@@ -77,6 +84,7 @@ def generate_inputs(
     limit_to: Iterable[str] | None = ...,
     participant_label: Iterable[str] | str | None = ...,
     exclude_participant_label: Iterable[str] | str | None = ...,
+    participant_filter: str | None = ...,
     use_bids_inputs: Literal[False],
     index_metadata: bool = ...,
     validate: bool = ...,
@@ -96,6 +104,7 @@ def generate_inputs(
     limit_to: Iterable[str] | None = None,
     participant_label: Iterable[str] | str | None = None,
     exclude_participant_label: Iterable[str] | str | None = None,
+    participant_filter: str | None = None,
     use_bids_inputs: bool | None = None,
     index_metadata: bool = False,
     validate: bool = False,
@@ -162,6 +171,17 @@ def generate_inputs(
         Indicate one or more participants to be excluded from input parsing. This may
         cause errors if subject filters are also specified in pybids_inputs. It may not
         be specified if participant_label is specified
+
+    participant_filter
+        Query selecting participants based on the ``participants.tsv`` file of the
+        dataset, evaluated with :meth:`pandas.DataFrame.query` (e.g.
+        ``"age > 30 and group == 'patient'"``). Subjects not listed in
+        ``participants.tsv`` are excluded. If combined with ``participant_label``, only
+        subjects satisfying both are included. Raises an error if the dataset has no
+        ``participants.tsv``. Like ``participant_label``, it has no effect on
+        components that define a ``subject`` filter in ``pybids_inputs``, and a query
+        matching no participants raises an error for components with a
+        ``custom_path``.
 
     use_bids_inputs
         If False, returns the classic :class:`BidsDatasetDict` instead of
@@ -271,9 +291,6 @@ ses-{session}_run-{run}_T1w.nii.gz",
             ),
         })
     """
-    postfilters = PostFilter()
-    postfilters.add_filter("subject", participant_label, exclude_participant_label)
-
     pybidsdb_dir, pybidsdb_reset = _normalize_database_args(
         pybidsdb_dir, pybidsdb_reset, pybids_database_dir, pybids_reset_database
     )
@@ -293,6 +310,24 @@ ses-{session}_run-{run}_T1w.nii.gz",
         else None
     )
 
+    try:
+        participants = read_participants_tsv(bids_dir)
+    except ConfigError as err:
+        # Only fatal if the user asked to filter on the table
+        if participant_filter is not None:
+            raise
+        _logger.warning("%s. BidsDataset.participants will be None.", err)
+        participants = None
+    if participant_filter is not None:
+        participant_label = _apply_participant_filter(
+            participants, participant_filter, participant_label
+        )
+        if layout is not None and participants is not None:
+            _warn_unlisted_subjects(layout, participants)
+
+    postfilters = PostFilter()
+    postfilters.add_filter("subject", participant_label, exclude_participant_label)
+
     bids_inputs = _get_components(
         bids_layout=layout,
         inputs_config=pybids_inputs,
@@ -310,7 +345,7 @@ ses-{session}_run-{run}_T1w.nii.gz",
         use_bids_inputs = True
 
     try:
-        dataset = BidsDataset.from_iterable(bids_inputs, layout)
+        dataset = BidsDataset.from_iterable(bids_inputs, layout, participants)
     except DuplicateComponentError as err:
         msg = (
             f"Multiple components found with the same name: {err.duplicated_names_str}"
@@ -320,6 +355,41 @@ ses-{session}_run-{run}_T1w.nii.gz",
     if use_bids_inputs:
         return dataset
     return dataset.as_dict
+
+
+def _apply_participant_filter(
+    participants: pd.DataFrame | None,
+    participant_filter: str,
+    participant_label: Iterable[str] | str | None,
+) -> list[str]:
+    """Combine the subjects selected by a participant filter with participant_label."""
+    if participants is None:
+        msg = (
+            f"A participant filter ({participant_filter!r}) was given, but the dataset "
+            f"has no {PARTICIPANTS_FILE}"
+        )
+        raise ConfigError(msg)
+    selected = query_participants(participants, participant_filter)
+    if participant_label is not None:
+        labels = set(itx.always_iterable(participant_label))
+        selected = [subject for subject in selected if subject in labels]
+    if not selected:
+        _logger.warning(
+            "No participants matched the participant filter %r", participant_filter
+        )
+    return selected
+
+
+def _warn_unlisted_subjects(layout: BIDSLayout, participants: pd.DataFrame):
+    """Warn about subjects in the dataset that are not in participants.tsv."""
+    unlisted = sorted(set(layout.get_subjects()) - set(participants.index))
+    if unlisted:
+        _logger.warning(
+            "The following subjects are not listed in %s and were excluded by the "
+            "participant filter: %s",
+            PARTICIPANTS_FILE,
+            ", ".join(unlisted),
+        )
 
 
 def _normalize_database_args(

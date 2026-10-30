@@ -11,6 +11,7 @@ from typing import Any, NoReturn, overload
 
 import attr
 import more_itertools as itx
+import pandas as pd
 from bids import BIDSLayout
 from pvandyken.deprecated import deprecated
 from typing_extensions import Self, TypedDict
@@ -784,9 +785,25 @@ class BidsDataset(dict[str, BidsComponent]):
     custom paths are used to generate every :class:`component <BidsComponent>`
     """
 
-    def __init__(self, data: Any, layout: BIDSLayout | None = None) -> None:
+    participants: pd.DataFrame | None
+    """
+    Contents of the dataset's ``participants.tsv``, indexed by subject label (without
+    the ``sub-`` prefix). None if the dataset has no ``participants.tsv``.
+
+    The table is not filtered: it includes all participants listed in the file, even
+    those excluded from the dataset. Use ``participants.loc[dataset.subjects]`` to
+    select the participants in the dataset.
+    """
+
+    def __init__(
+        self,
+        data: Any,
+        layout: BIDSLayout | None = None,
+        participants: pd.DataFrame | None = None,
+    ) -> None:
         super().__init__(data)
         self.layout = layout
+        self.participants = participants
 
     def __getitem__(self, key: str) -> BidsComponent:
         try:
@@ -982,13 +999,18 @@ class BidsDataset(dict[str, BidsComponent]):
 
     @classmethod
     def from_iterable(
-        cls, iterable: Iterable[BidsComponent], layout: BIDSLayout | None = None
+        cls,
+        iterable: Iterable[BidsComponent],
+        layout: BIDSLayout | None = None,
+        participants: pd.DataFrame | None = None,
     ) -> BidsDataset:
         """Construct Dataset from iterable of BidsComponents.
 
         Parameters
         ----------
         iterable : Iterable[BidsComponent]
+        layout : BIDSLayout | None
+        participants : pd.DataFrame | None
 
         Returns
         -------
@@ -1000,4 +1022,4 @@ class BidsDataset(dict[str, BidsComponent]):
             raise DuplicateComponentError(
                 list(itx.duplicates_everseen([c.name for c in components]))
             )
-        return cls(indexed, layout)
+        return cls(indexed, layout, participants)
