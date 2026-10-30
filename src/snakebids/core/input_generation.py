@@ -178,7 +178,10 @@ def generate_inputs(
         ``"age > 30 and group == 'patient'"``). Subjects not listed in
         ``participants.tsv`` are excluded. If combined with ``participant_label``, only
         subjects satisfying both are included. Raises an error if the dataset has no
-        ``participants.tsv``.
+        ``participants.tsv``. Like ``participant_label``, it has no effect on
+        components that define a ``subject`` filter in ``pybids_inputs``, and a query
+        matching no participants raises an error for components with a
+        ``custom_path``.
 
     use_bids_inputs
         If False, returns the classic :class:`BidsDatasetDict` instead of

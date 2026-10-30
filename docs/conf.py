@@ -91,6 +91,7 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "snakemake": ("https://snakemake.readthedocs.io/en/stable/", None),
     "pluggy": ("https://pluggy.readthedocs.io/en/stable", None),
+    "pandas": ("https://pandas.pydata.org/docs/", None),
 }
 
 

@@ -50,7 +50,11 @@ def read_participants_tsv(bids_dir: Path | str) -> pd.DataFrame | None:
                 na_values=["n/a"],
                 keep_default_na=False,
             )
-    except (pd.errors.ParserError, pd.errors.EmptyDataError) as err:
+    except (
+        pd.errors.ParserError,
+        pd.errors.EmptyDataError,
+        UnicodeDecodeError,
+    ) as err:
         msg = f"Could not parse {path}: {err}"
         raise ConfigError(msg) from err
     if "participant_id" not in table.columns:

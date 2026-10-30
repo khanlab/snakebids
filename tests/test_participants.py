@@ -86,6 +86,13 @@ class TestReadParticipantsTsv:
     def test_returns_none_when_missing_from_remote_dataset(self):
         assert read_participants_tsv("memory://bucket/empty_ds") is None
 
+    def test_invalid_encoding_raises_error(self, tmp_path: Path):
+        (tmp_path / "participants.tsv").write_bytes(
+            b"participant_id\tname\nsub-001\t\xff\xfe\n"
+        )
+        with pytest.raises(ConfigError, match="Could not parse"):
+            read_participants_tsv(tmp_path)
+
     def test_duplicate_ids_warn(self, tmp_path: Path, caplog: pytest.LogCaptureFixture):
         write_participants(tmp_path, "participant_id\nsub-001\nsub-001\n")
         with caplog.at_level(logging.WARNING):
@@ -138,6 +145,17 @@ class TestGenerateInputs:
             dataset = generate_inputs(bids_dir, PYBIDS_INPUTS)
         assert dataset.participants is None
         assert "participant_id" in caplog.text
+        assert sorted(dataset.subjects) == ["001", "002"]
+
+    def test_invalid_encoding_warns_without_filter(
+        self, bids_dir: Path, caplog: pytest.LogCaptureFixture
+    ):
+        (bids_dir / "participants.tsv").write_bytes(
+            b"participant_id\tname\nsub-001\t\xff\xfe\n"
+        )
+        with caplog.at_level(logging.WARNING):
+            dataset = generate_inputs(bids_dir, PYBIDS_INPUTS)
+        assert dataset.participants is None
         assert sorted(dataset.subjects) == ["001", "002"]
 
     def test_malformed_tsv_raises_with_filter(self, bids_dir: Path):
