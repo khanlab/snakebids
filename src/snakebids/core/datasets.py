@@ -15,12 +15,13 @@ from bids import BIDSLayout
 from pvandyken.deprecated import deprecated
 from typing_extensions import Self, TypedDict
 
+from snakebids.core._querying import FilterSpecError, UnifiedFilter
 from snakebids.core.filtering import filter_list
 from snakebids.exceptions import DuplicateComponentError
 from snakebids.io.console import get_console_size
 from snakebids.io.printing import format_zip_lists, quote_wrap
 from snakebids.snakemake_compat import expand as sn_expand
-from snakebids.types import ZipList
+from snakebids.types import FilterMap, ZipList
 from snakebids.utils.containers import ImmutableList, MultiSelectDict
 from snakebids.utils.snakemake_templates import MissingEntityError, SnakemakeFormatter
 from snakebids.utils.utils import get_wildcard_dict, property_alias, zip_list_eq
@@ -609,6 +610,72 @@ class BidsComponent(BidsPartialComponent):
             return False
 
         return super().__eq__(other)
+
+    @classmethod
+    def from_path(
+        cls,
+        name: str,
+        path: str | Path,
+        *,
+        files: Iterable[str | Path] | None = None,
+        filters: FilterMap | None = None,
+    ) -> Self:
+        """Construct a component by parsing paths with a wildcard template.
+
+        This is the equivalent of a ``custom_path`` component in
+        :func:`~snakebids.generate_inputs`, without needing a dataset or config.
+
+        Parameters
+        ----------
+        name
+            Name of the component
+        path
+            Path template with ``{wildcards}`` wrapped in braces. Becomes the
+            :attr:`~BidsComponent.path` of the component.
+        files
+            Paths to parse with ``path``. Paths not matching the template are ignored.
+            They need not exist on the filesystem, so e.g. a listing of remote files can
+            be used. If ``None`` (default), the filesystem is globbed.
+        filters
+            Filters to select entries, keyed by wildcard name. Accepts the same values
+            as component ``filters`` in :func:`~snakebids.generate_inputs`, except
+            booleans.
+
+        Returns
+        -------
+        BidsComponent
+
+        Raises
+        ------
+        ConfigError
+            If ``filters`` are invalidly specified.
+
+        Examples
+        --------
+        >>> from snakebids import BidsComponent
+        >>> component = BidsComponent.from_path(
+        ...     "T1w",
+        ...     "tpl-{tpl}/tpl-{tpl}_res-{res}_T1w.nii.gz",
+        ...     files=[
+        ...         "tpl-MNI152Lin/tpl-MNI152Lin_res-01_T1w.nii.gz",
+        ...         "tpl-MNI152Lin/tpl-MNI152Lin_res-02_T1w.nii.gz",
+        ...         "tpl-MNI152Lin/tpl-MNI152Lin_res-01_desc-brain_mask.nii.gz",
+        ...     ],
+        ...     filters={"res": "01"},
+        ... )
+        >>> component.expand()
+        ['tpl-MNI152Lin/tpl-MNI152Lin_res-01_T1w.nii.gz']
+        """
+        # input_generation imports this module
+        from snakebids.core.input_generation import _parse_custom_path  # noqa: PLC0415
+
+        try:
+            zip_lists = _parse_custom_path(
+                path, UnifiedFilter.from_filter_dict(filters or {}), files
+            )
+        except FilterSpecError as err:
+            raise err.get_config_error(name) from err
+        return cls(name=name, path=str(path), zip_lists=zip_lists)
 
     def expand(
         self,

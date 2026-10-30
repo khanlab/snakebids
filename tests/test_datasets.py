@@ -21,7 +21,7 @@ from snakebids.core.datasets import (
     BidsDataset,
     BidsPartialComponent,
 )
-from snakebids.exceptions import DuplicateComponentError
+from snakebids.exceptions import ConfigError, DuplicateComponentError
 from snakebids.paths._presets import bids
 from snakebids.paths._utils import OPTIONAL_WILDCARD
 from snakebids.snakemake_compat import WildcardError
@@ -514,7 +514,7 @@ class TestBidsComponentExpand:
         assume(set(component.wildcards) - {"datatype", "suffix", "extension"})
         novel_path = _get_novel_path("comp", component)
         paths = component.expand(novel_path)
-        assert not glob_wildcards(component.path, paths)
+        assert not any(glob_wildcards(component.path, paths).values())
 
 
 class TestFiltering:
@@ -1006,3 +1006,60 @@ class TestBenchmarkContains:
 
     def test_filter(self, benchmark: Benchmark):
         benchmark(self.comp.filter, **self._get_query())
+
+
+class TestComponentFromPath:
+    path = "tpl-{tpl}/tpl-{tpl}_res-{res}_{suffix}.nii.gz"
+    files = (
+        "tpl-A/tpl-A_res-01_T1w.nii.gz",
+        "tpl-A/tpl-A_res-02_T1w.nii.gz",
+        "tpl-B/tpl-B_res-01_T2w.nii.gz",
+        "tpl-B/tpl-B_desc-brain_mask.nii.gz",
+    )
+
+    def test_parses_given_files(self):
+        comp = BidsComponent.from_path("tpl", self.path, files=self.files)
+        assert comp.name == "tpl"
+        assert comp.path == self.path
+        assert sorted(comp.expand()) == sorted(self.files[:3])
+
+    @pytest.mark.parametrize(
+        ("filters", "expected"),
+        [
+            ({"res": "01"}, [0, 2]),
+            ({"tpl": ["B"], "suffix": {"get": "T2w"}}, [2]),
+            ({"suffix": {"match": "T.w"}, "res": {"search": "2"}}, [1]),
+            ({"res": "03"}, []),
+        ],
+    )
+    def test_applies_filters(self, filters: dict[str, Any], expected: list[int]):
+        comp = BidsComponent.from_path(
+            "tpl", self.path, files=self.files, filters=filters
+        )
+        assert sorted(comp.expand()) == [self.files[i] for i in expected]
+        assert set(comp.zip_lists) == {"tpl", "res", "suffix"}
+
+    def test_keeps_remote_path(self):
+        root = "https://templateflow.s3.amazonaws.com/"
+        comp = BidsComponent.from_path(
+            "tpl", root + self.path, files=[root + f for f in self.files]
+        )
+        assert comp.path == root + self.path
+        assert sorted(comp.expand()) == sorted(root + f for f in self.files[:3])
+
+    def test_globs_filesystem_by_default(self, tmp_path: Path):
+        for f in self.files:
+            (tmp_path / f).parent.mkdir(parents=True, exist_ok=True)
+            (tmp_path / f).touch()
+        comp = BidsComponent.from_path("tpl", tmp_path / self.path)
+        expected = sorted(str(tmp_path / f) for f in self.files[:3])
+        assert sorted(comp.expand()) == expected
+
+    def test_invalid_filter_raises_config_error(self):
+        with pytest.raises(ConfigError, match="filter 'res' in component 'tpl'"):
+            BidsComponent.from_path(
+                "tpl",
+                self.path,
+                files=self.files,
+                filters={"res": {"foo": "01"}},  # type: ignore
+            )

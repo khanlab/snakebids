@@ -33,3 +33,20 @@ def test_glob_wildcards():
         snakemake_io.glob_wildcards(both_wildcard_path, files=[file_path])
         in both_wildcards_one_file
     )
+
+
+def test_glob_wildcards_includes_unmatched_wildcards():
+    assert snakemake_io.glob_wildcards("tpl-{tpl}/{suffix}.nii", files=[]) == {
+        "tpl": [],
+        "suffix": [],
+    }
+
+
+def test_glob_wildcards_normalizes_files():
+    assert snakemake_io.glob_wildcards(
+        "https://example.com/tpl-{tpl}/{suffix}.nii",
+        files=["https://example.com/tpl-A/T1w.nii", "https://example.com/tpl-A/b/c"],
+    ) == {"tpl": ["A"], "suffix": ["T1w"]}
+    assert snakemake_io.glob_wildcards(
+        "tpl-{tpl}/{suffix}.nii", files=["./tpl-A/T1w.nii"]
+    ) == {"tpl": ["A"], "suffix": ["T1w"]}
