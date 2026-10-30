@@ -207,5 +207,15 @@
         "tag": "seg",
         "before": "seg-",
         "match": "[a-zA-Z0-9+]+"
+    },
+    "template": {
+        "tag": "tpl",
+        "before": "[/\\\\]+tpl-",
+        "match": "[a-zA-Z0-9]+"
+    },
+    "cohort": {
+        "tag": "cohort",
+        "before": "[_/\\\\]+cohort-",
+        "match": "[a-zA-Z0-9]+"
     }
 }
