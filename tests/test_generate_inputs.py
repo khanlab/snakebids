@@ -1665,6 +1665,23 @@ class TestParseBidsPath:
             _parse_bids_path(path, it.chain(entities, [entity.entity]))
         assert err.value.entity == entity
 
+    @pytest.mark.parametrize("root", ["", "/tf/home/"])
+    def test_parses_templateflow_paths(self, root: str):
+        path = f"{root}tpl-dhcpAsym/cohort-36/tpl-dhcpAsym_cohort-36_res-01_T1w.nii.gz"
+        tpl_path, matches = _parse_bids_path(
+            path, ["template", "cohort", "res", "suffix"]
+        )
+        assert tpl_path == (
+            f"{root}tpl-{{tpl}}/cohort-{{cohort}}/"
+            "tpl-{tpl}_cohort-{cohort}_res-{res}_{suffix}.nii.gz"
+        )
+        assert matches == {
+            "tpl": "dhcpAsym",
+            "cohort": "36",
+            "res": "01",
+            "suffix": "T1w",
+        }
+
 
 class TestDB:
     @pytest.fixture(autouse=True)
