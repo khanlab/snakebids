@@ -913,6 +913,15 @@ class TestCustomPaths:
         )
         assert sorted(result["desc"]) == expected
 
+    def test_no_matching_files_gives_empty_component(self, tmp_path: Path):
+        result = generate_inputs(
+            bids_dir=tmp_path,
+            pybids_inputs={
+                "t1": {"custom_path": str(tmp_path / "tpl-{tpl}/{suffix}.nii.gz")}
+            },
+        )
+        assert result["t1"].zip_lists == {"tpl": [], "suffix": []}
+
     @settings(
         deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture]
     )

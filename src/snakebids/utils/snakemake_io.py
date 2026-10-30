@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import collections
 import os
 import re
-from collections.abc import Sequence
+from collections.abc import Iterable
 from itertools import chain
 from pathlib import Path
 
@@ -62,7 +61,7 @@ _wildcard_regex = re.compile(
 
 def glob_wildcards(
     pattern: str | Path,
-    files: Sequence[str | Path] | None = None,
+    files: Iterable[str | Path] | None = None,
     followlinks: bool = False,
 ) -> ZipList:
     """Glob the values of wildcards by matching a pattern to the filesystem.
@@ -95,7 +94,9 @@ def glob_wildcards(
     # remove duplicates while preserving ordering
     names = list(dict.fromkeys(names))
 
-    wildcards: dict[str, list[str]] = collections.defaultdict(list)
+    # Include every wildcard, even if nothing matches, so callers always get a
+    # complete (possibly empty) zip_list
+    wildcards: dict[str, list[str]] = {name: [] for name in names}
 
     re_pattern = re.compile(regex(pattern))
 
@@ -108,7 +109,8 @@ def glob_wildcards(
             for f in chain(filenames, dirnames)
         )
         if files is None
-        else iter(files)
+        # Normalize the same way as the pattern, so e.g. "./a" or "s3://a" still match
+        else (os.path.normpath(f) for f in files)
     )
 
     for f in file_iter:

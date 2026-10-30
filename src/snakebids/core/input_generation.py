@@ -652,7 +652,10 @@ def _get_component(
 
     if "custom_path" in component:
         path = component["custom_path"]
-        zip_lists = _parse_custom_path(path, filters=filters)
+        try:
+            zip_lists = _parse_custom_path(path, filters=filters)
+        except FilterSpecError as err:
+            raise err.get_config_error(input_name) from err
         return BidsComponent(name=input_name, path=path, zip_lists=zip_lists)
 
     if bids_layout is None:
@@ -747,6 +750,7 @@ def _get_component(
 def _parse_custom_path(
     input_path: Path | str,
     filters: UnifiedFilter,
+    files: Iterable[str | Path] | None = None,
 ) -> ZipList:
     """Glob wildcards from a custom path and apply filters.
 
@@ -764,16 +768,19 @@ def _parse_custom_path(
         Path to be globbed
     filters : UnifiedFilter
         Filters to be applied when selecting path templates.
+    files
+        Paths to match against ``input_path``. If None (default), the filesystem is
+        globbed.
 
     Returns
     -------
     ZipList
     """
-    if not (wildcards := glob_wildcards(input_path)):
+    if not (wildcards := glob_wildcards(input_path, files)):
         _logger.warning("No wildcards defined in %s", input_path)
 
     # Log an error if no matches found
-    if len(itx.first(wildcards.values())) == 0:
+    if not itx.first(wildcards.values(), None):
         _logger.error("No matching files for %s", input_path)
         return wildcards
 
