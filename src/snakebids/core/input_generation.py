@@ -713,6 +713,17 @@ def _parse_custom_path(
         filters.without_bools,
         regex_search=False,
     )
+    if filters.search:
+        # filter_list tests with re.match, so prefix with a lazy wildcard to get
+        # search semantics. ``match:`` filters are already anchored with ^...$
+        result = filter_list(
+            result,
+            {
+                key: [f".*?(?:{filt})" for filt in itx.always_iterable(vals)]
+                for key, vals in filters.search.items()
+            },
+            regex_search=True,
+        )
     if not filters.post_exclusions:
         return result
 

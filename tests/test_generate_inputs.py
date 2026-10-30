@@ -891,6 +891,28 @@ class TestCustomPaths:
             name="foo", path=get_bids_path(result_filtered), zip_lists=result_filtered
         )
 
+    @pytest.mark.parametrize(
+        ("filt", "expected"),
+        [
+            ({"match": "br.*"}, ["brain"]),
+            ({"match": "ra"}, []),
+            ({"match": "BRAIN"}, []),
+            ({"search": "ai"}, ["brain"]),
+            ({"search": "^h"}, ["head"]),
+            ({"search": "zzz"}, []),
+        ],
+    )
+    def test_regex_filters_applied(
+        self, tmp_path: Path, filt: dict[str, str], expected: list[str]
+    ):
+        test_path = self.generate_test_directory(
+            {"desc": ["brain", "head"]}, Path("desc-{desc}_mask.nii.gz"), tmp_path
+        )
+        result = _parse_custom_path(
+            test_path, UnifiedFilter.from_filter_dict({"desc": filt})
+        )
+        assert sorted(result["desc"]) == expected
+
     @settings(
         deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture]
     )
