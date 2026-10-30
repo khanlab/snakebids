@@ -681,6 +681,8 @@ def _parse_custom_path(
     input_path: Path | str,
     filters: UnifiedFilter,
     files: Iterable[str | Path] | None = None,
+    *,
+    log_missing: bool = True,
 ) -> ZipList:
     """Glob wildcards from a custom path and apply filters.
 
@@ -701,17 +703,20 @@ def _parse_custom_path(
     files
         Paths to match against ``input_path``. If None (default), the filesystem is
         globbed.
+    log_missing
+        Log when the path has no wildcards or matches no files.
 
     Returns
     -------
     ZipList
     """
-    if not (wildcards := glob_wildcards(input_path, files)):
+    if not (wildcards := glob_wildcards(input_path, files)) and log_missing:
         _logger.warning("No wildcards defined in %s", input_path)
 
     # Log an error if no matches found
     if not itx.first(wildcards.values(), None):
-        _logger.error("No matching files for %s", input_path)
+        if log_missing:
+            _logger.error("No matching files for %s", input_path)
         return wildcards
 
     # Return the output values, running filtering on the zip_lists

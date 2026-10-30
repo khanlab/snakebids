@@ -913,7 +913,9 @@ class TestCustomPaths:
         )
         assert sorted(result["desc"]) == expected
 
-    def test_no_matching_files_gives_empty_component(self, tmp_path: Path):
+    def test_no_matching_files_gives_empty_component(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ):
         result = generate_inputs(
             bids_dir=tmp_path,
             pybids_inputs={
@@ -921,6 +923,7 @@ class TestCustomPaths:
             },
         )
         assert result["t1"].zip_lists == {"tpl": [], "suffix": []}
+        assert "No matching files" in caplog.text
 
     @settings(
         deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture]

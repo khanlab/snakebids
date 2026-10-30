@@ -1055,6 +1055,13 @@ class TestComponentFromPath:
         expected = sorted(str(tmp_path / f) for f in self.files[:3])
         assert sorted(comp.expand()) == expected
 
+    def test_no_matches_gives_empty_component_without_logging(
+        self, caplog: pytest.LogCaptureFixture
+    ):
+        comp = BidsComponent.from_path("tpl", self.path, files=["other.nii.gz"])
+        assert comp.zip_lists == {"tpl": [], "res": [], "suffix": []}
+        assert not caplog.records
+
     def test_invalid_filter_raises_config_error(self):
         with pytest.raises(ConfigError, match="filter 'res' in component 'tpl'"):
             BidsComponent.from_path(

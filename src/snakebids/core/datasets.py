@@ -670,8 +670,12 @@ class BidsComponent(BidsPartialComponent):
         from snakebids.core.input_generation import _parse_custom_path  # noqa: PLC0415
 
         try:
+            # Matching nothing is not an error here: an empty component is returned
             zip_lists = _parse_custom_path(
-                path, UnifiedFilter.from_filter_dict(filters or {}), files
+                path,
+                UnifiedFilter.from_filter_dict(filters or {}),
+                files,
+                log_missing=False,
             )
         except FilterSpecError as err:
             raise err.get_config_error(name) from err
