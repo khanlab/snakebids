@@ -17,7 +17,7 @@ import snakebids.plugins.snakemake as sn_app
 import snakebids.snakemake_compat
 from snakebids import bidsapp
 from snakebids.exceptions import ConfigError, RunError
-from snakebids.plugins import Version
+from snakebids.plugins import Version, provenance
 from snakebids.utils.utils import DEPRECATION_FLAG
 from tests import strategies as sb_st
 from tests.helpers import allow_function_scoped
@@ -158,6 +158,12 @@ def get_io_mocks(mocker: MockerFixture):
         "prepare_output": mocker.patch.object(sn_app, "prepare_bidsapp_output"),
         "write_config": mocker.patch.object(sn_app, "write_config"),
         "snakemake": mocker.patch.object(sn_app, "snakemake_main"),
+        "provenance_record": mocker.patch.object(provenance.RunRecord, "write"),
+        "provenance_script": mocker.patch.object(provenance.RunRecord, "write_script"),
+        "provenance_config": mocker.patch.object(provenance, "write_config"),
+        "provenance_bids": mocker.patch.object(
+            provenance.Provenance, "_write_bids_views"
+        ),
     }
 
 

@@ -4,6 +4,7 @@ __submodules__ = [
     "cli_config",
     "component_edit",
     "pybidsdb",
+    "provenance",
     "validator",
     "snakemake",
     "version",
@@ -22,9 +23,12 @@ __all__ = [
     "FilterParse",
     "FilterParseError",
     "InvalidBidsError",
+    "Provenance",
     "Pybidsdb",
+    "RunRecord",
     "SnakemakeBidsApp",
     "Version",
+    "load_history",
     "logger",
 ]
 # </AUTOGEN_INIT>

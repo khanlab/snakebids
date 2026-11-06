@@ -31,6 +31,9 @@ These plugins add additional features that may be helpful to most bids apps.
 .. autoclass:: BidsValidator
     :members:
 
+.. autoclass:: Provenance
+    :members:
+
 
 Workflow Integrations
 ---------------------

@@ -18,6 +18,7 @@ from snakebids.io.config import write_config
 from snakebids.plugins.bidsargs import BidsArgs
 from snakebids.plugins.cli_config import CliConfig
 from snakebids.plugins.component_edit import ComponentEdit
+from snakebids.plugins.provenance import Provenance
 from snakebids.plugins.pybidsdb import Pybidsdb
 from snakebids.snakemake_compat import load_configfile
 from snakebids.snakemake_compat import main as snakemake_main
@@ -127,8 +128,8 @@ class SnakemakeBidsApp:
     .. currentmodule:: snakebids.plugins
 
     Loads the :class:`~bidsargs.BidsArgs`, :class:`~cli_config.CliConfig`,
-    :class:`~pybidsdb.Pybidsdb`, and :class:`~component_edit.ComponentEdit` plugins
-    as dependencies.
+    :class:`~pybidsdb.Pybidsdb`, :class:`~component_edit.ComponentEdit`, and
+    :class:`~provenance.Provenance` plugins as dependencies.
 
     Parameters
     ----------
@@ -179,6 +180,7 @@ class SnakemakeBidsApp:
     """
 
     DEPENDENCIES = (
+        Provenance(),
         Pybidsdb(),
         ComponentEdit(),
         CliConfig(),
@@ -201,6 +203,7 @@ class SnakemakeBidsApp:
             config.update(
                 load_configfile(str(self.snakemake_dir / self.configfile_path))
             )
+        config["snakemake_dir"] = self.snakemake_dir
 
     @bidsapp.hookimpl
     def add_cli_arguments(self, parser: argparse.ArgumentParser):
