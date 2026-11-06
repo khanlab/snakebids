@@ -34,7 +34,7 @@ jobs:
       - name: Test with pytest
         if: ${{ steps.count.outputs.NUM != steps.timed-count.outputs.NUM }}
         env:
-          HYPOTHESIS_PROFILE: pr
+          HYPOTHESIS_PROFILE: weekly
         run: >-
           uv run pytest -n auto --store-durations --clean-durations
           --doctest-modules --ignore=docs
@@ -107,7 +107,7 @@ jobs:
 
       - name: Test with pytest
         env:
-          HYPOTHESIS_PROFILE: pr
+          HYPOTHESIS_PROFILE: weekly
         run: >-
           uv run pytest -n auto --splits 5 --group ${{ matrix.split }}
           --doctest-modules --ignore=docs
