@@ -9,6 +9,11 @@ from .component_edit import (
     FilterParse,
     FilterParseError,
 )
+from .provenance import (
+    Provenance,
+    RunRecord,
+    load_history,
+)
 from .pybidsdb import (
     Pybidsdb,
     logger,
@@ -32,8 +37,11 @@ __all__ = [
     "FilterParse",
     "FilterParseError",
     "InvalidBidsError",
+    "Provenance",
     "Pybidsdb",
+    "RunRecord",
     "SnakemakeBidsApp",
     "Version",
+    "load_history",
     "logger",
 ]
