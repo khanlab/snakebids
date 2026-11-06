@@ -97,7 +97,7 @@ Each run gets its own folder under `code/snakebids/runs/`, named by the time it 
 
 - `command.sh`: an executable script that changes to the original working directory and repeats the exact command. Extra arguments given to the script are appended to the command.
 - `config.yaml`: the fully resolved config used for that run. Unlike the config file written for Snakemake, it is never overwritten by later runs.
-- `provenance.json`: the arguments, working directory, app, Snakebids and Snakemake versions, where the app's code came from, host, user, container, start and end time, and whether the run succeeded, failed or was interrupted.
+- `provenance.json`: the arguments, working directory, app, Snakebids and Snakemake versions, where the app's code came from, host, user, container, start and end time (and duration), and whether the run succeeded, failed or was interrupted.
 - `app.diff`: only present if the app was run from a git checkout with uncommitted changes. Apply it on top of the recorded commit with `git apply` to get the exact code that was run. New files that were never added to git are not included.
 
 `code/` is the location BIDS sets aside for code used to generate a dataset, so the validator ignores it and it stays with the data when the dataset is shared.
@@ -108,18 +108,18 @@ Use `--history` with the output directory in place of the usual positional argum
 
 ```console
 $ my_app --history out/
-[1] 20261105T160359-0a0b  success     2026-11-05 16:03  user@host  my_app 1.2.0
+[1] 20261105T160359-0a0b  success     2026-11-05 16:03 (2h14m)  user@host  my_app 1.2.0
     code: git v1.2.0 https://github.com/my-lab/my_app
     cd /home/user/project
     my_app bids/ out/ participant --cores 8
 
-[2] 20261106T091522-3b20  failed      2026-11-06 09:15  user@host  my_app 1.2.0
+[2] 20261106T091522-3b20  failed      2026-11-06 09:15 (12m05s)  user@host  my_app 1.2.0
     code: git v1.2.0-3-g9b47e62-dirty (uncommitted changes, see app.diff) https://github.com/my-lab/my_app
     cd /home/user/project
     my_app bids/ out/ participant --cores 8 --participant-label 001
 ```
 
-The `code:` line is shown when the app's code can be traced to a git commit. This works if the app was run from a git clone, installed in editable mode from one, or installed with `pip install git+https://...`. Credentials are removed from the repository URL before it is recorded.
+Each run shows its start time and, once it has finished, how long it took. The exact start and end times are in its `provenance.json`. The `code:` line is shown when
 
 ### Re-running a past run
 

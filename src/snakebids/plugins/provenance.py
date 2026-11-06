@@ -111,6 +111,21 @@ def _safe_version(dist: str) -> str | None:
         return None
 
 
+def format_duration(seconds: float) -> str:
+    """Format a duration compactly, e.g. ``9s``, ``4m12s``, ``2h03m``, ``1d04h``."""
+    total = round(seconds)
+    days, rem = divmod(total, 86400)
+    hours, rem = divmod(rem, 3600)
+    minutes, secs = divmod(rem, 60)
+    if days:
+        return f"{days}d{hours:02d}h"
+    if hours:
+        return f"{hours}h{minutes:02d}m"
+    if minutes:
+        return f"{minutes}m{secs:02d}s"
+    return f"{secs}s"
+
+
 def _get_prog() -> list[str]:
     """Return the command used to launch the app, made re-runnable if possible."""
     argv0 = sys.argv[0] if sys.argv and sys.argv[0] else "app"
@@ -151,6 +166,18 @@ class RunRecord:
     path: Path | None = attrs.field(default=None, eq=False)
 
     @property
+    def duration(self) -> float | None:
+        """Run time in seconds, or None if the run hasn't finished."""
+        if self.end_time is None:
+            return None
+        try:
+            start = datetime.fromisoformat(self.start_time)
+            end = datetime.fromisoformat(self.end_time)
+        except ValueError:
+            return None
+        return (end - start).total_seconds()
+
+    @property
     def command(self) -> str:
         """Shell-quoted command line, as it would be typed."""
         return shlex.join([*self.prog, *self.argv])
@@ -159,6 +186,9 @@ class RunRecord:
         """Serialize to a JSON-compatible dict."""
         data = attrs.asdict(self, filter=lambda a, _: a.name != "path")
         data["command"] = self.command
+        data["duration_seconds"] = (
+            round(self.duration, 3) if self.duration is not None else None
+        )
         return data
 
     @classmethod
@@ -582,9 +612,11 @@ class Provenance(PluginBase):
             if rec.app_version and rec.app_version != "unknown":
                 app = f"{app} {rec.app_version}".strip()
             replay = f"  (replay of {rec.replayed_from})" if rec.replayed_from else ""
+            started = rec.start_time[:16].replace("T", " ")
+            if (duration := rec.duration) is not None:
+                started += f" ({format_duration(duration)})"
             print(
-                f"[{i}] {rec.run_id}  {rec.status:<11} "
-                f"{rec.start_time[:16].replace('T', ' ')}  "
+                f"[{i}] {rec.run_id}  {rec.status:<11} {started}  "
                 f"{rec.user or '?'}@{rec.host}  {app}{replay}"
             )
             if summary := bids_prov.source_summary(rec.source):

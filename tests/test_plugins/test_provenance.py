@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess as sp
 import sys
 from pathlib import Path
@@ -866,3 +867,53 @@ class TestWriteFailures:
 
     def test_finish_without_record(self):
         Provenance()._finish("success", 0)  # pyright: ignore[reportPrivateUsage]
+
+
+@pytest.mark.parametrize(
+    ("seconds", "expected"),
+    [
+        (0, "0s"),
+        (9.4, "9s"),
+        (252, "4m12s"),
+        (7380, "2h03m"),
+        (100800, "1d04h"),
+    ],
+)
+def test_format_duration(seconds: float, expected: str):
+    assert prov_mod.format_duration(seconds) == expected
+
+
+class TestDuration:
+    def test_duration_from_times(self):
+        rec = _rec("x")
+        rec.start_time = "2026-11-06T13:40:23.5-05:00"
+        rec.end_time = "2026-11-06T13:44:35.5-05:00"
+        assert rec.duration == 252  # noqa: PLR2004
+        assert rec.to_json()["duration_seconds"] == 252  # noqa: PLR2004
+
+    def test_no_duration_while_running(self):
+        rec = _rec("x")
+        rec.start_time = "2026-11-06T13:40:23-05:00"
+        assert rec.duration is None
+        assert rec.to_json()["duration_seconds"] is None
+
+    def test_invalid_times(self):
+        rec = _rec("x")
+        rec.end_time = "not a time"
+        assert rec.duration is None
+
+    def test_history_shows_duration(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ):
+        monkeypatch.chdir(tmp_path)
+        _run(["out"])
+        (record,) = load_history(_prov_dir(Path("out")))
+        assert record.duration is not None
+        capsys.readouterr()
+        with pytest.raises(SystemExit):
+            _run(["--history", "out"])
+        header = capsys.readouterr().out.splitlines()[0]
+        assert re.search(r"\d{4}-\d\d-\d\d \d\d:\d\d \(\d+s\)", header)
