@@ -9,6 +9,7 @@ from typing import Any, ClassVar
 import pytest
 
 from snakebids import bidsapp
+from snakebids.plugins import SnakemakeBidsApp
 from snakebids.plugins import _provenance_bids as bids_prov
 from snakebids.plugins.provenance import (
     Provenance,
@@ -407,3 +408,16 @@ def test_history_omits_unknown_version(
         _run(["--history", "out"])
     header = capsys.readouterr().out.splitlines()[0]
     assert "unknown" not in header
+
+
+def test_explicit_instance_replaces_default_dependency():
+    custom = Provenance(dataset_description=False)
+    app = bidsapp.app(
+        [
+            SnakemakeBidsApp(Path(), configfile_path=None, snakefile_path=Path("x")),
+            custom,
+        ]
+    )
+    registered = [p for _, p in app.pm.list_name_plugin() if isinstance(p, Provenance)]
+    assert len(registered) == 1
+    assert registered[0] is custom

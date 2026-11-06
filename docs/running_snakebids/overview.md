@@ -71,6 +71,98 @@ Subjects that have data in the dataset but no row in `participants.tsv` are excl
 - **Participant-level metadata only.** Values that change between sessions, such as those recorded in `sessions.tsv` (e.g. age at each scan), cannot be used for filtering.
 - **The query is code.** {meth}`pandas.DataFrame.query` evaluates the query as a Python expression. Treat `--participant-filter` like any other command-line argument, and don't pass it text from untrusted sources.
 
+(run-history)=
+## Run history and provenance
+
+Every run of a Snakebids app that actually executes the workflow is recorded in the output directory, so you can always find out which commands produced a dataset and re-run them. Runs that don't produce outputs, such as dry runs (`-n`), `--dag`, `--lint` or `--unlock`, are not recorded.
+
+Each run gets its own folder under `code/snakebids/runs/`, named by the time it started:
+
+    output_dir
+    ├── code
+    │   └── snakebids
+    │       └── runs
+    │           ├── 20261105T160359-0a0b
+    │           │   ├── command.sh
+    │           │   ├── config.yaml
+    │           │   └── provenance.json
+    │           └── 20261106T091522-3b20
+    │               ├── app.diff
+    │               ├── command.sh
+    │               ├── config.yaml
+    │               └── provenance.json
+    ├── dataset_description.json
+    ├── sub-001
+    └── ...
+
+- `command.sh`: an executable script that changes to the original working directory and repeats the exact command. Extra arguments given to the script are appended to the command.
+- `config.yaml`: the fully resolved config used for that run. Unlike the config file written for Snakemake, it is never overwritten by later runs.
+- `provenance.json`: the arguments, working directory, app, Snakebids and Snakemake versions, where the app's code came from, host, user, container, start and end time, and whether the run succeeded, failed or was interrupted.
+- `app.diff`: only present if the app was run from a git checkout with uncommitted changes. Apply it on top of the recorded commit with `git apply` to get the exact code that was run. New files that were never added to git are not included.
+
+`code/` is the location BIDS sets aside for code used to generate a dataset, so the validator ignores it and it stays with the data when the dataset is shared.
+
+### Listing past runs
+
+Use `--history` with the output directory in place of the usual positional arguments:
+
+```console
+$ my_app --history out/
+[1] 20261105T160359-0a0b  success     2026-11-05 16:03  user@host  my_app 1.2.0
+    code: git v1.2.0 https://github.com/my-lab/my_app
+    cd /home/user/project
+    my_app bids/ out/ participant --cores 8
+
+[2] 20261106T091522-3b20  failed      2026-11-06 09:15  user@host  my_app 1.2.0
+    code: git v1.2.0-3-g9b47e62-dirty (uncommitted changes, see app.diff) https://github.com/my-lab/my_app
+    cd /home/user/project
+    my_app bids/ out/ participant --cores 8 --participant-label 001
+```
+
+The `code:` line is shown when the app's code can be traced to a git commit. This works if the app was run from a git clone, installed in editable mode from one, or installed with `pip install git+https://...`. Credentials are removed from the repository URL before it is recorded.
+
+### Re-running a past run
+
+`--replay` repeats a recorded command:
+
+```console
+$ my_app --replay out/                  # repeat the latest run
+$ my_app --replay out/@1                # repeat run [1] from --history
+$ my_app --replay out/@-2               # repeat the second-to-last run
+$ my_app --replay out/@20261105T1603    # select a run by (the start of) its id
+$ my_app --replay out/@1 --cores 16     # repeat run [1], with extra arguments
+```
+
+Any arguments after the output directory are added to the end of the recorded command. For most options the last value given wins, so this can also be used to change an option from the original run. To make larger changes, copy the command from `--history` (or `command.sh`) and edit it.
+
+The app changes to the run's original working directory before replaying, so relative paths resolve the same way they did originally. The new run is recorded as a replay of the original.
+
+### `dataset_description.json`
+
+Snakebids also creates or updates the output's `dataset_description.json`. If the file doesn't exist yet, it is created from the app's `pipeline_description.json` (found in the app directory), or from defaults if the app has none.
+
+`GeneratedBy` holds a short summary rather than every run: one entry per app version, with the number of runs, their dates, a `CodeURL` pointing to the commit of the latest run, and the container if there was one. Any fields from the matching entry in `pipeline_description.json` (e.g. `Author`) are included. For example:
+
+```json
+"GeneratedBy": [
+  {
+    "Name": "my_app",
+    "Version": "1.2.0",
+    "CodeURL": "https://github.com/my-lab/my_app/tree/9b47e626326ffde88784e2420ef107614bc7d609",
+    "Author": "Jane Doe",
+    "Description": "Recorded by snakebids: 2 runs (1 failed), 2026-11-05 to 2026-11-06; latest: git v1.2.0 https://github.com/my-lab/my_app. Commands and configs are in code/snakebids/ (list with: my_app --history <output_dir>)"
+  }
+]
+```
+
+The input dataset is added to `DatasetLinks`. Other `GeneratedBy` entries and any other fields already in the file are kept.
+
+```{note}
+Run records include the host name, user name and absolute paths of the run. Keep this in mind before publishing a dataset.
+```
+
+App developers can configure or disable this behaviour with the {class}`~snakebids.plugins.Provenance` plugin.
+
 ## Workflow mode
 
 Snakebids apps use a BIDS app CLI, giving great flexibility when switching datasets. However, when developing a Snakebids app or when running the app repeatedly on the same dataset, it can be more convenient to directly call the Snakemake CLI. Snakebids facilitates this using workflow mode.
@@ -156,6 +248,10 @@ We'll see a message telling us the app is running in snakemake mode and, if our 
 From now on, instead of calling `run.py`, we can just the Snakemake CLI directly. It will use the same inputs and outputs saved into our config by Snakebids:
 
     snakemake [args]
+
+```{note}
+Runs made by calling the Snakemake CLI directly bypass Snakebids, so they are not recorded in the [run history](#run-history).
+```
 
 You can still use the Snakebids CLI on other datasets. However, if you plan on modifying any files, including config, to make the Snakebids app suitable for the new dataset, it's recommended to use git to clone the app into the `derivatives` folder of the new dataset. Alternatively, you can call ``run.py`` with the `--workflow-mode` flag:
 

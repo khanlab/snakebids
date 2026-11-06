@@ -6,6 +6,7 @@ Every (non-dry) run of the app writes a run record into the output directory::
         command.sh        # re-runnable shell script (cd + original command)
         config.yaml       # snapshot of the fully resolved config for this run
         provenance.json   # argv, cwd, versions, git commit, host, container, status
+        app.diff          # uncommitted changes, if the app is a dirty git checkout
 
 ``code/`` is the BIDS-sanctioned location for code used to generate a dataset, so it
 is ignored by the BIDS validator and travels with the dataset.
@@ -262,8 +263,15 @@ class Provenance(PluginBase):
 
     On every run that will actually execute the workflow, a record is written to
     ``<output_dir>/<directory>/runs/<run_id>/``, containing the exact arguments,
-    working directory, a snapshot of the resolved config, software versions, host,
-    container, and the final exit status.
+    working directory, a snapshot of the resolved config, software versions, the git
+    commit of the app (with a diff of any uncommitted changes), host, container, and
+    the final exit status. A summary is added to the output's
+    ``dataset_description.json``.
+
+    This plugin is a dependency of :class:`~snakebids.plugins.SnakemakeBidsApp`, so
+    it is enabled by default in snakemake apps. To configure it, pass it explicitly
+    alongside ``SnakemakeBidsApp``. See :ref:`run-history` for a user-facing
+    overview.
 
     Adds the following CLI flags (handled before normal argument parsing, so the
     usual required positional arguments may be omitted):
@@ -274,7 +282,8 @@ class Provenance(PluginBase):
         Re-run a recorded command. ``RUN`` is a 1-based index (negative values count
         from the latest), a run_id prefix, or ``latest`` (default). Any additional
         arguments are appended to the recorded ones, so they can be used to add or
-        override options (e.g. ``--cores 8``).
+        override options (e.g. ``--cores 8``). The app first changes to the original
+        working directory, so relative paths resolve as they did originally.
 
     Parameters
     ----------
@@ -326,6 +335,11 @@ class Provenance(PluginBase):
     _record: RunRecord | None = attrs.field(default=None, init=False)
     _output_dir: Path | None = attrs.field(default=None, init=False)
     _template: dict[str, Any] | None = attrs.field(default=None, init=False)
+
+    def __eq__(self, other: Any):
+        # Only one instance per app: lets an explicitly configured Provenance replace
+        # the default one loaded as a dependency of SnakemakeBidsApp
+        return isinstance(other, self.__class__)
 
     def _provenance_dir(self, output_dir: str | os.PathLike[str]) -> Path:
         return Path(output_dir) / self.directory

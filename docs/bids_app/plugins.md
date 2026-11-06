@@ -45,6 +45,15 @@ bidsapp.app([
 ]).run()
 ```
 
+Another dependency of {class}`SnakemakeBidsApp` is {class}`Provenance`, which records every run in the output directory and adds the `--history` and `--replay` arguments (see [](#run-history)). For instance, to stop it from creating or updating `dataset_description.json`, for an app that writes its own:
+
+```python
+bidsapp.app([
+    plugins.SnakemakeBidsApp("path/to/snakebids/app"),
+    plugins.Provenance(dataset_description=False),
+]).run()
+```
+
 (creating-plugins)=
 ## Creating plugins
 
