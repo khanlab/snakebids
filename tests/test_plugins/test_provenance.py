@@ -886,8 +886,9 @@ def test_format_duration(seconds: float, expected: str):
 class TestDuration:
     def test_duration_from_times(self):
         rec = _rec("x")
-        rec.start_time = "2026-11-06T13:40:23.5-05:00"
-        rec.end_time = "2026-11-06T13:44:35.5-05:00"
+        # as written by datetime.isoformat() (Python 3.10 only parses this form)
+        rec.start_time = "2026-11-06T13:40:23.500000-05:00"
+        rec.end_time = "2026-11-06T13:44:35.500000-05:00"
         assert rec.duration == 252  # noqa: PLR2004
         assert rec.to_json()["duration_seconds"] == 252  # noqa: PLR2004
 
