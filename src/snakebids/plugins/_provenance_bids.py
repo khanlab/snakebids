@@ -1,14 +1,10 @@
 """BIDS-facing views of snakebids run records.
 
 The per-run records under ``code/snakebids/runs/`` are the single source of truth.
-Everything here is *derived* from them and regenerated on every run:
-
-- ``dataset_description.json``: ``GeneratedBy`` gets one entry per recorded run
-  (legacy "pipeline object" form, which current validators understand). Entries not
-  written by snakebids are preserved, as are all other keys.
-- ``prov/prov-<app>_{act,soft,env,ent}.json`` and ``prov/provenance.tsv``: loosely
-  following the draft BEP028 provenance spec (W3C PROV-inspired). This is draft and
-  likely to change; it is written for inspiration/forward-compatibility only.
+``dataset_description.json`` is *derived* from them and regenerated on every run.
+It is kept as a compact summary: ``GeneratedBy`` gets one entry per distinct app
+version (legacy "pipeline object" form, which current validators understand), not
+one per run. Entries not written by snakebids are preserved, as are all other keys.
 
 Also contains helpers to detect where the app's code came from (git checkout,
 VCS/editable pip install) and whether it is running in a container.
@@ -16,8 +12,6 @@ VCS/editable pip install) and whether it is running in a container.
 
 from __future__ import annotations
 
-import csv
-import hashlib
 import importlib.metadata as impm
 import json
 import logging
@@ -25,7 +19,6 @@ import os
 import re
 import subprocess as sp
 from collections.abc import Iterable, Sequence
-from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import unquote, urlparse
@@ -38,8 +31,8 @@ logger = logging.getLogger(__name__)
 DEFAULT_BIDS_VERSION = "1.10.0"
 
 #: Marker identifying GeneratedBy entries managed by snakebids
-_RUN_MARKER = "snakebids run "
-_RUN_MARKER_RE = re.compile(rf"^{_RUN_MARKER}(\S+)")
+_MARKER = "Recorded by snakebids: "
+_MARKER_RE = re.compile(r"^(Recorded by snakebids: |snakebids run )")
 
 
 # --------------------------------------------------------------------------------------
@@ -260,67 +253,78 @@ def _is_snakebids_entry(entry: Any) -> bool:
     if not isinstance(entry, dict):
         return False
     description = cast("dict[str, Any]", entry).get("Description", "")
-    return bool(_RUN_MARKER_RE.match(str(description)))
+    return bool(_MARKER_RE.match(str(description)))
 
 
-def generated_by_entry(
-    record: RunRecord, name: str, template: dict[str, Any] | None = None
-) -> dict[str, Any]:
-    """Legacy-style ``GeneratedBy`` pipeline object for one run."""
-    description = f"{_RUN_MARKER}{record.run_id} [{record.status}]"
-    if record.replayed_from:
-        description += f" (replay of {record.replayed_from})"
-    if summary := source_summary(record.source):
-        description += f"; {summary}"
-    description += f": {record.command}"
-    entry: dict[str, Any] = dict(template or {})
-    entry.update({"Name": name, "Description": description})
-    if record.app_version and record.app_version != "unknown":
-        entry["Version"] = record.app_version
-    if url := code_url(record.source):
-        entry["CodeURL"] = url
-    if record.container:
-        entry["Container"] = record.container
-    return entry
+def _date(timestamp: str) -> str:
+    return timestamp[:10]
 
 
-def existing_dataset_links(
-    output_dir: Path, template: dict[str, Any] | None
-) -> dict[str, str]:
-    """DatasetLinks of the current dataset_description, or else of the template."""
-    desc = read_json(output_dir / "dataset_description.json")
-    if desc is None:
-        desc = template or {}
-    links = desc.get("DatasetLinks", {})
-    if not isinstance(links, dict):
-        return {}
-    return {str(k): str(v) for k, v in cast("dict[Any, Any]", links).items()}
+def generated_by_summary(
+    records: Sequence[RunRecord],
+    name: str,
+    provenance_dir: str,
+    template: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Summarize runs as ``GeneratedBy`` pipeline objects.
+
+    One entry per distinct app version (not per run), so the list only grows when
+    the software changes. Code URL and container are taken from the latest run of
+    each version. The full details live in ``provenance_dir``.
+    """
+    groups: dict[str | None, list[RunRecord]] = {}
+    for rec in records:
+        version = rec.app_version if rec.app_version != "unknown" else None
+        groups.setdefault(version, []).append(rec)
+
+    entries: list[dict[str, Any]] = []
+    for version, recs in groups.items():
+        latest = recs[-1]
+        first, last = _date(recs[0].start_time), _date(latest.start_time)
+        n_failed = sum(r.status in {"failed", "interrupted"} for r in recs)
+        description = (
+            f"{_MARKER}{len(recs)} run{'s' if len(recs) > 1 else ''}"
+            + (f" ({n_failed} failed)" if n_failed else "")
+            + (f", {first}" if first == last else f", {first} to {last}")
+        )
+        if summary := source_summary(latest.source):
+            description += f"; latest: {summary}"
+        description += (
+            f". Commands and configs are in {provenance_dir}/ "
+            f"(list with: {name} --history <output_dir>)"
+        )
+        entry: dict[str, Any] = dict(template or {})
+        entry.update({"Name": name, "Description": description})
+        if version:
+            entry["Version"] = version
+        else:
+            entry.pop("Version", None)
+        if url := code_url(latest.source):
+            entry["CodeURL"] = url
+        if latest.container:
+            entry["Container"] = latest.container
+        entries.append(entry)
+    return entries
 
 
 def dataset_links(
     records: Iterable[RunRecord], existing: dict[str, str]
-) -> tuple[dict[str, str], dict[str, str]]:
-    """Assign DatasetLinks aliases to input datasets.
-
-    Returns updated links and a mapping of input path -> alias.
-    """
+) -> dict[str, str]:
+    """Add the input datasets of ``records`` to ``DatasetLinks``."""
     links = dict(existing)
-    by_uri = {uri: alias for alias, uri in links.items()}
-    aliases: dict[str, str] = {}
+    known = set(links.values())
     for record in records:
         for key, path in record.inputs.items():
             uri = Path(path).as_uri()
-            if uri in by_uri:
-                aliases[path] = by_uri[uri]
+            if uri in known:
                 continue
             alias, i = key, 1
             while alias in links:
                 i += 1
                 alias = f"{key}{i}"
             links[alias] = uri
-            by_uri[uri] = alias
-            aliases[path] = alias
-    return links, aliases
+            known.add(uri)
+    return links
 
 
 def update_dataset_description(
@@ -328,9 +332,9 @@ def update_dataset_description(
     records: Sequence[RunRecord],
     name: str,
     template: dict[str, Any] | None,
-    activity_ids: dict[str, str] | None = None,
+    provenance_dir: str = "code/snakebids",
 ) -> Path:
-    """Create or update ``dataset_description.json`` with the recorded runs.
+    """Create or update ``dataset_description.json`` with a summary of the runs.
 
     Parameters
     ----------
@@ -338,10 +342,7 @@ def update_dataset_description(
         Contents of the app's ``pipeline_description.json``, used as the starting
         point when the dataset_description doesn't exist yet. A ``GeneratedBy`` entry
         in the template matching ``name`` supplies default keys (e.g. ``Author``)
-        for each run entry.
-    activity_ids
-        run_id -> BEP028 activity Id. Used if the existing file already uses the
-        BEP028 identifier form of ``GeneratedBy`` (a list of strings).
+        for the summary entries.
     """
     path = output_dir / "dataset_description.json"
     template = template or {}
@@ -359,202 +360,30 @@ def update_dataset_description(
         raw = desc.get("GeneratedBy", [])
         existing = [raw] if isinstance(raw, str | dict) else list(raw)
 
-    if existing and all(isinstance(e, str) for e in existing) and activity_ids:
-        # BEP028 identifier form: keep foreign ids, (re)add ours in order
-        ours = set(activity_ids.values())
-        desc["GeneratedBy"] = [e for e in existing if e not in ours] + [
-            activity_ids[r.run_id] for r in records if r.run_id in activity_ids
-        ]
+    if existing and all(isinstance(e, str) for e in existing):
+        # GeneratedBy uses (draft BEP028) activity identifiers; mixing in pipeline
+        # objects would make it invalid, so leave it alone.
+        logger.warning(
+            "%s uses identifiers in GeneratedBy; not adding %s runs to it", path, name
+        )
     else:
         kept = [
             e
             for e in existing
             if not _is_snakebids_entry(e) and not (app_tmpl and e == app_tmpl)
         ]
-        desc["GeneratedBy"] = kept + [
-            generated_by_entry(r, name, app_tmpl) for r in records
-        ]
+        desc["GeneratedBy"] = kept + generated_by_summary(
+            records, name, provenance_dir, app_tmpl
+        )
 
-    links, _ = dataset_links(records, desc.get("DatasetLinks", {}))
+    links = desc.get("DatasetLinks", {})
+    links = dataset_links(
+        records,
+        {str(k): str(v) for k, v in cast("dict[Any, Any]", links).items()}
+        if isinstance(links, dict)
+        else {},
+    )
     if links:
         desc["DatasetLinks"] = links
     write_json(path, desc)
     return path
-
-
-# --------------------------------------------------------------------------------------
-# BEP028 (draft) provenance files
-# --------------------------------------------------------------------------------------
-
-
-def _uid(obj: Any) -> str:
-    """Content hash, so ids differ exactly when attributes differ (as BEP028 asks)."""
-    blob = json.dumps(obj, sort_keys=True, default=str).encode()
-    return hashlib.sha256(blob).hexdigest()[:8]
-
-
-def _with_id(prefix: str, obj: dict[str, Any], extra: Any = None) -> dict[str, Any]:
-    """Prepend an Id derived from the object's content (plus ``extra`` hidden data)."""
-    return {"Id": f"bids::prov#{prefix}-{_uid([obj, extra])}", **obj}
-
-
-def _seconds(timestamp: str) -> str:
-    try:
-        return datetime.fromisoformat(timestamp).isoformat(timespec="seconds")
-    except ValueError:
-        return timestamp
-
-
-def prov_label(name: str) -> str:
-    """Sanitize an app name for use as a BIDS ``prov-<label>``."""
-    return re.sub(r"[^a-zA-Z0-9]", "", name) or "snakebids"
-
-
-def build_prov(
-    records: Sequence[RunRecord],
-    name: str,
-    dataset_links: dict[str, str],
-    provenance_dir: str,
-) -> tuple[dict[str, dict[str, Any]], dict[str, str]]:
-    """Build BEP028-style provenance documents from run records.
-
-    Returns a mapping of file suffix (``act``, ``soft``, ``env``, ``ent``) to json
-    document, and a mapping of run_id -> activity Id.
-    """
-    label = prov_label(name)
-    software: dict[str, dict[str, Any]] = {}
-    environments: dict[str, dict[str, Any]] = {}
-    datasets: dict[str, dict[str, Any]] = {}
-    activities: list[dict[str, Any]] = []
-    activity_ids: dict[str, str] = {}
-    by_uri = {uri: alias for alias, uri in dataset_links.items()}
-
-    def add(store: dict[str, dict[str, Any]], obj: dict[str, Any]) -> str:
-        store.setdefault(obj["Id"], obj)
-        return obj["Id"]
-
-    for rec in records:
-        app_sw: dict[str, Any] = {"Label": name, "Version": rec.app_version}
-        if url := code_url(rec.source):
-            app_sw["AlternativeIdentifier"] = [url]
-        # the exact code (commit + dirty state) distinguishes software objects
-        src = rec.source or {}
-        app_id = add(
-            software,
-            _with_id(label, app_sw, [src.get("commit"), src.get("dirty")]),
-        )
-        sw_ids = [app_id]
-        for dep, version in (
-            ("snakebids", rec.snakebids_version),
-            ("snakemake", rec.snakemake_version),
-        ):
-            if version:
-                sw_ids.append(
-                    add(
-                        software,
-                        _with_id(
-                            dep,
-                            {
-                                "Label": dep,
-                                "Version": version,
-                                "ActedOnBehalfOf": [app_id],
-                            },
-                        ),
-                    )
-                )
-
-        env: dict[str, Any] = {
-            "Label": (rec.container or {}).get("Tag") or rec.host,
-            "OperatingSystem": rec.operating_system,
-            "Dependencies": {"python": rec.python_version},
-        }
-        if uri := (rec.container or {}).get("URI"):
-            env["AlternativeIdentifier"] = [uri]
-        env = {k: v for k, v in env.items() if v}
-        used = [add(environments, _with_id("env", env))]
-
-        for path in rec.inputs.values():
-            alias = by_uri.get(Path(path).as_uri())
-            if alias is None:
-                continue
-            ds_id = f"bids:{alias}:."
-            datasets.setdefault(ds_id, {"Id": ds_id, "Label": _dataset_name(path)})
-            used.append(ds_id)
-        used.append(f"bids::{provenance_dir}/runs/{rec.run_id}/config.yaml")
-
-        act_id = f"bids::prov#{label}-{rec.run_id}"
-        activity_ids[rec.run_id] = act_id
-        act: dict[str, Any] = {
-            "Id": act_id,
-            "Label": f"{name} run {rec.run_id}",
-            "Command": rec.command,
-            "Description": (
-                f"status: {rec.status}; working directory: {rec.cwd}; "
-                f"host: {rec.host}" + (f"; user: {rec.user}" if rec.user else "")
-            ),
-            "AssociatedWith": sw_ids,
-            "Used": used,
-            "StartedAtTime": _seconds(rec.start_time),
-        }
-        if rec.end_time:
-            act["EndedAtTime"] = _seconds(rec.end_time)
-        activities.append(act)
-
-    docs: dict[str, dict[str, Any]] = {
-        "act": {"Activities": activities},
-        "soft": {"Software": list(software.values())},
-        "env": {"Environments": list(environments.values())},
-    }
-    if datasets:
-        docs["ent"] = {"Datasets": list(datasets.values())}
-    return docs, activity_ids
-
-
-def _dataset_name(path: str) -> str:
-    desc = read_json(Path(path) / "dataset_description.json")
-    if desc and isinstance(desc.get("Name"), str) and desc["Name"]:
-        return desc["Name"]
-    return Path(path).name
-
-
-def write_prov(
-    output_dir: Path,
-    docs: dict[str, dict[str, Any]],
-    name: str,
-    prov_dir: str = "prov",
-) -> None:
-    """Write BEP028 files and register the label in ``prov/provenance.tsv``."""
-    label = prov_label(name)
-    root = output_dir / prov_dir
-    for suffix in ("act", "soft", "env", "ent"):
-        path = root / f"prov-{label}_{suffix}.json"
-        if suffix in docs:
-            write_json(path, docs[suffix])
-        else:
-            path.unlink(missing_ok=True)
-
-    tsv = root / "provenance.tsv"
-    prov_id = f"prov-{label}"
-    rows: list[dict[str, str]] = []
-    fields = ["provenance_id", "description"]
-    if tsv.exists():
-        with tsv.open(newline="") as f:
-            reader = csv.DictReader(f, delimiter="\t")
-            fields = list(reader.fieldnames or fields)
-            rows = [r for r in reader if r.get("provenance_id") != prov_id]
-    if "description" not in fields:
-        fields.append("description")
-    rows.append(
-        {
-            "provenance_id": prov_id,
-            "description": f"Runs of {name}, recorded by snakebids",
-        }
-    )
-    tmp = tsv.with_name(f".{tsv.name}.tmp")
-    with tmp.open("w", newline="") as f:
-        writer = csv.DictWriter(
-            f, fieldnames=fields, delimiter="\t", restval="n/a", lineterminator="\n"
-        )
-        writer.writeheader()
-        writer.writerows(rows)
-    tmp.replace(tsv)

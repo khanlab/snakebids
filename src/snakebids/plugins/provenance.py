@@ -286,7 +286,7 @@ class Provenance(PluginBase):
     argument_group
         Title of the CLI argument group for the provenance flags.
     name
-        App name used in ``dataset_description.json`` and ``prov/``. Defaults to the
+        App name used in ``dataset_description.json``. Defaults to the
         distribution name, then the ``Name`` of the first ``GeneratedBy`` entry in
         ``pipeline_description.json``, then the name of the app directory.
     distribution
@@ -300,13 +300,11 @@ class Provenance(PluginBase):
         Path (relative to ``app_dir``) of a template for ``dataset_description.json``,
         used when the output dataset doesn't have one yet.
     dataset_description
-        Create/update ``dataset_description.json`` in the output directory, with one
-        ``GeneratedBy`` entry per recorded run.
-    bids_prov
-        Also write draft BEP028-style provenance files to ``prov/``.
-
-    The BIDS outputs (``dataset_description.json``, ``prov/``) are regenerated from
-    the run records at the start and end of every run.
+        Create/update ``dataset_description.json`` in the output directory. Its
+        ``GeneratedBy`` holds a compact summary of the runs (one entry per app
+        version, with the latest commit and run count); full details stay in
+        ``directory``. It is regenerated from the run records at the start and end
+        of every run.
     """
 
     directory: str = "code/snakebids"
@@ -319,7 +317,6 @@ class Provenance(PluginBase):
     )
     pipeline_description: str = "pipeline_description.json"
     dataset_description: bool = True
-    bids_prov: bool = True
 
     PREFIX = "plugins.provenance"
 
@@ -508,10 +505,10 @@ class Provenance(PluginBase):
         return None
 
     def _write_bids_views(self) -> None:
-        """Regenerate dataset_description.json and prov/ from all run records."""
+        """Regenerate dataset_description.json from all run records."""
         if self._output_dir is None or self._record is None:
             return
-        if not (self.dataset_description or self.bids_prov):
+        if not self.dataset_description:
             return
         out = self._output_dir
         name = self._record.app_name or "snakebids_app"
@@ -522,19 +519,9 @@ class Provenance(PluginBase):
             if (r.app_name or name) == name
         ]
         try:
-            links, _ = bids_prov.dataset_links(
-                records, bids_prov.existing_dataset_links(out, self._template)
+            bids_prov.update_dataset_description(
+                out, records, name, self._template, self.directory
             )
-            activity_ids: dict[str, str] = {}
-            if self.bids_prov:
-                docs, activity_ids = bids_prov.build_prov(
-                    records, name, links, self.directory
-                )
-                bids_prov.write_prov(out, docs, name)
-            if self.dataset_description:
-                bids_prov.update_dataset_description(
-                    out, records, name, self._template, activity_ids
-                )
         except OSError as err:
             logger.warning("Could not write BIDS provenance: %s", err)
 
@@ -577,11 +564,14 @@ class Provenance(PluginBase):
             print(f"No recorded runs in {self._provenance_dir(output_dir)}")
             return
         for i, rec in enumerate(records, 1):
-            replay = f" (replay of {rec.replayed_from})" if rec.replayed_from else ""
+            app = rec.app_name or ""
+            if rec.app_version and rec.app_version != "unknown":
+                app = f"{app} {rec.app_version}".strip()
+            replay = f"  (replay of {rec.replayed_from})" if rec.replayed_from else ""
             print(
                 f"[{i}] {rec.run_id}  {rec.status:<11} "
-                f"{rec.start_time[:19]}  {rec.user or ''}@{rec.host}  "
-                f"v{rec.app_version}{replay}"
+                f"{rec.start_time[:16].replace('T', ' ')}  "
+                f"{rec.user or '?'}@{rec.host}  {app}{replay}"
             )
             if summary := bids_prov.source_summary(rec.source):
                 print(f"    code: {summary}")
