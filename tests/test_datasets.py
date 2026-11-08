@@ -944,7 +944,9 @@ class TestBidsComponentGet:
             comp.get(query) if use_query else comp.get(**query)
 
     @given(
-        comp=sb_st.bids_components(),
+        # restrict_patterns: the queried values get formatted (and validated) before
+        # the missing entity is detected, so they must be valid entity values
+        comp=sb_st.bids_components(restrict_patterns=True),
         data=st.data(),
         use_query=st.booleans(),
     )
