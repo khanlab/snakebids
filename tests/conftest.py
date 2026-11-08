@@ -19,9 +19,16 @@ from snakebids import resources, set_bids_spec
 #       another decorator that only activates the fake filesystem within the test body
 
 # github-actions tends to have flaky runtimes, likely due to temporary slowdowns in the
-# runner, so just disable deadlines
+# runner, so just disable deadlines in CI.
+#
+# "pr": derandomized, so every run of a given test (and hypothesis/python version)
+#       tries the same examples. A PR only fails if it breaks something, rather than
+#       because it happened to draw a new example exposing an existing weakness.
+# "weekly": randomized, for the scheduled weekly run, which explores new examples.
+#       Failures found there show up in the weekly run instead of on unrelated PRs.
+settings.register_profile("pr", deadline=None, derandomize=True)
 settings.register_profile(
-    "pr", deadline=None, database=database.InMemoryExampleDatabase()
+    "weekly", deadline=None, database=database.InMemoryExampleDatabase()
 )
 settings.register_profile("dev", database=database.InMemoryExampleDatabase())
 
