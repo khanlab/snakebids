@@ -39,6 +39,13 @@ conda install -c conda-forge -c bioconda snakebids
 mamba install -c conda-forge -c bioconda snakebids
 ```
 
+New releases reach the bioconda channel after a review delay; they are available
+right away from the khanlab channel on prefix.dev:
+
+```bash
+conda install -c conda-forge -c bioconda -c https://prefix.dev/akhanf/khanlab snakebids
+```
+
 ## Usage
 
 To create and run a Snakebids workflow, you need to:

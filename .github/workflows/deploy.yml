@@ -10,6 +10,8 @@ on:
 jobs:
   release_changelog:
     runs-on: ubuntu-latest
+    outputs:
+      new_release: ${{ steps.prepare-release.outputs.new_release }}
 
     steps:
       - name: Print author
@@ -81,3 +83,14 @@ jobs:
 
       - name: Build and publish
         run: uv publish
+
+  # also publish to the khanlab prefix.dev channel, which (unlike bioconda) is
+  # available as soon as the release is
+  deploy_conda:
+    needs: [release_changelog, deploy]
+    uses: ./.github/workflows/push_conda.yml
+    with:
+      release_tag: v${{ needs.release_changelog.outputs.new_release }}
+      upload: true
+    secrets:
+      PREFIX_API_KEY: ${{ secrets.PREFIX_API_KEY }}

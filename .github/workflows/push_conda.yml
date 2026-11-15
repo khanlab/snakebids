@@ -1,0 +1,75 @@
+name: Publish Conda package
+
+# Publishes snakebids to https://prefix.dev/channels/khanlab, alongside the
+# bioconda recipe (which lags releases while its PR is reviewed).
+#
+# Releases are created by deploy.yml with GITHUB_TOKEN, which does not trigger
+# `on: release` workflows, so deploy.yml calls this workflow directly.
+
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        description: "Release tag to build, e.g. v0.17.0"
+        required: true
+        type: string
+      upload:
+        description: "Actually upload package"
+        required: false
+        default: true
+        type: boolean
+    secrets:
+      PREFIX_API_KEY:
+        required: true
+
+  # build the package (without uploading) when the packaging changes
+  pull_request:
+    paths:
+      - pyproject.toml
+      - .github/workflows/push_conda.yml
+
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to build, e.g. v0.17.0"
+        required: true
+        type: string
+      upload:
+        description: "Actually upload package"
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+        with:
+          # build from the tag itself on release, so hatch-vcs reports the
+          # release version
+          ref: >-
+            ${{ github.event_name != 'pull_request'
+                && inputs.release_tag
+                || github.ref }}
+          fetch-depth: 0
+
+      # the action writes the version into pyproject.toml; hide that edit
+      # from hatch-vcs, which would otherwise report a dirty-tree dev version
+      - name: Ignore the version edit
+        run: git update-index --assume-unchanged pyproject.toml
+
+      - name: Build and publish
+        uses: khanlab/actions/.github/actions/action-pixi_task-publish@df4211abe672b61c81f4177eef5b9516edf2944e
+        with:
+          release-tag: >-
+            ${{ github.event_name == 'pull_request'
+                && format('v0.0.0.dev{0}', github.run_number)
+                || inputs.release_tag }}
+          channel: akhanf/khanlab
+          api-key: ${{ secrets.PREFIX_API_KEY }}
+          upload: >-
+            ${{ github.event_name != 'pull_request'
+                && inputs.upload == true }}
