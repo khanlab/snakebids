@@ -26,7 +26,7 @@ from snakebids.utils.output import (
     prepare_bidsapp_output,
     write_output_mode,
 )
-from snakebids.utils.utils import to_resolved_path
+from snakebids.utils.utils import path_or_url, to_resolved_path
 
 __all__ = ["SnakemakeBidsApp"]
 
@@ -236,7 +236,8 @@ class SnakemakeBidsApp:
         if "output_dir" in namespace:
             namespace["output_dir"] = Path(namespace["output_dir"])
         if "bids_dir" in namespace:
-            namespace["bids_dir"] = Path(namespace["bids_dir"])
+            # a URL stays a string, which is left unresolved
+            namespace["bids_dir"] = path_or_url(namespace["bids_dir"])
         for key, path in namespace.items():
             namespace[key] = _resolve_path(path)
         namespace.pop("help_snakemake", None)

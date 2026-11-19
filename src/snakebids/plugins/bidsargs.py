@@ -10,6 +10,7 @@ import more_itertools as itx
 
 from snakebids import bidsapp
 from snakebids.bidsapp.args import ArgumentGroups
+from snakebids.utils.utils import path_or_url
 from snakebids.exceptions import ConfigError
 from snakebids.plugins.base import PluginBase
 
@@ -140,8 +141,9 @@ class BidsArgs(PluginBase):
                 group,
                 dest="bids_dir",
                 help="The directory with the input dataset formatted according "
-                "to the BIDS standard.",
-                type=Path,
+                "to the BIDS standard: a local path, or a URL that fsspec can read "
+                "(e.g. s3://bucket/dataset).",
+                type=path_or_url,
             )
         if self.output_dir:
             self.try_add_argument(

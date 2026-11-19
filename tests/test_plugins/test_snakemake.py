@@ -507,3 +507,15 @@ def test_integration(
             "--unknown-arg",
         ]
     )
+
+
+class TestRemoteBidsDir:
+    @pytest.mark.parametrize(
+        "url", ["s3://bucket/dataset", "gs://bucket/dataset", "mind://scratch/study/bids"]
+    )
+    def test_url_bids_dir_is_left_unresolved(self, url: str):
+        smk = sn_app.SnakemakeBidsApp.create_empty()
+        namespace: dict[str, Any] = {"bids_dir": url, "output_dir": "foo"}
+        smk.update_cli_namespace(namespace, {})
+        assert namespace["bids_dir"] == url
+        assert namespace["output_dir"] == Path("foo").resolve()

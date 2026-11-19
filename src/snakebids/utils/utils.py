@@ -318,6 +318,20 @@ def get_first_dir(path: str) -> str:
     return child
 
 
+def is_url(path: str | PathLike[str]) -> bool:
+    """Whether path is a URL with a scheme (e.g. ``s3://``, ``gs://``, ``mind://``) rather than a local path."""
+    return "://" in str(path)
+
+
+def path_or_url(path: str | PathLike[str]) -> Path | str:
+    """A local path as a Path; a URL unchanged, as a string.
+
+    ``Path("s3://bucket/dataset")`` would collapse the double slash, and resolving it would prefix the current
+    directory, so URLs (read through fsspec and universal_pathlib) are kept as strings.
+    """
+    return str(path) if is_url(path) else Path(path)
+
+
 def to_resolved_path(path: str | PathLike[str]):
     """Convert provided object into resolved path."""
     return Path(path).resolve()

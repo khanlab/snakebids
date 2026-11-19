@@ -293,6 +293,16 @@ class TestGitSource:
 
 
 class TestDatasetDescription:
+    def test_url_input_dataset(
+        self, app_repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.chdir(tmp_path)
+        _run_bids(["out"], app_repo, "s3://bucket/dataset")  # type: ignore[arg-type]
+        (record,) = load_history(_prov_dir(Path("out")))
+        assert record.inputs == {"bids_dir": "s3://bucket/dataset"}
+        desc = json.loads(Path("out/dataset_description.json").read_text())
+        assert desc["DatasetLinks"] == {"bids_dir": "s3://bucket/dataset"}
+
     def test_created_from_template(
         self, app_repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ):
@@ -654,6 +664,11 @@ class TestDatasetDescriptionEdgeCases:
             "bids_dir": "file:///other",
             "bids_dir2": (tmp_path / "new").as_uri(),
         }
+
+    def test_dataset_link_to_url(self):
+        rec = _rec("r1")
+        rec.inputs = {"bids_dir": "s3://bucket/dataset"}
+        assert bids_prov.dataset_links([rec], {}) == {"bids_dir": "s3://bucket/dataset"}
 
     def test_invalid_dataset_links_left_alone(self, tmp_path: Path):
         (tmp_path / "dataset_description.json").write_text(

@@ -42,6 +42,7 @@ from snakebids import bidsapp
 from snakebids.io.config import write_config
 from snakebids.plugins import _provenance_bids as bids_prov
 from snakebids.plugins.base import PluginBase
+from snakebids.utils.utils import is_url
 
 __all__ = ["Provenance", "RunRecord", "load_history"]
 
@@ -497,7 +498,7 @@ class Provenance(PluginBase):
             or (app_dir.name if app_dir else Path(sys.argv[0]).stem)
         )
         inputs = {
-            key: str(Path(config[key]).resolve())
+            key: config[key] if is_url(config[key]) else str(Path(config[key]).resolve())
             for key in ("bids_dir",)
             if config.get(key)
         }

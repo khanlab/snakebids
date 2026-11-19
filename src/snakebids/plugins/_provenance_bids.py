@@ -23,6 +23,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import unquote, urlparse
 
+from snakebids.utils.utils import is_url
+
 if TYPE_CHECKING:
     from snakebids.plugins.provenance import RunRecord
 
@@ -315,7 +317,7 @@ def dataset_links(
     known = set(links.values())
     for record in records:
         for key, path in record.inputs.items():
-            uri = Path(path).as_uri()
+            uri = path if is_url(path) else Path(path).as_uri()
             if uri in known:
                 continue
             alias, i = key, 1
