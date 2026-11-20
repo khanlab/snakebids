@@ -56,8 +56,24 @@ jobs:
                 || github.ref }}
           fetch-depth: 0
 
+      # tags from before the conda packaging was added have no [tool.pixi.*]
+      # config, so take it from the commit this workflow runs from
+      - name: Add packaging config to older tags
+        run: |
+          if ! grep -q '^\[tool\.pixi\.package\]' pyproject.toml; then
+            echo "Adding [tool.pixi.*] config from ${GITHUB_SHA}"
+            git show "${GITHUB_SHA}:pyproject.toml" | awk '
+              /^\[/ { keep = /^\[tool\.pixi\./ }
+              keep
+            ' > pixi-config.toml
+            printf '\n' >> pyproject.toml
+            cat pixi-config.toml >> pyproject.toml
+            rm pixi-config.toml
+          fi
+
       # the action writes the version into pyproject.toml; hide that edit
-      # from hatch-vcs, which would otherwise report a dirty-tree dev version
+      # (and any added config) from hatch-vcs, which would otherwise report a
+      # dirty-tree dev version
       - name: Ignore the version edit
         run: git update-index --assume-unchanged pyproject.toml
 
