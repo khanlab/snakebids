@@ -1,0 +1,86 @@
+name: Check bioconda recipe
+
+# The bioconda autobump bot bumps the recipe's version on each release but not
+# its requirements. This compares the recipe's run requirements against
+# pyproject.toml at the latest release tag, and opens (or updates) an issue
+# with the corrected `run:` block when they differ. The fix then goes in as a
+# PR to bioconda/bioconda-recipes, or as a commit on the autobump PR.
+
+on:
+  schedule:
+    - cron: "0 12 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/scripts/check_bioconda_recipe.py
+      - .github/workflows/bioconda_drift.yml
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  ISSUE_TITLE: "Bioconda recipe requirements are out of sync"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - run: pip install packaging
+
+      - name: Get pyproject.toml at the latest release, and the bioconda recipe
+        run: |
+          tag=$(git describe --tags --abbrev=0 --match 'v*' origin/main)
+          echo "Comparing against $tag"
+          git show "$tag:pyproject.toml" > release-pyproject.toml
+          curl -fsSL -o meta.yaml \
+            https://raw.githubusercontent.com/bioconda/bioconda-recipes/master/recipes/snakebids/meta.yaml
+
+      - name: Compare
+        id: compare
+        run: |
+          set +e
+          python .github/scripts/check_bioconda_recipe.py \
+            release-pyproject.toml meta.yaml --summary report.md
+          status=$?
+          set -e
+          if [ "$status" -eq 1 ]; then
+            echo "drift=true" >> "$GITHUB_OUTPUT"
+            cat report.md >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$status" -ne 0 ]; then
+            exit "$status"
+          fi
+
+      - name: Open or update issue
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRIFT: ${{ steps.compare.outputs.drift }}
+        run: |
+          issue=$(gh issue list --state open --search "in:title \"$ISSUE_TITLE\"" \
+            --json number -q '.[0].number')
+          if [ "$DRIFT" = true ]; then
+            {
+              cat report.md
+              echo
+              echo "Recipe: https://github.com/bioconda/bioconda-recipes/blob/master/recipes/snakebids/meta.yaml"
+              echo
+              echo "_Updated by the [bioconda_drift workflow]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)._"
+            } > body.md
+            if [ -n "$issue" ]; then
+              gh issue edit "$issue" --body-file body.md
+            else
+              gh issue create --title "$ISSUE_TITLE" --body-file body.md
+            fi
+          elif [ -n "$issue" ]; then
+            gh issue close "$issue" --comment "The recipe matches pyproject.toml again."
+          fi
+
