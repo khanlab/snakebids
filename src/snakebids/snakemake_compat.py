@@ -9,7 +9,6 @@ except ImportError:
     from snakemake import get_argument_parser, main
     from snakemake.io import load_configfile
 
-from snakemake.exceptions import WildcardError
 from snakemake.io import expand
 
 # Handle different snakemake versions for regex function
@@ -22,7 +21,6 @@ from snakemake.script import Snakemake
 
 __all__ = [
     "Snakemake",
-    "WildcardError",
     "configfile",
     "expand",
     "get_argument_parser",

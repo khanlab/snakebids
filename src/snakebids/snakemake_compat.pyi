@@ -8,8 +8,6 @@ from snakemake.common import configfile as configfile  # type: ignore
 
 configfile: ModuleType
 
-class WildcardError(Exception): ...
-
 def load_configfile(configpath: str) -> dict[str, Any]:
     "Load a JSON or YAML configfile as a dict, then checks that it's a dict."
 
