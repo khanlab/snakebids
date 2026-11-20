@@ -14,16 +14,16 @@ runs:
   using: composite
   steps:
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
+      uses: docker/setup-qemu-action@v4
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@v4
     - name: Cache Template Testing Containers
       uses: actions/cache@v5
       with:
         path: /tmp/.buildx-cache
         key: ${{ runner.os }}-test-template-cache-${{ hashFiles('containers/test-template/**') }}-${{ inputs.python-version }}
     - name: Build Docker container for cache
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@v7
       with:
         context: containers/test-template
         cache-from: type=local,src=/tmp/.buildx-cache
