@@ -22,7 +22,7 @@ jobs:
           ref: ${{ github.head_ref || github.ref_name }}
 
       - name: Draft change log
-        uses: release-drafter/release-drafter@v6
+        uses: release-drafter/release-drafter@v7
         id: release-drafter
         with:
           commitish: ${{ github.head_ref || github.ref_name }}
@@ -43,7 +43,7 @@ jobs:
           echo "new_release=$NEW_RELEASE" >> "$GITHUB_OUTPUT"
 
       - name: Publish change log
-        uses: release-drafter/release-drafter@v6
+        uses: release-drafter/release-drafter@v7
         with:
           commitish: ${{ github.head_ref || github.ref_name }}
           publish: true

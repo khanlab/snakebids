@@ -20,7 +20,7 @@ jobs:
           ref: ${{ github.head_ref || github.ref_name }}
 
       - name: Update changelog
-        uses: release-drafter/release-drafter@v6
+        uses: release-drafter/release-drafter@v7
         id: release-drafter
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

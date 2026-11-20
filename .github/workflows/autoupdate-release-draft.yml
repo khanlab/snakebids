@@ -13,7 +13,7 @@ jobs:
           ref: ${{ github.event.pull_request.base.ref }}
 
       - name: Update changelog
-        uses: release-drafter/release-drafter@v6
+        uses: release-drafter/release-drafter@v7
         id: release-drafter
         with:
           commitish: ${{ github.event.pull_request.base.ref }}
