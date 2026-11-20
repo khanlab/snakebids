@@ -105,6 +105,36 @@ docs = [
 [project.scripts]
 snakebids = "snakebids.admin:main"
 
+[tool.pixi.workspace]
+channels = ["conda-forge", "bioconda"]
+platforms = ["linux-64"]
+preview = ["pixi-build"]
+
+# conda package published to https://prefix.dev/channels/khanlab by
+# .github/workflows/push_conda.yml (in addition to bioconda)
+[tool.pixi.package]
+name = "snakebids"
+# set from the release tag by the publish workflow
+version = "0.0.0.dev0"
+publish = true
+
+[tool.pixi.package.build.backend]
+name = "pixi-build-python"
+version = "*"
+channels = ["conda-forge"]
+
+[tool.pixi.package.build.config]
+ignore-pypi-mapping = false
+
+[tool.pixi.package.host-dependencies]
+hatchling = "*"
+hatch-vcs = "*"
+
+[tool.pixi.package.run-dependencies]
+# deps with python_version markers in [project] are dropped by the conversion.
+# snakemake 8+ itself requires python >=3.11, so one spec covers both cases
+snakemake = ">=7.18.2"
+
 [tool.poe.tasks]
 setup = "pre-commit install"
 sort.cmd = "ruff check --fix --select I001 $path"
